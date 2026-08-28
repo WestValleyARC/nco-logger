@@ -122,6 +122,15 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Liveness only proves that the Node process can answer HTTP. Readiness also
+// verifies the database dependency before a proxy/orchestrator sends traffic.
+app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/readyz', (_req, res) => {
+    const ready = mongoose.connection.readyState === 1;
+    res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not-ready' });
+});
+
 app.use(express.static(path.join(__dirname, '../../client/dist/public'), { maxAge: 7200000 }));
 app.use('/views', viewRoutes);
 //API:CRUD Routes:

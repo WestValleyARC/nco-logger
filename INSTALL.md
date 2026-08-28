@@ -170,6 +170,37 @@ Notes:
 
 ### Build and run
 
+The recommended self-hosted path runs both the application and its MongoDB
+replica set in Docker:
+
+```bash
+cp .env.example .env       # first run only; replace all development secrets
+docker compose up -d --build
+docker compose ps
+docker compose logs -f app
+```
+
+Open `http://localhost:3000`. MongoDB is reachable only on the private Compose
+network; the application is published on the host loopback interface so a local
+reverse proxy can expose it safely. Database data persists in the
+`hamlive-mongo-data` named volume when the containers are replaced or stopped.
+
+Stop the stack without deleting its database volume:
+
+```bash
+docker compose down
+```
+
+For production set `NODE_ENV=production` and
+`BASE_URL=https://logger.westvalleyarc.com` in `.env`. Compose deliberately
+overrides only `NODE_ENV`, `PORT`, and the internal `MONGODB_URI`; integration
+credentials and generated secrets continue to come from `.env`.
+
+Health endpoints are available at `/healthz` (Node process) and `/readyz`
+(Node plus MongoDB connectivity).
+
+To run without Docker:
+
 ```bash
 npm install
 npm run build            # compile TypeScript sources (required before starting)
