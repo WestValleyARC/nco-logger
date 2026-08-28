@@ -114,7 +114,7 @@ Defines amateur radio nets and their operational parameters.
 
 ### 3. StationInteraction Collection
 
-Records station state and participation within nets. **NOTE**: Chat messages are handled by the external GetStream.io integration, NOT stored in this collection.
+Records station state and participation within nets. Local `ChatMessage` records reference the user and live net.
 
 **Schema Structure:**
 
@@ -206,10 +206,7 @@ Stores the single global runtime configuration document. The Mongoose model name
     _id: ObjectId,
     scope: String,              // Always 'global' for the standalone collection
     option: {
-        gracePeriodDays: Number,    // Account deletion grace period (default: 0)
-        ads: Number,                // Ad display percentage 0-100 (default: 0)
         chat: Boolean,              // Enable chat integration (default: true)
-        analytics: Boolean,         // Enable analytics tracking (default: true)
         email: Boolean,             // Enable email notifications (default: true)
         maxNetsPerUser: Number,     // Net ownership limit (default: 7)
         maxOwnersPerNet: Number,    // Ownership sharing limit (default: 5)
@@ -240,13 +237,10 @@ Stores the single global runtime configuration document. The Mongoose model name
 {
     option: {
         chat: Boolean,   // User chat preference override
-        email: Boolean,  // User email preference override
-        ads: Number      // User ad preference override (0-100)
+        email: Boolean  // User email preference override
     }
 }
 ```
-
-No `analytics` field exists in the local schema.
 
 ### 6. SystemNotification Collection
 

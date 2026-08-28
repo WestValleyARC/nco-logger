@@ -60,7 +60,7 @@ The session cookie is named **`session`** (the default name used by the `cookie-
 - **Data API Endpoints** — LiveNets list and details, NetProfiles CRUD
 - **Station Interactions** — signal reports, hands, check-ins (`POST /api/station/interactions/:id`)
 - **Admin Commands** — net admin command list and execution (`GET /api/admin/interactions/:id`, `POST /api/admin/interactions/:id`)
-- **Chat Endorsement** — GetStream.io token (`GET /api/endorse/chat/:id`) and message moderation (`DELETE /api/endorse/chat/:id/message/:messageId`)
+- **Local Chat** — history/send (`GET|POST /api/chat/:id/messages`) and moderation
 - **Utility Endpoints** — notifications pending/dismiss, location resolution, account recovery
 
 ## Variables
@@ -106,8 +106,9 @@ The following table summarises the endpoints included in the collection. See [AP
 | POST   | `/api/station/interactions/:id`                            | Post station interaction (sig report, hand, etc.) |
 | GET    | `/api/admin/interactions/:id`                              | List net admin commands for net                  |
 | POST   | `/api/admin/interactions/:id`                              | Execute net admin command                        |
-| GET    | `/api/endorse/chat/:id`                       | Get GetStream.io user token for net chat         |
-| DELETE | `/api/endorse/chat/:id/message/:messageId`    | Delete a chat message (NCS only)                 |
+| GET    | `/api/chat/:id/messages`                      | Get local chat history and SSE path              |
+| POST   | `/api/chat/:id/messages`                      | Send a local chat message                        |
+| DELETE | `/api/chat/:id/messages/:messageId`           | Delete an owned or moderated chat message        |
 
 ## Important Notes
 

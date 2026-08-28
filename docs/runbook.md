@@ -486,18 +486,16 @@ db.flexoptions.findOne({scope: "global"}, {"option.chat": 1, "_id": 0})
 ```bash
 # Feature toggles
 db.flexoptions.updateOne({scope: "global"}, {$set: {"option.chat": false}})
-db.flexoptions.updateOne({scope: "global"}, {$set: {"option.analytics": true}})
 
 # System limits
 db.flexoptions.updateOne({scope: "global"}, {$set: {"option.maxNetsPerUser": 10}})
-db.flexoptions.updateOne({scope: "global"}, {$set: {"option.ads": 25}})
 
 # Timing controls
 db.flexoptions.updateOne({scope: "global"}, {$set: {"option.awayInMs": 30000}})
 db.flexoptions.updateOne({scope: "global"}, {$set: {"option.baseTtlMs": 20000}})
 ```
 
-**User-specific overrides (limited to ads, chat, email):**
+**User-specific overrides (limited to chat and email):**
 
 ```bash
 # View user's FlexOptions overrides
@@ -506,7 +504,7 @@ db.userprofiles.findOne({callSign: "KK6BEB"}, {flexOptions: 1})
 # Set user preference
 db.userprofiles.updateOne(
   {callSign: "KK6BEB"},
-  {$set: {"flexOptions.ads": 0}}
+  {$set: {"flexOptions.option.chat": false}}
 )
 ```
 

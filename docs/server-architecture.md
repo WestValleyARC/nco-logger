@@ -4,7 +4,7 @@
 
 This document describes the overall server application structure, middleware stack, and bootstrapping process for Ham.Live.
 
-> **Source note:** The codebase is mid JS→TypeScript migration. `server/dist/` contains the authoritative running source — most files are hand-written JavaScript; a small set (`responseUtils`, `realtimeClients`, `secureSign`, `streamChat`, and the shared types) are compiled from `server/src/*.ts`.
+> **Source note:** The codebase is mid JS→TypeScript migration. `server/dist/` contains the authoritative running source — most files, including `localChat.js`, are hand-written JavaScript; TypeScript modules have matching sources under `server/src/`.
 
 ## System Architecture Overview
 
@@ -22,7 +22,7 @@ Ham.Live implements a three-tier architecture with clear separation of concerns:
 - **Controllers**: Business logic layer (`liveNetController`, `interactionController`, `followController`)
 - **Domain Logic**: Core business operations in `sharedNetOps.js`
 - **Real-time Services**: SSE connection management via `realtimeClients.js` (compiled from `src/`)
-- **External Services**: GetStream.io chat, Google OAuth, QRZ.com callsign lookup
+- **External Services**: local MongoDB/SSE chat, Google OAuth, QRZ.com callsign lookup
 
 ### Data Layer
 
@@ -41,8 +41,8 @@ server/
 │   ├── logger.js          # Logging infrastructure (compiled from src/)
 │   ├── responseUtils.js   # Response envelope, ResponseHandler, handleRequest (compiled from src/)
 │   ├── realtimeClients.js # SSE connection management (compiled from src/)
-│   ├── secureSign.js      # GetStream chat token endpoint (compiled from src/)
-│   ├── streamChat.js      # GetStream.io chat integration (compiled from src/)
+│   ├── secureSign.js      # generic signing helper (compiled from src/)
+│   ├── localChat.js       # local MongoDB/SSE chat integration
 │   ├── dailyProcessingDispatch.js # Triggers background task child process
 │   └── tasksLoader.js     # Child-process task runner, reads conf.background_tasks
 ├── routes/                # Route handlers organized by domain
@@ -129,8 +129,9 @@ Server-rendered EJS pages. See [Views](views.md).
 
 ### Other Routes
 
-- `GET /api/endorse/chat/:id` — Issue a GetStream.io chat token (requires callsign)
-- `DELETE /api/endorse/chat/:id/message/:messageId` — Moderator message deletion
+- `GET|POST /api/chat/:id/messages` — Local chat history/send
+- `GET /api/chat/:id/events` — Local chat SSE
+- `DELETE /api/chat/:id/messages/:messageId` — Message deletion/moderation
 - `GET /api/util/undeleteme` — Restore a soft-deleted account
 - `GET /api/util/resolvelocation` — Reverse geocode a lat/lon (optional; requires `GEO_KEY`)
 - `GET /api/util/notifications/pending` — Fetch pending system notifications
@@ -187,20 +188,15 @@ Controllers integrate with `sharedNetOps.js` for multi-collection atomic updates
 
 ## External Service Integration
 
-### Chat Integration (GetStream.io)
+### Chat Integration (local MongoDB/SSE)
 
-```javascript
-// lib/streamChat.js — GetStream.io integration
-// Env vars: STREAM_API_KEY, STREAM_API_SECRET
-const serverClient = StreamChat.getInstance(conf.stream_api_key, conf.stream_api_secret);
-```
-
-Provides: channel creation/deletion, user token issuance, message moderation, and chat history retrieval. GetStream is optional; the app functions without it when the env vars are absent.
+`lib/localChat.js` provides authenticated message persistence, moderation, history retrieval, and a
+MongoDB change-stream-to-SSE bridge. Local chat is always enabled and uses the application session.
 
 ### Authentication Services
 
 - **Google OAuth2** — Optional. Enabled only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Strategy registered via `passport-google-oauth20`.
-- **Magic Link Email** — Primary passwordless auth via `passport-magic-login` and SendGrid (`SENDGRID_API_KEY`). When `SENDGRID_API_KEY` is not configured, the sign-in link is logged to the console and returned in the JSON response for local development.
+- **Magic Link Email** — Primary passwordless auth via `passport-magic-login` and SMTP (`MAIL_TRANSPORT`). When `MAIL_TRANSPORT` is not configured, the sign-in link is logged to the console and returned in the JSON response for local development.
 - **QRZ.com API** — Optional callsign lookup and data caching. Disabled when `QRZ_USERNAME`/`QRZ_PASSWORD` are absent.
 
 ### `secureSign.js`

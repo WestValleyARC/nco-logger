@@ -193,7 +193,7 @@ Commands are restricted by role levels in the following hierarchy:
 
 ### Chat Moderation Commands
 
-These commands manage user participation in the net's chat (powered by GetStream.io).
+These commands manage user participation in the logger's local chat.
 
 #### `ban` - Ban Station from Chat
 

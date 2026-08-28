@@ -5,7 +5,7 @@ This guide covers two paths:
 1. **[Local test drive](#1-local-test-drive)** — run it on your own machine with **zero accounts**,
    to try it out or develop against it. Works on **Windows, macOS, and Linux**.
 2. **[Hosting for your club](#2-hosting-for-your-club)** — stand up a real instance, including the
-   external accounts you'll want for email, chat, and lookups.
+   external accounts you'll want for email and callsign lookups.
 
 ---
 
@@ -71,8 +71,8 @@ Now:
 > HTTPS with a bundled self-signed cert — your browser will then show the usual "not private" warning
 > for self-signed certs, which you can click through.
 
-**What's disabled in this mode** (all optional): Google sign-in button is hidden, real-time chat is
-off, and QRZ callsign / location enrichment is skipped. Add the relevant keys (below) to enable them.
+**What's disabled in this mode** (all optional): Google sign-in is hidden, SMTP delivery is replaced
+by console delivery, and QRZ enrichment is skipped. Local text chat remains available.
 
 ### MongoDB options
 
@@ -151,22 +151,53 @@ Each integration is independent — enable only what you want.
 | Integration | Account / where to sign up | Variables | Free tier? |
 | --- | --- | --- | --- |
 | **MongoDB Atlas** (database hosting) | <https://www.mongodb.com/atlas> | `MONGODB_URI` | Yes (M0) |
-| **Email delivery** (SendGrid) | <https://sendgrid.com> | `SENDGRID_API_KEY`, `EMAIL_FROM` | Limited free tier |
+| **Email delivery** (SMTP) | Google Workspace SMTP relay | `MAIL_TRANSPORT`, `SMTP_*`, `EMAIL_FROM` | Workspace service |
 | **Google sign-in** (OAuth) | <https://console.cloud.google.com/apis/credentials> | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Yes |
-| **Real-time chat** (GetStream) | <https://getstream.io> | `STREAM_API_KEY`, `STREAM_API_SECRET` | Yes (maker plan) |
 | **Callsign lookup** (QRZ.com) | <https://www.qrz.com/page/xml_data.html> | `QRZ_USERNAME`, `QRZ_PASSWORD` | Paid XML subscription |
 | **Reverse geocoding** (Azure Maps) | <https://azure.microsoft.com/products/azure-maps> | `GEO_KEY` | Yes (limited) |
 
 Notes:
-- **Email:** without `SENDGRID_API_KEY`, login links are logged to the server console (fine for
-  testing, **not** for a real instance). `EMAIL_FROM` must be a sender you've verified with your
-  email provider. The code is structured around SendGrid; adapting `server/dist/lib/userNotification.js`
-  to another provider is straightforward.
+- **Email:** without SMTP, login links are logged to the server console in development only. A
+  production instance never exposes the link and must configure mail delivery.
 - **Google OAuth:** set the authorized redirect URI to `${BASE_URL}/auth/google/redirect`.
-- **Chat:** without GetStream keys, the chat panel is simply absent; nets work without it.
-- **Ads & analytics:** **disabled by default** in the community edition. To enable, set
-  `ADS_ENABLED=true` / `ANALYTICS_ENABLED=true` **and** supply your own provider IDs
-  (`ADPLUGG_ACCESS_CODE` / `GOOGLE_ANALYTICS_ID`). Each stays off unless both its flag and ID are set.
+- **Chat:** text chat is local and always enabled. Inline image uploads are deferred for this phase.
+- **Ads & analytics:** removed from this fork.
+
+### Google Workspace SMTP relay (recommended for WVARC)
+
+1. In the Google Admin Console, open **Apps → Google Workspace → Gmail → Routing → SMTP relay service**.
+2. Add a relay rule and select **Only addresses in my domains** under Allowed senders. Use a
+   club-owned identity such as `logger@westvalleyarc.com` or `nets@westvalleyarc.com`, not a
+   volunteer's personal mailbox.
+3. Under Authentication, select **Only accept mail from the specified IP addresses** and enter only
+   the fixed public IP of the server hosting `logger.westvalleyarc.com`. Do not enter a broad range.
+4. Enable **Require TLS encryption** and save the rule.
+5. Configure the application:
+
+   ```dotenv
+   MAIL_TRANSPORT=smtp
+   SMTP_HOST=smtp-relay.gmail.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_REQUIRE_TLS=true
+   SMTP_USER=
+   SMTP_PASS=
+   EMAIL_FROM=WVARC Net Logger <logger@westvalleyarc.com>
+   EMAIL_REPLY_TO=
+   ```
+
+   `SMTP_USER` and `SMTP_PASS` are intentionally optional for IP-authenticated relay. Google OAuth
+   variables are unrelated and must not be reused for SMTP.
+
+6. Verify the domain's SPF record authorizes Google Workspace, enable Google DKIM signing, and
+   maintain an appropriate DMARC record.
+7. Send a test message to an external account. Confirm the visible From address is
+   `logger@westvalleyarc.com` or `nets@westvalleyarc.com`. If delivery fails, use Google Admin
+   Console's Email Log Search.
+
+If the server does not have a fixed public IP, use the Gmail API with OAuth2 as the preferred
+production fallback. A Google app password can be used temporarily for development, with
+`SMTP_USER` and `SMTP_PASS`, but is not the recommended production design.
 
 ### Build and run
 
@@ -242,9 +273,9 @@ A backup/restore/migrate CLI is included at `server/dist/bin/dbBackup.js` (it sh
 | "Your connection is not private" / `ERR_CERT_AUTHORITY_INVALID` | You're on `https://localhost` with the self-signed dev cert. Use **http://localhost:3000** (the default), or keep HTTPS and click through the warning. |
 | `MongooseServerSelectionError` | MongoDB isn't running / `MONGODB_URI` is wrong. Start `docker compose up -d` or check the URI. With Docker, give it ~20s on first start to initiate the replica set. |
 | `$changeStream stage is only supported on replica sets` | Your MongoDB is a standalone, not a replica set. Use the bundled `docker compose` (already a replica set) or start native `mongod` with `--replSet` as shown above. |
-| No login email arrives | Expected in local mode — the link is printed to the server console. For hosted instances, set `SENDGRID_API_KEY` and a verified `EMAIL_FROM`. |
+| No login email arrives | Expected in local mode — the link is printed to the server console. For hosted instances, configure SMTP and a domain sender in `EMAIL_FROM`. |
 | Google button missing | Google OAuth isn't configured. Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. |
-| Chat panel missing | GetStream isn't configured. Set `STREAM_API_KEY` / `STREAM_API_SECRET`. |
+| Chat is reconnecting | Confirm MongoDB is a replica set; local chat SSE uses change streams. |
 
 More background is in [`docs/`](docs/), starting with
 [docs/developer-setup.md](docs/developer-setup.md) and [docs/runbook.md](docs/runbook.md).

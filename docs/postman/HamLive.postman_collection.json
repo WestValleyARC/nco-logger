@@ -9,7 +9,7 @@
     { "key": "baseUrl", "value": "http://localhost:3000", "description": "Base URL for Ham.Live API (local dev or production)" },
     { "key": "livenetId", "value": "replace-with-actual-id", "description": "A valid LiveNet ID from your system" },
     { "key": "netProfileId", "value": "replace-with-actual-id", "description": "A valid NetProfile ID (used by station/admin/endorse-chat endpoints)" },
-    { "key": "messageId", "value": "replace-with-actual-id", "description": "A GetStream chat message ID (for moderation delete)" }
+    { "key": "messageId", "value": "replace-with-actual-id", "description": "A local chat message ID (for moderation delete)" }
   ],
   "item": [
     {
@@ -137,19 +137,33 @@
       ]
     },
     {
-      "name": "💬 Chat (GetStream) Endpoints",
+      "name": "💬 Local Chat Endpoints",
       "item": [
         {
-          "name": "GET Chat Token (🔒 auth required)",
+          "name": "GET Chat History (🔒 net access required)",
           "request": {
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/json" } ],
             "url": {
-              "raw": "{{baseUrl}}/api/endorse/chat/{{netProfileId}}",
+              "raw": "{{baseUrl}}/api/chat/{{netProfileId}}/messages",
               "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "endorse", "chat", "{{netProfileId}}" ]
+              "path": [ "api", "chat", "{{netProfileId}}", "messages" ]
             },
-            "description": "Issue a GetStream.io chat token for the net's channel. The final path segment is the NetProfile id. Requires an authenticated session with a linked callsign (REQ_CALLSIGN). Returns token/userId/channel details, or { enabled: false } when chat isn't configured."
+            "description": "Return ordered local chat history, limits, and the authenticated SSE path. Requires an active-net StationInteraction."
+          }
+        },
+        {
+          "name": "POST Chat Message (🔒 net access required)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"text\": \"Test local chat message\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/{{netProfileId}}/messages",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "chat", "{{netProfileId}}", "messages" ]
+            },
+            "description": "Send a plain-text message. Callsign and display name come from the authenticated session."
           }
         },
         {
@@ -158,11 +172,11 @@
             "method": "DELETE",
             "header": [ { "key": "Accept", "value": "application/json" } ],
             "url": {
-              "raw": "{{baseUrl}}/api/endorse/chat/{{netProfileId}}/message/{{messageId}}",
+              "raw": "{{baseUrl}}/api/chat/{{netProfileId}}/messages/{{messageId}}",
               "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "endorse", "chat", "{{netProfileId}}", "message", "{{messageId}}" ]
+              "path": [ "api", "chat", "{{netProfileId}}", "messages", "{{messageId}}" ]
             },
-            "description": "Delete a chat message (moderation). Net Control only (level 0)."
+            "description": "Delete an owned message or moderate as net control/logger."
           }
         }
       ]

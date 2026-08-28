@@ -37,9 +37,9 @@ npm run dev      # auto-creates .env, starts a local replica-set MongoDB, runs t
   framework**; Bootstrap 5; font **Outfit**.
 - **Real-time:** MongoDB **change streams → Server-Sent Events** (with a polling fallback).
 - **Auth:** magic-link email + optional Google OAuth; signed HTTP-only cookie sessions.
-- **Chat:** GetStream (optional).
-- **Optional external services** — all degrade gracefully when their keys are absent: SendGrid
-  (email), GetStream (chat), QRZ (callsign lookup), Azure Maps (reverse-geocoding).
+- **Chat:** local MongoDB persistence with authenticated SSE updates.
+- **Optional external services** — all degrade gracefully when their configuration is absent: SMTP
+  (email), QRZ (callsign lookup), Azure Maps (reverse-geocoding), and Google OAuth.
 - Brand colors (in `client/dist/public/css/main.css`): `--hl-primary #dc8335` (orange),
   `--hl-secondary #6eb8c0` (teal), `--hl-light #f0eede` (cream). `--hl-success #3cce3c` is a utility
   green, **not** the brand color.
@@ -49,7 +49,7 @@ npm run dev      # auto-creates .env, starts a local replica-set MongoDB, runs t
 ```
 client/   src/ (TS + SASS) → dist/ (compiled, served as static assets under dist/public/)
 server/   src/ (TS — only for migrated modules) ; dist/ (what RUNS: controllers, models, routes, lib, views, bin)
-docs/     technical docs (incl. docs/email-templates/ — reference SendGrid templates)
+docs/     technical docs (incl. docs/email-templates/ — historical email-template reference)
 scripts/  setup.js, dev.js, devMongo.js
 .env.example   every config option, documented
 ```
@@ -119,11 +119,9 @@ this**, plus `lib/stores.ts` (`ReactiveStore`) and `lib/widgets.ts` (`HamLiveEle
   `stationinteractions` collection and pushes per-net updates over SSE. ⚠️ **Change streams require
   a replica set** — a standalone `mongod` will not work, which is why the dev DB is a single-node
   replica set.
-- **Email (SendGrid):** `server/dist/lib/userNotification.js`. Off by default (no API key → emails
-  are logged, not sent). The post-net **"Net Close Report"** uses a **SendGrid dynamic template**:
-  create your own and set **`SENDGRID_NET_CLOSE_TEMPLATE_ID`**; a reference template and how-to live
-  in **`docs/email-templates/`**. Unset → that one email is skipped (everything else still works).
-- **Chat:** `server/dist/lib/streamChat.js` (GetStream; optional).
+- **Email (SMTP):** `server/dist/lib/userNotification.js`. Development uses console delivery when
+  SMTP is absent. Net-close HTML is rendered locally from `server/dist/views/email/`.
+- **Chat:** `server/dist/lib/localChat.js`, `models/chatMessage.js`, and `routes/chatRoutes.js`.
 
 ## Conventions & gotchas
 

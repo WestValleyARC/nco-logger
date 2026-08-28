@@ -185,7 +185,7 @@
   <text x="60" y="525" class="field-text">sigReports: Object {calculated, rst}</text>
   <text x="60" y="540" class="field-text">lastSeen: Date, checkedInAt: Date</text>
   <text x="60" y="555" class="index-text">Indexes: netProfile + callSign (compound unique)</text>
-  <text x="60" y="570" class="validation-text">Note: Chat handled by GetStream, NOT stored here</text>
+  <text x="60" y="570" class="validation-text">Note: Chat handled by local chat, NOT stored here</text>
 
   <!-- TaskQueues Collection (Background Processing) -->
   <rect x="460" y="350" width="320" height="240" class="system-collection" />

@@ -52,7 +52,7 @@ const { dburi: dbUri, dbname: dbName } = conf;
 Contains **non-secret, structural** settings shared across all environments:
 
 - Application constants: app name, log name, QRZ endpoint templates, reverse-geocoding endpoint
-- Feature flag defaults: `ads_enabled: false`, `analytics_enabled: false`, `re_gen_global_flex_ops: false`
+- Local chat limits and `re_gen_global_flex_ops: false`
 - Help URL override placeholder
 
 > **All secrets and per-instance values are supplied via environment variables — they are never stored in the YAML.**
@@ -66,8 +66,7 @@ applogname: 'Ham.Live-WebApp'
 app_name: 'Ham.Live'
 qrz_version: 1.34
 re_gen_global_flex_ops: false
-ads_enabled: false
-analytics_enabled: false
+chat_max_message_chars: 2000
 ```
 
 ### `devConfig.yaml` — Local development
@@ -120,20 +119,20 @@ All secrets and instance-specific values are supplied via environment variables.
 | `COOKIE_SESSION_KEY` | `conf.cookie_session_key` | Yes | Session cookie signing key |
 | `MAGIC_LINK_SECRET` | `conf.magic_link_secret` | Yes | JWT signing key for magic-link auth |
 | `BASE_URL` | `conf.base_url` | Yes (prod) | Public base URL (OAuth callbacks, email links) |
-| `SENDGRID_API_KEY` | `conf.sendgrid_api_key` | No | Email delivery; falls back to console if absent |
+| `MAIL_TRANSPORT` | `conf.mail_transport` | No | Set to `smtp` for delivery; otherwise development console mode |
+| `SMTP_HOST`, `SMTP_PORT` | `conf.smtp_host`, `conf.smtp_port` | No | Provider-neutral SMTP server |
+| `SMTP_SECURE`, `SMTP_REQUIRE_TLS` | matching config | No | TLS behavior |
+| `SMTP_USER`, `SMTP_PASS` | matching config | No | Optional SMTP authentication |
+| `EMAIL_FROM`, `EMAIL_REPLY_TO` | matching config | No | Sender identities |
 | `GOOGLE_CLIENT_ID` | `conf.google_client_id` | No | Google OAuth2 (optional) |
 | `GOOGLE_CLIENT_SECRET` | `conf.google_client_secret` | No | Google OAuth2 (optional) |
-| `STREAM_API_KEY` | `conf.stream_api_key` | No | GetStream.io chat (optional) |
-| `STREAM_API_SECRET` | `conf.stream_api_secret` | No | GetStream.io chat (optional) |
+| `CHAT_MAX_MESSAGE_CHARS` | `conf.chat_max_message_chars` | No | Local chat length limit |
+| `CHAT_RATE_LIMIT_COUNT`, `CHAT_RATE_LIMIT_WINDOW_MS` | matching config | No | Local chat burst control |
 | `QRZ_USERNAME` | `conf.qrz_username` | No | QRZ.com callsign lookup (optional) |
 | `QRZ_PASSWORD` | `conf.qrz_password` | No | QRZ.com callsign lookup (optional) |
 | `GEO_KEY` | `conf.geo_key` | No | Azure Maps reverse geocoding (optional) |
 | `CMD_HELP_URL` | `conf.cmd_help_url` | No | Override net-command help URL |
 | `APP_NAME` | `conf.app_name` | No | Override display name |
-| `ADPLUGG_ACCESS_CODE` | `conf.adplugg_access_code` | No | AdPlugg ads provider ID |
-| `GOOGLE_ANALYTICS_ID` | `conf.google_analytics_id` | No | Google Analytics measurement ID |
-| `ADS_ENABLED` | `conf.ads_enabled` | No | `true` to enable ads (default: false) |
-| `ANALYTICS_ENABLED` | `conf.analytics_enabled` | No | `true` to enable analytics (default: false) |
 | `PORT` | (read directly) | No | HTTP port; defaults to 3000 |
 | `LOG_LEVEL` | (read by logger) | No | Production log level (error/warn/info/debug) |
 | `FORCE_HTTPS` | (read by server.js) | No | `true` to add x-forwarded-proto HTTPS redirect |
@@ -141,7 +140,7 @@ All secrets and instance-specific values are supplied via environment variables.
 
 **`loglevel` vs `LOG_LEVEL`**: `loglevel` is a YAML key used only as a reference value in the config object. The production logger (`node-json-logger`) reads `process.env.LOG_LEVEL` directly; that env var is not overlaid via `configLib.js`. In development, `logger.js` uses a colorized console logger that ignores both.
 
-**`ADS_ENABLED` / `ANALYTICS_ENABLED`**: These toggle boolean flags on `conf.ads_enabled` / `conf.analytics_enabled`. Both default to `false` in `commonConfig.yaml`. Set `ADS_ENABLED=true` and supply `ADPLUGG_ACCESS_CODE` to enable ads; similarly for analytics with `ANALYTICS_ENABLED=true` and `GOOGLE_ANALYTICS_ID`.
+Advertising and analytics integrations are removed from the WVARC fork.
 
 ---
 
@@ -173,15 +172,13 @@ FlexOptions are dynamic configuration options stored in MongoDB that complement 
 - **Database-backed**: Stored in MongoDB with global defaults and optional per-user overrides
 - **Runtime loading**: Loaded via middleware and accessible as `res.locals.flexOpts`
 - **Cached**: Short TTL in-memory cache for performance
-- **User overrides**: Limited user-specific preferences (ads, chat, email)
+- **User overrides**: Limited user-specific preferences (chat and email)
 
 **Examples of FlexOptions in use:**
 
 - `chat` — Enable/disable chat features globally or per-user
-- `ads` — Control advertisement display percentage (0–100)
 - `awayInMs` — Presence/online threshold timing
 - `maxNetsPerUser` — Limit number of nets per user
-- `analytics` — Toggle analytics and instrumentation
 
 **Complete FlexOptions documentation**: See [Flex Options](flex-opts.md) for detailed documentation of all available options, usage patterns, and management procedures.
 
@@ -204,8 +201,8 @@ db.flexoptions.updateOne(
 db.flexoptions.updateOne(
   {scope: "global"},
   {$set: {
-    "option.ads": 25,
-    "option.maxNetsPerUser": 10
+    "option.maxNetsPerUser": 10,
+    "option.maxOwnersPerNet": 6
   }}
 )
 ```

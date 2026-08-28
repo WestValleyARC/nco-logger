@@ -34,7 +34,7 @@ Core libraries (location)
 
 - `client/src/public/js/lib/chat.ts`
 
-    - `ChatWidget` — GetStream.io chat integration, registered as the `<hl-chat>` custom element. `ChatClient` is exported as a backward-compatibility alias. Uses light DOM (not Shadow DOM) for Bootstrap compatibility.
+    - `ChatWidget` — local MongoDB/SSE chat integration, registered as the `<hl-chat>` custom element. `ChatClient` is exported as a backward-compatibility alias. Uses light DOM (not Shadow DOM) for Bootstrap compatibility.
 
 - `client/src/public/js/lib/serverInfo.ts`
 

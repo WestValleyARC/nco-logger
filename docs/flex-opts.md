@@ -23,7 +23,7 @@ FlexOptions (also called FlexOpts) are stored in a `FlexOption` document in Mong
 
 Users may have a `flexOptions` subdocument on their profile. The system prefers user-specific values when present and falls back to global defaults.
 
-**Important:** Only `email` and `chat` options can be overridden by users. The `ads` field is present in the local schema (`flexOptionsLocalSchema`) but is **rejected by the update controller** — `userProfileController` enforces `unrestrictedOptions = ['email', 'chat']` and throws an error if any other option is submitted. Users cannot override `ads` through the API.
+**Important:** Only `email` and `chat` options can be overridden by users.
 
 ---
 
@@ -48,23 +48,10 @@ The following keys are defined in `server/dist/models/flexOptions.js` and are ac
     - Used in `lib/controllers/liveNetHelpers.js` and `views/partials/featureServerInfo.ejs`.
     - User-overridable.
 
-- **`analytics`** — default: `true`
-    - Toggles analytics partials and instrumentation flags surfaced to the client.
-    - Used in `lib/controllers/liveNetHelpers.js` and `views/partials/featureServerInfo.ejs`.
-
 - **`email`** — default: `true`
     - Toggles email/notification code paths.
     - Used in `lib/userNotification.js` and notification helpers.
     - User-overridable.
-
-- **`ads`** — default: `0`
-    - Percent chance used by `okToAdvertiseHelper()` to decide whether to show ads.
-    - Used in `lib/serverUtils.js` and feature gating in views.
-    - **Not user-overridable** — the update controller rejects it despite its presence in the local schema.
-
-- **`gracePeriodDays`** — default: `0`
-    - Used by `okToAdvertiseHelper()` to compute a new-registration grace period before ads may appear.
-    - Used in `lib/serverUtils.js`.
 
 - **`requestRateFactor`** — default: `5`
     - Affects rate calculation/limits in `liveNetController.js`.
@@ -140,13 +127,10 @@ db.flexoptions.findOne({scope: "global"}, {"option.chat": 1, "_id": 0})
 # Disable chat globally
 db.flexoptions.updateOne({scope: "global"}, {$set: {"option.chat": false}})
 
-# Enable ads at 25% display rate
-db.flexoptions.updateOne({scope: "global"}, {$set: {"option.ads": 25}})
-
 # Update multiple options at once
 db.flexoptions.updateOne(
   {scope: "global"},
-  {$set: {"option.ads": 25, "option.maxNetsPerUser": 10}}
+  {$set: {"option.maxNetsPerUser": 10, "option.maxOwnersPerNet": 6}}
 )
 ```
 
@@ -164,7 +148,7 @@ db.userprofiles.updateOne(
 ### Important Notes
 
 - **Cache TTL:** The global options document is cached with a **10-second** in-memory TTL. Changes take effect within 10 seconds.
-- **User restrictions:** Only `email` and `chat` can be overridden per-user via the API. `ads` is rejected by the update controller despite its presence in the local schema.
+- **User restrictions:** Only `email` and `chat` can be overridden per-user via the API.
 - **Default creation:** If the global `FlexOption` document is missing, the system creates one with schema defaults.
 - **`re_gen_global_flex_ops` flag:** Setting `re_gen_global_flex_ops: true` in `commonConfig.yaml` (default: `false`) causes the server to regenerate the global FlexOptions document from schema defaults on startup, overwriting any database customizations. Do not enable this in production unless you intend to reset options.
 
@@ -179,7 +163,6 @@ db.userprofiles.updateOne(
 - `server/dist/controllers/liveNetController.js`
 - `server/dist/lib/realtimeClients.js`
 - `server/dist/lib/sharedNetOps.js`
-- `server/dist/lib/serverUtils.js` (`okToAdvertiseHelper`)
 - `server/dist/controllers/interactionController.js`
 - `server/dist/controllers/netProfileController.js`
 - `server/dist/controllers/followController.js`

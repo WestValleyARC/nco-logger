@@ -138,7 +138,7 @@
   <!-- Email Service -->
   <rect x="390" y="110" width="140" height="70" class="external-box" />
   <text x="460" y="135" class="step-text" text-anchor="middle">Email Service</text>
-  <text x="460" y="155" class="flow-text" text-anchor="middle">SendGrid/SMTP</text>
+  <text x="460" y="155" class="flow-text" text-anchor="middle">SMTP/SMTP</text>
   <text x="460" y="170" class="flow-text" text-anchor="middle">Delivers magic link</text>
 
   <!-- User Email -->
@@ -248,7 +248,7 @@
   <text x="580" y="655" class="flow-text">• HMAC signature validation</text>
   <text x="580" y="670" class="code-text">/api/endorse/* endpoints</text>
   <text x="580" y="685" class="flow-text">• Third-party service integration</text>
-  <text x="580" y="700" class="flow-text">• QRZ.com, GetStream, SendGrid</text>
+  <text x="580" y="700" class="flow-text">• QRZ.com, local chat, SMTP</text>
   <text x="580" y="715" class="flow-text">• secureSign.js for validation</text>
 
   <!-- Error Handling &amp; Edge Cases -->

@@ -6,7 +6,7 @@ Ham.Live is a Node.js web application with a reactive client-side framework, pro
 
 **See [integration-architecture.svg](integration-architecture.svg) for a detailed view of the system integration patterns and data flow.**
 
-> **Source note:** The codebase is mid JS→TypeScript migration. `server/dist/` is the authoritative running source. Most server files are hand-written JavaScript; a small set (`responseUtils`, `realtimeClients`, `secureSign`, `streamChat`, and shared types) are compiled from `server/src/*.ts`. When reading or modifying server code, always work from `server/dist/`.
+> **Source note:** The codebase is mid JS→TypeScript migration. `server/dist/` is the authoritative running source. Most server files are hand-written JavaScript; a small set (`responseUtils`, `realtimeClients`, `secureSign`, `localChat`, and shared types) are compiled from `server/src/*.ts`. When reading or modifying server code, always work from `server/dist/`.
 
 ## System Overview
 

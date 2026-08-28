@@ -1,28 +1,18 @@
 # Email templates
 
-Some Ham.Live emails are sent through **SendGrid dynamic templates** — the HTML lives in your
-SendGrid account and the app references it by template ID. This folder holds **reference copies** of
-those templates so you can recreate them in your own account.
+Ham.Live renders email locally and sends it through provider-neutral SMTP. This folder preserves
+the historical net-close design as a reference; the runtime EJS template lives under
+`server/dist/views/email/`.
 
-> These files are *reference only* — the running app does not read them. Import the HTML into
-> SendGrid, then point the app at your own template via the matching environment variable.
+> These files are reference only. The running app does not read them.
 
 ## Templates
 
 | File | Sent by | Env var | When |
 |------|---------|---------|------|
-| [`net-close-report.html`](net-close-report.html) | `NetCloseReport` (`server/dist/lib/userNotification.js`) | `SENDGRID_NET_CLOSE_TEMPLATE_ID` | Emailed to the net owner when a net closes — the post-net log |
+| [`net-close-report.html`](net-close-report.html) | `NetCloseReport` (`server/dist/lib/userNotification.js`) | Emailed to the net owner when a net closes |
 
-If the env var is unset, that email is simply **skipped** (with a log line) — the rest of the app
-works normally.
-
-## How to use one
-
-1. In SendGrid: **Email API → Dynamic Templates → Create a Dynamic Template**, add a version, and
-   paste the contents of the `.html` file here into the Code Editor.
-2. Copy the new template's ID (looks like `d-xxxxxxxx…`).
-3. Put it in your `.env` under the matching variable above — e.g.
-   `SENDGRID_NET_CLOSE_TEMPLATE_ID=d-xxxxxxxx…` — and restart.
+When SMTP is disabled, development uses console delivery mode and no message is sent.
 
 ## Template data — `net-close-report.html`
 

@@ -24,9 +24,7 @@ Ham.Live organizes controllers by functional domain, with each controller handli
 
 - `interactionController` — Station interactions and admin commands
 
-**Security Controllers** — Authentication and third-party integrations
-
-- `endorseRoutes` (no separate controller file) — GetStream.io chat token generation and message moderation
+**Local chat handlers** — authenticated history, send, SSE, and moderation handlers in `localChat.js`
 
 ### Common Controller Patterns
 
@@ -153,7 +151,7 @@ The status argument is a **string key** from the `HttpStatus` enum (e.g., `'OK'`
 - `DELETE /api/data/userprofiles/:id` — Flag account for deletion (or hard-delete if user has not consented to policy)
 - `GET /api/util/undeleteme` — Account recovery (clears the deletion flag)
 
-**Note on per-user flex option overrides:** `userProfileController` enforces that only `email` and `chat` options may be overridden by users. The `ads` field is present in the local flex-options schema but is **rejected** by the update controller — see [FlexOptions](flex-opts.md) for details.
+**Note on per-user flex option overrides:** `userProfileController` enforces that only `email` and `chat` options may be overridden by users.
 
 ### notificationController
 
@@ -174,14 +172,16 @@ The status argument is a **string key** from the `HttpStatus` enum (e.g., `'OK'`
 - Validates responses with `isSystemNotificationResponse` type guard
 - Integrates with UserProfile and SystemNotification models
 
-### Endorse / chat routes
+### Local chat routes
 
-The `endorseRoutes.js` file handles GetStream.io chat integration. There is no separate `endorseController` module — the handler functions (`getChatToken`, `deleteMessage`) are imported directly from `lib/streamChat.js`.
+`chatRoutes.js` maps authenticated local chat handlers from `lib/localChat.js`.
 
 **Routes:**
 
-- `GET /api/endorse/chat/:id` — Retrieve a GetStream.io chat token for the authenticated user
-- `DELETE /api/endorse/chat/:id/message/:messageId` — Delete a chat message (moderation; NCS/logger only)
+- `GET /api/chat/:id/messages` — Retrieve ordered history
+- `POST /api/chat/:id/messages` — Send a message
+- `GET /api/chat/:id/events` — Subscribe over SSE
+- `DELETE /api/chat/:id/messages/:messageId` — Delete an owned or moderated message
 
 ## Request/Response Architecture
 
