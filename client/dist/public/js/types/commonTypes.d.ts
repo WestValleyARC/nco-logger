@@ -64,8 +64,6 @@ export interface ServerInfo {
     callSign: string | null;
     displayName: string | null;
     chat: boolean;
-    analytics: boolean;
-    okToAdvertise: boolean;
     userId: string | null;
     logLevel: 'info' | 'debug';
     ts: Date;
@@ -159,10 +157,7 @@ export interface CommandResponse extends EndPointResponse {
     message: string;
 }
 export interface FlexOptions {
-    gracePeriodDays: number;
-    ads: number;
     chat: boolean;
-    analytics: boolean;
     email: boolean;
     maxNetsPerUser: number;
     maxOwnersPerNet: number;

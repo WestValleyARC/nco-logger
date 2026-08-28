@@ -3,10 +3,7 @@ import { Document, Schema, Connection, Model } from 'mongoose';
 export interface FlexOptions extends Document {
     scope: string;
     option: {
-        gracePeriodDays: number;
-        ads: number;
         chat: boolean;
-        analytics: boolean;
         email: boolean;
         maxNetsPerUser: number;
         maxOwnersPerNet: number;
@@ -40,7 +37,6 @@ export interface FlexOptionsLocal extends Document {
     option: {
         chat?: boolean;
         email?: boolean;
-        ads?: number;
     };
     createdAt?: Date;
     updatedAt?: Date;

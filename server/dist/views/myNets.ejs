@@ -10,7 +10,6 @@
   <title><%= server.appName %> - My Nets <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
     </head>
     <body class="bg-dark">
-      <%- include('./partials/adTopBar') %>
     <%- include('./partials/navbar', {user: user}) %>
 
     <div class="container-lg">

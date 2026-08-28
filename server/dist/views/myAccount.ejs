@@ -8,7 +8,6 @@
   <title><%= server.appName %> - Account Settings <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
     </head>
     <body class="bg-dark">
-      <%- include('./partials/adTopBar') %>
     <%- include('./partials/navbar', {user: user}) %>
 
     <div class="modal fade modal-dialog modal-dialog-scrollable" id="consent_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">

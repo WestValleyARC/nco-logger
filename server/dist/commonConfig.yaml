@@ -16,8 +16,8 @@ app_name: 'Ham.Live'
 qrz_version: 1.34
 qrz_keep_profile_images: false
 qrz_image_host: 'https://s3.amazonaws.com/files.qrz.com'
-qrz_auth_endpoint: 'https://xmldata.qrz.com/xml/${qrz_version}/?username=${qrz_username};password=${qrz_password};agent=${applogname}'
-qrz_query_endpoint: 'https://xmldata.qrz.com/xml/${qrz_version}/?s=${qrzSessionKey};callsign=${callSign}'
+qrz_endpoint: 'https://xmldata.qrz.com/xml/'
+qrz_cache_ttl_hours: 168
 
 # Reverse-geocoding (optional). Subscription key comes from GEO_KEY.
 # When absent, location resolution is skipped. Default endpoint is Azure Maps.
@@ -30,17 +30,15 @@ re_gen_global_flex_ops: false
 # Help URL shown for net-control shell commands. Override with CMD_HELP_URL.
 cmd_help_url: 'https://github.com/Constant-Digital-Holdings-LLC/hamlive-oss/blob/main/docs/net-admin-commands-reference.md'
 
-# Ads & analytics are OFF by default in the community edition.
-# To enable, set ADS_ENABLED=true / ANALYTICS_ENABLED=true AND supply your own
-# provider IDs (ADPLUGG_ACCESS_CODE / GOOGLE_ANALYTICS_ID). See .env.example.
-ads_enabled: false
-analytics_enabled: false
+# Local chat limits. Chat is always local and uses the application database/session.
+chat_max_message_chars: 2000
+chat_rate_limit_count: 12
+chat_rate_limit_window_ms: 10000
 
 # --- Secrets below are intentionally NOT stored here. ---
 # Supplied via environment variables (see .env.example):
 #   MONGODB_URI, COOKIE_SESSION_KEY, MAGIC_LINK_SECRET, BASE_URL
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET   (Google OAuth, optional)
-#   SENDGRID_API_KEY                         (email, optional)
-#   STREAM_API_KEY, STREAM_API_SECRET        (GetStream chat, optional)
+#   MAIL_TRANSPORT, SMTP_*                   (email, optional)
 #   QRZ_USERNAME, QRZ_PASSWORD               (callsign lookup, optional)
 #   GEO_KEY                                  (reverse geocoding, optional)

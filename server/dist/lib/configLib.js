@@ -35,9 +35,15 @@ const fromEnv = {
     base_url: process.env.BASE_URL,
     cookie_session_key: process.env.COOKIE_SESSION_KEY,
     magic_link_secret: process.env.MAGIC_LINK_SECRET,
-    sendgrid_api_key: process.env.SENDGRID_API_KEY,
-    stream_api_key: process.env.STREAM_API_KEY,
-    stream_api_secret: process.env.STREAM_API_SECRET,
+    mail_transport: process.env.MAIL_TRANSPORT,
+    smtp_host: process.env.SMTP_HOST,
+    smtp_port: process.env.SMTP_PORT,
+    smtp_secure: process.env.SMTP_SECURE,
+    smtp_require_tls: process.env.SMTP_REQUIRE_TLS,
+    smtp_user: process.env.SMTP_USER,
+    smtp_pass: process.env.SMTP_PASS,
+    email_from: process.env.EMAIL_FROM,
+    email_reply_to: process.env.EMAIL_REPLY_TO,
     google_client_id: process.env.GOOGLE_CLIENT_ID,
     google_client_secret: process.env.GOOGLE_CLIENT_SECRET,
     qrz_username: process.env.QRZ_USERNAME,
@@ -45,25 +51,16 @@ const fromEnv = {
     geo_key: process.env.GEO_KEY,
     cmd_help_url: process.env.CMD_HELP_URL,
     app_name: process.env.APP_NAME,
-    // Ads & analytics provider IDs (optional; only used when the matching
-    // feature is enabled below). Use your OWN accounts — never the project's.
-    adplugg_access_code: process.env.ADPLUGG_ACCESS_CODE,
-    google_analytics_id: process.env.GOOGLE_ANALYTICS_ID
+    chat_max_message_chars: process.env.CHAT_MAX_MESSAGE_CHARS,
+    chat_rate_limit_count: process.env.CHAT_RATE_LIMIT_COUNT,
+    chat_rate_limit_window_ms: process.env.CHAT_RATE_LIMIT_WINDOW_MS,
+    qrz_cache_ttl_hours: process.env.QRZ_CACHE_TTL_HOURS
 };
 
 for (const [key, value] of Object.entries(fromEnv)) {
     if (value !== undefined && value !== '') {
         conf[key] = value;
     }
-}
-
-// Feature toggles — OFF by default in the community edition (see commonConfig.yaml).
-// Enable explicitly with ADS_ENABLED=true / ANALYTICS_ENABLED=true.
-if (process.env.ADS_ENABLED !== undefined) {
-    conf.ads_enabled = process.env.ADS_ENABLED === 'true';
-}
-if (process.env.ANALYTICS_ENABLED !== undefined) {
-    conf.analytics_enabled = process.env.ANALYTICS_ENABLED === 'true';
 }
 
 module.exports.conf = conf;

@@ -7,7 +7,6 @@
   <title><%= server.appName %> - Login <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
     </head>
     <body class="bg-dark">
-      <%- include('./partials/adTopBar') %>
     <%- include('./partials/navbar', {user: user}) %>
 
     <% if (server.googleAuth) { %>
@@ -35,10 +34,15 @@
         <div class="col-xs-4 col-sm-4 col-md-4 mt-2 d-flex align-items-center justify-content-center">
           <div class="card w-45">
             <div class="card-body bg-dark">
-              <span class="card-title text-light">Sign in with email link</span>
+              <h2 class="card-title text-light h6">Sign in with email link</h2>
               <form id="magic-auth">
-                <input type="email" class="form-control text-primary" name="magic-auth-email_addr" id="input_magic-auth-email_addr" placeholder="example@domain" />
+                <label class="visually-hidden" for="input_magic-auth-email_addr">Email address</label>
+                <input type="email" class="form-control text-primary" name="magic-auth-email_addr" id="input_magic-auth-email_addr" placeholder="name@example.com" autocomplete="email" required />
+                <button type="submit" class="btn btn-primary w-100 mt-2" id="magic-auth-submit">
+                  Email me a sign-in link
+                </button>
               </form>
+              <p id="magic-auth-status" class="small mt-2 mb-0" role="status" aria-live="polite"></p>
               <% if (!server.emailEnabled) { %>
               <p class="small text-warning mt-2 mb-0">
                 Email delivery isn't set up on this server — after you enter your email, your sign-in
@@ -54,7 +58,7 @@
 
     <%- include('./partials/pageBottomFeatures') %>
 
-    <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
+    <script src="/js/byView/<%= VIEW %>/main.js?v=20260828-email-submit" type="module"></script>
     </body>
     <%- include('./partials/footer') %>
 

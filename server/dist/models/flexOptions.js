@@ -7,10 +7,7 @@ const flexOptionsGlobalSchema = new Schema(
     {
         scope: { type: String, default: 'global' },
         option: {
-            gracePeriodDays: { type: Number, default: 0 },
-            ads: { type: Number, default: 0, min: 0, max: 100 },
             chat: { type: Boolean, default: true },
-            analytics: { type: Boolean, default: true },
             email: { type: Boolean, default: true },
             maxNetsPerUser: { type: Number, default: 7 },
             maxOwnersPerNet: { type: Number, default: 5 },
@@ -41,8 +38,7 @@ const flexOptionsLocalSchema = new Schema(
     {
         option: {
             chat: { type: Boolean },
-            email: { type: Boolean },
-            ads: { type: Number, min: 0, max: 100 }
+            email: { type: Boolean }
         }
     },
     { timestamps: true }

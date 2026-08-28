@@ -8,7 +8,6 @@
   <title><%= server.appName %> - Data Privacy <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
     </head>
     <body class="bg-dark text-light">
-      <%- include('./partials/adTopBar') %>
     <%- include('./partials/navbar', {user: user}) %>
 
     <!-- Modal -->
