@@ -36,6 +36,7 @@ services:
                 condition: service_healthy
         networks:
             - hamlive
+            - frontend
         healthcheck:
             test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
             interval: 30s
@@ -66,3 +67,6 @@ volumes:
 networks:
     hamlive:
         driver: bridge
+    frontend:
+        external: true
+        name: westvalleyarc_frontend
