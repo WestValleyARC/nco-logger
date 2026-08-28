@@ -1,8 +1,8 @@
-# hamlive-oss — local MongoDB for development / testing.
+# hamlive-oss — complete local/self-hosted application stack.
 #
-#   docker compose up -d      # start MongoDB in the background
-#   npm run dev               # then run the app
-#   docker compose down       # stop it (data persists in the named volume)
+#   docker compose up -d --build
+#   docker compose logs -f app
+#   docker compose down       # data persists in the named volume
 #
 # This runs a SINGLE-NODE REPLICA SET. A replica set (not a standalone mongod)
 # is required for MongoDB change streams, which power Ham.Live's real-time
@@ -14,20 +14,47 @@
 # (e.g. MongoDB Atlas), which is already a replica set.
 
 services:
+    app:
+        build:
+            context: .
+            target: runtime
+        image: westvalleyarc/nco-logger:dev
+        container_name: nco-logger-app
+        restart: unless-stopped
+        env_file:
+            - .env
+        environment:
+            NODE_ENV: production
+            PORT: 3000
+            MONGODB_URI: mongodb://mongo:27017/hamlive?replicaSet=rs0&directConnection=true
+        ports:
+            # Bind only to the host loopback interface. The production reverse
+            # proxy can reach this port without exposing Node directly.
+            - '127.0.0.1:3000:3000'
+        depends_on:
+            mongo:
+                condition: service_healthy
+        networks:
+            - hamlive
+        healthcheck:
+            test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+            interval: 30s
+            timeout: 5s
+            start_period: 20s
+            retries: 3
+
     mongo:
         image: mongo:7
-        container_name: hamlive-mongo
+        container_name: nco-logger-mongo
         restart: unless-stopped
         command: ['--replSet', 'rs0', '--bind_ip_all']
-        ports:
-            - '27017:27017'
         volumes:
             - hamlive-mongo-data:/data/db
+        networks:
+            - hamlive
         healthcheck:
             # Initiate the replica set once the node is up (no-op once initiated).
-            test: >
-                mongosh --quiet --eval
-                "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}) }"
+            test: ['CMD-SHELL', "mongosh --quiet --eval \"try { quit(rs.status().ok ? 0 : 1) } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}); quit(1) }\""]
             interval: 10s
             timeout: 10s
             start_period: 20s
@@ -35,3 +62,7 @@ services:
 
 volumes:
     hamlive-mongo-data:
+
+networks:
+    hamlive:
+        driver: bridge
