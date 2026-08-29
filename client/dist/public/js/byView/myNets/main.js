@@ -9,6 +9,7 @@ tinymce.init({
     plugins: 'lists',
     toolbar: 'bullist italic',
     menubar: '',
+    promotion: false,
     statusbar: false,
     max_height: 235
 });
