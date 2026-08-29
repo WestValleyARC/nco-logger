@@ -1,7 +1,7 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 
 const { modelMaker } = require('../lib/modelMaker');
-const { Schema, SchemaTypes } = require('mongoose');
+const { Schema } = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
 
 const qrzCacheSchema = new Schema(
@@ -25,27 +25,10 @@ const qrzCacheSchema = new Schema(
             sparse: true
         },
 
-        photo: {
-            type: String,
-            validate: {
-                validator: function (v) {
-                    if (!v) return true; // Allow empty/null values
-                    try {
-                        new URL(v);
-                        return true;
-                    } catch (e) {
-                        return false;
-                    }
-                },
-                message: props => `${props.value} is not a valid URL!`
-            }
-        },
-
         location: {
             type: String,
             unique: false
         },
-        email: String,
         geo: {
             type: { type: String },
             coordinates: [Number]
@@ -57,6 +40,10 @@ const qrzCacheSchema = new Schema(
 qrzCacheSchema.plugin(uniqueValidator, {
     message: 'QRZ Cache: A user already exists with this callsign'
 });
+
+// Remove untouched QRZ-derived records after seven days. The lookup layer also
+// enforces the configurable refresh age before returning a cached record.
+qrzCacheSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
 
 module.exports = {
     getQrzCache: db => modelMaker({ db, m: 'QrzCache', s: qrzCacheSchema }),

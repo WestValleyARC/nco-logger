@@ -24,6 +24,7 @@ COPY --from=build --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/server/dist ./server/dist
 COPY --from=build --chown=node:node /app/client/dist ./client/dist
+RUN mkdir -p /app/data/chat-uploads && chown -R node:node /app/data
 
 USER node
 EXPOSE 3000

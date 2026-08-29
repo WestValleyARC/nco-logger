@@ -13,6 +13,7 @@
         "mongo:dev": "node ./scripts/devMongo.js",
         "gen-certs": "openssl req -x509 -newkey rsa:2048 -nodes -keyout server/dist/ssl/dev-server_key.pem -out server/dist/ssl/dev-server_cert.pem -days 3650 -subj \"/CN=localhost/O=hamlive-oss dev\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\"",
         "build": "tsc -p server/tsconfig.json && tsc -p client/tsconfig.json",
+        "test": "node --test test/*.test.js",
         "dev": "node ./scripts/dev.js",
         "dev:watch": "cross-env NODE_ENV=development concurrently --kill-others \"tsc -p server/tsconfig.json -w\" \"tsc -p client/tsconfig.json -w\" \"nodemon --delay 2.5 server/dist/server.js\"",
         "sync:types": "node -e \"require('fs').copyFileSync('client/src/public/js/types/commonTypesupport.ts','server/src/types/commonTypesupport.ts')\""
@@ -21,7 +22,6 @@
     "license": "MIT",
     "dependencies": {
         "@foundernest/namecase": "^1.0.5",
-        "@sendgrid/mail": "^8.1.6",
         "@types/he": "^1.2.3",
         "ap-style-title-case": "^1.1.2",
         "axios": "^1.17.0",
@@ -46,6 +46,7 @@
         "node-color-log": "^11.0.0",
         "node-emoji": "^2.2.0",
         "node-json-logger": "^0.0.17",
+        "nodemailer": "^7.0.6",
         "object-hash": "^3.0.0",
         "passport": "^0.6.0",
         "passport-google-oauth20": "^2.0.0",
@@ -53,7 +54,6 @@
         "response-time": "^2.3.4",
         "sanitize-html": "^2.17.4",
         "slugify": "^1.6.6",
-        "stream-chat": "^9.45.1",
         "validator": "^13.15.15",
         "yaml": "^2.9.0"
     },

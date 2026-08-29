@@ -257,7 +257,7 @@ export class RealtimeClients {
 
                     if (isFlexOptions(flexOpts)) {
                         // This might be dangerous, as flexOpts can be overwritten on a per-user account basis.
-                        // The controler limits users to only changing ads and chat preferences themselves, so this isn't critical,
+                        // The controller limits users to changing only email and chat preferences themselves,
                         // but it could be improved upon in principle. It lends itself to future bugs at the very least.
                         //
                         // Let's harden this by refactoring getFlexOptionsByUser() in serverUtils.js to getFlexOptions().

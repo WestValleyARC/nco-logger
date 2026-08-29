@@ -174,11 +174,11 @@
 
   <rect x="1050" y="280" width="150" height="60" class="realtime-box" />
   <text x="1125" y="305" text-anchor="middle" class="label">Chat Services</text>
-  <text x="1125" y="325" text-anchor="middle" class="small-text">GetStream</text>
+  <text x="1125" y="325" text-anchor="middle" class="small-text">local chat</text>
 
   <rect x="1050" y="360" width="150" height="60" class="data-box" />
   <text x="1125" y="385" text-anchor="middle" class="label">File Upload</text>
-  <text x="1125" y="405" text-anchor="middle" class="small-text">SendGrid</text>
+  <text x="1125" y="405" text-anchor="middle" class="small-text">SMTP</text>
 
   <!-- Flow Arrows -->
 

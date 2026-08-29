@@ -95,12 +95,6 @@ userProfileApi.index().then(userProfile => {
                         console.debug('PATCH-ed Policy Consent: true');
                         userProfileFormState.mesg('info', 'policy consent saved');
 
-                        if (typeof gtag === 'function') {
-                            console.debug(`send analytics`);
-
-                            gtag('event', 'sign_up');
-                        }
-
                         const locationElem = document.getElementById('input_location');
 
                         if (locationElem.value.length == 0) {
@@ -148,12 +142,6 @@ userProfileApi.index().then(userProfile => {
                     .then(req => {
                         console.debug('deleted');
                         userProfileFormState.mesg('error', 'deleted');
-
-                        if (typeof gtag === 'function') {
-                            console.debug(`send analytics`);
-
-                            gtag('event', 'consent_declined');
-                        }
 
                         setTimeout(() => {
                             window.location.replace('/logout');

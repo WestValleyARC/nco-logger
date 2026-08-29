@@ -21,9 +21,10 @@ This document covers security considerations for Ham.Live REST endpoints, authen
 
 ### Endpoint endorsements and token generation
 
-- For client-side use of third-party services (GetStream.io chat), API secrets are kept server-side and short-lived JWT tokens are generated via endorsement endpoints.
-- Chat tokens are generated at `/api/endorse/chat/:id` using Stream's server-side SDK.
-- Only the public API key is returned to the client; the secret never leaves the server.
+- Local chat uses the existing signed cookie session and validates active-net membership on every
+  request, including image retrieval. Image uploads are size-limited and signature-checked; SVG is
+  rejected, random internal filenames are not exposed, and responses use `nosniff` plus a
+  restrictive content security policy.
 - See [Chat System](chat-system.md) for implementation details.
 
 ## Credentials and secrets
@@ -109,7 +110,7 @@ Sessions use `cookie-session` with a single signing key (`COOKIE_SESSION_KEY`). 
 
 - Comprehensive TypeScript type system with runtime type guards for all external data.
 - Client and server-side validation using consistent type guard patterns.
-- Extensive validation for third-party API responses (GetStream, QRZ, etc.) with detailed error logging.
+- External QRZ responses are validated and logged without credentials or session keys.
 
 ### Transactions and consistency
 

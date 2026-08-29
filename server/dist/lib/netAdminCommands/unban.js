@@ -2,7 +2,7 @@
 
 const NetAdminCmd = require('../netAdminCmd');
 const { wellFormedCall } = require('../serverUtils');
-const { unbanUserHelper, getStreamUserId } = require('../streamChat');
+const { unbanUserHelper } = require('../localChat');
 
 /**
  * Unban command - Unbans a user from the net's chat
@@ -53,12 +53,9 @@ class UnbanCmd extends NetAdminCmd {
             throw new Error(`unban: ${targetCallsign.toLowerCase()} does not have an account`);
         }
 
-        // Get Stream user IDs
-        const targetStreamUserId = getStreamUserId(targetInteraction.userProfile.toString());
-
         await unbanUserHelper({
             npid: this.npid,
-            userIdToUnban: targetStreamUserId,
+            userIdToUnban: targetInteraction.userProfile.toString(),
             targetCallsign: targetCallsign.toUpperCase(),
             moderatorCallsign: req.user.callSign.toUpperCase()
         });

@@ -6,17 +6,15 @@ See [database-schema.svg](database-schema.svg) for a visual overview of the data
 
 ## Schema Overview
 
-The Ham.Live database consists of 11 collections with well-defined relationships and validation rules:
+The Ham.Live database consists of core, chat, configuration, notification, task, and cache collections:
 
 - **Core Entities**: NetProfile, LiveNet, StationInteraction, UserProfile
+- **Local Chat**: ChatMessage, ChatBan
 - **Configuration**: FlexOption (global settings, embedded local schema in UserProfile)
 - **Notifications**: SystemNotification
 - **Background Processing**: PendingUnfollow, PendingAccountDelete (both in TaskQueues)
 - **Tracking/Caching**: InitialReg, QrzCache, DayTracker
 
-**External Services** (not stored in database):
-
-- **Chat / image sharing**: Handled by the external GetStream.io integration (not stored in MongoDB)
 - **User Net Subscriptions**: Implemented via following/followers arrays, not separate collection
 
 ## Core Models
@@ -170,7 +168,7 @@ The Ham.Live database consists of 11 collections with well-defined relationships
 
 ### StationInteraction
 
-**Purpose**: Represents a participant's state and interaction history within a LiveNet. **Note**: Chat messages are handled by the external GetStream.io integration, NOT stored in this collection.
+**Purpose**: Represents a participant's state and interaction history within a LiveNet. Local chat messages reference this user's active net participation.
 
 **Schema**: `/server/dist/models/stationInteraction.js`
 
@@ -392,22 +390,9 @@ No explicit compound indexes are defined in the model. Standard `_id` index appl
         default: 'global'
     },
     option: {
-        gracePeriodDays: {
-            type: Number,
-            default: 0  // Account deletion grace period
-        },
-        ads: {
-            type: Number,
-            default: 0,
-            min: 0, max: 100  // Ad display percentage
-        },
         chat: {
             type: Boolean,
             default: true  // Enable chat integration
-        },
-        analytics: {
-            type: Boolean,
-            default: true  // Enable analytics tracking
         },
         email: {
             type: Boolean,
@@ -472,14 +457,13 @@ No explicit compound indexes are defined in the model. Standard `_id` index appl
 
 #### Local (User) Schema (`flexOptionsLocalSchema`)
 
-Embedded directly in `UserProfile.flexOptions`. No `scope` field; no `analytics` field.
+Embedded directly in `UserProfile.flexOptions`. No `scope` field.
 
 ```javascript
 {
     option: {
         chat: Boolean,          // User chat preference override
-        email: Boolean,         // User email preference override
-        ads: Number             // User ad preference override (0-100)
+        email: Boolean          // User email preference override
     }
 }
 ```

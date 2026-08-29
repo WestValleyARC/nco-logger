@@ -24,7 +24,7 @@ const dataNetProfileRoutes = require('./routes/dataNetProfileRoutes');
 const dataUserProfileRoutes = require('./routes/dataUserProfileRoutes');
 const dataFollowRoutes = require('./routes/dataFollowRoutes');
 const dataLiveNetRoutes = require('./routes/dataLiveNetRoutes');
-const endorseRoutes = require('./routes/endorseRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const presenceLiveNetRoutes = require('./routes/presenceLiveNetRoutes');
 const sseLiveNetRoutes = require('./routes/sseLiveNetRoutes');
 const adminInteractionRoutes = require('./routes/adminInteractionRoutes');
@@ -35,6 +35,26 @@ const cookieSession = require('cookie-session');
 const dailyDispatch = require('./lib/dailyProcessingDispatch');
 const UserProfile = require('./models/userProfile').getUserProfile(null);
 const PORT = process.env['PORT'] ?? 3000;
+const { verifyTransport } = require('./lib/userNotification');
+
+const validateRuntimeConfig = () => {
+    const production = process.env.NODE_ENV === 'production';
+    const required = ['BASE_URL', 'MONGODB_URI', 'COOKIE_SESSION_KEY', 'MAGIC_LINK_SECRET'];
+    const missing = production ? required.filter(name => !process.env[name]) : [];
+    if (missing.length) logger.error(`Missing required production configuration: ${missing.join(', ')}`);
+    const smtpEnabled = conf.mail_transport === 'smtp' && Boolean(conf.smtp_host);
+    logger.info(
+        `Services: SMTP ${smtpEnabled ? 'enabled' : 'disabled'}; QRZ ${
+            conf.qrz_username && conf.qrz_password ? 'enabled' : 'disabled'
+        }; local chat enabled; Google OAuth ${
+            conf.google_client_id && conf.google_client_secret ? 'enabled' : 'disabled'
+        }; ads disabled; analytics disabled`
+    );
+    if (missing.length) throw new Error('Required production configuration is missing');
+};
+
+validateRuntimeConfig();
+void verifyTransport();
 
 // In development we serve plain HTTP on localhost by default — browsers treat
 // http://localhost as a secure context, so geolocation/crypto/etc. still work,
@@ -147,8 +167,8 @@ app.use('/api/util', utilRoutes);
 app.use('/api/sse/livenets', sseLiveNetRoutes);
 //API: LiveNet Presence
 app.use('/api/presence/livenets', presenceLiveNetRoutes);
-//API: Security Routes
-app.use('/api/endorse', endorseRoutes);
+// Local chat uses the existing authenticated cookie session.
+app.use('/api/chat', chatRoutes);
 //API Desc
 app.get('/api', (_req, res) => res.json(publicEndpoints(app)));
 logger.debug(`\n\nAPI:\n${JSON.stringify(publicEndpoints(app), null, 1)}\n`);

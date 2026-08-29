@@ -2,7 +2,7 @@
 
 const NetAdminCmd = require('../netAdminCmd');
 const { wellFormedCall } = require('../serverUtils');
-const { banUserHelper, getStreamUserId } = require('../streamChat');
+const { banUserHelper } = require('../localChat');
 
 /**
  * Ban command - Bans a user from the net's chat
@@ -57,14 +57,10 @@ class BanCmd extends NetAdminCmd {
             throw new Error(`ban: ${targetCallsign.toLowerCase()} does not have an account`);
         }
 
-        // Get Stream user IDs
-        const targetStreamUserId = getStreamUserId(targetInteraction.userProfile.toString());
-        const myStreamUserId = getStreamUserId(req.user._id.toString());
-
         await banUserHelper({
             npid: this.npid,
-            userIdToBan: targetStreamUserId,
-            bannedByUserId: myStreamUserId,
+            userIdToBan: targetInteraction.userProfile.toString(),
+            bannedByUserId: req.user._id.toString(),
             targetCallsign: targetCallsign.toUpperCase(),
             moderatorCallsign: req.user.callSign.toUpperCase(),
             reason

@@ -5,11 +5,9 @@
 <head>
   <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
   <title><%= TITLE %><%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-  <%# NOTE: UploadCare CSS removed - file sharing now handled by GetStream chat widget %>
 </head>
 
 <body class="bg-dark text-light">
-  <%- include('./partials/adTopBar') %>
   <%- include('./partials/navbar') %>
   <hl-netcontrol-panel></hl-netcontrol-panel>
   <div class="container-fluid">
@@ -64,7 +62,7 @@
         </div>
       </div>
       <% if (user.chat) { %>
-      <!---Begin Chatroom (GetStream.io) --->
+      <!---Begin Local Chatroom --->
       <%# WHY simple container: ChatClient widget in main.ts renders content. Same pattern as other widgets. %>
       <%# WHY user.chat check: Server-side toggle from FlexOptions, respects existing chat enable/disable %>
       <div class="col-md d-flex justify-content-center align-items-start height-40vh height-md-57vh p-0">
@@ -72,7 +70,7 @@
           <div class="mb-1 mb-md-2 d-none d-md-block" style="min-height: 30px;">
             <span class="chat-label">Chat</span>
           </div>
-          <div id="stream-chat-container" class="flex-grow-1 w-100 chat-container p-2"></div>
+          <div id="local-chat-container" class="flex-grow-1 w-100 chat-container p-2"></div>
         </div>
       </div>
       <!---End Chatroom--->
@@ -96,9 +94,6 @@
 
 
   <%- include('./partials/pageBottomFeatures') %>
-  <% if (user.chat) { %>
-  <%- include('./partials/featureEmojiPicker') %>
-  <% } %>
   <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
 </body>
 <%- include('./partials/footer') %>

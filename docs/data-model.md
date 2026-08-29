@@ -36,7 +36,7 @@ User account and preferences.
 
 ### StationInteraction
 
-Station state and participation within a net. Chat messages are **not** stored here — chat is handled by the external GetStream.io integration.
+Station state and participation within a net. Local chat messages reference the station's user and live net.
 
 **Key Fields:**
 

@@ -11,7 +11,7 @@ This document provides a product-oriented overview focusing on what the system d
 - **Net discovery and scheduling** — users can find active nets or browse scheduled nets and follow those they care about
 - **Real-time presence & interactions** — when on a net page the site captures presence, renders an ordered station list, and surfaces live interactions such as "hand", "highlight", "check state" and signal reports
 - **Net control (NCS features)** — designated net controllers can start/stop nets, assign roles, and perform administrative actions to manage participant flow
-- **Chat and media attachments** — real-time chat via GetStream.io with inline image sharing and server‑side token generation to protect API secrets (see [Chat System](chat-system.md))
+- **Local chat** — real-time text, emoji, and image chat via MongoDB, authenticated SSE, and persistent local image storage (see [Chat System](chat-system.md))
 - **Follow and notifications** — users may follow nets and receive announcements or summaries when nets start or change
 
 ### Primary user journeys
@@ -44,7 +44,7 @@ Ham.Live is a Node.js + Express web application with a no-bundler, reactive clie
 
 1. A browser loads an EJS view (e.g. `/views/livenet/:id`). The view injects `serverInfo` attributes and loads a per-view ES module from the compiled client output (`/js/byView/<view>/main.js`).
 2. Client code (widgets and libraries) requests data from the JSON API (`/api/data/*`) and subscribes to presence or live updates via SSE (`/api/sse/livenets/:id`) or short polling.
-3. The server responds to API calls, issues tokens for GetStream.io chat, and pushes real-time `LiveNetDetails` updates through the SSE manager (`realtimeClients`).
+3. The server responds to API calls, persists local chat, and pushes live-net and chat updates over SSE.
 4. Client stores apply updates optimistically and reconcile against the next server response.
 
 > 📖 For full technical detail, see [Architecture](architecture.md).
@@ -89,7 +89,7 @@ net-control commands — live in the in-app **[User Guide](user-guide.md)** (ser
 3. [Background Jobs](background-jobs.md) — Scheduled tasks and CLI tools
 4. [Shared Net Operations](shared-net-ops.md) — Core domain logic
 5. [System Notifications](system-notifications.md) — User notification framework
-6. [Chat System](chat-system.md) — GetStream.io chat integration
+6. [Chat System](chat-system.md) — local MongoDB/SSE chat integration
 7. [Security](security.md) — Security policies and implementation
 
 ### Reference Materials
@@ -153,8 +153,8 @@ For detailed information about system operations and data management, see:
 
 **Third-party integrations:**
 
-- GetStream.io (chat with inline image sharing), SendGrid (email), and external lookups (QRZ.com)
-- Wired via server helpers and token/endorsement routes so credentials stay server-side
+- SMTP (email), Google OAuth, and QRZ callsign lookup; chat itself is local
+- Wired through server-side helpers so credentials stay server-side
 
 ### Why This Architecture Matters
 

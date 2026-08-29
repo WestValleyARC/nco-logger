@@ -1,5 +1,18 @@
 # API Reference
 
+## Chrome extension compatibility boundary
+
+The logger continues to use its signed browser cookie session; extension requests must include
+credentials. Live-net state remains under `/api/data/livenets`, net profiles under
+`/api/data/netprofiles`, station actions under `/api/station/interactions`, and administrative
+commands under `/api/admin/interactions`. Live-net updates use `/api/sse/livenets/:npid` with the
+existing `EndPointResponse` event payloads.
+
+The intentional compatibility change is chat: the hosted-provider endorsement/token route was
+removed. Use `/api/chat/:npid/messages` and the local SSE path returned by history. Chat errors use
+an `error` string; the established data endpoints retain `errorMessage` in their standard response
+envelope. See [Local chat](chat-system.md).
+
 > **Document Scope:** This document is the **complete endpoint reference** with request/response examples and parameter details. **Not covered:** API architectural patterns (see [Routing and API](routing-api.md)), controller implementation (see [Controllers](controllers.md)), or server architecture (see [Server Architecture](server-architecture.md)).
 
 > **Development Server:** The local development server runs at `http://localhost:3000` via `npm run dev`.
@@ -224,38 +237,23 @@ Response: EndPointResponse with `message` containing follow state or list.
 - **Request body:** `{ "cmdLine": "<command string>" }`
 - **Response:** EndPointResponse with command output in `message`
 
-### GET /api/endorse/chat/:id
+### Local chat
 
-- **Auth:** REQ_CALLSIGN (required)
-- **Description:** Generate a GetStream.io user token for the net's chat channel. Upserts the user into Stream and adds them as a channel member.
-- **Path parameters:**
-    - `id` (string) — NetProfile id
-- **Response.message:**
+All chat routes require the authenticated cookie session, a callsign, and membership in the active
+net. See [chat-system.md](chat-system.md) for response and SSE event formats.
 
-```json
-{
-    "token": "<stream-jwt>",
-    "userId": "hamlive-<mongoUserId>",
-    "channelId": "net-<npid>",
-    "channelType": "messaging",
-    "apiKey": "<stream-api-key>"
-}
-```
+- `GET /api/chat/:id/messages` — ordered local history and the SSE path
+- `POST /api/chat/:id/messages` — send `{ "text": "..." }`
+- `POST /api/chat/:id/images` — upload raw image bytes using the matching image `Content-Type`;
+  accepts PNG, JPEG, GIF, and WebP up to the configured limit and returns `201`
+- `GET /api/chat/:id/messages/:messageId/image` — retrieve an attachment; access is private to
+  authenticated members of the active net
+- `DELETE /api/chat/:id/messages/:messageId` — delete an owned message or moderate as NCS/logger
+- `GET /api/chat/:id/events` — local chat SSE stream
 
-When Stream Chat is not configured (`STREAM_API_KEY`/`STREAM_API_SECRET` absent), returns `{ "enabled": false }`.
-
-### DELETE /api/endorse/chat/:id/message/:messageId
-
-- **Auth:** REQ_CALLSIGN (required; caller must be net control in the running net)
-- **Description:** Hard-delete a chat message by id (NCS moderation only). The caller's role is verified against the live net's lookup table — only `netcontrol` (level 0) may delete messages.
-- **Path parameters:**
-    - `id` (string) — NetProfile id
-    - `messageId` (string) — GetStream message id
-- **Response.message:**
-
-```json
-{ "success": true, "messageId": "<messageId>" }
-```
+History and SSE messages may include `attachment: { kind: "image", mimeType, size, url }`. Internal
+storage names are not exposed. Image uploads return `413` when too large and `415` for an unsupported
+or mismatched file signature.
 
 ### GET /api/util/resolvelocation
 

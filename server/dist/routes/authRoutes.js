@@ -7,53 +7,61 @@ const { logger } = require('../lib/logger');
 const UserProfile = require('../models/userProfile').getUserProfile(null);
 const GoogleStrategy = require('passport-google-oauth20');
 const MagicLoginStrategy = require('passport-magic-login').default;
+const jwt = require('jsonwebtoken');
 const gravatar = require('gravatar');
+const validator = require('validator');
 const { EmailBase, emailEnabled } = require('../lib/userNotification');
 
 //MagicLogin Auth:
+const sendMagicLink = async (destination, href, _code, req) => {
+    const link = `${conf.base_url}${href}`;
+
+    // Local test drive: when email delivery is not configured, surface the
+    // sign-in link directly and also print it to the server console.
+    if (!emailEnabled) {
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+        if (isDevelopment && req) req._devMagicLink = link;
+        if (!isDevelopment) {
+            logger.error('Magic-link email unavailable because SMTP is not configured');
+            throw new Error('Email delivery is unavailable');
+        }
+        logger.info(
+            `\n\n========== LOCAL LOGIN (email delivery disabled) ==========\n` +
+                `Magic sign-in link:\n${link}\n` +
+                `Open it in your browser to finish logging in.\n` +
+                `==========================================================\n`
+        );
+        return;
+    }
+
+    try {
+        const email = new EmailBase({
+            body: {
+                from: conf.email_from,
+                subject: 'Click to finish signing in',
+                html: `Click this <a href='${link}'>LINK</a> to finish logging in`,
+                text: `Finish signing in: ${link}`
+            }
+        });
+
+        await email.sendMailToAddrs([destination]);
+        logger.info('Auth link email accepted for delivery');
+    } catch (err) {
+        logger.error(`Magic-link email delivery failed: ${err.message}`);
+        throw new Error('Magic-link email delivery failed');
+    }
+};
+
 const magicLogin = new MagicLoginStrategy({
     secret: conf.magic_link_secret,
     callbackUrl: '/auth/magiclogin/callback',
-
-    sendMagicLink: async (destination, href, _code, req) => {
-        const link = `${conf.base_url}${href}`;
-
-        // Local test drive: when email delivery is not configured, surface the
-        // sign-in link directly (returned to the browser by the route below) and
-        // also print it to the server console.
-        if (!emailEnabled) {
-            if (req) req._devMagicLink = link;
-            logger.info(
-                `\n\n========== LOCAL LOGIN (email delivery disabled) ==========\n` +
-                    `Magic sign-in link for ${destination}:\n${link}\n` +
-                    `Open it in your browser to finish logging in.\n` +
-                    `==========================================================\n`
-            );
-            return;
-        }
-
-        try {
-            const email = new EmailBase({
-                subject: 'Click to finish signing in',
-                message: `Click this <a clicktracking=off href='${link}'>LINK</a> to finish logging in`
-            });
-
-            await email.sendMailToAddrs([destination]);
-
-            logger.info(`Auth link email sent to ${destination}`);
-        } catch (err) {
-            logger.error(err.stack);
-        }
-    },
+    sendMagicLink,
 
     verify: (payload, done) => {
-        logger.info(`look for user with this email or create user: ${payload.destination}`);
+        logger.info('Processing magic-link user lookup');
 
         if (!payload.destination) {
-            logger.error(`paylaod: ${payload}`);
-            logger.error(`paylaod type: ${typeof payload}`);
-            logger.error(`paylaod stringified: ${JSON.stringify(payload)}`);
-
+            logger.error('Magic login payload is missing its destination');
             throw new Error('Magic login payload missing destination');
         }
         //check if user already exists in our db
@@ -67,9 +75,9 @@ const magicLogin = new MagicLoginStrategy({
         ).then(currentUser => {
             if (currentUser) {
                 //already have the user
-                logger.debug('Magic Login Auth-return user found: ', currentUser);
+                    logger.debug('Magic Login returning user found');
                 if (currentUser.locked) {
-                    logger.error(`Account locked for ${currentUser.email}`);
+                    logger.error('Magic Login account is locked');
 
                     done(null, false);
                 } else {
@@ -89,7 +97,7 @@ const magicLogin = new MagicLoginStrategy({
                 })
                     .save({ validateBeforeSave: false })
                     .then(newUser => {
-                        logger.info('new partial user account created (email link)' + newUser);
+                        logger.info('New partial user account created by email link');
                         done(null, newUser);
                     })
                     .catch(err => {
@@ -106,14 +114,29 @@ const magicLogin = new MagicLoginStrategy({
 });
 
 passport.use(magicLogin);
-router.post('/magiclogin', (req, res, next) => {
-    // When email delivery is disabled (local test drive), include the sign-in
-    // link in the JSON response so the browser can show it — no logs needed.
-    if (!emailEnabled) {
-        const origJson = res.json.bind(res);
-        res.json = body => origJson({ ...body, devMagicLink: req._devMagicLink || null });
+router.post('/magiclogin', async (req, res) => {
+    const destination = typeof req.body?.destination === 'string' ? req.body.destination.trim() : '';
+    if (!validator.isEmail(destination)) {
+        return res.status(400).json({ success: false, error: 'Enter a valid email address' });
     }
-    return magicLogin.send(req, res, next);
+
+    const code = String(Math.floor(Math.random() * 90000) + 10000);
+    const token = jwt.sign({ destination, code }, conf.magic_link_secret, { expiresIn: '30 days' });
+    const href = `/auth/magiclogin/callback?token=${encodeURIComponent(token)}`;
+
+    try {
+        await sendMagicLink(destination, href, code, req);
+        const response = { success: true, message: 'Sign-in email accepted for delivery' };
+        if (!emailEnabled && process.env.NODE_ENV !== 'production') {
+            response.devMagicLink = req._devMagicLink || null;
+        }
+        return res.status(emailEnabled ? 202 : 200).json(response);
+    } catch (_err) {
+        return res.status(502).json({
+            success: false,
+            error: 'The sign-in email could not be sent. Please try again or use Google sign-in.'
+        });
+    }
 });
 // router.get('/magiclogin/callback', passport.authenticate('magiclogin'));
 router.get('/magiclogin/callback', passport.authenticate('magiclogin'), (req, res) => {
@@ -158,10 +181,10 @@ if (googleAuthEnabled) {
             ).then(currentUser => {
                 if (currentUser) {
                     //already have the user
-                    logger.debug('Google Auth-return user found: ', currentUser);
+                    logger.debug('Google Auth returning user found');
 
                     if (currentUser.locked) {
-                        logger.error(`Account locked for ${currentUser.email}`);
+                        logger.error('Google Auth account is locked');
 
                         done(null, false);
                     } else {
@@ -182,7 +205,7 @@ if (googleAuthEnabled) {
                     })
                         .save()
                         .then(newUser => {
-                            logger.debug('new partial user account created (google)' + newUser);
+                            logger.debug('New partial user account created by Google Auth');
                             done(null, newUser);
                         })
                         .catch(err => {

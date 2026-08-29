@@ -23,12 +23,10 @@ export const serverInfo: Readonly<ServerInfo> = (() => {
         awayInMs: parseInt(dataset['awayInMs'] || '20000'),
         isLoggedIn: dataset['isLoggedIn'] === 'true',
         newAccount: dataset['newAccount'] === 'true',
-        okToAdvertise: dataset['okToAdvertise'] === 'true',
         callSign: dataset['callSign'] || null,
         userId: dataset['userId'] || null,
         displayName: dataset['displayName'] || null,
         chat: dataset['chat'] === 'true',
-        analytics: dataset['analytics'] === 'true',
         ts: new Date(parseInt(dataset['ts']))
     };
 
@@ -38,8 +36,7 @@ export const serverInfo: Readonly<ServerInfo> = (() => {
             console.table(si);
         } else {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { okToAdvertise, ...rest } = si;
-            console.table(rest);
+            console.table(si);
         }
 
         return si;

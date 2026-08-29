@@ -56,15 +56,15 @@ group here.
 - **Net control (NCS) tools** — start/stop nets, assign roles, and run moderation via shell-style
   commands
 - **Net discovery & following** — find active nets and follow the ones you care about
-- **Real-time chat** (optional, via GetStream) with inline images
+- **Real-time local chat** backed by MongoDB and Server-Sent Events
 - **Email + Google sign-in** — magic-link email login, with optional Google OAuth
 - **No front-end framework** — native ES modules, Custom Elements, and reactive stores
 
 ## Quick start (local test drive — no accounts needed)
 
 You can run a fully working instance on your laptop with **zero paid accounts**. External services
-(chat, email, callsign lookup, geocoding) are all optional and degrade gracefully when not
-configured; magic sign-in links are printed to the server console.
+(email, callsign lookup, geocoding) are optional and degrade gracefully when not configured;
+local chat requires only MongoDB, and magic sign-in links are printed to the development console.
 
 ```bash
 git clone https://github.com/Constant-Digital-Holdings-LLC/hamlive-oss.git hamlive-oss

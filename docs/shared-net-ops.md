@@ -210,7 +210,7 @@ Lower numeric values have higher privileges. Users can only modify stations with
 1. Calls `realtimeClients.close(npid)` — this sends a `'net-close'` SSE event to all connected clients and removes the SSE entry from the middleware map
 2. Sets `liveNetDoc.closing = true` and saves it
 3. Unless `quiet`, generates a `NetCloseReport` and emails it to owners and superusers
-4. Deletes the GetStream chat channel for the net (graceful degradation — a chat failure does not abort net close)
+4. Cleans local chat records after report generation/delivery is attempted (cleanup failure does not abort net close)
 5. Deletes all `StationInteraction` documents for the net
 6. Deletes the `LiveNet` document
 7. Clears `netProfileDoc.liveNet` and saves the NetProfile

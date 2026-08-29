@@ -3049,7 +3049,6 @@ export class ButtonBar extends LiveNetElement {
 
             this.defaultElement?.appendChild(this.wrapWithButton(autoScrollElem));
             this.defaultElement?.appendChild(this.wrapWithButton(handElem));
-            // NOTE: FileShareInsert removed - file sharing now handled inline in GetStream chat widget
         } else if (!this.store?.mainCache?.net.permanent) {
             //Initial data load
             //store at v1 (see didMyDataSegmentChange()):

@@ -33,7 +33,7 @@ Magic-link sign-in is always registered. It is powered by `passport-magic-login`
    ↓
 3. Server generates a signed JWT and calls sendMagicLink()
    ↓
-4. If SENDGRID_API_KEY is set: email is sent via SendGrid
+4. If SMTP is configured: email is sent through the configured SMTP relay
    If not (local dev): link is printed to the server console
                        AND returned in the JSON response as devMagicLink
    ↓
@@ -51,7 +51,7 @@ Magic-link sign-in is always registered. It is powered by `passport-magic-login`
 
 ### Local development fallback
 
-When `SENDGRID_API_KEY` is absent, the sign-in link is:
+When SMTP is absent in development, the sign-in link is:
 
 - Printed to the server console at `info` level with a visible banner.
 - Returned to the browser in the `devMagicLink` field of the `/auth/magiclogin` JSON response.
@@ -63,7 +63,7 @@ This allows full end-to-end testing with no email configuration required.
 | Config key (via `conf`) | Env var | Required |
 |---|---|---|
 | `conf.magic_link_secret` | `MAGIC_LINK_SECRET` | Yes |
-| `conf.sendgrid_api_key` | `SENDGRID_API_KEY` | No (see fallback above) |
+| `conf.mail_transport` / `conf.smtp_host` | `MAIL_TRANSPORT` / `SMTP_HOST` | No (see fallback above) |
 | `conf.base_url` | `BASE_URL` | Yes (used to build the callback URL) |
 
 The magic-link JWT TTL is 30 days (set in `jwtOptions.expiresIn`).
@@ -168,7 +168,7 @@ Both strategies create new users with the same minimal shape:
 }
 ```
 
-There is no `level`, `callSign`, or `okToAdvertise` set at creation time. The `validateBeforeSave: false` flag is used on magic-link user creation.
+There is no `level` or `callSign` set at creation time. The `validateBeforeSave: false` flag is used on magic-link user creation.
 
 ## Authorization System
 

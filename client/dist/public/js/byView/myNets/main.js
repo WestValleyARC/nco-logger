@@ -9,6 +9,7 @@ tinymce.init({
     plugins: 'lists',
     toolbar: 'bullist italic',
     menubar: '',
+    promotion: false,
     statusbar: false,
     max_height: 235
 });
@@ -143,24 +144,7 @@ function refreshNetList() {
                         .then(req => {
                             console.debug('livenet controller response', req);
 
-                            if (typeof gtag === 'function') {
-                                console.debug(`send analytics`);
-
-                                gtag('event', 'net_start', {
-                                    event_category: 'net_actions',
-                                    event_label: `${netProfile.title}`,
-                                    event_callback: function () {
-                                        window.location.replace(req.data.url);
-                                    }
-                                });
-
-                                setTimeout(() => {
-                                    //redir anyway (if browser blocks tracking (gtag above))
-                                    window.location.replace(req.data.url);
-                                }, 1000);
-                            } else {
-                                window.location.replace(req.data.url);
-                            }
+                            window.location.replace(req.data.url);
                         })
                         .catch(error => {
                             if (error.response.data.errorMessage) {

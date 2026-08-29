@@ -101,8 +101,6 @@ export const isServerInfo = createTypeGuard<ServerInfo>({
     displayName: value => typeof value === 'string' || value === null,
     userId: value => typeof value === 'string' || value === null,
     chat: value => typeof value === 'boolean',
-    analytics: value => typeof value === 'boolean',
-    okToAdvertise: value => typeof value === 'boolean',
     logLevel: value => value === 'info' || value === 'debug', // Check if logLevel is 'info' or 'debug'
     ts: value => value instanceof Date
 });
@@ -262,10 +260,7 @@ export const isCommandResponse = createTypeGuard<CommandResponse>({
 
 // FlexOptions typeguard
 export const isFlexOptions = createTypeGuard<FlexOptions>({
-    gracePeriodDays: value => typeof value === 'number',
-    ads: value => typeof value === 'number',
     chat: value => typeof value === 'boolean',
-    analytics: value => typeof value === 'boolean',
     email: value => typeof value === 'boolean',
     maxNetsPerUser: value => typeof value === 'number',
     maxOwnersPerNet: value => typeof value === 'number',

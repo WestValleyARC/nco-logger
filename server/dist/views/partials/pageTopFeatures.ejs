@@ -3,14 +3,4 @@
 <%- include('./featureBootStrapCss') %>
 <%- include('./featureLocalCss') %>
 <%- include('./featureBootstrapIcons') %>
-<% if (server.adsEnabled && user.okToAdvertise) { %>
-<%- include('./featureAdPlugg') %>
-<% } else { %>
-<!-- AdPlugg Snippet Omitted -->
-<% } %>
-<% if (server.analyticsEnabled && user.analytics !== false) { %>
-<%- include('./featureGoogleAnalytics') %>
-<% } else { %>
-<!-- Google Analytics Omitted -->
-<% } %>
 <!--End: pageTopFeatures.ejs-->

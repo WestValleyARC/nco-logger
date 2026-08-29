@@ -24,7 +24,7 @@ Ham.Live's API is organized into functional domains with consistent URL patterns
 ├── station/    # Station-level interaction events
 ├── sse/        # Server-Sent Events endpoints
 ├── presence/   # Presence polling endpoints
-├── endorse/    # GetStream.io chat token and moderation
+├── chat/       # local MongoDB/SSE history, send, events, and moderation
 └── util/       # Utility and helper endpoints
 ```
 
@@ -85,8 +85,9 @@ Note: The route is mounted at `/api/station/interactions` in `server.js`, so the
 
 **Routes**:
 
-- `GET /api/endorse/chat/:id` — Returns a GetStream.io user token so the browser client can connect to the GetStream chat channel directly. Requires `STREAM_API_KEY`/`STREAM_API_SECRET`.
-- `DELETE /api/endorse/chat/:id/message/:messageId` — Net control/logger moderation action: delete a specific chat message.
+- `GET|POST /api/chat/:id/messages` — Ordered local history and message send.
+- `GET /api/chat/:id/events` — Authenticated local chat SSE.
+- `DELETE /api/chat/:id/messages/:messageId` — Owned-message deletion or NCS/logger moderation.
 
 **Authorization**: `authCheck(REQ_CALLSIGN)` on all endorse routes.
 
@@ -128,7 +129,7 @@ There is no envelope, no `description` field, and no `authentication` field. The
 
 - **Unauthenticated endpoints**: API discovery (`GET /api`), some data reads, view pages such as `/views/dashboard`, `/views/intro`, `/views/guide`
 - **Login required**: All state-changing operations; account and privacy pages
-- **Callsign required**: Live net access, net control commands, station events, chat tokens
+- **Callsign required**: Live net access, net control commands, station events, and local chat
 
 ### Authorization Implementation
 

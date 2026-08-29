@@ -4,7 +4,7 @@ import { EndPointClient, getNpid, initAndLogError } from '#@client/lib/clientUti
 import { LiveNetReactiveStore, FavoritesReactiveStore } from '#@client/lib/stores.js';
 import { Presence } from '#@client/lib/presence.js';
 import { SystemNotificationManager } from '#@client/lib/systemNotifications.js';
-import { ChatWidget } from '#@client/lib/chat.js'; // NEW: GetStream.io chat widget
+import { ChatWidget } from '#@client/lib/chat.js';
 
 import {
     StateList,
@@ -86,7 +86,5 @@ void initAndLogError(() => favoritesStore.init());
 const { level } = await client;
 void initAndLogError(() => NetControlUsage.init(liveNetStore));
 
-// Initialize GetStream.io chat widget
-// WHY level from presence: Immediate access, no store wait required
-// WHY liveNetStore: For subscribing to role changes during the session
+// Initialize local MongoDB/SSE chat widget.
 void initAndLogError(() => ChatWidget.init(liveNetStore, level));
