@@ -12,8 +12,15 @@ const chatMessageSchema = new Schema(
         displayName: { type: String, default: '', maxlength: 80 },
         text: {
             type: String,
-            required: function () { return !this.deletedAt; },
+            default: '',
             maxlength: 2000
+        },
+        attachment: {
+            _id: false,
+            kind: { type: String, enum: ['image'] },
+            storageName: { type: String, match: /^[a-f0-9-]+\.(png|jpg|gif|webp)$/ },
+            mimeType: { type: String, enum: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] },
+            size: { type: Number, min: 1, max: 10 * 1024 * 1024 }
         },
         editedAt: { type: Date, default: null },
         deletedAt: { type: Date, default: null },
@@ -21,6 +28,13 @@ const chatMessageSchema = new Schema(
     },
     { timestamps: true }
 );
+
+chatMessageSchema.pre('validate', function (next) {
+    if (!this.deletedAt && !this.text && !this.attachment?.storageName) {
+        this.invalidate('text', 'A chat message requires text or an image');
+    }
+    next();
+});
 
 chatMessageSchema.index({ netProfile: 1, createdAt: 1, _id: 1 });
 

@@ -128,6 +128,8 @@ All secrets and instance-specific values are supplied via environment variables.
 | `GOOGLE_CLIENT_SECRET` | `conf.google_client_secret` | No | Google OAuth2 (optional) |
 | `CHAT_MAX_MESSAGE_CHARS` | `conf.chat_max_message_chars` | No | Local chat length limit |
 | `CHAT_RATE_LIMIT_COUNT`, `CHAT_RATE_LIMIT_WINDOW_MS` | matching config | No | Local chat burst control |
+| `CHAT_UPLOAD_DIR` | `conf.chat_upload_dir` | No | Local chat image directory; defaults to `/app/data/chat-uploads` |
+| `CHAT_MAX_UPLOAD_MB` | `conf.chat_max_upload_mb` | No | Image limit in MB; defaults to 5 and is capped at 10 |
 | `QRZ_USERNAME` | `conf.qrz_username` | No | QRZ.com callsign lookup (optional) |
 | `QRZ_PASSWORD` | `conf.qrz_password` | No | QRZ.com callsign lookup (optional) |
 | `GEO_KEY` | `conf.geo_key` | No | Azure Maps reverse geocoding (optional) |

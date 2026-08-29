@@ -3049,7 +3049,6 @@ export class ButtonBar extends LiveNetElement {
 
             this.defaultElement?.appendChild(this.wrapWithButton(autoScrollElem));
             this.defaultElement?.appendChild(this.wrapWithButton(handElem));
-            // File sharing is deferred while local text chat is stabilized.
         } else if (!this.store?.mainCache?.net.permanent) {
             //Initial data load
             //store at v1 (see didMyDataSegmentChange()):

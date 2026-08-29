@@ -39,6 +39,37 @@ body {
     min-height: 0; /* Critical: allows flex child to shrink and enable overflow scroll in chat */
 }
 
+.chat-emoji-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
+    gap: 0.2rem;
+    max-height: 9rem;
+    overflow-y: auto;
+    background: rgba(18, 18, 18, 0.98);
+}
+
+.chat-emoji-picker[hidden] {
+    display: none;
+}
+
+.chat-emoji-choice {
+    font-size: 1.25rem;
+    line-height: 1.5;
+}
+
+.chat-image-button[aria-disabled='true'] {
+    pointer-events: none;
+    opacity: 0.65;
+}
+
+.chat-image {
+    display: block;
+    max-width: min(100%, 28rem);
+    max-height: 22rem;
+    object-fit: contain;
+    border: 1px solid rgba(110, 184, 192, 0.25);
+}
+
 .stations-container {
     border-radius: 8px;
     border: 1px solid rgba(220, 131, 53, 0.15);

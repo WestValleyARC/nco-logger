@@ -12,6 +12,12 @@ interface LocalChatMessage {
     callSign: string;
     displayName: string;
     text: string;
+    attachment: {
+        kind: 'image';
+        mimeType: string;
+        size: number;
+        url: string;
+    } | null;
     createdAt: string;
     editedAt: string | null;
     deleted: boolean;
@@ -21,16 +27,23 @@ interface LocalChatMessage {
 
 interface ChatHistoryResponse {
     messages: LocalChatMessage[];
-    limits: { maxMessageChars: number };
+    limits: { maxMessageChars: number; maxUploadBytes: number; imageMimeTypes: string[] };
     ssePath: string;
     error?: string;
 }
+
+const CHAT_EMOJI = [
+    '😀', '😃', '😄', '😁', '😂', '😊', '😍', '🤩', '😎', '🤔', '👍', '👎',
+    '👏', '🙌', '🙏', '🤝', '👋', '❤️', '💯', '🎉', '📻', '🎙️', '📡', '⚡'
+];
 
 export class ChatWidget extends HTMLElement {
     private readonly npid = getNpid().toString();
     private messages = new Map<string, LocalChatMessage>();
     private eventSource: EventSource | null = null;
     private maxMessageChars = 2000;
+    private maxUploadBytes = 5 * 1024 * 1024;
+    private imageMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
     connectedCallback(): void {
         this.style.display = 'block';
@@ -40,19 +53,59 @@ export class ChatWidget extends HTMLElement {
             <div class="chat-widget h-100 d-flex flex-column" style="min-height:0">
                 <div class="chat-status small text-muted mb-1" role="status">Connecting…</div>
                 <div class="chat-messages flex-grow-1 overflow-auto" style="min-height:0" aria-live="polite"></div>
-                <form class="chat-form d-flex gap-2 mt-2">
+                <div class="chat-emoji-picker border rounded p-2 mt-2" role="group" aria-label="Choose an emoji" hidden></div>
+                <form class="chat-form d-flex gap-2 mt-2 align-items-center">
                     <label class="visually-hidden" for="local-chat-message">Chat message</label>
                     <input id="local-chat-message" class="form-control" type="text" autocomplete="off" placeholder="Message the net" required>
+                    <button class="btn btn-outline-secondary chat-emoji-button" type="button" title="Add emoji" aria-label="Add emoji" aria-expanded="false">😊</button>
+                    <label class="btn btn-outline-secondary chat-image-button mb-0" for="local-chat-image" title="Share image" aria-label="Share image">🖼️</label>
+                    <input id="local-chat-image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
                     <button class="btn btn-primary" type="submit">Send</button>
                 </form>
             </div>`;
         this.querySelector<HTMLFormElement>('.chat-form')?.addEventListener('submit', event => void this.send(event));
+        this.querySelector<HTMLButtonElement>('.chat-emoji-button')?.addEventListener('click', () => this.toggleEmojiPicker());
+        this.querySelector<HTMLInputElement>('#local-chat-image')?.addEventListener('change', event => void this.uploadImage(event));
+        this.populateEmojiPicker();
         void this.connect();
     }
 
     disconnectedCallback(): void {
         this.eventSource?.close();
         this.eventSource = null;
+    }
+
+    private populateEmojiPicker(): void {
+        const picker = this.querySelector<HTMLElement>('.chat-emoji-picker');
+        if (!picker) return;
+        CHAT_EMOJI.forEach(emoji => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-sm chat-emoji-choice';
+            button.textContent = emoji;
+            button.setAttribute('aria-label', `Insert ${emoji}`);
+            button.addEventListener('click', () => this.insertEmoji(emoji));
+            picker.append(button);
+        });
+    }
+
+    private toggleEmojiPicker(force?: boolean): void {
+        const picker = this.querySelector<HTMLElement>('.chat-emoji-picker');
+        const button = this.querySelector<HTMLButtonElement>('.chat-emoji-button');
+        if (!picker || !button) return;
+        const open = force ?? picker.hidden;
+        picker.hidden = !open;
+        button.setAttribute('aria-expanded', String(open));
+    }
+
+    private insertEmoji(emoji: string): void {
+        const input = this.querySelector<HTMLInputElement>('#local-chat-message');
+        if (!input) return;
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? start;
+        input.setRangeText(emoji, start, end, 'end');
+        this.toggleEmojiPicker(false);
+        input.focus();
     }
 
     private async connect(): Promise<void> {
@@ -63,6 +116,8 @@ export class ChatWidget extends HTMLElement {
             const data = (await response.json()) as ChatHistoryResponse;
             if (!response.ok) throw new Error(data.error || 'Chat history unavailable');
             this.maxMessageChars = data.limits.maxMessageChars;
+            this.maxUploadBytes = data.limits.maxUploadBytes;
+            this.imageMimeTypes = data.limits.imageMimeTypes;
             const input = this.querySelector<HTMLInputElement>('#local-chat-message');
             if (input) input.maxLength = this.maxMessageChars;
             data.messages.forEach(message => this.messages.set(message.id, message));
@@ -128,6 +183,47 @@ export class ChatWidget extends HTMLElement {
         }
     }
 
+    private async uploadImage(event: Event): Promise<void> {
+        const fileInput = event.currentTarget as HTMLInputElement;
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        const button = this.querySelector<HTMLElement>('.chat-image-button');
+
+        if (file.size > this.maxUploadBytes) {
+            this.setStatus(`Image exceeds ${Math.floor(this.maxUploadBytes / 1024 / 1024)} MB`, true);
+            fileInput.value = '';
+            return;
+        }
+        if (file.type && !this.imageMimeTypes.includes(file.type)) {
+            this.setStatus('Choose a PNG, JPEG, GIF, or WebP image', true);
+            fileInput.value = '';
+            return;
+        }
+
+        if (button) button.setAttribute('aria-disabled', 'true');
+        fileInput.disabled = true;
+        this.setStatus('Uploading image…');
+        try {
+            const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/images`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': file.type || 'application/octet-stream', Accept: 'application/json' },
+                body: file
+            });
+            const data = (await response.json()) as { message?: LocalChatMessage; error?: string };
+            if (!response.ok || !data.message) throw new Error(data.error || 'Image could not be uploaded');
+            this.messages.set(data.message.id, data.message);
+            this.render();
+            this.setStatus('Image shared');
+        } catch (err) {
+            this.setStatus(err instanceof Error ? err.message : 'Image could not be uploaded', true);
+        } finally {
+            fileInput.value = '';
+            fileInput.disabled = false;
+            if (button) button.removeAttribute('aria-disabled');
+        }
+    }
+
     private async deleteMessage(messageId: string): Promise<void> {
         try {
             const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/messages/${encodeURIComponent(messageId)}`, {
@@ -162,6 +258,20 @@ export class ChatWidget extends HTMLElement {
                 body.className = message.deleted ? 'text-muted fst-italic' : '';
                 body.textContent = message.deleted ? '[message deleted]' : message.text;
                 row.append(heading, body);
+                if (!message.deleted && message.attachment?.kind === 'image') {
+                    const link = document.createElement('a');
+                    link.href = message.attachment.url;
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.className = 'chat-image-link d-inline-block mt-1';
+                    const image = document.createElement('img');
+                    image.src = message.attachment.url;
+                    image.alt = `Image shared by ${message.callSign}`;
+                    image.loading = 'lazy';
+                    image.className = 'chat-image rounded';
+                    link.append(image);
+                    row.append(link);
+                }
                 if (message.canDelete) {
                     const button = document.createElement('button');
                     button.type = 'button';

@@ -4,12 +4,18 @@ export declare class ChatWidget extends HTMLElement {
     private messages;
     private eventSource;
     private maxMessageChars;
+    private maxUploadBytes;
+    private imageMimeTypes;
     connectedCallback(): void;
     disconnectedCallback(): void;
+    private populateEmojiPicker;
+    private toggleEmojiPicker;
+    private insertEmoji;
     private connect;
     private openEvents;
     private reloadHistory;
     private send;
+    private uploadImage;
     private deleteMessage;
     private render;
     private setStatus;

@@ -58,13 +58,8 @@ document.head.appendChild(m);
     2. `ChatWidget.init()` replaces `#local-chat-container` with an `<hl-chat>` custom element.
     3. On `connectedCallback`, the widget fetches `GET /api/chat/:npid/messages` and subscribes to the returned SSE path.
 
-- `liveNet.ejs` also conditionally includes `featureEmojiPicker.ejs` when `user.chat` is true:
-
-```ejs
-<% if (user.chat) { %>
-<%- include('./partials/featureEmojiPicker') %>
-<% } %>
-```
+- The local chat widget supplies its own dependency-free emoji picker and authenticated image
+  input. `liveNet.ejs` does not load a third-party chat or emoji script.
 
 - Test guidance: stub the local history endpoint and `EventSource` in browser-unit tests.
 
@@ -79,7 +74,6 @@ document.head.appendChild(m);
 
 - Partial files under `server/dist/views/partials/` include UI dependencies used by the running application:
     - TinyMCE: `featureTinyMceJs.ejs` — included only in `myNets.ejs` (self-hosted from `client/dist/public/tinymce/`)
-    - emoji picker: `featureEmojiPicker.ejs` — included in `liveNet.ejs` when `user.chat` is true; loads the `emoji-picker-element` web component
     - Bootstrap Icons: `featureBootstrapIcons.ejs` — CSS link to Bootstrap Icons CDN
     - axios helper import: `featureAxiosJs.ejs`
     - Bootstrap CSS/JS: `featureBootStrapCss.ejs` / `featureBootStrapJs.ejs`
@@ -97,7 +91,6 @@ document.head.appendChild(m);
 - `server/dist/views/myNets.ejs` — net management (includes TinyMCE)
 - `server/dist/views/partials/head.ejs` — importmap (immer) + ES module shims
 - `server/dist/views/partials/featureServerInfo.ejs` — serverInfo meta
-- `server/dist/views/partials/featureEmojiPicker.ejs` — emoji-picker-element web component
 - `server/dist/views/partials/featureBootstrapIcons.ejs` — Bootstrap Icons CSS
 - `server/dist/views/partials/featureBootStrapJs.ejs` — Bootstrap helpers and tooltip init
 

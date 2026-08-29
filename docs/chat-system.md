@@ -17,19 +17,29 @@ can delete their own message. The `/ban` and `/unban` commands use local `ChatBa
 | --- | --- | --- |
 | `GET` | `/api/chat/:npid/messages` | Ordered history (up to 500), limits, and SSE path |
 | `POST` | `/api/chat/:npid/messages` | Send `{ "text": "..." }` |
+| `POST` | `/api/chat/:npid/images` | Upload a raw PNG, JPEG, GIF, or WebP image |
+| `GET` | `/api/chat/:npid/messages/:messageId/image` | Retrieve an authenticated image attachment |
 | `DELETE` | `/api/chat/:npid/messages/:messageId` | Delete an owned or moderated message |
 | `GET` | `/api/chat/:npid/events` | SSE stream for inserts and updates |
 
 SSE sends `ready` and `message` events. `message` data has `id`, `callSign`, `displayName`, `text`,
-`createdAt`, `editedAt`, `deleted`, `mine`, and `canDelete`. Native `EventSource` reconnects
-automatically. Errors return `{ "endpointVersion": "1.0", "error": "safe message" }` with an
-appropriate HTTP status.
+`attachment`, `createdAt`, `editedAt`, `deleted`, `mine`, and `canDelete`. Image attachments expose
+only `kind`, `mimeType`, `size`, and an authenticated same-origin `url`; the storage filename is
+never returned. Native `EventSource` reconnects automatically. Errors return
+`{ "endpointVersion": "1.0", "error": "safe message" }` with an appropriate HTTP status.
+
+The browser's emoji picker inserts ordinary Unicode into the text field and requires no external
+script or provider. Selecting an image uploads it immediately and shows an explicit uploading,
+success, or failure status.
 
 ## Security and lifecycle
 
 Message HTML is stripped, the browser renders with `textContent`, identifiers are validated,
 message length is bounded, and a per-user rate window limits bursts. Deleted text is blanked in
-storage and never returned. Server timestamps and `_id` provide stable ordering.
+storage and never returned. Image access repeats authentication and active-net membership checks.
+The server detects the file signature rather than trusting `Content-Type`, rejects SVG, generates
+random storage names, and serves accepted files with `nosniff` and a restrictive CSP. Deleting an
+image message removes its file. Server timestamps and `_id` provide stable ordering.
 
 Net close ordering is: mark closing, fetch local history, render attachments, attempt SMTP
 delivery, clean chat records, then remove live-net state. History failures cannot prevent close.
@@ -38,10 +48,14 @@ delivery, clean chat records, then remove live-net state. History failures canno
 CHAT_MAX_MESSAGE_CHARS=2000
 CHAT_RATE_LIMIT_COUNT=12
 CHAT_RATE_LIMIT_WINDOW_MS=10000
+CHAT_UPLOAD_DIR=/app/data/chat-uploads
+CHAT_MAX_UPLOAD_MB=5
 ```
 
-Inline image uploads from the former hosted chat integration are deliberately deferred. The
-Compose file reserves a persistent `hamlive-chat-uploads` volume for that later phase.
+Compose mounts `CHAT_UPLOAD_DIR` from the persistent `hamlive-chat-uploads` volume. PNG, JPEG, GIF,
+and WebP images are accepted. The configured size defaults to 5 MB and is capped at 10 MB. When a
+net closes, its image references are included in the emailed history and its local files are then
+removed with the rest of that net's chat data.
 
 ## Migration
 

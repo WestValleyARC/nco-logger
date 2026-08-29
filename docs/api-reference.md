@@ -244,8 +244,16 @@ net. See [chat-system.md](chat-system.md) for response and SSE event formats.
 
 - `GET /api/chat/:id/messages` — ordered local history and the SSE path
 - `POST /api/chat/:id/messages` — send `{ "text": "..." }`
+- `POST /api/chat/:id/images` — upload raw image bytes using the matching image `Content-Type`;
+  accepts PNG, JPEG, GIF, and WebP up to the configured limit and returns `201`
+- `GET /api/chat/:id/messages/:messageId/image` — retrieve an attachment; access is private to
+  authenticated members of the active net
 - `DELETE /api/chat/:id/messages/:messageId` — delete an owned message or moderate as NCS/logger
 - `GET /api/chat/:id/events` — local chat SSE stream
+
+History and SSE messages may include `attachment: { kind: "image", mimeType, size, url }`. Internal
+storage names are not exposed. Image uploads return `413` when too large and `415` for an unsupported
+or mismatched file signature.
 
 ### GET /api/util/resolvelocation
 

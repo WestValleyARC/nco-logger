@@ -60,6 +60,8 @@ export type Config = {
     chat_max_message_chars: number;
     chat_rate_limit_count: number;
     chat_rate_limit_window_ms: number;
+    chat_upload_dir: string;
+    chat_max_upload_mb: number;
     nodeenv: string;
     port: number;
     run_background_tasks_on_startup: boolean;

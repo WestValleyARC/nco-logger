@@ -21,7 +21,10 @@ This document covers security considerations for Ham.Live REST endpoints, authen
 
 ### Endpoint endorsements and token generation
 
-- Local chat uses the existing signed cookie session and validates net membership on every request.
+- Local chat uses the existing signed cookie session and validates active-net membership on every
+  request, including image retrieval. Image uploads are size-limited and signature-checked; SVG is
+  rejected, random internal filenames are not exposed, and responses use `nosniff` plus a
+  restrictive content security policy.
 - See [Chat System](chat-system.md) for implementation details.
 
 ## Credentials and secrets

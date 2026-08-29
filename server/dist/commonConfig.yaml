@@ -34,6 +34,8 @@ cmd_help_url: 'https://github.com/Constant-Digital-Holdings-LLC/hamlive-oss/blob
 chat_max_message_chars: 2000
 chat_rate_limit_count: 12
 chat_rate_limit_window_ms: 10000
+chat_upload_dir: '/app/data/chat-uploads'
+chat_max_upload_mb: 5
 
 # --- Secrets below are intentionally NOT stored here. ---
 # Supplied via environment variables (see .env.example):

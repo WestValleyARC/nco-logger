@@ -160,7 +160,8 @@ Notes:
 - **Email:** without SMTP, login links are logged to the server console in development only. A
   production instance never exposes the link and must configure mail delivery.
 - **Google OAuth:** set the authorized redirect URI to `${BASE_URL}/auth/google/redirect`.
-- **Chat:** text chat is local and always enabled. Inline image uploads are deferred for this phase.
+- **Chat:** text, emoji, and image chat are local. Images are stored in the persistent
+  `hamlive-chat-uploads` volume; PNG, JPEG, GIF, and WebP are supported.
 - **Ads & analytics:** removed from this fork.
 
 ### Google Workspace SMTP relay (recommended for WVARC)

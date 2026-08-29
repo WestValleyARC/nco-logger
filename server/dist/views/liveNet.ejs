@@ -5,7 +5,6 @@
 <head>
   <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
   <title><%= TITLE %><%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-  <%# Image sharing is deferred while local text chat is stabilized. %>
 </head>
 
 <body class="bg-dark text-light">
@@ -95,9 +94,6 @@
 
 
   <%- include('./partials/pageBottomFeatures') %>
-  <% if (user.chat) { %>
-  <%- include('./partials/featureEmojiPicker') %>
-  <% } %>
   <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
 </body>
 <%- include('./partials/footer') %>

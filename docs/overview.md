@@ -11,7 +11,7 @@ This document provides a product-oriented overview focusing on what the system d
 - **Net discovery and scheduling** — users can find active nets or browse scheduled nets and follow those they care about
 - **Real-time presence & interactions** — when on a net page the site captures presence, renders an ordered station list, and surfaces live interactions such as "hand", "highlight", "check state" and signal reports
 - **Net control (NCS features)** — designated net controllers can start/stop nets, assign roles, and perform administrative actions to manage participant flow
-- **Local text chat** — real-time chat via MongoDB and authenticated SSE; image attachments are deferred (see [Chat System](chat-system.md))
+- **Local chat** — real-time text, emoji, and image chat via MongoDB, authenticated SSE, and persistent local image storage (see [Chat System](chat-system.md))
 - **Follow and notifications** — users may follow nets and receive announcements or summaries when nets start or change
 
 ### Primary user journeys

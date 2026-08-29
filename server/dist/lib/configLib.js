@@ -54,6 +54,8 @@ const fromEnv = {
     chat_max_message_chars: process.env.CHAT_MAX_MESSAGE_CHARS,
     chat_rate_limit_count: process.env.CHAT_RATE_LIMIT_COUNT,
     chat_rate_limit_window_ms: process.env.CHAT_RATE_LIMIT_WINDOW_MS,
+    chat_upload_dir: process.env.CHAT_UPLOAD_DIR,
+    chat_max_upload_mb: process.env.CHAT_MAX_UPLOAD_MB,
     qrz_cache_ttl_hours: process.env.QRZ_CACHE_TTL_HOURS
 };
 
