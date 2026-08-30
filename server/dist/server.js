@@ -176,12 +176,8 @@ app.get('/api', (_req, res) => res.json(publicEndpoints(app)));
 logger.debug(`\n\nAPI:\n${JSON.stringify(publicEndpoints(app), null, 1)}\n`);
 
 app.use('/auth', authRoutes);
-app.get('/', (req, res) => {
-    if (req.user) {
-        res.redirect('/views/dashboard');
-    } else {
-        res.redirect('/views/intro');
-    }
+app.get('/', (_req, res) => {
+    res.redirect('/views/dashboard');
 });
 app.get('/login', (_req, res) => {
     res.redirect('/views/login');
