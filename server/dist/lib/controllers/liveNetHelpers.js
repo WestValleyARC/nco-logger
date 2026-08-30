@@ -101,7 +101,8 @@ const buildResponseSkeleton = (netProfileDoc, liveNetDoc, sigReportTypeByMode) =
                 createdAt: liveNetDoc.createdAt,
                 started: liveNetDoc.started
             },
-            stations: []
+            stations: [],
+            loggerState: liveNetDoc.loggerState || null
         };
     } catch (err) {
         logger.error(err);

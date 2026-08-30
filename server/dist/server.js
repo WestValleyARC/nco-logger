@@ -29,6 +29,7 @@ const presenceLiveNetRoutes = require('./routes/presenceLiveNetRoutes');
 const sseLiveNetRoutes = require('./routes/sseLiveNetRoutes');
 const adminInteractionRoutes = require('./routes/adminInteractionRoutes');
 const stationInteractionRoutes = require('./routes/stationInteractionRoutes');
+const ncoLoggerRoutes = require('./routes/ncoLoggerRoutes');
 const utilRoutes = require('./routes/utilRoutes');
 const viewRoutes = require('./routes/viewRoutes');
 const cookieSession = require('cookie-session');
@@ -161,6 +162,7 @@ app.use('/api/data/livenets', dataLiveNetRoutes);
 //API:Interaction Routes:
 app.use('/api/admin/interactions', adminInteractionRoutes);
 app.use('/api/station/interactions', stationInteractionRoutes);
+app.use('/api/nco-logger', ncoLoggerRoutes);
 //API:Misc Routes:
 app.use('/api/util', utilRoutes);
 // Realtime SSE
