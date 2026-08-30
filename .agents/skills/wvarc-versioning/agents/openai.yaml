@@ -1,0 +1,4 @@
+interface:
+  display_name: "WVARC Versioning"
+  short_description: "Bump and verify WVARC app release versions"
+  default_prompt: "Use $wvarc-versioning to update and verify the application version."
