@@ -5,7 +5,7 @@
 <head>
   <%- include('./partials/head') %>
   <%- include('./partials/pageTopFeatures') %>
-  <link href="/css/nco-logger.css?v=20260829-nco5" rel="stylesheet">
+  <link href="/css/nco-logger.css?v=1.1.0-alpha.1" rel="stylesheet">
   <title><%= TITLE %><%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
 </head>
 
@@ -19,6 +19,6 @@
   <% } %>
 
   <%- include('./partials/pageBottomFeatures') %>
-  <script src="/js/byView/<%= VIEW %>/main.js?v=20260829-nco5" type="module"></script>
+  <script src="/js/byView/<%= VIEW %>/main.js?v=1.1.0-alpha.1" type="module"></script>
 </body>
 </html>

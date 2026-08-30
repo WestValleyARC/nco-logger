@@ -1,7 +1,7 @@
 (() => {
     "use strict";
     const POLL_MS = 3000;
-    const VERSION = "Phase 2 Preview";
+    const VERSION = "1.1.0-alpha.1";
     const BUG_REPORT_URL = `mailto:ke7wil@gmail.com?subject=${encodeURIComponent(`WVARC NCO Logger Bug Report - ${VERSION}`)}&body=${encodeURIComponent(`Version: ${VERSION}\nLogger mode: \nWhat happened?\n\nWhat did you expect?\n\nSteps to reproduce:\n`)}`;
     const NOTE_MAX = 60;
     const MODULE_IDS = ["controls", "chat", "checkedOut", "active", "lurkers"];
@@ -233,15 +233,29 @@
         return normalized;
     }).join(" ");
     const formatLocation = value => String(value || "").trim().split(/\s*,\s*/).filter(Boolean).map(part => /^[a-z]{2,3}$/i.test(part) ? part.toLocaleUpperCase() : formatName(part)).join(", ");
-    const versionParts = value => String(value || "").split(".").map(part => Number.parseInt(part, 10) || 0);
+    const parseAppVersion = value => {
+        const match = String(value || "").match(/^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)\.(\d+))?$/);
+        if (!match)
+            return null;
+        return {
+            core: match.slice(1, 4).map(Number),
+            channel: match[4] || "stable",
+            build: Number(match[5] || 0)
+        };
+    };
     const isNewerVersion = (candidate, current = VERSION) => {
-        const left = versionParts(candidate);
-        const right = versionParts(current);
-        for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
-            if ((left[index] || 0) !== (right[index] || 0))
-                return (left[index] || 0) > (right[index] || 0);
+        const left = parseAppVersion(candidate);
+        const right = parseAppVersion(current);
+        if (!left || !right)
+            return false;
+        for (let index = 0; index < left.core.length; index += 1) {
+            if (left.core[index] !== right.core[index])
+                return left.core[index] > right.core[index];
         }
-        return false;
+        const channelRank = { alpha: 0, beta: 1, stable: 2 };
+        if (left.channel !== right.channel)
+            return channelRank[left.channel] > channelRank[right.channel];
+        return left.build > right.build;
     };
     function renderAvailableUpdate() {
         const version = panel?.querySelector("[data-role='helper-version']");

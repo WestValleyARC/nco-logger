@@ -19,6 +19,6 @@ void initAndLogError(() => ChatWidget.init(liveNetStore, level));
 
 // The logger is now first-party page code. The bridge only keeps slash commands
 // out of group chat; all station mutations go to authenticated application APIs.
-const LOGGER_ASSET_VERSION = '20260829-nco5';
+const LOGGER_ASSET_VERSION = '1.1.0-alpha.1';
 await import(`./ncoLoggerChatBridge.js?v=${LOGGER_ASSET_VERSION}`);
 await import(`./ncoLogger.js?v=${LOGGER_ASSET_VERSION}`);
