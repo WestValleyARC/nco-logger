@@ -1,0 +1,551 @@
+/* WVARC NCO Logger application shell */
+
+:root {
+    --app-bg: #0d1216;
+    --app-surface: #171e24;
+    --app-surface-raised: #202930;
+    --app-border: rgba(116, 198, 212, 0.22);
+    --app-border-strong: rgba(116, 198, 212, 0.48);
+    --app-text: #f4f5f2;
+    --app-muted: #9ba9b2;
+    --app-cyan: #74c6d4;
+    --app-orange: #dc8335;
+}
+
+.app-page {
+    min-height: 100vh;
+    color: var(--app-text);
+    background:
+        radial-gradient(circle at 12% 8%, rgba(116, 198, 212, 0.1), transparent 28rem),
+        radial-gradient(circle at 88% 18%, rgba(220, 131, 53, 0.08), transparent 24rem),
+        var(--app-bg);
+}
+
+.app-page a:focus-visible,
+.app-page button:focus-visible,
+.app-page input:focus-visible {
+    outline: 3px solid rgba(116, 198, 212, 0.55);
+    outline-offset: 3px;
+}
+
+.app-navbar {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--app-border);
+    background: rgba(13, 18, 22, 0.94) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(14px);
+}
+
+.app-navbar .navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 2rem;
+    padding: 0;
+}
+
+.app-brand-mark {
+    display: block;
+    width: min(13.5rem, 54vw);
+    height: 3.1rem;
+    object-fit: contain;
+    object-position: left center;
+}
+
+.app-navbar .nav-link {
+    position: relative;
+    padding: 0.65rem 0.85rem !important;
+    color: #bac5ca !important;
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    text-decoration: none;
+}
+
+.app-navbar .nav-link:hover,
+.app-navbar .nav-link:focus-visible {
+    color: var(--app-cyan) !important;
+}
+
+.app-navbar .app-nav-sign-in {
+    margin-left: 0.5rem;
+    padding-inline: 1rem !important;
+    color: #11181c !important;
+    border-radius: 0.45rem;
+    background: var(--app-cyan);
+}
+
+.app-navbar .app-nav-sign-in:hover,
+.app-navbar .app-nav-sign-in:focus-visible {
+    color: #11181c !important;
+    background: #96d9e3;
+}
+
+.app-main {
+    min-height: calc(100vh - 12rem);
+}
+
+.landing-hero {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(3.5rem, 8vw, 7rem) 0 clamp(3rem, 6vw, 5rem);
+    border-bottom: 1px solid var(--app-border);
+}
+
+.landing-hero::after {
+    position: absolute;
+    right: -8rem;
+    bottom: -11rem;
+    width: 32rem;
+    height: 32rem;
+    border: 1px solid rgba(116, 198, 212, 0.13);
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 3rem rgba(116, 198, 212, 0.035),
+        0 0 0 7rem rgba(116, 198, 212, 0.025);
+    content: '';
+    pointer-events: none;
+}
+
+.landing-kicker {
+    display: inline-flex;
+    gap: 0.55rem;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    color: var(--app-cyan);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+}
+
+.landing-kicker::before {
+    width: 1.8rem;
+    height: 1px;
+    background: currentColor;
+    content: '';
+}
+
+.landing-title {
+    max-width: 13ch;
+    margin-bottom: 1.25rem;
+    color: var(--app-text);
+    font-size: clamp(2.7rem, 7vw, 5.4rem);
+    font-weight: 600;
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+}
+
+.landing-title span {
+    color: var(--app-cyan);
+}
+
+.landing-copy {
+    max-width: 42rem;
+    margin-bottom: 2rem;
+    color: var(--app-muted);
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    line-height: 1.65;
+}
+
+.landing-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+}
+
+.app-button {
+    display: inline-flex;
+    gap: 0.55rem;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    padding: 0.7rem 1.15rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+        transform 120ms ease,
+        border-color 120ms ease,
+        background-color 120ms ease;
+}
+
+.app-button:hover {
+    transform: translateY(-1px);
+}
+
+.app-button-primary {
+    color: #11181c;
+    background: var(--app-orange);
+}
+
+.app-button-primary:hover {
+    color: #11181c;
+    background: #e39958;
+}
+
+.app-button-secondary {
+    color: var(--app-text);
+    border-color: var(--app-border-strong);
+    background: rgba(116, 198, 212, 0.07);
+}
+
+.app-button-secondary:hover {
+    color: var(--app-cyan);
+    border-color: var(--app-cyan);
+    background: rgba(116, 198, 212, 0.12);
+}
+
+.landing-logo-panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-height: 19rem;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem;
+    border: 1px solid var(--app-border);
+    border-radius: 1.15rem;
+    background: linear-gradient(145deg, rgba(32, 41, 48, 0.96), rgba(18, 25, 30, 0.88));
+    box-shadow: 0 28px 65px rgba(0, 0, 0, 0.28);
+}
+
+.landing-logo {
+    width: min(100%, 30rem);
+    max-height: 14rem;
+}
+
+.nets-section {
+    padding: clamp(3rem, 6vw, 5rem) 0 5rem;
+}
+
+.section-heading {
+    display: flex;
+    gap: 1.5rem;
+    align-items: end;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.section-eyebrow {
+    margin-bottom: 0.35rem;
+    color: var(--app-orange);
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.section-title {
+    margin: 0;
+    color: var(--app-text);
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+}
+
+.section-note {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 0.9rem;
+}
+
+.nets-list {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.net-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem 2rem;
+    align-items: center;
+    margin: 0 !important;
+    padding: 1.2rem 1.35rem !important;
+    border: 1px solid var(--app-border) !important;
+    border-radius: 0.7rem !important;
+    color: var(--app-muted);
+    background: rgba(23, 30, 36, 0.9) !important;
+    transition:
+        border-color 140ms ease,
+        background-color 140ms ease,
+        transform 140ms ease;
+}
+
+.net-card:hover {
+    border-color: var(--app-border-strong) !important;
+    background: var(--app-surface-raised) !important;
+    transform: translateY(-1px);
+}
+
+.net-card-main {
+    display: flex;
+    min-width: 0;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.net-card-link {
+    display: inline-flex;
+    min-width: 0;
+    gap: 0.8rem;
+    align-items: center;
+    color: var(--app-text) !important;
+    font-size: 1.08rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.net-card-link:hover {
+    color: var(--app-cyan) !important;
+}
+
+.net-card-link #title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.net-card-meta {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: end;
+    color: var(--app-muted);
+    font-size: 0.9rem;
+}
+
+.nets-state {
+    padding: 3rem 1.5rem;
+    border: 1px dashed var(--app-border-strong);
+    border-radius: 0.7rem;
+    color: var(--app-muted);
+    text-align: center;
+    background: rgba(23, 30, 36, 0.55);
+}
+
+.nets-state i {
+    display: block;
+    margin-bottom: 0.75rem;
+    color: var(--app-cyan);
+    font-size: 1.5rem;
+}
+
+.login-main {
+    display: grid;
+    min-height: calc(100vh - 10rem);
+    place-items: center;
+    padding: 3rem 0;
+}
+
+.login-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(22rem, 0.65fr);
+    overflow: hidden;
+    width: min(100%, 68rem);
+    border: 1px solid var(--app-border);
+    border-radius: 1rem;
+    background: rgba(23, 30, 36, 0.94);
+    box-shadow: 0 30px 75px rgba(0, 0, 0, 0.3);
+}
+
+.login-intro {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 34rem;
+    padding: clamp(2rem, 5vw, 4rem);
+    background:
+        linear-gradient(145deg, rgba(116, 198, 212, 0.1), rgba(220, 131, 53, 0.04)),
+        #11181d;
+}
+
+.login-logo {
+    width: min(100%, 24rem);
+    max-height: 9rem;
+    object-position: left center;
+}
+
+.login-intro h1 {
+    max-width: 11ch;
+    margin: 2.5rem 0 1rem;
+    color: var(--app-text);
+    font-size: clamp(2.2rem, 5vw, 3.7rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+
+.login-intro p {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--app-muted);
+    line-height: 1.65;
+}
+
+.login-form-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 3.5rem);
+}
+
+.login-form-panel h2 {
+    margin-bottom: 0.5rem;
+    color: var(--app-text);
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.login-form-panel > p {
+    margin-bottom: 1.75rem;
+    color: var(--app-muted);
+}
+
+.app-auth-button {
+    display: inline-flex;
+    width: 100%;
+    min-height: 3rem;
+    gap: 0.65rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--app-border-strong);
+    border-radius: 0.45rem;
+    color: var(--app-text);
+    font-weight: 600;
+    text-decoration: none;
+    background: rgba(116, 198, 212, 0.06);
+}
+
+.app-auth-button:hover {
+    color: var(--app-cyan);
+    border-color: var(--app-cyan);
+    background: rgba(116, 198, 212, 0.11);
+}
+
+.login-divider {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    margin: 1.4rem 0;
+    color: var(--app-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.login-divider::before,
+.login-divider::after {
+    height: 1px;
+    flex: 1;
+    background: var(--app-border);
+    content: '';
+}
+
+.app-label {
+    margin-bottom: 0.5rem;
+    color: #dbe2e5;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.app-input {
+    min-height: 3rem;
+    border-color: rgba(155, 169, 178, 0.35);
+    color: var(--app-text) !important;
+    background: #0d1317 !important;
+}
+
+.app-input:focus {
+    border-color: var(--app-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(116, 198, 212, 0.12);
+}
+
+.app-input::placeholder {
+    color: #71808a;
+}
+
+.app-submit {
+    width: 100%;
+    margin-top: 0.8rem;
+    border: 0;
+}
+
+.app-footer {
+    margin: 0 !important;
+    padding: 2rem max(1rem, calc((100vw - 1140px) / 2)) !important;
+    border-top: 1px solid rgba(116, 198, 212, 0.12);
+    color: #71808a;
+    background: transparent !important;
+}
+
+@media (max-width: 991.98px) {
+    .app-navbar .navbar-collapse {
+        padding-top: 0.8rem;
+    }
+
+    .app-navbar .app-nav-sign-in {
+        display: inline-block;
+        margin: 0.4rem 0 0;
+    }
+
+    .landing-logo-panel {
+        min-height: 14rem;
+        margin-top: 2.5rem;
+    }
+
+    .login-layout {
+        grid-template-columns: 1fr;
+        max-width: 36rem;
+    }
+
+    .login-intro {
+        min-height: auto;
+    }
+
+    .login-intro h1 {
+        margin-top: 2rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .app-brand-mark {
+        width: min(11rem, 62vw);
+        height: 2.6rem;
+    }
+
+    .section-heading,
+    .net-card,
+    .net-card-meta {
+        align-items: start;
+    }
+
+    .net-card {
+        grid-template-columns: 1fr;
+    }
+
+    .section-heading {
+        display: grid;
+        gap: 0.6rem;
+    }
+
+    .net-card-meta {
+        justify-content: start;
+    }
+
+    .login-main {
+        padding: 1.25rem 0;
+    }
+
+    .login-layout {
+        border-radius: 0.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-page *,
+    .app-page *::before,
+    .app-page *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

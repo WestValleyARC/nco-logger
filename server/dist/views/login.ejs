@@ -3,63 +3,60 @@
 <!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
-  <title><%= server.appName %> - Login <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-    </head>
-    <body class="bg-dark">
-    <%- include('./partials/navbar', {user: user}) %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title><%= server.appName %> - Sign in <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
 
-    <% if (server.googleAuth) { %>
-    <div class="d-flex container mt-4">
-      <div class="flex-fill d-flex justify-content-center h6">
-        <em class="text-muted">
-          <small>
-            Note: Google sign-In is generally more reliable (spam filters might impact delivery of the email
-            link)
-          </small>
-        </em>
-      </div>
-    </div>
-    <% } %>
+<body class="app-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-    <div class="container-fluid">
-      <div class="row mt-2 mt-sm-5"></div>
-
-      <div class="row justify-content-center">
-        <% if (server.googleAuth) { %>
-        <div class="col-xs-12 col-sm-6 col-md-4 mt-0 d-flex align-items-center justify-content-center">
-          <a href="/auth/google"><button class="gbutton"></button></a>
-        </div>
-        <% } %>
-        <div class="col-xs-4 col-sm-4 col-md-4 mt-2 d-flex align-items-center justify-content-center">
-          <div class="card w-45">
-            <div class="card-body bg-dark">
-              <h2 class="card-title text-light h6">Sign in with email link</h2>
-              <form id="magic-auth">
-                <label class="visually-hidden" for="input_magic-auth-email_addr">Email address</label>
-                <input type="email" class="form-control text-primary" name="magic-auth-email_addr" id="input_magic-auth-email_addr" placeholder="name@example.com" autocomplete="email" required />
-                <button type="submit" class="btn btn-primary w-100 mt-2" id="magic-auth-submit">
-                  Email me a sign-in link
-                </button>
-              </form>
-              <p id="magic-auth-status" class="small mt-2 mb-0" role="status" aria-live="polite"></p>
-              <% if (!server.emailEnabled) { %>
-              <p class="small text-warning mt-2 mb-0">
-                Email delivery isn't set up on this server — after you enter your email, your sign-in
-                link will appear right here.
-              </p>
-              <% } %>
-              <div id="dev-magic-link" class="mt-2"></div>
-            </div>
+  <main class="login-main">
+    <div class="container">
+      <div class="login-layout mx-auto">
+        <section class="login-intro" aria-labelledby="login-welcome">
+          <img class="login-logo" src="/img/wvarc-nco-logger-logo.svg" alt="<%= server.appName %>" />
+          <div>
+            <div class="landing-kicker">Secure operator access</div>
+            <h1 id="login-welcome">Welcome back to the net.</h1>
+            <p>Sign in to start a net, manage your station profile, and keep your operator settings available across sessions.</p>
           </div>
-        </div>
+        </section>
+
+        <section class="login-form-panel" aria-labelledby="sign-in-heading">
+          <h2 id="sign-in-heading">Sign in</h2>
+          <p>Choose the method that works best for you.</p>
+
+          <% if (server.googleAuth) { %>
+          <a href="/auth/google" class="app-auth-button">
+            <i class="bi bi-google" aria-hidden="true"></i>
+            Continue with Google
+          </a>
+          <div class="login-divider">or use email</div>
+          <% } %>
+
+          <form id="magic-auth">
+            <label class="app-label" for="input_magic-auth-email_addr">Email address</label>
+            <input type="email" class="form-control app-input" name="magic-auth-email_addr" id="input_magic-auth-email_addr" placeholder="name@example.com" autocomplete="email" required />
+            <button type="submit" class="app-button app-button-primary app-submit" id="magic-auth-submit">
+              Email me a sign-in link
+            </button>
+          </form>
+          <p id="magic-auth-status" class="small mt-2 mb-0" role="status" aria-live="polite"></p>
+          <% if (!server.emailEnabled) { %>
+          <p class="small text-warning mt-3 mb-0">
+            Email delivery is not configured on this server. Your local sign-in link will appear below.
+          </p>
+          <% } %>
+          <div id="dev-magic-link" class="mt-3"></div>
+        </section>
       </div>
     </div>
+  </main>
 
-    <%- include('./partials/pageBottomFeatures') %>
-
-    <script src="/js/byView/<%= VIEW %>/main.js?v=20260828-email-submit" type="module"></script>
-    </body>
-    <%- include('./partials/footer') %>
+  <%- include('./partials/pageBottomFeatures') %>
+  <script src="/js/byView/<%= VIEW %>/main.js?v=20260828-email-submit" type="module"></script>
+  <%- include('./partials/footer') %>
+</body>
 
 </html>

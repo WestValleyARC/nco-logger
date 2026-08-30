@@ -8,50 +8,86 @@
   <title><%= server.appName %> <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
 </head>
 
-<body class="bg-dark">
+<body class="app-page">
   <%- include('./partials/navbar', { user: user }) %>
 
-  <div class="container-xxl">
-    <div class="row">
-      <div class="col p-md-2 m-md-3">
-        <ul class="nav nav-tabs">
-          <li class="nav-item">
-            <a class="nav-link active bg-secondary" href="#">Live Nets</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/views/intro">How-To Video</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="p-2" id="dashItemsContainer">
-      <!-- Template for dynamically generated net rows -->
-      <div id="netTemplate" class="ms-md-5 me-md-5 mb-2 mb-md-3 row bg-very-dark rounded border-1 border-light border-dotted text-secondary d-none py-4">
-        <div class="row">
-          <div class="col-md-5 ms-md-5 text-light text-nowrap align-items-end">
-            <a id="title-link" href="#" class="text-decoration-none text-muted">
-              <img src="/img/on-air-inactive2.png" id="onairimg" width="62" height="22" />
-              <span class="ms-1 ms-md-2 align-middle" id="title" style="font-size: 1.1em"></span>
-            </a>
-            <span> </span>
-            <span class="text-tertiary align-bottom">
+  <main class="app-main">
+    <section class="landing-hero" aria-labelledby="landing-title">
+      <div class="container">
+        <div class="row align-items-center">
+          <div class="col-lg-7 pe-lg-5">
+            <div class="landing-kicker">West Valley Amateur Radio Club</div>
+            <h1 class="landing-title" id="landing-title">Run the net. <span>Keep it clear.</span></h1>
+            <p class="landing-copy">
+              A focused workspace for amateur radio net control, check-ins, relays, and live participation.
+            </p>
+            <div class="landing-actions">
               <% if (user.isLoggedIn) { %>
-              <i class="bi bi-star favicon pt-2" style="font-size: 1.1em"></i>
+              <a class="app-button app-button-primary" href="/views/mynets">
+                <i class="bi bi-broadcast" aria-hidden="true"></i>
+                Start a net
+              </a>
               <% } else { %>
-              <i class="d-none bi bi-star favicon" style="font-size: 1.1em"></i>
+              <a class="app-button app-button-primary" href="/views/login">
+                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                Sign in to get started
+              </a>
               <% } %>
-            </span>
+              <a class="app-button app-button-secondary" href="#live-nets">
+                View live nets
+                <i class="bi bi-arrow-down" aria-hidden="true"></i>
+              </a>
+            </div>
           </div>
-          <div class="col"></div>
-        </div>
-        <div class="row">
-          <div class="col-5 ms-md-5" id="startTime"></div>
-          <div class="col" id="frequency"></div>
+          <div class="col-lg-5">
+            <div class="landing-logo-panel" aria-hidden="true">
+              <img class="landing-logo" src="/img/wvarc-nco-logger-logo.svg" alt="" />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
+
+    <section class="nets-section" id="live-nets" aria-labelledby="live-nets-title">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <div class="section-eyebrow">On the air</div>
+            <h2 class="section-title" id="live-nets-title">Live nets</h2>
+          </div>
+          <p class="section-note">Select a net to join the live logger.</p>
+        </div>
+
+        <div class="nets-list" id="dashItemsContainer" aria-live="polite" aria-busy="true">
+          <div class="nets-state" id="nets-state">
+            <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
+            Checking for live nets…
+          </div>
+
+          <!-- Template for dynamically generated net rows. IDs are scoped to each cloned row. -->
+          <div id="netTemplate" class="net-card d-none">
+            <div class="net-card-main">
+              <a id="title-link" href="#" class="net-card-link text-muted">
+                <img src="/img/on-air-inactive2.png" id="onairimg" width="62" height="22" alt="Net status" />
+                <span id="title"></span>
+              </a>
+              <span class="text-tertiary">
+                <% if (user.isLoggedIn) { %>
+                <i class="bi bi-star favicon" aria-label="Add to favorites" role="button"></i>
+                <% } else { %>
+                <i class="d-none bi bi-star favicon" aria-hidden="true"></i>
+                <% } %>
+              </span>
+            </div>
+            <div class="net-card-meta">
+              <span id="startTime"></span>
+              <span id="frequency"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <%- include('./partials/pageBottomFeatures') %>
   <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>

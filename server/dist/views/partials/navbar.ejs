@@ -1,8 +1,8 @@
 <!--Begin: navbar.ejs-->
-<nav class="navbar navbar-expand-md bg-quaternary navbar-dark" aria-label="Main Navigation">
+<nav class="navbar navbar-expand-lg navbar-dark app-navbar" aria-label="Main navigation">
   <div class="container">
-    <a href="/views/dashboard" class="navbar-brand hasToolTip" title="Spread the word about <%= server.appName %> 🙏" data-bs-toggle="tooltip" data-bs-placement="right" aria-label="<%= server.appName %> Home – Go to the main listing of all active nets">
-      <img src="/img/HL-main.svg" width="150" alt="<%= server.appName %> Logo, click for list of all active nets" />
+    <a href="/views/dashboard" class="navbar-brand" aria-label="<%= server.appName %> home — view active nets">
+      <img src="/img/wvarc-nco-logger-logo.svg" class="app-brand-mark" alt="<%= server.appName %>" />
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu" aria-controls="navmenu" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
@@ -10,29 +10,35 @@
     <div class="collapse navbar-collapse" id="navmenu">
       <ul class="navbar-nav ms-auto" role="menubar">
         <li class="nav-item" role="none">
-          <a href="/views/dashboard" class="nav-link h6" role="menuitem" tabindex="0">
-            <strong>Attend Net</strong>
+          <a href="/views/dashboard" class="nav-link" role="menuitem" tabindex="0">
+            Live Nets
           </a>
         </li>
         <li class="nav-item" role="none">
-          <a href="/views/mynets" class="nav-link h6" role="menuitem" tabindex="0">
-            <strong>Start Net</strong>
+          <a href="/views/mynets" class="nav-link" role="menuitem" tabindex="0">
+            Start Net
           </a>
         </li>
         <li class="nav-item" role="none">
-          <a href="/views/guide" class="nav-link h6" role="menuitem" tabindex="0">
-            <strong>Guide</strong>
-          </a>
-        </li>
-        <li class="nav-item" role="none">
-          <a href="/views/myaccount" class="nav-link h6" role="menuitem" tabindex="0">
-            <strong>Settings</strong>
+          <a href="/views/guide" class="nav-link" role="menuitem" tabindex="0">
+            Guide
           </a>
         </li>
         <% if (user.isLoggedIn) { %>
         <li class="nav-item" role="none">
-          <a href="/auth/logout" class="nav-link h6" role="menuitem" tabindex="0">
-            <strong>Logout</strong>
+          <a href="/views/myaccount" class="nav-link" role="menuitem" tabindex="0">
+            Settings
+          </a>
+        </li>
+        <li class="nav-item" role="none">
+          <a href="/auth/logout" class="nav-link" role="menuitem" tabindex="0">
+            Log out
+          </a>
+        </li>
+        <% } else { %>
+        <li class="nav-item" role="none">
+          <a href="/views/login" class="nav-link app-nav-sign-in" role="menuitem" tabindex="0">
+            Sign in
           </a>
         </li>
         <% } %>
