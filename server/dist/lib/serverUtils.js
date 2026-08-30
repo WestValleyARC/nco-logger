@@ -14,6 +14,15 @@ const { conf } = require('../lib/configLib');
 const { getFlexOption } = require('../models/flexOptions');
 const { getQrzCache } = require('../models/qrzCache');
 const axios = require('axios');
+const { createHash } = require('crypto');
+const { readFileSync } = require('fs');
+const path = require('path');
+const { version: appVersion } = require('../../../package.json');
+const appShellRevision = createHash('sha256')
+    .update(readFileSync(path.join(__dirname, '../../../client/dist/public/css/app-shell.css')))
+    .digest('hex')
+    .slice(0, 12);
+const appAssetVersion = `${appVersion}-${appShellRevision}`;
 let qrzSessionKey = null;
 let qrzInQuotaWait = 0;
 let qrzReqPrevQuota;
@@ -124,6 +133,8 @@ const addServerInfo = async (req, res, next) => {
                 logLevel,
                 appLogName,
                 appName,
+                appVersion,
+                appAssetVersion,
                 cmdHelpUrl,
                 googleAuth,
                 chatEnabled,
