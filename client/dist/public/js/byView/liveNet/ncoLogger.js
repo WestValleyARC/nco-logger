@@ -1027,8 +1027,9 @@
         return chatMessagePlainText(message);
     }
     function messagePinImageUrl(message) {
-        const image = message?.querySelector?.(".chat-image-link img, .chat-message-content img, img.chat-image");
-        const candidate = String(image?.currentSrc || image?.src || image?.dataset?.imageUrl || "");
+        const image = message?.querySelector?.(".chat-image-link img, .chat-message-content img, img.chat-image, img[src]");
+        const link = image?.closest?.("a[href]") || message?.querySelector?.(".chat-image-link[href]");
+        const candidate = String(image?.currentSrc || image?.src || image?.dataset?.imageUrl || link?.href || "");
         if (!candidate)
             return "";
         try {
