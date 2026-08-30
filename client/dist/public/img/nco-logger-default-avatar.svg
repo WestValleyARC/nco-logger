@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Default radio operator avatar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#183747"/>
+      <stop offset="1" stop-color="#0d1c25"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="64" fill="url(#bg)"/>
+  <circle cx="64" cy="45" r="23" fill="#84b8c1"/>
+  <path d="M25 111c3-25 18-40 39-40s36 15 39 40" fill="#84b8c1"/>
+  <path d="M30 30 15 15m83 15 15-15M21 64H5m118 0h-16" fill="none" stroke="#efbf62" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="59" fill="none" stroke="#74c6d4" stroke-width="5"/>
+</svg>
