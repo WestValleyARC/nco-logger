@@ -3,122 +3,143 @@
 <!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title><%= server.appName %> - Account Settings <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
 
-  <title><%= server.appName %> - Account Settings <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-    </head>
-    <body class="bg-dark">
-    <%- include('./partials/navbar', {user: user}) %>
+<body class="app-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-    <div class="modal fade modal-dialog modal-dialog-scrollable" id="consent_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="staticBackdropLabel">Policy Consent</h5>
-          </div>
-          <div class="modal-body">
-            By clicking "Accept" you:
-
-            <ul>
-              <li>
-                Agree to our website's cookie use
-                <br />
-                as described in our
-                <a href="/views/cookiepolicy">Cookie Policy</a>
-              </li>
-              <li>
-                Agree to our website's
-                <a href="/views/privacypolicy">Privacy Policy</a>
-              </li>
-              <li>
-                Agree to our website's
-                <a href="/views/termsofuse">Terms of Use</a>
-              </li>
-
-              <li>Confirm that you are at least *18 years of age</li>
-            </ul>
-          </div>
-          <div class="modal-footer">
-            <button type="button" id="consent_decline" class="btn btn-secondary">Decline</button>
-            <button type="button" id="consent_accept" class="btn btn-primary">Accept</button>
-          </div>
-        </div>
+  <main class="app-main settings-main">
+    <header class="settings-hero">
+      <div class="container">
+        <div class="landing-kicker">Operator settings</div>
+        <h1 class="workspace-title">Account settings</h1>
+        <p class="workspace-copy">
+          Keep your on-air identity accurate so net control and other operators know who is checking in.
+        </p>
       </div>
-    </div>
+    </header>
 
-    <div class="container">
-      <div class="row">
-        <div class="col p-md-2 m-md-3">
-          <ul class="nav nav-tabs">
-            <li class="nav-item">
-              <a class="nav-link active bg-secondary" href="#">Account</a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
-                Your Privacy
-              </a>
-              <ul class="dropdown-menu bg-secondary">
-                <li>
-                  <a class="dropdown-item" href="/views/dataprivacy">Data Privacy Options</a>
-                </li>
-                <li>
-                  <hr class="dropdown-divider" />
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/views/privacypolicy">Privacy Policy</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/views/cookiepolicy">Cookie Policy</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/views/termsofuse">Terms of Use</a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/views/favorites">Favorites</a>
-            </li>
-          </ul>
-        </div>
-      </div>
+    <div class="container settings-workspace">
+      <div class="settings-grid">
+        <aside class="app-panel settings-sidebar" aria-labelledby="settings-navigation-heading">
+          <img class="settings-club-logo" src="/img/wvarc-club-logo.png" alt="West Valley Amateur Radio Club" />
+          <div>
+            <div class="section-eyebrow">WVARC NCO Logger</div>
+            <h2 id="settings-navigation-heading">Your account</h2>
+            <p>Your profile details appear in live nets and help other operators identify your station.</p>
+          </div>
 
-      <form id="userprofile_form">
-        <div class="row">
-          <div class="col-8 mt-1">
-            <!-- Status Text Set by FormState object -->
-            <span class="text-light ms-md-3">
-              [
-              <span id="userprofile_form_status"></span>
-              ]
+          <nav class="settings-navigation" aria-label="Account sections">
+            <span class="settings-nav-item is-current" aria-current="page">
+              <i class="bi bi-person" aria-hidden="true"></i>
+              Operator profile
             </span>
-          </div>
-        </div>
+            <a class="settings-nav-item" href="/views/favorites">
+              <i class="bi bi-star" aria-hidden="true"></i>
+              Favorite nets
+            </a>
+            <a class="settings-nav-item" href="/views/dataprivacy">
+              <i class="bi bi-shield-check" aria-hidden="true"></i>
+              Data privacy options
+            </a>
+          </nav>
 
-        <div class="row">
-          <div class="col-sm-4 mb-2 mt-1 mt-sm-2 ms-md-3">
-            <input type="text" class="form-control" id="input_display_name" name="display_name" placeholder="Display Name" maxlength="20" minlength="2" required />
+          <div class="settings-policy-links">
+            <a href="/views/privacypolicy">Privacy</a>
+            <a href="/views/cookiepolicy">Cookies</a>
+            <a href="/views/termsofuse">Terms</a>
           </div>
-          <div class="col-sm-4 mb-2 mt-1 mt-sm-2">
-            <input type="text" class="form-control" id="input_callsign" name="callsign" placeholder="Call Sign" maxlength="7" minlength="3" required />
-          </div>
-        </div>
+        </aside>
 
-        <div class="row">
-          <div class="col-sm-4 mb-2 ms-md-3">
-            <input type="text" class="form-control" id="input_location" name="location" maxlength="24" minlength="5" placeholder="Location ..." />
+        <section class="app-panel settings-form-panel" aria-labelledby="profile-heading">
+          <div class="panel-heading">
+            <div>
+              <div class="section-eyebrow">Station identity</div>
+              <h2 id="profile-heading">Operator profile</h2>
+            </div>
+            <span class="form-status" id="userprofile_form_status" role="status" aria-live="polite"></span>
           </div>
-        </div>
+          <p class="panel-help">Fields marked required must be completed before attending or starting a net.</p>
 
-        <input type="hidden" name="userprofile_mode" id="input_userprofile_mode" />
-        <input type="hidden" name="id" id="input_id" />
-        <button class="btn btn-primary btn-md ms-md-3" type="submit">Save</button>
-      </form>
+          <form id="userprofile_form" class="app-form settings-form">
+            <div class="app-form-grid">
+              <div class="app-field">
+                <label for="input_display_name">Display name</label>
+                <input type="text" class="form-control app-input" id="input_display_name" name="display_name" placeholder="Your name" maxlength="20" minlength="2" autocomplete="name" required />
+                <small>Shown beside your callsign during a net.</small>
+              </div>
+
+              <div class="app-field">
+                <label for="input_callsign">Callsign</label>
+                <input type="text" class="form-control app-input settings-callsign" id="input_callsign" name="callsign" placeholder="Example: K7WIL" maxlength="7" minlength="3" autocapitalize="characters" spellcheck="false" required />
+                <small>Your amateur radio callsign is required for net participation.</small>
+              </div>
+            </div>
+
+            <div class="app-field">
+              <label for="input_location">Location</label>
+              <div class="settings-input-with-icon">
+                <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                <input type="text" class="form-control app-input" id="input_location" name="location" maxlength="24" minlength="5" placeholder="City, state" autocomplete="address-level2" />
+              </div>
+              <small>Used to provide useful location context during check-ins.</small>
+            </div>
+
+            <input type="hidden" name="userprofile_mode" id="input_userprofile_mode" />
+            <input type="hidden" name="id" id="input_id" />
+
+            <div class="settings-form-note">
+              <i class="bi bi-info-circle" aria-hidden="true"></i>
+              <span>Changes apply to future activity and may take a moment to appear in an active net.</span>
+            </div>
+
+            <div class="app-form-actions">
+              <a class="app-button app-button-secondary" href="/views/dashboard">Cancel</a>
+              <button class="app-button app-button-primary" type="submit">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                Save settings
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
     </div>
-    <!-- Bootstrap needs to load before my code (below), so I can use bootstrap.Modal -->
-    <%- include('./partials/pageBottomFeatures') %>
+  </main>
 
-    <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
-    </body>
-    <%- include('./partials/footer') %>
+  <div class="modal fade app-modal" id="consent_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="consent-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <div class="section-eyebrow">Before continuing</div>
+            <h2 class="modal-title h5" id="consent-title">Policy consent</h2>
+          </div>
+        </div>
+        <div class="modal-body consent-content">
+          <p>By selecting Accept, you confirm that:</p>
+          <ul>
+            <li>You agree to the <a href="/views/cookiepolicy">Cookie Policy</a>.</li>
+            <li>You agree to the <a href="/views/privacypolicy">Privacy Policy</a>.</li>
+            <li>You agree to the <a href="/views/termsofuse">Terms of Use</a>.</li>
+            <li>You are at least 18 years old.</li>
+          </ul>
+          <p class="consent-warning">Declining will remove the newly created account and sign you out.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="consent_decline" class="app-button app-button-secondary">Decline</button>
+          <button type="button" id="consent_accept" class="app-button app-button-primary">Accept</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap must load before the account module creates the consent modal. -->
+  <%- include('./partials/pageBottomFeatures') %>
+  <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
+  <%- include('./partials/footer') %>
+</body>
 
 </html>

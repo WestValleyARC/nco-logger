@@ -3,224 +3,257 @@
 <!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
-
-  <title><%= server.appName %> - Guide <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title><%= server.appName %> - Guide <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
 </head>
 
-<body class="bg-dark text-light">
-  <%- include('./partials/navbar', {user: user}) %>
+<body class="app-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-  <div class="container">
-    <div class="row">
-      <div class="col p-md-2 m-md-3">
-        <h1 class="h3 mt-3">User Guide</h1>
-        <p class="text-secondary">
+  <main class="app-main guide-main" id="guide-top">
+    <header class="guide-hero">
+      <div class="container">
+        <div class="landing-kicker">Documentation</div>
+        <h1 class="workspace-title">User Guide</h1>
+        <p class="workspace-copy">
           Everything you need to join and run nets on this instance of <%= server.appName %>.
         </p>
+      </div>
+    </header>
 
-        <nav class="mb-4" aria-label="Guide contents">
-          <ul class="list-unstyled small">
-            <li><a href="#getting-started">1. Getting started</a></li>
-            <li><a href="#finding-nets">2. Finding &amp; following nets</a></li>
-            <li><a href="#take-part">3. Taking part in a net</a></li>
-            <li><a href="#run-a-net">4. Running a net (Net Control)</a></li>
-            <li><a href="#create-a-net">5. Creating a net</a></li>
-            <li><a href="#account">6. Your account &amp; privacy</a></li>
-            <li><a href="#reporting">7. Reports &amp; RepTool</a></li>
-            <li><a href="#commands">8. Net-control commands</a></li>
-          </ul>
-        </nav>
+    <div class="container guide-workspace">
+      <div class="guide-grid">
+        <aside class="app-panel guide-contents" aria-labelledby="guide-contents-heading">
+          <div class="section-eyebrow">On this page</div>
+          <h2 id="guide-contents-heading">Guide contents</h2>
+          <nav aria-label="Guide contents">
+            <ol class="guide-contents-list">
+              <li><a href="#getting-started"><span>1.</span>Getting started</a></li>
+              <li><a href="#finding-nets"><span>2.</span>Finding &amp; following nets</a></li>
+              <li><a href="#take-part"><span>3.</span>Taking part in a net</a></li>
+              <li><a href="#run-a-net"><span>4.</span>Running a net (Net Control)</a></li>
+              <li><a href="#create-a-net"><span>5.</span>Creating a net</a></li>
+              <li><a href="#account"><span>6.</span>Your account &amp; privacy</a></li>
+              <li><a href="#reporting"><span>7.</span>Reports &amp; RepTool</a></li>
+              <li><a href="#commands"><span>8.</span>Net-control commands</a></li>
+            </ol>
+          </nav>
+        </aside>
 
-        <!-- 1 -->
-        <h2 id="getting-started" class="h4 mt-4">1. Getting started</h2>
-        <h3 class="h6 mt-3">Sign in</h3>
-        <p>
-          On the <strong>login</strong> page you can <strong>Sign in with email link</strong>: enter your
-          email and submit. <%= server.appName %> emails you a one-time sign-in link — open it to finish.
-        </p>
-        <ul>
-          <li>If this instance has email configured, the field shows <em>"Mail sent"</em> — check your inbox
-            (and spam folder).</li>
-          <li>If email isn't configured (e.g. a local test instance), a
-            <strong>"Click here to finish signing in →"</strong> button appears right on the page — click it.</li>
-          <li>If the operator enabled Google sign-in, a <strong>Sign in with Google</strong> button also appears.</li>
-        </ul>
-        <h3 class="h6 mt-3">Set up your account</h3>
-        <p>
-          The first time you sign in you'll land on your <strong>account</strong> page. Accept the policy
-          consent prompt, then set:
-        </p>
-        <ul>
-          <li><strong>Display Name</strong> (2–20 characters)</li>
-          <li><strong>Call Sign</strong> (your amateur radio callsign) — <em>required to take part in nets</em></li>
-          <li><strong>Location</strong> (optional; the page may offer to fill this in from your browser location)</li>
-        </ul>
-        <p>Click <strong>Save</strong>. You're ready to join and run nets.</p>
+        <article class="app-panel guide-content">
+          <section class="guide-section" id="getting-started" aria-labelledby="getting-started-heading">
+            <div class="guide-section-label">Section 01</div>
+            <h2 id="getting-started-heading">1. Getting started</h2>
+            <h3>Sign in</h3>
+            <p>
+              On the <strong>login</strong> page you can <strong>Sign in with email link</strong>: enter your
+              email and submit. <%= server.appName %> emails you a one-time sign-in link — open it to finish.
+            </p>
+            <ul>
+              <li>If this instance has email configured, the field shows <em>"Mail sent"</em> — check your inbox
+                (and spam folder).</li>
+              <li>If email isn't configured (e.g. a local test instance), a
+                <strong>"Click here to finish signing in →"</strong> button appears right on the page — click it.</li>
+              <li>If the operator enabled Google sign-in, a <strong>Sign in with Google</strong> button also appears.</li>
+            </ul>
+            <h3>Set up your account</h3>
+            <p>
+              The first time you sign in you'll land on your <strong>account</strong> page. Accept the policy
+              consent prompt, then set:
+            </p>
+            <ul>
+              <li><strong>Display Name</strong> (2–20 characters)</li>
+              <li><strong>Call Sign</strong> (your amateur radio callsign) — <em>required to take part in nets</em></li>
+              <li><strong>Location</strong> (optional; the page may offer to fill this in from your browser location)</li>
+            </ul>
+            <p>Click <strong>Save</strong>. You're ready to join and run nets.</p>
+          </section>
 
-        <!-- 2 -->
-        <h2 id="finding-nets" class="h4 mt-4">2. Finding &amp; following nets</h2>
-        <p>
-          The <strong>home page</strong> (Attend Net) lists the nets that are <strong>live right now</strong> —
-          each row shows the net's name, start time, and frequency. Click a net's name to open it.
-        </p>
-        <h3 class="h6 mt-3">Follow a net for email alerts</h3>
-        <p>
-          Click the <strong>star</strong> next to a net (on the home page or on the net page) to
-          <strong>follow</strong> it. When a net you follow goes live, <%= server.appName %> emails you so you
-          can join — provided email delivery is configured on the instance and you've left email notifications
-          on (see <a href="#account">Your account &amp; privacy</a>). If a net you want isn't listed, it just
-          isn't running here yet.
-        </p>
+          <section class="guide-section" id="finding-nets" aria-labelledby="finding-nets-heading">
+            <div class="guide-section-label">Section 02</div>
+            <h2 id="finding-nets-heading">2. Finding &amp; following nets</h2>
+            <p>
+              The <strong>home page</strong> (Attend Net) lists the nets that are <strong>live right now</strong> —
+              each row shows the net's name, start time, and frequency. Click a net's name to open it.
+            </p>
+            <h3>Follow a net for email alerts</h3>
+            <p>
+              Click the <strong>star</strong> next to a net (on the home page or on the net page) to
+              <strong>follow</strong> it. When a net you follow goes live, <%= server.appName %> emails you so you
+              can join — provided email delivery is configured on the instance and you've left email notifications
+              on (see <a href="#account">Your account &amp; privacy</a>). If a net you want isn't listed, it just
+              isn't running here yet.
+            </p>
+          </section>
 
-        <!-- 3 -->
-        <h2 id="take-part" class="h4 mt-4">3. Taking part in a net</h2>
-        <p>
-          A live net shows the <strong>station list</strong> — everyone taking part, in order, with their role
-          and check-in state. Hovering over a participant's <strong>name</strong> shows their location.
-        </p>
-        <p>As a participant you can use the buttons in the control bar at the bottom of the net:</p>
-        <table class="table table-dark table-striped w-auto">
-          <thead><tr><th scope="col">Control</th><th scope="col">What it does</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Hand</strong> button (✋ / 👊)</td><td>Raise or lower your hand</td></tr>
-            <tr><td><strong>Star</strong> button</td><td>Follow / unfollow this net</td></tr>
-            <tr><td><strong>Autoscroll</strong> button</td><td>Keep the station list scrolled to the latest activity</td></tr>
-            <tr><td><strong>Signal report</strong> field (on your row)</td><td>Enter the report you're giving/receiving (unless the net restricts this to Net Control)</td></tr>
-          </tbody>
-        </table>
-        <h3 class="h6 mt-3">Chat</h3>
-        <p>
-          If chat is enabled (by the operator, and in your privacy settings), a <strong>Chat</strong> panel
-          appears alongside the net. You can send messages, emoji, and images, and edit your own messages.
-        </p>
+          <section class="guide-section" id="take-part" aria-labelledby="take-part-heading">
+            <div class="guide-section-label">Section 03</div>
+            <h2 id="take-part-heading">3. Taking part in a net</h2>
+            <p>
+              A live net shows the <strong>station list</strong> — everyone taking part, in order, with their role
+              and check-in state. Hovering over a participant's <strong>name</strong> shows their location.
+            </p>
+            <p>As a participant you can use the buttons in the control bar at the bottom of the net:</p>
+            <div class="guide-table-wrap">
+              <table class="guide-table">
+                <thead><tr><th scope="col">Control</th><th scope="col">What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Hand</strong> button (🖐 / 👊)</td><td>Raise or lower your hand</td></tr>
+                  <tr><td><strong>Star</strong> button</td><td>Follow / unfollow this net</td></tr>
+                  <tr><td><strong>Autoscroll</strong> button</td><td>Keep the station list scrolled to the latest activity</td></tr>
+                  <tr><td><strong>Signal report</strong> field (on your row)</td><td>Enter the report you're giving/receiving (unless the net restricts this to Net Control)</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>Chat</h3>
+            <p>
+              If chat is enabled (by the operator, and in your privacy settings), a <strong>Chat</strong> panel
+              appears alongside the net. You can send messages, emoji, and images, and edit your own messages.
+            </p>
+          </section>
 
-        <!-- 4 -->
-        <h2 id="run-a-net" class="h4 mt-4">4. Running a net (Net Control)</h2>
-        <p>
-          When you start a net you become <strong>Net Control (NCS)</strong>. You can also grant others the
-          <strong>Logger</strong> or <strong>Relay</strong> roles to help. Net Control and Loggers get a
-          control panel for managing the session.
-        </p>
-        <h3 class="h6 mt-3">The control panel</h3>
-        <p>
-          While checked in as NCS or Logger, click the <strong>"… Control Panel"</strong> button on the net
-          page. The panel shows who has their hand up, a built-in command cheat-sheet, and a command input
-          where you type net-control commands (results appear below in green for success, red for errors).
-          The same commands work in chat with a <code>/</code> prefix — e.g. <code>/i W1ABC</code> to check
-          someone in, <code>/?</code> for help.
-        </p>
-        <h3 class="h6 mt-3">Quick mouse actions (NCS / Logger)</h3>
-        <table class="table table-dark table-striped w-auto">
-          <thead><tr><th scope="col">Action</th><th scope="col">Result</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Left-click</strong> a callsign</td><td>Highlight / un-highlight that row</td></tr>
-            <tr><td><strong>Right-click</strong> a callsign</td><td>Check that station out</td></tr>
-            <tr><td><strong>Left-click</strong> a profile picture</td><td>Raise / lower that station's hand</td></tr>
-          </tbody>
-        </table>
-        <h3 class="h6 mt-3">Auto-Check-In &amp; lurkers</h3>
-        <p>
-          If you enabled <strong>Auto-Check-In</strong> on the net, people are checked in automatically as they
-          arrive — no manual check-in needed. For someone who'd rather just listen, use the <code>ui</code>
-          command (undo check-in) to move them back to "lurking" rather than highlighting their row.
-        </p>
-        <h3 class="h6 mt-3">Closing the net</h3>
-        <p>
-          Type <code>close</code> in the control panel. <%= server.appName %> generates a <strong>CSV report</strong>
-          of everyone who checked in (callsign, role, name, location, check-in time, signal report) and emails it
-          to all net owners, then tears the session down.
-        </p>
-        <h3 class="h6 mt-3">Co-owners</h3>
-        <p>
-          Add a co-owner so a net survives if you ever delete your account, and so others can run it. Use the
-          <strong>"Additional Net Owner"</strong> form on the <strong>Start Net</strong> page (enter their email),
-          or the <code>owner &lt;email&gt;</code> command during a live net.
-        </p>
+          <section class="guide-section" id="run-a-net" aria-labelledby="run-a-net-heading">
+            <div class="guide-section-label">Section 04</div>
+            <h2 id="run-a-net-heading">4. Running a net (Net Control)</h2>
+            <p>
+              When you start a net you become <strong>Net Control (NCS)</strong>. You can also grant others the
+              <strong>Logger</strong> or <strong>Relay</strong> roles to help. Net Control and Loggers get a
+              control panel for managing the session.
+            </p>
+            <h3>The control panel</h3>
+            <p>
+              While checked in as NCS or Logger, click the <strong>"… Control Panel"</strong> button on the net
+              page. The panel shows who has their hand up, a built-in command cheat-sheet, and a command input
+              where you type net-control commands (results appear below in green for success, red for errors).
+              The same commands work in chat with a <code>/</code> prefix — e.g. <code>/i W1ABC</code> to check
+              someone in, <code>/?</code> for help.
+            </p>
+            <h3>Quick mouse actions (NCS / Logger)</h3>
+            <div class="guide-table-wrap">
+              <table class="guide-table">
+                <thead><tr><th scope="col">Action</th><th scope="col">Result</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Left-click</strong> a callsign</td><td>Highlight / un-highlight that row</td></tr>
+                  <tr><td><strong>Right-click</strong> a callsign</td><td>Check that station out</td></tr>
+                  <tr><td><strong>Left-click</strong> a profile picture</td><td>Raise / lower that station's hand</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>Auto-Check-In &amp; lurkers</h3>
+            <p>
+              If you enabled <strong>Auto-Check-In</strong> on the net, people are checked in automatically as they
+              arrive — no manual check-in needed. For someone who'd rather just listen, use the <code>ui</code>
+              command (undo check-in) to move them back to "lurking" rather than highlighting their row.
+            </p>
+            <h3>Closing the net</h3>
+            <p>
+              Type <code>close</code> in the control panel. <%= server.appName %> generates a <strong>CSV report</strong>
+              of everyone who checked in (callsign, role, name, location, check-in time, signal report) and emails it
+              to all net owners, then tears the session down.
+            </p>
+            <h3>Co-owners</h3>
+            <p>
+              Add a co-owner so a net survives if you ever delete your account, and so others can run it. Use the
+              <strong>"Additional Net Owner"</strong> form on the <strong>Start Net</strong> page (enter their email),
+              or the <code>owner &lt;email&gt;</code> command during a live net.
+            </p>
+          </section>
 
-        <!-- 5 -->
-        <h2 id="create-a-net" class="h4 mt-4">5. Creating a net</h2>
-        <p>On the <strong>Start Net</strong> page, fill in the <strong>Net Submission</strong> form:</p>
-        <table class="table table-dark table-striped w-auto">
-          <thead><tr><th scope="col">Field</th><th scope="col">Notes</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Net Name</strong></td><td>4–25 characters, unique</td></tr>
-            <tr><td><strong>Frequency</strong></td><td>In MHz; leave blank for reflector-based nets</td></tr>
-            <tr><td><strong>Mode</strong></td><td>LSB, USB, Digital Reflector, AM, CW, FM, RTTY, FSQ, PSK-31, FreeDV, Olivia, Hellschreiber, JS8Call, or CUSTOM</td></tr>
-            <tr><td><strong>Mode Details</strong></td><td>Required for CUSTOM / reflector modes (e.g. a reflector name)</td></tr>
-            <tr><td><strong>Restrict Sig. Reps</strong></td><td>When checked, only Net Control can enter signal reports</td></tr>
-            <tr><td><strong>Auto Check-in</strong></td><td>Monitoring/lurking stations are checked in automatically on arrival</td></tr>
-            <tr><td><strong>Notes</strong></td><td>A short rich-text description (~5 lines)</td></tr>
-          </tbody>
-        </table>
-        <p>
-          Click <strong>Save</strong>. To go live, click the power button next to the net in your list, set an
-          optional <strong>Countdown Minutes</strong> grace period (0–120, to give followers time to join after
-          the start email), and click <strong>Start Net!</strong>
-        </p>
+          <section class="guide-section" id="create-a-net" aria-labelledby="create-a-net-heading">
+            <div class="guide-section-label">Section 05</div>
+            <h2 id="create-a-net-heading">5. Creating a net</h2>
+            <p>On the <strong>Start Net</strong> page, fill in the <strong>Net Submission</strong> form:</p>
+            <div class="guide-table-wrap">
+              <table class="guide-table">
+                <thead><tr><th scope="col">Field</th><th scope="col">Notes</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Net Name</strong></td><td>4–25 characters, unique</td></tr>
+                  <tr><td><strong>Frequency</strong></td><td>In MHz; leave blank for reflector-based nets</td></tr>
+                  <tr><td><strong>Mode</strong></td><td>LSB, USB, Digital Reflector, AM, CW, FM, RTTY, FSQ, PSK-31, FreeDV, Olivia, Hellschreiber, JS8Call, or CUSTOM</td></tr>
+                  <tr><td><strong>Mode Details</strong></td><td>Required for CUSTOM / reflector modes (e.g. a reflector name)</td></tr>
+                  <tr><td><strong>Restrict Sig. Reps</strong></td><td>When checked, only Net Control can enter signal reports</td></tr>
+                  <tr><td><strong>Auto Check-in</strong></td><td>Monitoring/lurking stations are checked in automatically on arrival</td></tr>
+                  <tr><td><strong>Notes</strong></td><td>A short rich-text description (~5 lines)</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              Click <strong>Save</strong>. To go live, click the power button next to the net in your list, set an
+              optional <strong>Countdown Minutes</strong> grace period (0–120, to give followers time to join after
+              the start email), and click <strong>Start Net!</strong>
+            </p>
+          </section>
 
-        <!-- 6 -->
-        <h2 id="account" class="h4 mt-4">6. Your account &amp; privacy</h2>
-        <p>On your <strong>account</strong> page (Settings) you can update your display name, callsign, and location.</p>
-        <h3 class="h6 mt-3">Privacy options</h3>
-        <p>Under <strong>Settings → Your Privacy → Data Privacy Options</strong> you can toggle:</p>
-        <ul>
-          <li><strong>Email Subsystem</strong> — receive (or stop) email alerts when a net you follow starts.</li>
-          <li><strong>Interactive Chat Widget</strong> — turn the in-net chat panel on or off for yourself.</li>
-        </ul>
-        <h3 class="h6 mt-3">Your profile picture</h3>
-        <p>
-          If your picture shows a generic default, it's pulled from
-          <a href="https://gravatar.com/" target="_blank" rel="noopener">Gravatar</a> using your email address —
-          set one there and it appears here. If you signed in with Google, your picture comes from your Google
-          account.
-        </p>
-        <h3 class="h6 mt-3">Changing your email address</h3>
-        <p>
-          A callsign is bound to one account and can't be moved to a new email directly, so to switch emails you
-          delete the account and re-register. <strong>If you own nets, add a co-owner first</strong> (otherwise a
-          net you solely own is removed with your account). Then:
-        </p>
-        <ol>
-          <li>Go to <strong>Settings → Your Privacy → Data Privacy Options</strong>.</li>
-          <li>Click <strong>Delete My Account</strong> (you can <strong>Undelete</strong> before the nightly
-            cleanup runs).</li>
-          <li>After the cleanup, <strong>sign in again</strong> with your new email and set your callsign.</li>
-          <li>Ask co-owners to re-add you, and re-follow your nets.</li>
-        </ol>
+          <section class="guide-section" id="account" aria-labelledby="account-heading">
+            <div class="guide-section-label">Section 06</div>
+            <h2 id="account-heading">6. Your account &amp; privacy</h2>
+            <p>On your <strong>account</strong> page (Settings) you can update your display name, callsign, and location.</p>
+            <h3>Privacy options</h3>
+            <p>Under <strong>Settings → Your Privacy → Data Privacy Options</strong> you can toggle:</p>
+            <ul>
+              <li><strong>Email Subsystem</strong> — receive (or stop) email alerts when a net you follow starts.</li>
+              <li><strong>Interactive Chat Widget</strong> — turn the in-net chat panel on or off for yourself.</li>
+            </ul>
+            <h3>Your profile picture</h3>
+            <p>
+              If your picture shows a generic default, it's pulled from
+              <a href="https://gravatar.com/" target="_blank" rel="noopener">Gravatar</a> using your email address —
+              set one there and it appears here. If you signed in with Google, your picture comes from your Google
+              account.
+            </p>
+            <h3>Changing your email address</h3>
+            <p>
+              A callsign is bound to one account and can't be moved to a new email directly, so to switch emails you
+              delete the account and re-register. <strong>If you own nets, add a co-owner first</strong> (otherwise a
+              net you solely own is removed with your account). Then:
+            </p>
+            <ol>
+              <li>Go to <strong>Settings → Your Privacy → Data Privacy Options</strong>.</li>
+              <li>Click <strong>Delete My Account</strong> (you can <strong>Undelete</strong> before the nightly
+                cleanup runs).</li>
+              <li>After the cleanup, <strong>sign in again</strong> with your new email and set your callsign.</li>
+              <li>Ask co-owners to re-add you, and re-follow your nets.</li>
+            </ol>
+          </section>
 
-        <!-- 7 -->
-        <h2 id="reporting" class="h4 mt-4">7. Reports &amp; RepTool</h2>
-        <p>
-          When a net closes, owners get a <strong>CSV report</strong>. Because the reports are plain CSV, they're
-          easy to combine — analyze them in a spreadsheet or feed a merged file to an LLM for visualizations.
-        </p>
-        <p>
-          <strong>RepTool</strong> is a small companion command-line utility that merges many reports into one.
-          Put the <code>.csv</code> files in a folder and run:
-        </p>
-        <pre class="bg-black text-light p-2 rounded"><code>reptool merge &lt;path-to-directory&gt;</code></pre>
-        <p>
-          It writes a consolidated <code>MERGED.csv</code> — handy for a monthly roll-up across every net you run.
-          RepTool is open source (Windows, Linux, macOS, plus source):
-          <a href="https://github.com/Constant-Digital-Holdings-LLC/reptool" target="_blank" rel="noopener">RepTool repository</a>.
-        </p>
+          <section class="guide-section" id="reporting" aria-labelledby="reporting-heading">
+            <div class="guide-section-label">Section 07</div>
+            <h2 id="reporting-heading">7. Reports &amp; RepTool</h2>
+            <p>
+              When a net closes, owners get a <strong>CSV report</strong>. Because the reports are plain CSV, they're
+              easy to combine — analyze them in a spreadsheet or feed a merged file to an LLM for visualizations.
+            </p>
+            <p>
+              <strong>RepTool</strong> is a small companion command-line utility that merges many reports into one.
+              Put the <code>.csv</code> files in a folder and run:
+            </p>
+            <pre class="guide-code"><code>reptool merge &lt;path-to-directory&gt;</code></pre>
+            <p>
+              It writes a consolidated <code>MERGED.csv</code> — handy for a monthly roll-up across every net you run.
+              RepTool is open source (Windows, Linux, macOS, plus source):
+              <a href="https://github.com/Constant-Digital-Holdings-LLC/reptool" target="_blank" rel="noopener">RepTool repository</a>.
+            </p>
+          </section>
 
-        <!-- 8 -->
-        <h2 id="commands" class="h4 mt-4">8. Net-control commands</h2>
-        <p>
-          Every command Net Control and Loggers can type — check-ins, hand management, roles, relays, frequency,
-          handoff, moderation, and closing the net — is in the
-          <a href="<%= server.cmdHelpUrl %>" target="_blank" rel="noopener">Net Control Commands reference</a>,
-          which includes a printable cheat sheet. The cheat sheet is also built into the control panel while you
-          run a net.
-        </p>
+          <section class="guide-section" id="commands" aria-labelledby="commands-heading">
+            <div class="guide-section-label">Section 08</div>
+            <h2 id="commands-heading">8. Net-control commands</h2>
+            <p>
+              Every command Net Control and Loggers can type — check-ins, hand management, roles, relays, frequency,
+              handoff, moderation, and closing the net — is in the
+              <a href="<%= server.cmdHelpUrl %>" target="_blank" rel="noopener">Net Control Commands reference</a>,
+              which includes a printable cheat sheet. The cheat sheet is also built into the control panel while you
+              run a net.
+            </p>
+          </section>
+        </article>
       </div>
     </div>
-  </div>
+  </main>
 
   <%- include('./partials/pageBottomFeatures') %>
+  <%- include('./partials/footer') %>
 </body>
-<%- include('./partials/footer') %>
 
 </html>

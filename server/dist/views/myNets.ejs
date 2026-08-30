@@ -3,46 +3,82 @@
 <!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
   <!-- prettier-ignore -->
   <%- include('./partials/featureTinyMceJs') %>
+  <title><%= server.appName %> - My Nets <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
 
-  <title><%= server.appName %> - My Nets <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-    </head>
-    <body class="bg-dark">
-    <%- include('./partials/navbar', {user: user}) %>
+<body class="app-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-    <div class="container-lg">
-      <div class="row">
-        <!-- Dispaly:None gets set to netListColumn (below) whenever the netlist has 0 entries.
-           This results in the form moving left on the screen -->
-        <div id="netListColumn" class="col-xs-12 col-sm-5 col-md-5 col-lg-5 ms-sm-3">
-          <p class="text-light h6 mt-sm-4 mb-2">You are owner of:</p>
-          <!-- The netListContainer (below) gets a UL removed and a new UL appended to it every
-             time a new list is created -->
-          <div id="netListContainer"></div>
-        </div>
-
-        <div id="formContainerNetProfile" class="col-sm-5 col-lg-5 col-xs-6 ms-sm-5 me-sm-3">
-          <div>
-            <p class="text-light h6 mt-sm-4">Net Submission:</p>
-            <p>
-              <small class="text-light">
-                <!-- Status Text Set by FormState object -->
-                [
-                <span id="netprofile_form_status"></span>
-                ]
-              </small>
+  <main class="app-main net-manager-main">
+    <header class="net-manager-hero">
+      <div class="container">
+        <div class="row align-items-end g-4">
+          <div class="col-lg-8">
+            <div class="landing-kicker">Net management</div>
+            <h1 class="workspace-title">Your nets</h1>
+            <p class="workspace-copy">
+              Create reusable net profiles, update operating details, assign co-owners, and take a net live.
             </p>
-            <form id="netprofile_form">
-              <div class="form-group mb-sm-2">
-                <input placeholder="Net Name (25 char max)" type="text" class="form-control" id="input_title" name="title" maxlength="25" minlength="4" required />
+          </div>
+          <div class="col-lg-4 text-lg-end">
+            <a class="app-button app-button-primary" href="#net-profile-editor">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i>
+              Create a net profile
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container net-manager-workspace">
+      <div class="net-manager-grid">
+        <aside id="netListColumn" class="app-panel owned-nets-panel" aria-labelledby="owned-nets-heading">
+          <div class="panel-heading">
+            <div>
+              <div class="section-eyebrow">Your stations</div>
+              <h2 id="owned-nets-heading">Owned nets</h2>
+            </div>
+            <span class="panel-count" id="net-count" aria-label="Net count">0</span>
+          </div>
+          <p class="panel-help">Start a net or choose a profile to edit its operating details.</p>
+          <div id="netListContainer" aria-live="polite" aria-busy="true">
+            <div class="panel-loading">
+              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+              Loading net profiles…
+            </div>
+          </div>
+        </aside>
+
+        <section id="formContainerNetProfile" class="app-panel net-editor-panel" aria-labelledby="net-profile-editor">
+          <div class="panel-heading">
+            <div>
+              <div class="section-eyebrow">Profile details</div>
+              <h2 id="net-profile-editor">Create or edit a net</h2>
+            </div>
+            <span class="form-status" id="netprofile_form_status" role="status" aria-live="polite"></span>
+          </div>
+
+          <form id="netprofile_form" class="app-form">
+            <div class="app-field">
+              <label for="input_title">Net name</label>
+              <input placeholder="Example: WVARC Weekly Net" type="text" class="form-control app-input" id="input_title" name="title" maxlength="25" minlength="4" required />
+              <small>4–25 characters</small>
+            </div>
+
+            <div class="app-form-grid">
+              <div class="app-field">
+                <label for="input_frequency">Frequency</label>
+                <input placeholder="MHz" type="text" class="form-control app-input" id="input_frequency" name="frequency" maxlength="20" />
+                <small>Leave blank for reflector-based nets.</small>
               </div>
-              <div class="form-group mb-sm-2">
-                <input placeholder="Freq in MHz (leave blank for Reflector-based nets)" type="text" class="form-control" id="input_frequency" name="frequency" maxlength="20" />
-              </div>
-              <div class="form-group mb-sm-2">
-                <select onchange="modeHandler()" class="form-control" id="input_mode" name="mode">
+
+              <div class="app-field">
+                <label for="input_mode">Mode</label>
+                <select onchange="modeHandler()" class="form-select app-input app-select" id="input_mode" name="mode">
                   <option value="LSB">LSB</option>
                   <option value="USB">USB</option>
                   <option value="Reflector">Digital Reflector</option>
@@ -56,150 +92,128 @@
                   <option value="Olivia">Olivia</option>
                   <option value="Hell">Hellschreiber</option>
                   <option value="JS8Call">JS8Call</option>
-                  <option value="CUSTOM">CUSTOM</option>
+                  <option value="CUSTOM">Custom</option>
                 </select>
               </div>
-
-              <div class="container mb-sm-2">
-                <div class="row justify-content-between gx-5">
-                  <div class="col-6 p-0 m-0 text-center">
-                    <input class="form-check-input bg-tertiary" type="checkbox" id="input_restricted_sigrep" name="restricted_sigrep" />
-
-                    <span class="text-secondary">Restrict Sig. Reps</span>
-
-                    <i data-bs-toggle="tooltip" data-bs-placement="top" title="When checked, only Net Control can issue signal reports" class="text-light bi bi-info-circle"></i>
-                  </div>
-                  <div class="col-6 p-0 m-0 text-center">
-                    <input class="form-check-input bg-tertiary" type="checkbox" id="input_auto_in" name="auto_in" />
-
-                    <span class="text-secondary">Auto Check-in</span>
-
-                    <i data-bs-toggle="tooltip" data-bs-placement="top" title="Upon online arrival, monitoring/lurking stations are automatically checked-in by default" class="text-light bi bi-info-circle"></i>
-                  </div>
-                </div>
-              </div>
-
-              <!-- <div class="form-group mb-sm-2">
-                                <input
-                                    class="form-check-input bg-tertiary"
-                                    type="checkbox"
-                                    id="input_auto_in"
-                                    name="auto_in" />
-
-                                <span class="text-secondary">Auto CheckIn</span>
-
-                                <i
-                                    data-bs-toggle="tooltip"
-                                    data-bs-placement="above"
-                                    title="Stations monitoring/lurking are checked-in automatically"
-                                    class="text-light bi bi-info-circle"></i>
-                            </div> -->
-
-              <div class="form-group mb-sm-2">
-                <input placeholder='Mode Details (i.e. "REF030C")' type="text" class="form-control" id="input_modedetails" name="modedetails" maxlength="15" />
-              </div>
-
-              <div class="form-group mb-sm-2">
-                <span class="text-secondary">Notes Below:</span>
-
-                <i data-bs-toggle="tooltip" data-bs-placement="right" title="Should be no more than ~5 lines of text" class="text-light bi bi-info-circle"></i>
-
-                <textarea class="form-control" name="notes" id="input_notes"></textarea>
-              </div>
-
-              <!-- FormState stores current mode (new vs edit) in this hidden input -->
-              <input type="hidden" name="input_netprofile_mode" id="input_netprofile_mode" />
-
-              <input type="hidden" name="npid_for_netprofile" id="input_npid_for_netprofile" />
-              <!-- Flexbox row below. Auto-margin makes both buttons (submit/reset) justified left and right, respectively  -->
-              <div class="d-flex">
-                <div class="me-auto">
-                  <button type="submit" class="btn btn-sm btn-primary float-left">Save</button>
-                </div>
-                <div>
-                  <button type="reset" class="btn btn-sm btn-secondary float-right" onclick='netProfileFormState.mode = "new" ; modeHandler()'>
-                    Reset/New
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <div id="formContainerNetOwner" class="col-xs-4 col-sm-4 col-lg-4 col-xl-4 ms-sm-5 me-sm-3">
-          <div class="col">
-            <p class="text-light h6 mt-sm-4" id="netowner_form_title">Additional Net Owner</p>
-            <p>
-              <small class="text-light">
-                <!-- Status Text Set by FormState object -->
-                [
-                <span id="netowner_form_status"></span>
-                ]
-              </small>
-            </p>
-            <form id="netowner_form">
-              <div class="form-group mb-sm-2">
-                <input type="email" placeholder="hambuddy@gmail.com" class="form-control" id="input_email" name="email" required />
-              </div>
-              <!-- FormState stores current mode (new vs edit) in this hidden input -->
-              <input type="hidden" name="input_netowner_mode" id="input_netowner_mode" />
-              <input type="hidden" name="npid_for_netowner" id="input_npid_for_netowner" />
-              <!-- Flexbox row below. Auto-margin makes both buttons (submit/reset) justified left and right, respectively  -->
-              <div class="d-flex">
-                <div class="me-auto">
-                  <button type="submit" class="btn btn-sm btn-primary float-left">Save</button>
-                </div>
-                <div>
-                  <button type="reset" class="btn btn-sm btn-secondary float-right" onclick='netOnwerFormState.mode = "new"'>
-                    Reset
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Begin Modals -->
-    <div id="modal-collection">
-      <div class="modal fade" id="modal-template" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="modalNetStart">Net Start</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="netstart_form">
-              <div class="modal-body">
-                <div class="mb-3">
-                  <label for="input_countdown-timer" class="col-form-label">Countdown Minutes:</label>
-                  <input type="number" min="0" max="120" value="0" class="form-control" placeholder="minutes until net is live" name="countdown-timer" required />
-                  <p class="p-2 m-1">
-                    <small id="netstart_form_output">
-                      Upon clicking start net, we will email followers of this net indicating that
-                      it's starting. "Countdown Minutes" is a grace period until the net actually
-                      starts, to give people time to receive the email notificaiton and join.
-                      Possible values are 0-120 minutes.
-                    </small>
-                  </p>
-                </div>
+
+            <div class="app-field">
+              <label for="input_modedetails">Mode details</label>
+              <input placeholder='Example: REF030C or a custom mode name' type="text" class="form-control app-input" id="input_modedetails" name="modedetails" maxlength="15" />
+            </div>
+
+            <fieldset class="app-options-fieldset">
+              <legend>Check-in behavior</legend>
+              <div class="app-option-grid">
+                <label class="app-option-card" for="input_restricted_sigrep">
+                  <input class="form-check-input" type="checkbox" id="input_restricted_sigrep" name="restricted_sigrep" />
+                  <span>
+                    <strong>Restrict signal reports</strong>
+                    <small>Only Net Control can issue signal reports.</small>
+                  </span>
+                </label>
+                <label class="app-option-card" for="input_auto_in">
+                  <input class="form-check-input" type="checkbox" id="input_auto_in" name="auto_in" />
+                  <span>
+                    <strong>Automatic check-in</strong>
+                    <small>Monitoring stations are checked in when they arrive.</small>
+                  </span>
+                </label>
               </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-primary">Start Net!</button>
-              </div>
-            </form>
+            </fieldset>
+
+            <div class="app-field">
+              <label for="input_notes">Welcome notes</label>
+              <small>Keep this to roughly five lines. Attendees see it briefly when the live net opens.</small>
+              <textarea class="form-control" name="notes" id="input_notes"></textarea>
+            </div>
+
+            <input type="hidden" name="input_netprofile_mode" id="input_netprofile_mode" />
+            <input type="hidden" name="npid_for_netprofile" id="input_npid_for_netprofile" />
+
+            <div class="app-form-actions">
+              <button type="reset" class="app-button app-button-secondary" onclick='netProfileFormState.mode = "new"; modeHandler()'>
+                Clear / new profile
+              </button>
+              <button type="submit" class="app-button app-button-primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                Save profile
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section id="formContainerNetOwner" class="app-panel net-editor-panel d-none" aria-labelledby="netowner_form_title">
+          <div class="panel-heading">
+            <div>
+              <div class="section-eyebrow">Shared management</div>
+              <h2 id="netowner_form_title">Additional net owner</h2>
+            </div>
+            <span class="form-status" id="netowner_form_status" role="status" aria-live="polite"></span>
           </div>
+          <p class="panel-help">The added operator must already have an account using this email address.</p>
+
+          <form id="netowner_form" class="app-form">
+            <div class="app-field">
+              <label for="input_email">Co-owner email address</label>
+              <input type="email" placeholder="operator@example.com" class="form-control app-input" id="input_email" name="email" autocomplete="email" required />
+            </div>
+            <input type="hidden" name="input_netowner_mode" id="input_netowner_mode" />
+            <input type="hidden" name="npid_for_netowner" id="input_npid_for_netowner" />
+
+            <div class="app-form-actions">
+              <button type="reset" class="app-button app-button-secondary" onclick="formShow('formContainerNetProfile')">
+                Cancel
+              </button>
+              <button type="submit" class="app-button app-button-primary">
+                <i class="bi bi-person-plus" aria-hidden="true"></i>
+                Add co-owner
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Start-net modal template. A copy is created for each owned net. -->
+  <div id="modal-collection">
+    <div class="modal fade app-modal" id="modal-template" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <div class="section-eyebrow">On the air</div>
+              <h2 class="modal-title h5" id="modalNetStart">Start net</h2>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="netstart_form">
+            <div class="modal-body">
+              <div class="app-field">
+                <label for="input_countdown-timer">Countdown minutes</label>
+                <input id="input_countdown-timer" type="number" min="0" max="120" value="0" class="form-control app-input" placeholder="Minutes until the net is live" name="countdown-timer" required />
+                <small id="netstart_form_output">
+                  Followers will be notified when you start the net. The countdown gives them time to join before it goes live. Choose 0–120 minutes.
+                </small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="app-button app-button-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="app-button app-button-primary">
+                <i class="bi bi-broadcast" aria-hidden="true"></i>
+                Start net
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
-    <!-- End Modals -->
+  </div>
 
-    <%- include('./partials/pageBottomFeatures') %>
-
-    <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
-    </body>
-    <%- include('./partials/footer') %>
+  <%- include('./partials/pageBottomFeatures') %>
+  <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
+  <%- include('./partials/footer') %>
+</body>
 
 </html>
