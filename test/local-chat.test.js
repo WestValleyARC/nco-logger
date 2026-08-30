@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { cleanMessage, toPublicMessage, detectImageType } = require('../server/dist/lib/localChat');
+const {
+    cleanMessage, toPublicMessage, detectImageType, createMessage, editMessage, deleteMessage, uploadImage
+} = require('../server/dist/lib/localChat');
 
 test('chat content is reduced to safe plain text', () => {
     assert.equal(cleanMessage(' <script>alert(1)</script><b>Hello</b> '), 'Hello');
@@ -18,7 +20,37 @@ test('deleted chat never exposes its original content', () => {
     assert.equal(result.text, '');
     assert.equal(result.deleted, true);
     assert.equal(result.canDelete, false);
+    assert.equal(result.canEdit, false);
     assert.equal(result.attachment, null);
+});
+
+test('owned messages expose edit permission and edited state', () => {
+    const userId = '507f1f77bcf86cd799439011';
+    const createdAt = new Date('2026-08-30T12:00:00.000Z');
+    const editedAt = new Date('2026-08-30T12:05:00.000Z');
+    const result = toPublicMessage({
+        _id: { toString: () => '507f1f77bcf86cd799439012' },
+        userProfile: { toString: () => userId },
+        callSign: 'W1ABC', displayName: 'Alex', text: 'updated', createdAt, editedAt, deletedAt: null
+    }, false, userId);
+    assert.equal(result.canEdit, true);
+    assert.equal(result.editedAt, editedAt.toISOString());
+    assert.equal(result.createdAt, createdAt.toISOString());
+});
+
+test('chat mutation handlers require authentication', async () => {
+    const invoke = async (handler, req) => {
+        let status = 200;
+        let payload;
+        const res = { status(code) { status = code; return this; }, json(body) { payload = body; return this; } };
+        await handler(req, res);
+        return { status, payload };
+    };
+    for (const handler of [createMessage, editMessage, deleteMessage, uploadImage]) {
+        const result = await invoke(handler, { params: { id: '507f1f77bcf86cd799439013', messageId: '507f1f77bcf86cd799439012' } });
+        assert.equal(result.status, 401);
+        assert.equal(result.payload.error, 'Authentication required');
+    }
 });
 
 test('image signatures are detected without trusting filenames', () => {

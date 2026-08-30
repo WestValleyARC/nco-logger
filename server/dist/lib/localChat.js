@@ -48,6 +48,7 @@ const toPublicMessage = (message, canModerate = false, currentUserId = '') => {
         editedAt: message.editedAt ? message.editedAt.toISOString() : null,
         deleted,
         mine: message.userProfile.toString() === currentUserId,
+        canEdit: !deleted && message.userProfile.toString() === currentUserId,
         canDelete: !deleted && (canModerate || message.userProfile.toString() === currentUserId)
     };
 };
@@ -120,6 +121,7 @@ const sendError = (res, status, error) => res.status(status).json({ endpointVers
 const listMessages = async (req, res) => {
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+        if (!isObjectId(req.params.id)) return sendError(res, 400, 'Invalid net identifier');
         const access = await getNetAccess({ npid: req.params.id, userId: req.user._id.toString() });
         if (!access) return sendError(res, 403, 'Net access required');
         const ChatMessage = getChatMessage();
@@ -144,6 +146,7 @@ const listMessages = async (req, res) => {
 const createMessage = async (req, res) => {
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+        if (!isObjectId(req.params.id)) return sendError(res, 400, 'Invalid net identifier');
         if (!req.user.callSign) return sendError(res, 403, 'A callsign is required');
         const userId = req.user._id.toString();
         const access = await getNetAccess({ npid: req.params.id, userId });
@@ -172,10 +175,45 @@ const createMessage = async (req, res) => {
     }
 };
 
+const editMessage = async (req, res) => {
+    try {
+        if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+        if (!isObjectId(req.params.id) || !isObjectId(req.params.messageId)) {
+            return sendError(res, 400, 'Invalid chat identifier');
+        }
+        const userId = req.user._id.toString();
+        const access = await getNetAccess({ npid: req.params.id, userId });
+        if (!access) return sendError(res, 403, 'Net access required');
+        const ChatBan = getChatBan();
+        if (await ChatBan.exists({ netProfile: req.params.id, userProfile: userId })) {
+            return sendError(res, 403, 'Chat access has been suspended for this net');
+        }
+        const ChatMessage = getChatMessage();
+        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
+        if (!message) return sendError(res, 404, 'Message not found');
+        if (message.userProfile.toString() !== userId) return sendError(res, 403, 'Not authorized');
+        if (message.deletedAt) return sendError(res, 409, 'Deleted messages cannot be edited');
+        if (!rateLimitAllows(userId)) return sendError(res, 429, 'Please wait before editing more messages');
+        const text = cleanMessage(req.body?.text);
+        if (!text && !message.attachment?.storageName) return sendError(res, 400, 'Message text is required');
+        if (text.length > MAX_MESSAGE_CHARS) {
+            return sendError(res, 400, `Message exceeds ${MAX_MESSAGE_CHARS} characters`);
+        }
+        message.text = text;
+        message.editedAt = new Date();
+        await message.save();
+        return res.json({ endpointVersion: '1.0', message: toPublicMessage(message, access.canModerate, userId) });
+    } catch (err) {
+        logger.error(`Local chat edit failed: ${err.message}`);
+        return sendError(res, 500, 'Message could not be edited');
+    }
+};
+
 const uploadImage = async (req, res) => {
     let storageName;
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+        if (!isObjectId(req.params.id)) return sendError(res, 400, 'Invalid net identifier');
         if (!req.user.callSign) return sendError(res, 403, 'A callsign is required');
         const userId = req.user._id.toString();
         const access = await getNetAccess({ npid: req.params.id, userId });
@@ -225,7 +263,9 @@ const uploadImage = async (req, res) => {
 const serveImage = async (req, res) => {
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
-        if (!isObjectId(req.params.messageId)) return sendError(res, 400, 'Invalid message identifier');
+        if (!isObjectId(req.params.id) || !isObjectId(req.params.messageId)) {
+            return sendError(res, 400, 'Invalid chat identifier');
+        }
         const userId = req.user._id.toString();
         const access = await getNetAccess({ npid: req.params.id, userId });
         if (!access) return sendError(res, 403, 'Net access required');
@@ -257,7 +297,9 @@ const serveImage = async (req, res) => {
 const deleteMessage = async (req, res) => {
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
-        if (!isObjectId(req.params.messageId)) return sendError(res, 400, 'Invalid message identifier');
+        if (!isObjectId(req.params.id) || !isObjectId(req.params.messageId)) {
+            return sendError(res, 400, 'Invalid chat identifier');
+        }
         const userId = req.user._id.toString();
         const access = await getNetAccess({ npid: req.params.id, userId });
         if (!access) return sendError(res, 403, 'Net access required');
@@ -284,6 +326,7 @@ const streamEvents = async (req, res) => {
     let access;
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+        if (!isObjectId(req.params.id)) return sendError(res, 400, 'Invalid net identifier');
         userId = req.user._id.toString();
         access = await getNetAccess({ npid: req.params.id, userId });
         if (!access) return sendError(res, 403, 'Net access required');
@@ -366,6 +409,7 @@ const unbanUserHelper = async ({ npid, userIdToUnban }) => {
 module.exports = {
     listMessages,
     createMessage,
+    editMessage,
     uploadImage,
     serveImage,
     deleteMessage,

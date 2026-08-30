@@ -244,6 +244,8 @@ net. See [chat-system.md](chat-system.md) for response and SSE event formats.
 
 - `GET /api/chat/:id/messages` — ordered local history and the SSE path
 - `POST /api/chat/:id/messages` — send `{ "text": "..." }`
+- `PATCH /api/chat/:id/messages/:messageId` — edit your own text or image caption while preserving
+  the original message ID and creation timestamp
 - `POST /api/chat/:id/images` — upload raw image bytes using the matching image `Content-Type`;
   accepts PNG, JPEG, GIF, and WebP up to the configured limit and returns `201`
 - `GET /api/chat/:id/messages/:messageId/image` — retrieve an attachment; access is private to
