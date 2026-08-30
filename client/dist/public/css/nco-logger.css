@@ -404,10 +404,12 @@ hl-chat.nch-chat-docked .nch-pinned-chat-item { display: grid !important; grid-t
 hl-chat.nch-chat-docked .nch-pinned-chat-open { display: flex !important; min-width: 0 !important; align-items: center !important; gap: 5px !important; padding: 1px 3px !important; color: inherit !important; background: transparent !important; border: 0 !important; text-align: left !important; cursor: pointer !important; }
 hl-chat.nch-chat-docked .nch-pinned-chat-open strong { flex: 0 0 auto !important; color: #efbf62 !important; white-space: nowrap !important; }
 hl-chat.nch-chat-docked .nch-pinned-chat-text { min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+hl-chat.nch-chat-docked .nch-pinned-chat-image { flex: 0 0 auto !important; width: 42px !important; height: 28px !important; object-fit: cover !important; background: #111519 !important; border: 1px solid #4f7880 !important; border-radius: 3px !important; }
 hl-chat.nch-chat-docked .nch-pin-expand-label { flex: 0 0 auto !important; color: #8dd9e4 !important; font-size: calc(9px + var(--nch-font-adjust, 0px)) !important; font-weight: 750 !important; white-space: nowrap !important; }
 hl-chat.nch-chat-docked .nch-pinned-chat-item.is-expanded { align-items: start !important; }
 hl-chat.nch-chat-docked .nch-pinned-chat-item.is-expanded .nch-pinned-chat-open { align-items: flex-start !important; flex-direction: column !important; }
 hl-chat.nch-chat-docked .nch-pinned-chat-item.is-expanded .nch-pinned-chat-text { overflow: visible !important; text-overflow: clip !important; white-space: normal !important; overflow-wrap: anywhere !important; }
+hl-chat.nch-chat-docked .nch-pinned-chat-item.is-expanded .nch-pinned-chat-image { width: auto !important; height: auto !important; max-width: min(100%, 420px) !important; max-height: 220px !important; object-fit: contain !important; }
 hl-chat.nch-chat-docked .nch-unpin-chat,
 hl-chat.nch-chat-docked .nch-pin-chat { display: inline-flex !important; align-items: center !important; justify-content: center !important; color: #dff7fb !important; background: rgba(18, 39, 47, .85) !important; border: 1px solid #74c6d4 !important; border-radius: 50% !important; cursor: pointer !important; }
 hl-chat.nch-chat-docked .nch-unpin-chat { width: 20px !important; height: 20px !important; min-width: 20px !important; min-height: 20px !important; padding: 0 !important; }

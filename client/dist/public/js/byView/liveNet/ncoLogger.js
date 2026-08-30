@@ -1026,6 +1026,19 @@
     function messagePinText(message) {
         return chatMessagePlainText(message);
     }
+    function messagePinImageUrl(message) {
+        const image = message?.querySelector?.(".chat-image-link img, .chat-message-content img, img.chat-image");
+        const candidate = String(image?.currentSrc || image?.src || image?.dataset?.imageUrl || "");
+        if (!candidate)
+            return "";
+        try {
+            const url = new URL(candidate, location.href);
+            return url.origin === location.origin && (url.protocol === "https:" || url.protocol === "http:") ? url.href : "";
+        }
+        catch {
+            return "";
+        }
+    }
     function messagePinId(message) {
         return String(message?.dataset?.messageId || message?.dataset?.id || message?.getAttribute?.("id") || "").trim();
     }
@@ -1051,11 +1064,14 @@
         strip.hidden = pins.length === 0;
         const html = pins.map(pin => {
             const expanded = expandedPinnedChatIds.has(pin.id);
+            const image = pin.imageUrl
+                ? `<img class="nch-pinned-chat-image" src="${escapeHtml(pin.imageUrl)}" alt="Pinned image from ${escapeHtml(pin.author || "chat participant")}" loading="lazy">`
+                : "";
             return `
       <div class="nch-pinned-chat-item${expanded ? " is-expanded" : ""}" data-pin-id="${escapeHtml(pin.id)}">
         <span aria-hidden="true">📌</span>
         <button type="button" class="nch-pinned-chat-open" data-open-pin="${escapeHtml(pin.id)}" aria-expanded="${expanded ? "true" : "false"}" aria-label="${expanded ? "Collapse" : "Show full"} pinned message from ${escapeHtml(pin.author || "Pinned")}" title="${expanded ? "Collapse" : "Show full"} pinned message">
-          <strong>${escapeHtml(pin.author || "Pinned")}</strong><span class="nch-pinned-chat-text">${escapeHtml(pin.text)}</span>
+          <strong>${escapeHtml(pin.author || "Pinned")}</strong>${pin.text ? `<span class="nch-pinned-chat-text">${escapeHtml(pin.text)}</span>` : ""}${image}
           <span class="nch-pin-expand-label">${expanded ? "Collapse ▴" : "Show full ▾"}</span>
         </button>
         <button type="button" class="nch-unpin-chat" data-unpin-chat="${escapeHtml(pin.id)}" aria-label="Unpin chat message">×</button>
@@ -1077,7 +1093,13 @@
         }
         else {
             const author = message.querySelector(".chat-message-author, .chat-message-sender, .chat-sender, .chat-author, .chat-user-name, .chat-username")?.textContent?.trim() || "";
-            pinnedChatMessages.set(id, { id, author, text: messagePinText(message), pinnedAt: Date.now() });
+            pinnedChatMessages.set(id, {
+                id,
+                author,
+                text: messagePinText(message),
+                imageUrl: messagePinImageUrl(message),
+                pinnedAt: Date.now()
+            });
             setStatus("Chat message pinned.", "success");
         }
         renderPinnedChatStrip();
