@@ -5,6 +5,7 @@ const router = express.Router();
 const {
     listMessages,
     createMessage,
+    editMessage,
     uploadImage,
     serveImage,
     deleteMessage,
@@ -16,6 +17,7 @@ const imageBody = express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES });
 
 router.get('/:id/messages', listMessages);
 router.post('/:id/messages', createMessage);
+router.patch('/:id/messages/:messageId', editMessage);
 router.post('/:id/images', imageBody, uploadImage);
 router.get('/:id/messages/:messageId/image', serveImage);
 router.delete('/:id/messages/:messageId', deleteMessage);
