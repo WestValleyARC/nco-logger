@@ -1,0 +1,6 @@
+interface:
+  display_name: "WVARC Git Workflow"
+  short_description: "Enforce protected-main branch and PR rules"
+  default_prompt: "Use $wvarc-git-workflow to prepare commits and open a pull request safely."
+policy:
+  allow_implicit_invocation: true

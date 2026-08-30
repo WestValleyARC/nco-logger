@@ -45,8 +45,8 @@ router.get('/dashboard', (req, res) => {
     res.render('dashboard', populate(req, res, { VIEW: 'dashboard' }));
 });
 
-router.get('/intro', (req, res) => {
-    res.render('intro', populate(req, res, { VIEW: 'intro' }));
+router.get('/intro', (_req, res) => {
+    res.redirect('/views/dashboard');
 });
 
 router.get('/guide', (req, res) => {

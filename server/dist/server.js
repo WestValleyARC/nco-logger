@@ -29,6 +29,7 @@ const presenceLiveNetRoutes = require('./routes/presenceLiveNetRoutes');
 const sseLiveNetRoutes = require('./routes/sseLiveNetRoutes');
 const adminInteractionRoutes = require('./routes/adminInteractionRoutes');
 const stationInteractionRoutes = require('./routes/stationInteractionRoutes');
+const ncoLoggerRoutes = require('./routes/ncoLoggerRoutes');
 const utilRoutes = require('./routes/utilRoutes');
 const viewRoutes = require('./routes/viewRoutes');
 const cookieSession = require('cookie-session');
@@ -161,6 +162,7 @@ app.use('/api/data/livenets', dataLiveNetRoutes);
 //API:Interaction Routes:
 app.use('/api/admin/interactions', adminInteractionRoutes);
 app.use('/api/station/interactions', stationInteractionRoutes);
+app.use('/api/nco-logger', ncoLoggerRoutes);
 //API:Misc Routes:
 app.use('/api/util', utilRoutes);
 // Realtime SSE
@@ -174,12 +176,8 @@ app.get('/api', (_req, res) => res.json(publicEndpoints(app)));
 logger.debug(`\n\nAPI:\n${JSON.stringify(publicEndpoints(app), null, 1)}\n`);
 
 app.use('/auth', authRoutes);
-app.get('/', (req, res) => {
-    if (req.user) {
-        res.redirect('/views/dashboard');
-    } else {
-        res.redirect('/views/intro');
-    }
+app.get('/', (_req, res) => {
+    res.redirect('/views/dashboard');
 });
 app.get('/login', (_req, res) => {
     res.redirect('/views/login');

@@ -108,7 +108,8 @@ Server-rendered EJS pages. Selected routes:
 - `GET /views/myaccount` — Account settings; requires login
 - `GET /views/favorites` — Followed nets; requires login
 - `GET /views/login` — Login/auth page
-- `GET /views/guide`, `/views/intro`, `/views/privacypolicy`, `/views/cookiepolicy`, `/views/termsofuse`, `/views/homepage` — Static informational pages
+- `GET /views/guide`, `/views/privacypolicy`, `/views/cookiepolicy`, `/views/termsofuse`, `/views/homepage` — Static informational pages
+- `GET /views/intro` — Legacy URL that redirects to the live-net dashboard
 
 ### API Discovery
 
@@ -127,7 +128,7 @@ There is no envelope, no `description` field, and no `authentication` field. The
 
 ### Authentication Requirements
 
-- **Unauthenticated endpoints**: API discovery (`GET /api`), some data reads, view pages such as `/views/dashboard`, `/views/intro`, `/views/guide`
+- **Unauthenticated endpoints**: API discovery (`GET /api`), some data reads, and view pages such as `/views/dashboard` and `/views/guide`
 - **Login required**: All state-changing operations; account and privacy pages
 - **Callsign required**: Live net access, net control commands, station events, and local chat
 

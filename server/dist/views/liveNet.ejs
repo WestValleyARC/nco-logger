@@ -3,99 +3,22 @@
 <!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <link href="/css/nco-logger.css?v=1.1.0-alpha.1" rel="stylesheet">
   <title><%= TITLE %><%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
 </head>
 
-<body class="bg-dark text-light">
-  <%- include('./partials/navbar') %>
-  <hl-netcontrol-panel></hl-netcontrol-panel>
-  <div class="container-fluid">
-    <!-- Begin Main Container -->
-    <div class="row mt-1 mt-md-3 d-none d-sm-flex">
-      <!-- Begin Row 1 -->
-      <div class="col-4 d-flex justify-content-start">
-        <div class="d-flex flex-column align-items-center">
-          <hl-netinfo class="w-100"></hl-netinfo>
-          <hl-netstart-progress class="w-100"></hl-netstart-progress>
-        </div>
-      </div>
-      <div class="col-4 d-flex justify-content-center">
-        <!-- Net Notes Accordion-->
-        <hl-netnotes class="w-100 d-none d-md-block"></hl-netnotes>
-      </div>
-      <div class="col-4 d-flex justify-content-end">
-        <!-- Stats Table-->
-        <hl-stats-table class="">
-          <span slot="ncs">
-            <hl-state-list group="netcontrols"></hl-state-list>
-          </span>
-          <span slot="loggers">
-            <hl-state-list group="loggers"></hl-state-list>
-          </span>
-          <span slot="relays">
-            <hl-state-list group="relays"></hl-state-list>
-          </span>
-          <span slot="count">
-            <hl-state-count group="checked-in-ever"></hl-state-count>
-          </span>
-        </hl-stats-table>
-      </div>
-      <!-- End Row 1 -->
-    </div>
+<body class="nco-logger-page">
+  <main id="nco-logger-root" aria-label="WVARC NCO Logger">
+    <div class="nch-page-loading" role="status">Loading NCO Logger…</div>
+  </main>
 
-    <!-- This row has a vertical gutter that disappears at the small breakpoint -->
-    <div class="row mt-2 mt-md-4 gx-5 p-0">
-      <!-- Begin Row 2 -->
-      <!-- These columns will stack vertically until the medium breakpoint is reached -->
-      <!-- The contents of these columns are centered both vertically and horizontally -->
-      <!-- The height of these columns will be 62vh on larger screens and 40vh on smaller screens -->
-      <!-- In a flex container, align-items: start aligns items to the top of the container -->
-      <div class="<%= user.chat ? 'col-md' : 'col-12' %> d-flex justify-content-center align-items-start height-40vh height-md-57vh flex-grow-1 p-0">
-        <div class="w-100">
-          <div class="mb-1 mb-md-2" style="min-height: 30px;">
-            <hl-netcontrol-button></hl-netcontrol-button>
-          </div>
-          <div class="stations-container p-2">
-            <hl-stationtable class="w-100"></hl-stationtable>
-          </div>
-        </div>
-      </div>
-      <% if (user.chat) { %>
-      <!---Begin Local Chatroom --->
-      <%# WHY simple container: ChatClient widget in main.ts renders content. Same pattern as other widgets. %>
-      <%# WHY user.chat check: Server-side toggle from FlexOptions, respects existing chat enable/disable %>
-      <div class="col-md d-flex justify-content-center align-items-start height-40vh height-md-57vh p-0">
-        <div class="w-100 h-100 d-flex flex-column">
-          <div class="mb-1 mb-md-2 d-none d-md-block" style="min-height: 30px;">
-            <span class="chat-label">Chat</span>
-          </div>
-          <div id="local-chat-container" class="flex-grow-1 w-100 chat-container p-2"></div>
-        </div>
-      </div>
-      <!---End Chatroom--->
-      <% } %>
-      <!-- End Row 2 -->
-    </div>
-
-    <!-- This row will always be horizontal, with the column centered -->
-    <div class="row mt-2 mt-md-5">
-      <!-- Begin Row 3 -->
-      <div class="col d-flex justify-content-center">
-        <!-- Button Bar -->
-        <hl-button-bar></hl-button-bar>
-      </div>
-      <!-- End Row 3 -->
-    </div>
-    <!-- End Main Container -->
-  </div>
-
-  <hl-network-status></hl-network-status>
-
+  <% if (user.chat) { %>
+  <div id="local-chat-container" class="nch-chat-staging" aria-label="Net chat"></div>
+  <% } %>
 
   <%- include('./partials/pageBottomFeatures') %>
-  <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
+  <script src="/js/byView/<%= VIEW %>/main.js?v=1.1.0-alpha.1" type="module"></script>
 </body>
-<%- include('./partials/footer') %>
-
 </html>

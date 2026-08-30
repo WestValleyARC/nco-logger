@@ -23,6 +23,7 @@ const netProfileApi = new HttpClient('netprofile', '/api/data/netprofiles');
 //Once we moved to es6 module imports, functions defined in modules are in their own namespace. In order to be accessible by
 //things like onClick(), the functions needed to be exposed to 'window':
 window.netProfileFormState = netProfileFormState;
+window.netOwnerFormState = netOwnerFormState;
 //That said, I really should do away with the onClick() stuff and write event handlers for this
 //See: https://stackoverflow.com/questions/44590393/es6-modules-undefined-onclick-function-after-import
 //
@@ -38,23 +39,14 @@ window.netProfileFormState = netProfileFormState;
 
 window.formShow = function (id) {
     const netProfileDivElem = document.getElementById('formContainerNetProfile');
-    const netProfilecurrentClass = netProfileDivElem.getAttribute('class');
-
     const netOwnerDivElem = document.getElementById('formContainerNetOwner');
-    const netOwnerCurrentClass = netOwnerDivElem.getAttribute('class');
 
     if (id === 'formContainerNetProfile') {
-        netProfileDivElem.setAttribute('class', netProfilecurrentClass.replace(' d-none', ''));
-
-        if (!netOwnerCurrentClass.includes('d-none')) {
-            netOwnerDivElem.setAttribute('class', netOwnerCurrentClass + ' d-none');
-        }
+        netProfileDivElem.classList.remove('d-none');
+        netOwnerDivElem.classList.add('d-none');
     } else if (id === 'formContainerNetOwner') {
-        netOwnerDivElem.setAttribute('class', netOwnerCurrentClass.replace(' d-none', ''));
-
-        if (!netProfilecurrentClass.includes('d-none')) {
-            netProfileDivElem.setAttribute('class', netProfilecurrentClass + ' d-none');
-        }
+        netOwnerDivElem.classList.remove('d-none');
+        netProfileDivElem.classList.add('d-none');
     } else {
         console.error('formShow function received unknown form id');
     }
@@ -77,158 +69,193 @@ window.modeHandler = function () {
 };
 
 function refreshNetList() {
-    //clear prior UL 'netList'
-    !!document.getElementById('netList') && document.getElementById('netList').remove();
-
-    // netListContainerElem is the parent of netListUlElem,
-    // we create the UL each time and append to the div
-    // container
-
     const netListContainerElem = document.getElementById('netListContainer');
+    const netCountElem = document.getElementById('net-count');
+    const modalCollectionElem = document.getElementById('modal-collection');
+    const modalTemplateElem = document.getElementById('modal-template');
 
-    // get all netprofiles from server:
+    netListContainerElem.setAttribute('aria-busy', 'true');
+    netListContainerElem.replaceChildren();
+    document.querySelectorAll('.net-start-modal').forEach(modal => modal.remove());
+
     netProfileApi
         .index()
         .then(netProfiles => {
             console.table(netProfiles.data);
 
-            // create our UL from current netprofiles data
-            const netListUlElem = document.createElement('ul');
-            netListUlElem.setAttribute('id', 'netList');
-            netListUlElem.setAttribute('class', 'list-unstyled');
-
-            const netListColumnElem = document.getElementById('netListColumn');
-            const currentClass = netListColumnElem.getAttribute('class');
-            // use bootstrap to set display:none when there are no
-            // items in the list (allowing form to move left)
-
             if (!Array.isArray(netProfiles.data.netlist)) throw new Error('expected netlist to be an array');
 
-            if (netProfiles.data.netlist.length < 1) {
-                netListColumnElem.setAttribute('class', currentClass + ' d-none');
+            const ownedNets = netProfiles.data.netlist.filter(Boolean);
+            netCountElem.textContent = ownedNets.length;
+            netCountElem.setAttribute('aria-label', `${ownedNets.length} owned net${ownedNets.length === 1 ? '' : 's'}`);
+            netListContainerElem.setAttribute('aria-busy', 'false');
+
+            if (ownedNets.length === 0) {
+                const emptyStateElem = document.createElement('div');
+                emptyStateElem.setAttribute('class', 'owned-nets-empty');
+                emptyStateElem.innerHTML =
+                    '<i class="bi bi-broadcast" aria-hidden="true"></i><strong>No net profiles yet</strong><span>Create your first profile using the form.</span>';
+                netListContainerElem.appendChild(emptyStateElem);
+                return;
             }
-            if (netProfiles.data.netlist.length > 0) {
-                netListColumnElem.setAttribute('class', currentClass.replace(' d-none', ''));
-            }
 
-            netProfiles.data.netlist.forEach(netProfile => {
-                //For each net profile, construct a list item and create
-                // a net start modal
+            const netListUlElem = document.createElement('ul');
+            netListUlElem.setAttribute('id', 'netList');
+            netListUlElem.setAttribute('class', 'owned-net-list');
 
-                // BEGIN MODALS:
-                const modalCollectionElem = document.getElementById('modal-collection');
-                const modalTemplateElem = document.getElementById('modal-template');
-                const modalClone = modalTemplateElem.cloneNode(true);
-                modalClone.id = `modal-${netProfile._id}`;
-                // Clone master modal template:
-                const modalLabelElem = modalClone.querySelector('#modalNetStart');
-                modalLabelElem.innerText = `${netProfile.title}: going LIVE!`;
-
-                //Modal "Net Start" Form
-                const netStartFormElem = modalClone.querySelector('#netstart_form');
-                const netStartFormOutputElem = modalClone.querySelector('#netstart_form_output');
-                netStartFormElem.setAttribute('id', `netstart_form-${netProfile._id}`);
-
-                netStartFormElem.addEventListener('submit', e => {
-                    e.preventDefault();
-
-                    const formDataToSend = new FormData(netStartFormElem);
-                    const liveNetApi = new HttpClient('livenet', `/api/data/livenets/${netProfile._id}`);
-
-                    const dataPayload = {
-                        countdownTimer: formDataToSend.get('countdown-timer')
-                    };
-
-                    liveNetApi
-                        .create(dataPayload)
-                        .then(req => {
-                            console.debug('livenet controller response', req);
-
-                            window.location.replace(req.data.url);
-                        })
-                        .catch(error => {
-                            if (error.response.data.errorMessage) {
-                                netStartFormOutputElem.setAttribute('class', 'text-danger');
-                                netStartFormOutputElem.innerText = error.response.data.errorMessage;
-                                console.error(error.response.data.errorMessage);
-                            } else {
-                                netStartFormOutputElem.setAttribute('class', 'text-danger');
-                                netStartFormOutputElem.innerText = error;
-                                console.error(error);
-                            }
-                        });
-                });
-
-                modalCollectionElem.appendChild(modalClone);
-
-                // END MODALS
-
-                // BEGIN LIST ITEM CONSTRUCTION
+            ownedNets.forEach(netProfile => {
                 const liElem = document.createElement('li');
+                liElem.setAttribute('class', `owned-net-card${netProfile.liveNet ? ' is-live' : ''}`);
+
+                const cardHeadingElem = document.createElement('div');
+                cardHeadingElem.setAttribute('class', 'owned-net-heading');
+
+                const titleGroupElem = document.createElement('div');
+                titleGroupElem.setAttribute('class', 'owned-net-title-group');
+
+                const titleElem = document.createElement('strong');
+                titleElem.setAttribute('class', 'owned-net-title');
+                titleElem.textContent = netProfile.title;
+
+                const statusElem = document.createElement('span');
+                statusElem.setAttribute('class', `owned-net-status${netProfile.liveNet ? ' is-live' : ''}`);
+                statusElem.textContent = netProfile.liveNet ? 'Live now' : 'Ready';
+
+                titleGroupElem.append(titleElem, statusElem);
+                cardHeadingElem.appendChild(titleGroupElem);
+
                 const buttonStartElem = document.createElement('button');
-                const aEditElem = document.createElement('a');
-                const aDeleteElem = document.createElement('a');
-                const aNetOwnerElem = document.createElement('a');
+                buttonStartElem.type = 'button';
+                buttonStartElem.setAttribute(
+                    'class',
+                    `owned-net-start${netProfile.liveNet ? ' is-live' : ''}`
+                );
 
                 if (!netProfile.liveNet) {
-                    buttonStartElem.setAttribute('class', 'btn btn-small btn-outline-secondary');
                     buttonStartElem.setAttribute('data-bs-toggle', 'modal');
                     buttonStartElem.setAttribute('data-bs-target', `#modal-${netProfile._id}`);
+                    buttonStartElem.setAttribute('aria-label', `Start ${netProfile.title}`);
                 } else {
-                    buttonStartElem.setAttribute('class', 'btn btn-small btn-outline-danger');
-                    buttonStartElem.setAttribute('onclick', `location.href='/views/livenet/${netProfile._id}';`);
+                    buttonStartElem.setAttribute('aria-label', `Open live net ${netProfile.title}`);
+                    buttonStartElem.addEventListener('click', () => {
+                        window.location.href = `/views/livenet/${netProfile._id}`;
+                    });
                 }
 
                 const iconElem = document.createElement('i');
-                iconElem.setAttribute('class', 'bi bi-power');
+                iconElem.setAttribute('class', `bi ${netProfile.liveNet ? 'bi-box-arrow-up-right' : 'bi-broadcast'}`);
+                iconElem.setAttribute('aria-hidden', 'true');
                 buttonStartElem.appendChild(iconElem);
-                liElem.appendChild(buttonStartElem);
-                liElem.append(' ');
-                liElem.append(netProfile.title);
-                liElem.setAttribute('class', 'text-light');
+                cardHeadingElem.appendChild(buttonStartElem);
 
-                const smallElem = document.createElement('small');
-                smallElem.setAttribute('class', 'text-muted');
-                liElem.appendChild(smallElem);
-                smallElem.append(' (');
-                aEditElem.setAttribute('href', '#');
-                aEditElem.setAttribute(
-                    'onclick',
-                    `netProfileEditByID('${netProfile._id}'); formShow('formContainerNetProfile'); return false;`
+                const operatingDetailsElem = document.createElement('div');
+                operatingDetailsElem.setAttribute('class', 'owned-net-details');
+                const frequency = netProfile.frequency && parseInt(netProfile.frequency) !== 0 ? netProfile.frequency : '';
+                const mode = netProfile.mode === 'Reflector' || netProfile.mode === 'CUSTOM'
+                    ? netProfile.modeDetails
+                    : netProfile.mode;
+                operatingDetailsElem.textContent = [frequency, mode].filter(Boolean).join(' · ') || 'Operating details not set';
+
+                const actionsElem = document.createElement('div');
+                actionsElem.setAttribute('class', 'owned-net-actions');
+
+                const makeActionButton = ({ label, icon, action, danger = false }) => {
+                    const buttonElem = document.createElement('button');
+                    buttonElem.type = 'button';
+                    buttonElem.setAttribute('class', `owned-net-action${danger ? ' is-danger' : ''}`);
+                    buttonElem.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i><span>${label}</span>`;
+                    buttonElem.addEventListener('click', action);
+                    return buttonElem;
+                };
+
+                actionsElem.appendChild(
+                    makeActionButton({
+                        label: 'Edit',
+                        icon: 'bi-pencil',
+                        action: () => {
+                            netProfileEditByID(netProfile._id);
+                            formShow('formContainerNetProfile');
+                        }
+                    })
                 );
-                aEditElem.innerText = 'edit';
-                smallElem.appendChild(aEditElem);
-                smallElem.append(') ');
 
                 if (!netProfile.liveNet) {
-                    smallElem.append(' (');
-                    aDeleteElem.setAttribute('href', '#');
-                    aDeleteElem.setAttribute(
-                        'onclick',
-                        `netProfileDelByID('${netProfile._id}'); formShow('formContainerNetProfile'); return false;`
+                    actionsElem.appendChild(
+                        makeActionButton({
+                            label: 'Delete',
+                            icon: 'bi-trash',
+                            danger: true,
+                            action: () => {
+                                netProfileDelByID(netProfile._id);
+                                formShow('formContainerNetProfile');
+                            }
+                        })
                     );
-                    aDeleteElem.innerText = 'delete';
-                    smallElem.appendChild(aDeleteElem);
-                    smallElem.append(') ');
                 }
 
-                smallElem.append(' (');
-                aNetOwnerElem.setAttribute('href', '#');
-                aNetOwnerElem.setAttribute(
-                    'onclick',
-                    `netOwnerFormPrep('${netProfile._id}', "${netProfile.title}"); formShow('formContainerNetOwner'); return false;`
+                actionsElem.appendChild(
+                    makeActionButton({
+                        label: 'Co-owner',
+                        icon: 'bi-person-plus',
+                        action: () => {
+                            netOwnerFormPrep(netProfile._id, netProfile.title);
+                            formShow('formContainerNetOwner');
+                        }
+                    })
                 );
-                aNetOwnerElem.innerText = '+co-owner';
-                smallElem.appendChild(aNetOwnerElem);
-                smallElem.append(') ');
 
-                // END LIST ITEM CONSTRUCTION
-                netListUlElem.append(liElem);
-                // add newly formed UL to container div
-                netListContainerElem.append(netListUlElem);
+                liElem.append(cardHeadingElem, operatingDetailsElem, actionsElem);
+                netListUlElem.appendChild(liElem);
+
+                if (!netProfile.liveNet) {
+                    const modalClone = modalTemplateElem.cloneNode(true);
+                    modalClone.id = `modal-${netProfile._id}`;
+                    modalClone.classList.add('net-start-modal');
+                    const modalLabelElem = modalClone.querySelector('#modalNetStart');
+                    modalLabelElem.id = `modalNetStart-${netProfile._id}`;
+                    modalLabelElem.innerText = `Start ${netProfile.title}`;
+                    modalClone.setAttribute('aria-labelledby', modalLabelElem.id);
+
+                    const countdownInputElem = modalClone.querySelector('#input_countdown-timer');
+                    const countdownLabelElem = modalClone.querySelector('label[for="input_countdown-timer"]');
+                    countdownInputElem.id = `input_countdown-timer-${netProfile._id}`;
+                    countdownLabelElem.htmlFor = countdownInputElem.id;
+
+                    const netStartFormElem = modalClone.querySelector('#netstart_form');
+                    const netStartFormOutputElem = modalClone.querySelector('#netstart_form_output');
+                    netStartFormElem.id = `netstart_form-${netProfile._id}`;
+                    netStartFormOutputElem.id = `netstart_form_output-${netProfile._id}`;
+
+                    netStartFormElem.addEventListener('submit', e => {
+                        e.preventDefault();
+
+                        const formDataToSend = new FormData(netStartFormElem);
+                        const liveNetApi = new HttpClient('livenet', `/api/data/livenets/${netProfile._id}`);
+
+                        liveNetApi
+                            .create({ countdownTimer: formDataToSend.get('countdown-timer') })
+                            .then(req => {
+                                console.debug('livenet controller response', req);
+                                window.location.replace(req.data.url);
+                            })
+                            .catch(error => {
+                                const errorMessage = error.response?.data?.errorMessage || String(error);
+                                netStartFormOutputElem.setAttribute('class', 'text-danger');
+                                netStartFormOutputElem.innerText = errorMessage;
+                                console.error(errorMessage);
+                            });
+                    });
+
+                    modalCollectionElem.appendChild(modalClone);
+                }
             });
+
+            netListContainerElem.appendChild(netListUlElem);
         })
         .catch(err => {
+            netListContainerElem.setAttribute('aria-busy', 'false');
+            netListContainerElem.innerHTML =
+                '<div class="owned-nets-empty is-error"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><strong>Could not load net profiles</strong><span>Please refresh and try again.</span></div>';
             console.error(err);
         });
 }

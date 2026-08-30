@@ -44,6 +44,10 @@ const liveNetSchema = new Schema(
             type: Boolean,
             default: false
         },
+        loggerState: {
+            type: Schema.Types.Mixed,
+            default: null
+        },
         url: {
             type: String,
             required: [true, 'controller should provide url'],
