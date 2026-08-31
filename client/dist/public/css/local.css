@@ -243,9 +243,9 @@ body {
 }
 
 .chat-pinned-image {
-    width: auto;
-    max-width: min(8rem, 100%);
-    max-height: 3rem;
+    width: 100%;
+    max-width: 100%;
+    max-height: 10rem;
     grid-column: 1 / -1;
     object-fit: contain;
     border-radius: 0.3rem;
