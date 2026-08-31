@@ -561,7 +561,7 @@ body {
     text-shadow: 0 0 0.3rem rgba(226, 143, 255, 0.55);
 }
 .chat-action-private .chat-message-action-icon {
-    transform: translateY(-0.08em);
+    transform: translateY(-0.25em);
 }
 .chat-action-edit { color: #ffad5a; }
 .chat-action-delete { color: #ff6b7a; }
