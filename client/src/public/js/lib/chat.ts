@@ -763,6 +763,7 @@ export class ChatWidget extends HTMLElement {
             && !message.canPin && !message.canBan) return;
         const controls = document.createElement('div');
         controls.className = 'chat-message-actions';
+        controls.classList.toggle('has-pin-action', message.canPin);
         const addAction = (icon: string, label: string, className: string, action: () => void): HTMLButtonElement => {
             const button = document.createElement('button');
             button.type = 'button';

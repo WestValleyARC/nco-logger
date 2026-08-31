@@ -419,7 +419,6 @@ hl-chat.nch-chat-docked .nch-pin-chat { position: absolute !important; z-index: 
 hl-chat.nch-chat-docked .chat-message:hover > .nch-pin-chat,
 hl-chat.nch-chat-docked [data-message-id]:hover > .nch-pin-chat,
 hl-chat.nch-chat-docked .nch-pin-chat:focus-visible { opacity: 1 !important; }
-hl-chat.nch-chat-docked .nch-native-pin-control { display: none !important; }
 hl-chat.nch-helper-slash-owned :is(.chat-slash-dropdown, .command-tip) { display: none !important; }
 hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send { display: inline-flex !important; width: auto !important; min-width: 38px !important; min-height: 29px !important; align-items: center !important; justify-content: center !important; padding: 2px 6px !important; color: #fff !important; background: #365f68 !important; border: 1px solid #83d3df !important; border-radius: 14px !important; font-size: var(--nch-chat-ui-font-size) !important; font-weight: 700; }
 hl-chat.nch-chat-docked :is(.chat-message-author, .chat-message-sender, .chat-sender, .chat-author, .chat-user-name, .chat-username, .chat-callsign, .chat-call-sign) { color: #efbf62 !important; font-size: var(--nch-chat-font-size) !important; line-height: 1.18 !important; }

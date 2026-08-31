@@ -119,12 +119,17 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(css, /@media \(hover: none\)[\s\S]*\.chat-message-actions/);
     assert.match(css, /\.chat-message-pinned\s*\{/);
     assert.match(css, /\.chat-reaction-chip\.is-mine\s*\{/);
+    assert.match(source, /classList\.toggle\('has-pin-action', message\.canPin\)/);
+    assert.match(css, /\.chat-message-actions\.has-pin-action\s*\{[^}]*opacity:\s*1[^}]*pointer-events:\s*auto/s);
+    assert.match(css, /has-pin-action > \.chat-message-action:not\(\.chat-action-pin\)\s*\{[^}]*display:\s*none/s);
 });
 
 test('native server-backed pins are not hidden or replaced by NCO helper normalization', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    const css = read('client/dist/public/css/nco-logger.css');
     const normalize = source.slice(source.indexOf('function normalizeChatDisplay()'), source.indexOf('function safeNormalizeChatDisplay()'));
     assert.doesNotMatch(normalize, /nch-native-pin-control/);
     assert.doesNotMatch(normalize, /button\.className = "nch-pin-chat"/);
     assert.doesNotMatch(normalize, /renderPinnedChatStrip/);
+    assert.doesNotMatch(css, /\.nch-native-pin-control\s*\{[^}]*display:\s*none/s);
 });
