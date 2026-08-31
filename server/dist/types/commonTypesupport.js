@@ -180,6 +180,7 @@ exports.isFlexOptions = createTypeGuard({
     requestRateFactor: value => typeof value === 'number',
     qrzDataReqTimeoutMs: value => typeof value === 'number',
     qrzSessionReqTimeoutMs: value => typeof value === 'number',
+    qrzCheckInWaitMs: value => typeof value === 'number',
     qrzReqQuota: value => typeof value === 'number',
     maxFollowersPerNet: value => typeof value === 'number',
     maxFollowingPerUser: value => typeof value === 'number',

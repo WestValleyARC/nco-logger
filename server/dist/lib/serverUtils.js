@@ -35,6 +35,8 @@ const appAssetVersion = `${appVersion}-${appAssetRevision}`;
 let qrzSessionKey = null;
 let qrzInQuotaWait = 0;
 let qrzReqPrevQuota;
+let qrzAuthenticationPromise = null;
+const qrzLookupPromises = new Map();
 const REQ_LOGIN = 0x0001;
 const REQ_CALLSIGN = 0x0010;
 const REQ_NETOWNER = 0x0100;
@@ -256,13 +258,20 @@ const resolveLocation = async ({ lat, lon }) => {
     }
 };
 
-const qrzLookup = async (callSign, flexOpts, db = mongoose.connection) => {
+const qrzResponse = (result, outcome, atQuota = false) => ({ result, atQuota, outcome });
+const qrzFailureOutcome = err => {
+    if (err?.code === 'QRZ_MALFORMED') return 'malformed-response';
+    if (['ECONNABORTED', 'ETIMEDOUT'].includes(err?.code) || /timeout/i.test(String(err?.message || ''))) return 'timeout';
+    return 'network-failure';
+};
+
+const qrzLookupInternal = async (callSign, flexOpts, db) => {
     callSign = String(callSign || '').toUpperCase();
     if (!conf.qrz_username || !conf.qrz_password) {
         logger.debug(`qrzLookup(${callSign}): disabled (credentials not configured)`);
-        return { result: null, atQuota: false };
+        return qrzResponse(null, 'disabled');
     }
-    if (!wellFormedCall(callSign)) return { result: null, atQuota: false };
+    if (!wellFormedCall(callSign)) return qrzResponse(null, 'invalid-callsign');
 
     const { qrzSessionReqTimeoutMs = 5000, qrzDataReqTimeoutMs = 5000, qrzReqQuota = 100 } = flexOpts || {};
     if (qrzReqPrevQuota && qrzReqPrevQuota !== qrzReqQuota) qrzInQuotaWait = 0;
@@ -274,7 +283,7 @@ const qrzLookup = async (callSign, flexOpts, db = mongoose.connection) => {
         if (cached && Date.now() - new Date(cached.updatedAt).getTime() < ttlMs) {
             logger.info(`qrzLookup(${callSign}): cache hit`);
             const result = cached.toObject();
-            return { result: { callSign: result.callSign, displayName: result.displayName, location: result.location, lat: result.geo?.coordinates?.[1], lon: result.geo?.coordinates?.[0] }, atQuota: false };
+            return qrzResponse({ callSign: result.callSign, displayName: result.displayName, location: result.location, lat: result.geo?.coordinates?.[1], lon: result.geo?.coordinates?.[0] }, 'success-cache');
         }
         if (cached) await cached.deleteOne();
     } catch (err) {
@@ -282,7 +291,7 @@ const qrzLookup = async (callSign, flexOpts, db = mongoose.connection) => {
     }
     if (qrzInQuotaWait) {
         qrzInQuotaWait--;
-        return { result: null, atQuota: true };
+        return qrzResponse(null, 'quota', true);
     }
 
     const parser = new XMLParser();
@@ -292,41 +301,61 @@ const qrzLookup = async (callSign, flexOpts, db = mongoose.connection) => {
     const request = async (params, timeout) => {
         const url = new URL(endpoint);
         url.search = new URLSearchParams(params).toString();
-        return parser.parse((await axios.get(url.toString(), { timeout })).data).QRZDatabase || {};
+        const parsed = parser.parse((await axios.get(url.toString(), { timeout })).data)?.QRZDatabase;
+        if (!parsed || typeof parsed !== 'object') {
+            const error = new Error('Malformed QRZ response');
+            error.code = 'QRZ_MALFORMED';
+            throw error;
+        }
+        return parsed;
     };
     const authenticate = async refresh => {
         if (qrzSessionKey && !refresh) return qrzSessionKey;
-        try {
-            const { Session: session = {} } = await request({
-                username: conf.qrz_username,
-                password: conf.qrz_password,
-                agent: conf.applogname
-            }, qrzSessionReqTimeoutMs);
-            if (session.Error || !session.Key) {
-                qrzSessionKey = null;
-                logger.warn('QRZ authentication rejected');
-                return null;
-            }
-            const count = Number(session.Count);
-            if (Number.isFinite(count) && count >= qrzReqQuota) {
-                qrzInQuotaWait = 5;
-                qrzSessionKey = null;
-                logger.warn('QRZ request quota reached');
-                return null;
-            }
-            qrzSessionKey = String(session.Key);
-            logger.info('QRZ session established');
-            return qrzSessionKey;
-        } catch (err) {
-            qrzSessionKey = null;
-            logger.warn(`QRZ authentication unavailable: ${err.message}`);
-            return null;
+        if (!qrzAuthenticationPromise) {
+            qrzAuthenticationPromise = (async () => {
+                try {
+                    const { Session: session = {} } = await request({
+                        username: conf.qrz_username,
+                        password: conf.qrz_password,
+                        agent: conf.applogname
+                    }, qrzSessionReqTimeoutMs);
+                    if (session.Error || !session.Key) {
+                        qrzSessionKey = null;
+                        logger.warn('QRZ authentication rejected');
+                        return { key: null, outcome: 'auth-session-failure' };
+                    }
+                    const count = Number(session.Count);
+                    if (Number.isFinite(count) && count >= qrzReqQuota) {
+                        qrzInQuotaWait = 5;
+                        qrzSessionKey = null;
+                        logger.warn('QRZ request quota reached');
+                        return { key: null, outcome: 'quota' };
+                    }
+                    qrzSessionKey = String(session.Key);
+                    logger.info('QRZ session established');
+                    return { key: qrzSessionKey, outcome: 'success' };
+                } catch (err) {
+                    qrzSessionKey = null;
+                    const outcome = qrzFailureOutcome(err);
+                    logger.warn(`QRZ authentication unavailable: ${err.message}`);
+                    return { key: null, outcome };
+                }
+            })().finally(() => { qrzAuthenticationPromise = null; });
         }
+        const authenticated = await qrzAuthenticationPromise;
+        if (!authenticated.key) {
+            if (authenticated.outcome === 'quota') qrzInQuotaWait = Math.max(qrzInQuotaWait, 5);
+            return authenticated;
+        }
+        return authenticated;
     };
 
+    let lastOutcome = 'network-failure';
+    let sessionRefreshSeen = false;
     for (let attempt = 0; attempt < 3; attempt++) {
-        const key = await authenticate(attempt > 0 && qrzSessionKey === null);
-        if (!key) return { result: null, atQuota: Boolean(qrzInQuotaWait) };
+        const authenticated = await authenticate(attempt > 0 && qrzSessionKey === null);
+        const key = typeof authenticated === 'string' ? authenticated : authenticated.key;
+        if (!key) return qrzResponse(null, authenticated.outcome, authenticated.outcome === 'quota');
         try {
             const { Callsign: station = {}, Session: session = {} } = await request({ s: key, callsign: callSign }, qrzDataReqTimeoutMs);
             const error = String(session.Error || '');
@@ -335,41 +364,53 @@ const qrzLookup = async (callSign, flexOpts, db = mongoose.connection) => {
                 qrzSessionKey = null;
                 qrzInQuotaWait = 5;
                 logger.warn('QRZ request quota reached');
-                return { result: null, atQuota: true };
+                return qrzResponse(null, 'quota', true);
             }
             if (/session|invalid key/i.test(error) || !session.Key) {
                 qrzSessionKey = null;
+                sessionRefreshSeen = true;
+                lastOutcome = 'auth-session-failure';
                 logger.warn(`qrzLookup(${callSign}): session refresh required`);
                 continue;
             }
             if (/not found/i.test(error)) {
                 logger.info(`qrzLookup(${callSign}): station not found`);
-                return { result: null, atQuota: false };
+                return qrzResponse(null, 'not-found');
             }
             if (error) {
                 logger.warn(`qrzLookup(${callSign}): QRZ returned an error`);
-                return { result: null, atQuota: false };
+                return qrzResponse(null, 'service-error');
             }
             const displayName = nameCase(station.nickname || station.name_fmt || '');
-            if (!displayName) return { result: null, atQuota: false };
             const country = String(station.country || '');
             const city = String(station.addr2 || '');
             const state = String(station.state || '');
             const location = country.includes('United States')
                 ? [city && toTitleCase(city), state && state.toUpperCase()].filter(Boolean).join(', ')
                 : [city && toTitleCase(city), country && `(${country})`].filter(Boolean).join(' ');
+            if (!displayName && !location) return qrzResponse(null, 'no-data');
             const lat = Number(station.lat);
             const lon = Number(station.lon);
             const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);
             const cacheRecord = { callSign, displayName, location };
             if (hasCoordinates) cacheRecord.geo = { type: 'Point', coordinates: [lon, lat] };
             await QrzCache.findOneAndUpdate({ callSign }, cacheRecord, { upsert: true, new: true, setDefaultsOnInsert: true });
-            return { result: { callSign, displayName, location, lat: hasCoordinates ? lat : undefined, lon: hasCoordinates ? lon : undefined }, atQuota: false };
+            return qrzResponse({ callSign, displayName, location, lat: hasCoordinates ? lat : undefined, lon: hasCoordinates ? lon : undefined }, 'success');
         } catch (err) {
+            lastOutcome = qrzFailureOutcome(err);
             logger.warn(`qrzLookup(${callSign}): request unavailable (attempt ${attempt + 1})`);
         }
     }
-    return { result: null, atQuota: false };
+    return qrzResponse(null, sessionRefreshSeen ? 'auth-session-failure' : lastOutcome);
+};
+
+const qrzLookup = (callSign, flexOpts, db = mongoose.connection) => {
+    const normalizedCall = String(callSign || '').toUpperCase();
+    if (qrzLookupPromises.has(normalizedCall)) return qrzLookupPromises.get(normalizedCall);
+    const lookup = qrzLookupInternal(normalizedCall, flexOpts, db)
+        .finally(() => qrzLookupPromises.delete(normalizedCall));
+    qrzLookupPromises.set(normalizedCall, lookup);
+    return lookup;
 };
 
 const authCheck = options => {
@@ -399,6 +440,8 @@ const resetQrzSessionForTests = () => {
     qrzSessionKey = null;
     qrzInQuotaWait = 0;
     qrzReqPrevQuota = undefined;
+    qrzAuthenticationPromise = null;
+    qrzLookupPromises.clear();
 };
 
 module.exports = {

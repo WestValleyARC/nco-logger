@@ -11,6 +11,7 @@ const { getPendingUnfollow, getPendingAccountDelete } = require('../models/taskQ
 const { getStationInteraction } = require('../models/stationInteraction');
 const mongoose = require('mongoose');
 const { cleanupNetChat } = require('./localChat');
+const { withKeyedOperations } = require('./keyedOperation');
 const { performance } = require('node:perf_hooks');
 
 const elapsedMs = startedAt => Math.round((performance.now() - startedAt) * 10) / 10;
@@ -39,6 +40,59 @@ const roleLevels = new Map([
 
  */
 const validRoles = Array.from(roleLevels.keys());
+const qrzStatus = (outcome, successful = false, deferred = false) => {
+    if (successful) return deferred ? 'later-success' : 'immediate-success';
+    return ({
+        quota: 'quota',
+        'auth-session-failure': 'auth-session-failure',
+        'not-found': 'not-found',
+        disabled: 'disabled',
+        timeout: 'timeout',
+        'network-failure': 'network-failure',
+        'malformed-response': 'malformed-response',
+        'service-error': 'service-error',
+        'no-data': 'no-data'
+    })[outcome] || 'service-error';
+};
+
+const profileHasManualOverride = (liveNet, callSign, field) => {
+    const profile = liveNet?.loggerState?.details?.[callSign]?.profile;
+    return profile?.[`${field}Origin`] === 'manual';
+};
+
+async function applyDeferredQrzEnrichment({ dia, liveNetId, callSign, baseline, lookup, db }) {
+    const { LiveNet, StationInteraction } = getModels(db);
+    let response;
+    try {
+        response = await lookup;
+    } catch {
+        response = { result: null, outcome: 'network-failure' };
+    }
+    const result = response?.result;
+    const status = qrzStatus(response?.outcome, Boolean(result), true);
+    try {
+        const latestLiveNet = await LiveNet.findById(liveNetId);
+        const updates = [
+            ['name', 'displayName', result?.displayName],
+            ['location', 'location', result?.location]
+        ];
+        for (const [profileField, interactionField, value] of updates) {
+            if (!value || profileHasManualOverride(latestLiveNet, callSign, profileField)) continue;
+            await StationInteraction.updateOne(
+                { _id: dia._id, [interactionField]: baseline[interactionField] },
+                { $set: { [interactionField]: value } }
+            );
+        }
+        await StationInteraction.updateOne(
+            { _id: dia._id },
+            { $set: { qrzLookupStatus: status, qrzLookupAt: new Date() } }
+        );
+        logger.info(`QRZ deferred enrichment ${status} for ${callSign}`);
+    } catch (err) {
+        logger.warn(`QRZ deferred enrichment could not update ${callSign}: ${err.message}`);
+    }
+    return { callSign, status };
+}
 
 async function getStationDetail({ lnid, station, db = mongoose.connection }) {
     let { LiveNet, StationInteraction } = getModels(db);
@@ -73,7 +127,7 @@ async function getStationDetail({ lnid, station, db = mongoose.connection }) {
     }
 }
 
-async function checkState({
+async function checkStateUnlocked({
     liveNet,
     srcStation,
     state,
@@ -83,6 +137,7 @@ async function checkState({
     flexOpts,
     metrics = null,
     qrzLookupFn = qrzLookup,
+    deferredTasks = null,
     db = mongoose.connection
 }) {
     const operationStartedAt = performance.now();
@@ -124,6 +179,7 @@ async function checkState({
 
     const knownStations = [];
     const newStations = [];
+    const deferredQrz = [];
     const tsIndex = new Map();
     const tsBase = Date.now();
 
@@ -211,6 +267,7 @@ async function checkState({
             const dstStationUpper = dstStation.toUpperCase();
             const timing = stationMetrics.get(dstStationUpper);
             const profileStartedAt = performance.now();
+            let lookupStatus = 'skipped-local-profile';
 
             if (
                 !(userData = await UserProfile.findOne({
@@ -218,15 +275,37 @@ async function checkState({
                 }))
             ) {
                 if (timing) timing.profileLookupMs = elapsedMs(profileStartedAt);
-                //they don't have an account
+                // They do not have an account. Start QRZ now, but wait only for
+                // the configured check-in budget before deferring enrichment.
                 const qrzStartedAt = performance.now();
-                ({ result: userData } = await qrzLookupFn(dstStationUpper, flexOpts));
+                const lookup = Promise.resolve()
+                    .then(() => qrzLookupFn(dstStationUpper, flexOpts, db))
+                    .catch(() => ({ result: null, outcome: 'network-failure' }));
+                const configuredWait = Number(flexOpts?.qrzCheckInWaitMs);
+                const waitMs = Math.min(5000, Math.max(0, Number.isFinite(configuredWait) ? configuredWait : 0));
+                let lookupResponse = null;
+                if (waitMs > 0) {
+                    lookupResponse = await Promise.race([
+                        lookup,
+                        new Promise(resolve => setTimeout(() => resolve(null), waitMs))
+                    ]);
+                }
+                if (lookupResponse) {
+                    userData = lookupResponse.result;
+                    lookupStatus = qrzStatus(lookupResponse.outcome, Boolean(userData), false);
+                } else {
+                    lookupStatus = 'deferred';
+                }
                 if (timing) {
                     timing.path = 'new-station-qrz';
-                    timing.qrzLookupMs = elapsedMs(qrzStartedAt);
+                    timing.qrzStatus = lookupStatus;
+                    timing.qrzWaitMs = waitMs;
+                    if (lookupResponse) timing.qrzLookupMs = elapsedMs(qrzStartedAt);
                 }
+                if (!lookupResponse) deferredQrz.push({ callSign: dstStationUpper, lookup });
             } else if (timing) {
                 timing.profileLookupMs = elapsedMs(profileStartedAt);
+                timing.qrzStatus = 'skipped-local-profile';
             }
 
             return new StationInteraction({
@@ -239,6 +318,8 @@ async function checkState({
                 photo: userData?.photo || null,
                 email: userData?.email || null,
                 location: userData?.location || null,
+                qrzLookupStatus: lookupStatus,
+                qrzLookupAt: lookupStatus === 'deferred' ? null : new Date(),
                 chatEnabled: false,
                 highlight: highlight,
                 hand: hand,
@@ -334,12 +415,37 @@ async function checkState({
         }
     }
 
+    for (const pending of deferredQrz) {
+        const dia = newIaDocs.find(item => item.callSign.toUpperCase() === pending.callSign);
+        if (!dia) continue;
+        const task = applyDeferredQrzEnrichment({
+            dia,
+            liveNetId: liveNet._id,
+            callSign: pending.callSign,
+            baseline: { displayName: dia.displayName ?? null, location: dia.location ?? null },
+            lookup: pending.lookup,
+            db
+        });
+        if (Array.isArray(deferredTasks)) deferredTasks.push(task);
+        else void task;
+    }
+
     if (metrics && typeof metrics === 'object') {
         metrics.totalMs = elapsedMs(operationStartedAt);
         metrics.stations = [...stationMetrics.entries()].map(([callSign, timing]) => ({ callSign, ...timing }));
     }
 
     return [...knownResponses, ...newResponses].sort((a, b) => a.ts - b.ts);
+}
+
+async function checkState(options) {
+    const { LiveNet } = getModels(options.db || mongoose.connection);
+    const liveNetId = options.liveNet?._id;
+    const keys = (options.dstStations || []).map(station => `${liveNetId}:${String(station).trim().toUpperCase()}`);
+    return withKeyedOperations(keys, async () => {
+        const latestLiveNet = liveNetId ? await LiveNet.findById(liveNetId) : null;
+        return checkStateUnlocked({ ...options, liveNet: latestLiveNet || options.liveNet });
+    });
 }
 
 async function hand({ liveNet, srcStation, dstStation, state, db = mongoose.connection }) {

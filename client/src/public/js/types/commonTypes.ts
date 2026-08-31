@@ -226,6 +226,7 @@ export interface FlexOptions {
     requestRateFactor: number;
     qrzDataReqTimeoutMs: number;
     qrzSessionReqTimeoutMs: number;
+    qrzCheckInWaitMs: number;
     qrzReqQuota: number;
     maxFollowersPerNet: number;
     maxFollowingPerUser: number;
