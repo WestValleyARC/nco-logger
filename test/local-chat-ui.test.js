@@ -114,11 +114,14 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(source, /\['👍', '❤️', '😂', '😮'\]/);
     assert.match(source, /window\.confirm\(`Ban/);
     assert.match(source, /window\.confirm\('Clear all public chat messages/);
+    assert.match(source, />Delete All Messages<\/button>/);
     assert.match(source, /Original message unavailable/);
     assert.match(css, /\.chat-message-actions\s*\{[^}]*position:\s*absolute[^}]*opacity:\s*0/s);
     assert.match(css, /@media \(hover: none\)[\s\S]*\.chat-message-actions/);
     assert.match(css, /\.chat-message-pinned\s*\{/);
     assert.match(css, /\.chat-reaction-chip\.is-mine\s*\{/);
+    assert.match(css, /\.chat-header-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto minmax\(0, 1fr\)/s);
+    assert.match(css, /\.chat-clear-button\s*\{[^}]*grid-column:\s*2[^}]*justify-self:\s*center[^}]*color:\s*#ff5263/s);
     assert.doesNotMatch(source, /has-pin-action/);
     assert.match(css, /\.chat-message:hover \.chat-message-actions,[\s\S]*opacity:\s*1[\s\S]*pointer-events:\s*auto/s);
 });

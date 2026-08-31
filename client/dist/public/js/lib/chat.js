@@ -111,7 +111,7 @@ export class ChatWidget extends HTMLElement {
             <div class="chat-widget h-100 d-flex flex-column" style="min-height:0">
                 <div class="chat-header-row">
                     <div class="chat-status small text-muted" role="status" aria-live="polite">Connecting…</div>
-                    <button class="chat-clear-button" type="button" title="Clear public chat" aria-label="Clear public chat" hidden>🧹</button>
+                    <button class="chat-clear-button" type="button" title="Delete all public chat messages" aria-label="Delete all public chat messages" hidden>Delete All Messages</button>
                 </div>
                 <div class="chat-messages flex-grow-1 overflow-auto" style="min-height:0" aria-live="polite"></div>
                 <button class="btn btn-sm btn-outline-info chat-new-messages align-self-center mt-1" type="button" hidden>New messages ↓</button>

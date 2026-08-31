@@ -1241,7 +1241,7 @@
     }
     const chatControl = event.target.closest?.("button, [role='button']");
     const controlLabel = String(chatControl?.getAttribute("aria-label") || chatControl?.title || chatControl?.textContent || "").trim();
-    if (/^clear chat history$/i.test(controlLabel)) {
+    if (/^(?:clear chat history|delete all public chat messages)$/i.test(controlLabel)) {
       [0, 75, 300].forEach(delay => window.setTimeout(normalizeLatestChatPrompt, delay));
     }
     const download = event.target.closest?.(".nch-chat-download");

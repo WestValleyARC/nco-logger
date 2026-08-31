@@ -46,14 +46,37 @@ body {
 }
 
 .chat-header-row {
-    display: flex;
+    display: grid;
     min-height: 1.5rem;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
     gap: 0.5rem;
 }
 
-.chat-clear-button,
+.chat-clear-button {
+    grid-column: 2;
+    justify-self: center;
+    padding: 0;
+    color: #ff5263;
+    background: transparent;
+    border: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+}
+
+.chat-clear-button:hover,
+.chat-clear-button:focus-visible {
+    color: #ff8b96;
+}
+
+.chat-clear-button:focus-visible {
+    outline: 2px solid #ff8b96;
+    outline-offset: 2px;
+}
+
 .chat-reply-cancel {
     color: #ffc857;
     background: transparent;
