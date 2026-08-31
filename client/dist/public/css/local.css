@@ -550,6 +550,8 @@ body {
 .chat-action-reply { color: #71d6e8; }
 .chat-action-private {
     color: #f7c8ff;
+    font-size: 1.25rem;
+    font-weight: 700;
     text-shadow: 0 0 0.3rem rgba(226, 143, 255, 0.55);
 }
 .chat-action-edit { color: #ffad5a; }
