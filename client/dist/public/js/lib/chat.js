@@ -1,7 +1,7 @@
 import { createLogger } from '#@client/lib/logger.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
-import { clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread, ExclusiveChatOperation, shouldScrollChatToLatest, SingleChatStream, sortChatMessages } from '#@client/lib/chatState.js';
+import { chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, shouldScrollChatToLatest, SingleChatStream, sortChatMessages } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
 const logger = createLogger('lib/chat.ts');
 const isLocalChatMessage = (value) => {
@@ -362,16 +362,28 @@ export class ChatWidget extends HTMLElement {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'chat-recipient-choice';
+            button.classList.toggle('is-ignored', Boolean(recipient?.ignored));
             button.setAttribute('role', 'menuitem');
             button.setAttribute('aria-current', String(this.selectedRecipientId === recipientId));
             const dot = document.createElement('span');
             dot.className = `chat-presence-dot ${recipient?.presence === 'online' ? 'is-online' : 'is-offline'}`;
             dot.setAttribute('aria-hidden', 'true');
+            const copy = document.createElement('span');
+            copy.className = 'chat-recipient-copy';
             const text = document.createElement('span');
-            text.textContent = `${label}${recipient?.ignored ? ' · Ignored' : ''}`;
+            text.className = 'chat-recipient-name';
+            text.textContent = label;
+            copy.append(text);
+            if (recipient) {
+                const presence = document.createElement('span');
+                presence.className = 'chat-recipient-presence';
+                presence.textContent = recipient.ignored
+                    ? 'Ignored' : recipient.presence === 'online' ? 'Available' : 'Unavailable';
+                copy.append(presence);
+            }
             if (recipient)
                 button.append(dot);
-            button.append(text);
+            button.append(copy);
             const unread = recipientId ? this.unreadCounts.get(recipientId) || 0 : 0;
             if (unread > 0) {
                 const badge = document.createElement('span');
@@ -388,13 +400,22 @@ export class ChatWidget extends HTMLElement {
         addChoice('Everyone', null);
         this.recipients.forEach(recipient => addChoice(this.recipientLabel(recipient), recipient.userId, recipient));
         const selected = this.selectedRecipientId ? this.recipients.get(this.selectedRecipientId) : null;
-        toggle.textContent = selected ? `To: ${this.recipientLabel(selected)} ▾` : 'To: Everyone ▾';
+        toggle.textContent = selected
+            ? `To: ${this.recipientLabel(selected)} · Private ▾` : 'To: Everyone · Public ▾';
         toggle.setAttribute('aria-label', selected
             ? `Chat recipient: ${this.recipientLabel(selected)}, ${selected.presenceLabel}`
             : 'Chat recipient: Everyone');
         ignore.hidden = !selected;
-        if (selected)
-            ignore.textContent = selected.ignored ? 'Unignore' : 'Ignore private messages';
+        ignore.classList.toggle('is-active', Boolean(selected?.ignored));
+        ignore.setAttribute('aria-pressed', String(Boolean(selected?.ignored)));
+        if (selected) {
+            ignore.textContent = selected.ignored ? 'Unignore sender' : 'Ignore private messages';
+            ignore.title = selected.ignored
+                ? `Receive private messages from ${selected.callSign}` : `Ignore private messages from ${selected.callSign}`;
+        }
+        else {
+            ignore.removeAttribute('title');
+        }
         const totalUnread = [...this.unreadCounts.values()].reduce((total, count) => total + count, 0);
         unreadStatus.hidden = totalUnread === 0;
         unreadStatus.textContent = totalUnread ? `${totalUnread} private unread` : '';
@@ -443,7 +464,7 @@ export class ChatWidget extends HTMLElement {
             const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/messages`, options);
             const data = (await response.json());
             if (!response.ok || !Array.isArray(data.messages) || !data.messages.every(isLocalChatMessage)) {
-                throw new Error(data.error || 'Private chat history unavailable');
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Private chat history unavailable'));
             }
             let conversation = this.directConversations.get(recipientId);
             if (!conversation) {
@@ -479,14 +500,13 @@ export class ChatWidget extends HTMLElement {
                 body: JSON.stringify({ ignored })
             });
             const data = (await response.json());
-            if (!response.ok || typeof data.ignored !== 'boolean')
-                throw new Error(data.error || 'Ignore preference could not be updated');
+            if (!response.ok || typeof data.ignored !== 'boolean') {
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Ignore preference could not be updated'));
+            }
             recipient.ignored = data.ignored;
             this.unreadCounts.delete(recipientId);
             if (data.ignored) {
-                const conversation = this.directConversations.get(recipientId);
-                conversation?.forEach((message, id) => { if (!message.mine)
-                    conversation.delete(id); });
+                this.suppressIgnoredConversation(recipientId);
             }
             else {
                 await this.loadDirectHistory(recipientId);
@@ -590,7 +610,7 @@ export class ChatWidget extends HTMLElement {
         });
         const data = (await response.json());
         if (!response.ok)
-            throw new Error(data.error || 'Chat history unavailable');
+            throw new Error(chatRequestErrorMessage(response.status, data.error, 'Chat history unavailable'));
         if (!Array.isArray(data.messages) || !data.messages.every(isLocalChatMessage)
             || !Array.isArray(data.directMessages) || !data.directMessages.every(isLocalChatMessage)
             || !Array.isArray(data.recipients) || !data.recipients.every(isChatRecipient)) {
@@ -613,7 +633,11 @@ export class ChatWidget extends HTMLElement {
     updateRecipients(recipients) {
         const selected = this.selectedRecipientId;
         this.recipients.clear();
-        recipients.forEach(recipient => this.recipients.set(recipient.userId, recipient));
+        recipients.forEach(recipient => {
+            this.recipients.set(recipient.userId, recipient);
+            if (recipient.ignored)
+                this.suppressIgnoredConversation(recipient.userId);
+        });
         const selectedWasRemoved = Boolean(selected && !this.recipients.has(selected));
         if (selectedWasRemoved) {
             this.selectedRecipientId = null;
@@ -624,11 +648,18 @@ export class ChatWidget extends HTMLElement {
         if (selectedWasRemoved)
             this.render({ forceBottom: true });
     }
+    suppressIgnoredConversation(recipientId) {
+        this.unreadCounts.delete(recipientId);
+        const conversation = this.directConversations.get(recipientId);
+        conversation?.forEach((message, id) => { if (!message.mine)
+            conversation.delete(id); });
+    }
     reconcileDirectMessages(messages, countUnread) {
         messages.forEach(message => {
             if (message.scope !== 'direct' || !message.conversationUserId)
                 return;
-            if (!message.mine && this.recipients.get(message.conversationUserId)?.ignored)
+            const ignored = Boolean(this.recipients.get(message.conversationUserId)?.ignored);
+            if (!message.mine && ignored)
                 return;
             let conversation = this.directConversations.get(message.conversationUserId);
             if (!conversation) {
@@ -637,7 +668,10 @@ export class ChatWidget extends HTMLElement {
             }
             const isNew = !conversation.has(message.id);
             reconcileChatMessages(conversation, [message]);
-            recordPrivateUnread(this.unreadCounts, message.conversationUserId, countUnread && isNew && !message.mine && this.selectedRecipientId !== message.conversationUserId);
+            recordPrivateUnread(this.unreadCounts, message.conversationUserId, shouldRecordPrivateUnread({
+                countUnread, isNew, mine: message.mine, ignored,
+                selected: this.selectedRecipientId === message.conversationUserId
+            }));
         });
         this.renderRecipientControls();
     }
@@ -708,8 +742,13 @@ export class ChatWidget extends HTMLElement {
                 if (!Array.isArray(data.ignoredUserIds))
                     return;
                 const ignored = new Set(data.ignoredUserIds.filter((id) => typeof id === 'string'));
-                this.recipients.forEach(recipient => { recipient.ignored = ignored.has(recipient.userId); });
+                this.recipients.forEach(recipient => {
+                    recipient.ignored = ignored.has(recipient.userId);
+                    if (recipient.ignored)
+                        this.suppressIgnoredConversation(recipient.userId);
+                });
                 this.renderRecipientControls();
+                this.render({ preserveScroll: true });
             }
             catch (err) {
                 logger.error('Invalid local chat preference event', err);
@@ -806,8 +845,9 @@ export class ChatWidget extends HTMLElement {
                 options.signal = signal;
             const response = await fetch(path, options);
             const data = (await response.json());
-            if (!response.ok || !data.message)
-                throw new Error(data.error || 'Message could not be sent');
+            if (!response.ok || !data.message) {
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be sent'));
+            }
             if (data.message.scope === 'direct')
                 this.reconcileDirectMessages([data.message], false);
             else
@@ -889,8 +929,9 @@ export class ChatWidget extends HTMLElement {
                 options.signal = signal;
             const response = await fetch(path, options);
             const data = (await response.json());
-            if (!response.ok || !data.message)
-                throw new Error(data.error || 'Image could not be uploaded');
+            if (!response.ok || !data.message) {
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Image could not be uploaded'));
+            }
             if (data.message.scope === 'direct')
                 this.reconcileDirectMessages([data.message], false);
             else
@@ -952,8 +993,9 @@ export class ChatWidget extends HTMLElement {
                 body: JSON.stringify({ text })
             });
             const data = (await response.json());
-            if (!response.ok || !data.message)
-                throw new Error(data.error || 'Message could not be edited');
+            if (!response.ok || !data.message) {
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be edited'));
+            }
             reconcileChatMessages(this.messages, [data.message]);
             this.editingMessageId = null;
             this.editDraft = '';
@@ -978,8 +1020,9 @@ export class ChatWidget extends HTMLElement {
                 method: 'DELETE', credentials: 'same-origin', headers: { Accept: 'application/json' }
             });
             const data = (await response.json());
-            if (!response.ok || !data.message)
-                throw new Error(data.error || 'Message could not be deleted');
+            if (!response.ok || !data.message) {
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be deleted'));
+            }
             reconcileChatMessages(this.messages, [data.message]);
             if (this.editingMessageId === messageId)
                 this.editingMessageId = null;
@@ -1015,7 +1058,7 @@ export class ChatWidget extends HTMLElement {
             const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/${path}`, options);
             const data = (await response.json());
             if (!response.ok)
-                throw new Error(data.error || 'Chat action failed');
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Chat action failed'));
             if (data.message) {
                 reconcileChatMessages(this.messages, [data.message]);
                 this.render({ preserveScroll: true });
@@ -1050,8 +1093,9 @@ export class ChatWidget extends HTMLElement {
                 method: 'DELETE', credentials: 'same-origin', headers: { Accept: 'application/json' }
             });
             const data = (await response.json());
-            if (!response.ok)
-                throw new Error(data.error || 'Public chat could not be cleared');
+            if (!response.ok) {
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'Public chat could not be cleared'));
+            }
             this.publicMessages.clear();
             this.setReply(null);
             this.render({ forceBottom: true });
@@ -1304,7 +1348,10 @@ export class ChatWidget extends HTMLElement {
             chip.className = `chat-reaction-chip${reaction.reactedByMe ? ' is-mine' : ''}`;
             chip.textContent = `${reaction.emoji} ${reaction.count}`;
             chip.disabled = !message.canReact;
-            chip.setAttribute('aria-label', `${reaction.emoji} reaction, ${reaction.count}`);
+            chip.setAttribute('aria-pressed', String(reaction.reactedByMe));
+            chip.setAttribute('aria-label', reaction.reactedByMe
+                ? `You reacted ${reaction.emoji}; ${reaction.count} total. Activate to remove reaction`
+                : `React ${reaction.emoji}; ${reaction.count} total`);
             chip.addEventListener('click', () => void this.toggleReaction(message, reaction.emoji));
             reactions.append(chip);
         });
@@ -1330,10 +1377,13 @@ export class ChatWidget extends HTMLElement {
         if (message.canReact) {
             const reactionButton = addAction('😀', 'React to', 'chat-action-react', () => {
                 const menu = controls.querySelector('.chat-quick-reactions');
-                if (menu)
+                if (menu) {
                     menu.hidden = !menu.hidden;
+                    reactionButton.setAttribute('aria-expanded', String(!menu.hidden));
+                }
             });
             reactionButton.setAttribute('aria-haspopup', 'true');
+            reactionButton.setAttribute('aria-expanded', 'false');
             const menu = document.createElement('div');
             menu.className = 'chat-quick-reactions';
             menu.hidden = true;
@@ -1341,8 +1391,14 @@ export class ChatWidget extends HTMLElement {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.textContent = emoji;
-                button.setAttribute('aria-label', `React ${emoji}`);
-                button.addEventListener('click', () => void this.toggleReaction(message, emoji));
+                const reactedByMe = Boolean(message.reactions.find(reaction => reaction.emoji === emoji)?.reactedByMe);
+                button.setAttribute('aria-pressed', String(reactedByMe));
+                button.setAttribute('aria-label', reactedByMe ? `Remove ${emoji} reaction` : `React ${emoji}`);
+                button.addEventListener('click', () => {
+                    menu.hidden = true;
+                    reactionButton.setAttribute('aria-expanded', 'false');
+                    void this.toggleReaction(message, emoji);
+                });
                 menu.append(button);
             });
             controls.append(menu);

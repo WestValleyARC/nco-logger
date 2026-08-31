@@ -155,6 +155,34 @@ body {
     outline: none;
 }
 
+.chat-recipient-choice.is-ignored {
+    color: #c7cdd1;
+    background: rgba(255, 82, 99, 0.08);
+}
+
+.chat-recipient-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.05rem;
+}
+
+.chat-recipient-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-recipient-presence {
+    color: #9cabb2;
+    font-size: 0.68rem;
+    line-height: 1.1;
+}
+
+.chat-recipient-choice.is-ignored .chat-recipient-presence {
+    color: #ff9ba5;
+    font-weight: 700;
+}
+
 .chat-presence-dot {
     width: 0.55rem;
     height: 0.55rem;
@@ -180,6 +208,12 @@ body {
     margin-left: auto;
     color: #ffb1b9;
     border-color: rgba(255, 82, 99, 0.5);
+}
+
+.chat-ignore-button.is-active {
+    color: #fff;
+    background: rgba(255, 82, 99, 0.28);
+    border-color: #ff7482;
 }
 
 .chat-pinned-strip {
@@ -514,6 +548,7 @@ body {
 
 .chat-action-react { color: #ffd166; }
 .chat-action-reply { color: #71d6e8; }
+.chat-action-private { color: #c59cff; }
 .chat-action-edit { color: #ffad5a; }
 .chat-action-delete { color: #ff6b7a; }
 .chat-action-pin { color: #ff5263; }
@@ -563,6 +598,8 @@ body {
     color: #fff;
     background: rgba(116, 198, 212, 0.3);
     border-color: var(--chat-accent-bright);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+    font-weight: 700;
 }
 
 .chat-new-messages {
@@ -747,12 +784,31 @@ body {
     }
 }
 
-@media (hover: none) {
+@media (hover: none), (pointer: coarse) {
+    .chat-message {
+        padding-bottom: 2.35rem;
+    }
+
     .chat-message-actions {
+        top: auto;
+        right: 0.2rem;
+        bottom: 0.15rem;
+        max-width: calc(100% - 0.4rem);
+        overflow-x: auto;
         opacity: 1;
         pointer-events: auto;
     }
 
+    .chat-message-action,
+    .chat-quick-reactions button {
+        min-width: 2rem;
+        min-height: 2rem;
+    }
+
+    .chat-quick-reactions {
+        top: auto;
+        bottom: calc(100% + 0.25rem);
+    }
 }
 
 .stations-container {

@@ -87,6 +87,23 @@ export const recordPrivateUnread = (counts: Map<string, number>, senderUserId: s
     counts.set(senderUserId, (counts.get(senderUserId) || 0) + 1);
 };
 
+export const shouldRecordPrivateUnread = ({
+    countUnread, isNew, mine, ignored, selected
+}: {
+    countUnread: boolean;
+    isNew: boolean;
+    mine: boolean;
+    ignored: boolean;
+    selected: boolean;
+}): boolean => countUnread && isNew && !mine && !ignored && !selected;
+
 export const clearPrivateUnread = (counts: Map<string, number>, senderUserId: string): void => {
     if (senderUserId) counts.delete(senderUserId);
+};
+
+export const chatRequestErrorMessage = (status: number, serverMessage: string | undefined, fallback: string): string => {
+    if (status === 401) return 'Sign in required';
+    if (status === 403) return 'Permission denied';
+    if (status === 429) return 'Rate limit reached';
+    return serverMessage || fallback;
 };

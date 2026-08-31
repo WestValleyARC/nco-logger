@@ -59,8 +59,18 @@ export const recordPrivateUnread = (counts, senderUserId, shouldCount) => {
         return;
     counts.set(senderUserId, (counts.get(senderUserId) || 0) + 1);
 };
+export const shouldRecordPrivateUnread = ({ countUnread, isNew, mine, ignored, selected }) => countUnread && isNew && !mine && !ignored && !selected;
 export const clearPrivateUnread = (counts, senderUserId) => {
     if (senderUserId)
         counts.delete(senderUserId);
+};
+export const chatRequestErrorMessage = (status, serverMessage, fallback) => {
+    if (status === 401)
+        return 'Sign in required';
+    if (status === 403)
+        return 'Permission denied';
+    if (status === 429)
+        return 'Rate limit reached';
+    return serverMessage || fallback;
 };
 //# sourceMappingURL=chatState.js.map

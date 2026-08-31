@@ -62,6 +62,7 @@ export declare class ChatWidget extends HTMLElement {
     private fetchHistory;
     private applyLimits;
     private updateRecipients;
+    private suppressIgnoredConversation;
     private reconcileDirectMessages;
     private openEvents;
     private requestHistoryReload;

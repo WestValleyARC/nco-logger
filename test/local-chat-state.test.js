@@ -24,7 +24,7 @@ test('history and SSE races reconcile by stable message id', async () => {
 });
 
 test('private unread counts increment off-conversation and clear when opened', async () => {
-    const { recordPrivateUnread, clearPrivateUnread } = await loadState();
+    const { recordPrivateUnread, clearPrivateUnread, shouldRecordPrivateUnread } = await loadState();
     const counts = new Map();
     recordPrivateUnread(counts, 'sender-a', true);
     recordPrivateUnread(counts, 'sender-a', true);
@@ -33,4 +33,20 @@ test('private unread counts increment off-conversation and clear when opened', a
     assert.equal(counts.has('sender-b'), false);
     clearPrivateUnread(counts, 'sender-a');
     assert.equal(counts.has('sender-a'), false);
+    const candidate = { countUnread: true, isNew: true, mine: false, ignored: false, selected: false };
+    assert.equal(shouldRecordPrivateUnread(candidate), true);
+    assert.equal(shouldRecordPrivateUnread({ ...candidate, ignored: true }), false);
+    assert.equal(shouldRecordPrivateUnread({ ...candidate, selected: true }), false);
+    assert.equal(shouldRecordPrivateUnread({ ...candidate, mine: true }), false);
+    assert.equal(shouldRecordPrivateUnread({ ...candidate, isNew: false }), false);
+    assert.equal(shouldRecordPrivateUnread({ ...candidate, countUnread: false }), false);
+});
+
+test('chat request failures use concise human-readable status messages', async () => {
+    const { chatRequestErrorMessage } = await loadState();
+    assert.equal(chatRequestErrorMessage(401, 'raw auth detail', 'Fallback'), 'Sign in required');
+    assert.equal(chatRequestErrorMessage(403, 'raw policy detail', 'Fallback'), 'Permission denied');
+    assert.equal(chatRequestErrorMessage(429, 'raw limiter detail', 'Fallback'), 'Rate limit reached');
+    assert.equal(chatRequestErrorMessage(500, 'Service unavailable', 'Fallback'), 'Service unavailable');
+    assert.equal(chatRequestErrorMessage(500, undefined, 'Fallback'), 'Fallback');
 });

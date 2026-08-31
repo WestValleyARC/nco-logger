@@ -24,5 +24,13 @@ export declare const sortChatMessages: <T extends IdentifiedChatMessage>(message
 export declare const shouldScrollChatToLatest: (initialLoad: boolean, wasNearBottom: boolean) => boolean;
 export declare const preserveScrollTop: (scrollTop: number, anchorOffsetBefore: number, anchorOffsetAfter: number) => number;
 export declare const recordPrivateUnread: (counts: Map<string, number>, senderUserId: string, shouldCount: boolean) => void;
+export declare const shouldRecordPrivateUnread: ({ countUnread, isNew, mine, ignored, selected }: {
+    countUnread: boolean;
+    isNew: boolean;
+    mine: boolean;
+    ignored: boolean;
+    selected: boolean;
+}) => boolean;
 export declare const clearPrivateUnread: (counts: Map<string, number>, senderUserId: string) => void;
+export declare const chatRequestErrorMessage: (status: number, serverMessage: string | undefined, fallback: string) => string;
 //# sourceMappingURL=chatState.d.ts.map

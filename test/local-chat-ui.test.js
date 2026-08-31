@@ -97,6 +97,9 @@ test('application JavaScript cannot remain fresh after a same-server rebuild', (
 test('NCO Logger and Chat font scales use independent variables', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
+    assert.match(source, /chatFontPreset:\s*normalizeFontPreset\(layout\.chatFontPreset \|\| saved\.chatFontPreset\)/);
+    assert.match(source, /\[layoutKey\]:\s*\{[\s\S]*chatFontPreset:\s*normalizeFontPreset\(local\.chatFontPreset\)/);
+    assert.match(source, /chatFontPreset:\s*normalizeFontPreset\(saved\.chatFontPreset\)/);
     assert.match(source, /panel\?\.style\.setProperty\("--nch-font-adjust"/);
     assert.match(source, /nativeChat\(\)\?\.style\.removeProperty\("--nch-font-adjust"\)/);
     assert.match(source, /nativeChat\(\)\?\.style\.setProperty\("--nch-chat-font-size"/);
@@ -117,9 +120,13 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(source, />Delete All Messages<\/button>/);
     assert.match(source, /Original message unavailable/);
     assert.match(css, /\.chat-message-actions\s*\{[^}]*position:\s*absolute[^}]*opacity:\s*0/s);
-    assert.match(css, /@media \(hover: none\)[\s\S]*\.chat-message-actions/);
+    assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message-actions/);
+    assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message\s*\{[^}]*padding-bottom:\s*2\.35rem/s);
+    assert.match(css, /\.chat-action-private\s*\{\s*color:\s*#c59cff/);
     assert.match(css, /\.chat-message-pinned\s*\{/);
     assert.match(css, /\.chat-reaction-chip\.is-mine\s*\{/);
+    assert.match(source, /chip\.setAttribute\('aria-pressed', String\(reaction\.reactedByMe\)\)/);
+    assert.match(source, /reactionButton\.setAttribute\('aria-expanded', 'false'\)/);
     assert.match(css, /\.chat-header-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto minmax\(0, 1fr\)/s);
     assert.match(css, /\.chat-clear-button\s*\{[^}]*grid-column:\s*2[^}]*justify-self:\s*center[^}]*color:\s*#ff5263/s);
     assert.doesNotMatch(source, /has-pin-action/);
@@ -155,15 +162,30 @@ test('native server-backed pins are not hidden or replaced by NCO helper normali
 test('private chat keeps recipient, presence, unread, and ignore state inside the Chat module', () => {
     const source = read('client/src/public/js/lib/chat.ts');
     const css = read('client/dist/public/css/local.css');
-    assert.match(source, /To: Everyone ▾/);
+    assert.match(source, /To: Everyone · Public ▾/);
+    assert.match(source, /· Private ▾/);
     assert.match(source, /Message \$\{selected\.callSign\} privately…/);
     assert.match(source, /Message the net…/);
     assert.match(source, /chat-recipient-unread/);
     assert.match(source, /Ignore private messages/);
+    assert.match(source, /presence\.textContent = recipient\.ignored[\s\S]*'Available'[\s\S]*'Unavailable'/);
+    assert.match(source, /ignore\.setAttribute\('aria-pressed'/);
+    assert.match(source, /shouldRecordPrivateUnread/);
+    assert.match(source, /suppressIgnoredConversation/);
     assert.match(source, /Message privately/);
     assert.match(source, /clearPrivateUnread/);
     assert.match(source, /direct\/\$\{encodeURIComponent\(recipientId\)\}\/messages/);
     assert.match(css, /\.chat-presence-dot\.is-online\s*\{\s*background:\s*#43d17a/);
     assert.match(css, /\.chat-presence-dot\.is-offline\s*\{\s*background:\s*#7d8790/);
+    assert.match(css, /\.chat-recipient-choice\.is-ignored\s*\{/);
     assert.doesNotMatch(source, /WebSocket/);
+});
+
+test('chat request errors distinguish authentication, authorization, and rate limits', () => {
+    const source = read('client/src/public/js/lib/chat.ts');
+    const state = read('client/src/public/js/lib/chatState.ts');
+    assert.match(state, /status === 401[\s\S]*Sign in required/);
+    assert.match(state, /status === 403[\s\S]*Permission denied/);
+    assert.match(state, /status === 429[\s\S]*Rate limit reached/);
+    assert.match(source, /chatRequestErrorMessage\(response\.status, data\.error/);
 });
