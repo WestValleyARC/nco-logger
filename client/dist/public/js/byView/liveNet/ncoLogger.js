@@ -133,7 +133,9 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     let syncStartedForIdentity = "";
     let syncSnapshotRequestTimer = null;
     let loggerStateSaveTimer = null;
+    let pollTimer = null;
     let lastServerLoggerRevision = 0;
+    let lastSavedLoggerStateSignature = "";
     let closedAfterHandoff = false;
     const helperPeers = new Map();
     const privateThreads = new Map();
@@ -141,6 +143,24 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     const expandedPinnedChatIds = new Set();
     let privateChatTarget = "";
     const pendingCheckStateCalls = new ExclusiveKeyedOperation();
+    const renderedStationGroupHtml = new WeakMap();
+    const TIMING_SAMPLE_LIMIT = 60;
+    const performanceStats = {
+        startedAt: performance.now(), refreshMs: [], stationRenderMs: [],
+        stationRenderCalls: 0, stationRowsRendered: 0, stationDomWrites: 0,
+        refreshScheduleRequests: 0, refreshScheduleSuppressed: 0,
+        sharedStateSent: 0, sharedStateSuppressed: 0
+    };
+    const recordTiming = (samples, duration) => {
+        samples.push(duration);
+        if (samples.length > TIMING_SAMPLE_LIMIT)
+            samples.shift();
+    };
+    const timingSummary = samples => ({
+        count: samples.length,
+        averageMs: samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : 0,
+        maximumMs: samples.length ? Math.max(...samples) : 0
+    });
     const browserStorage = {
         get(keys, callback) {
             const result = {};
@@ -462,34 +482,49 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 pendingCheckStateCalls.end(pendingCall);
         }
     }
+    const loggerStateContentSignature = snapshot => JSON.stringify({
+        ...snapshot, revision: undefined, updated_at: undefined
+    });
+    async function saveSharedSnapshotOnce() {
+        const snapshot = sharedSnapshot();
+        const signature = loggerStateContentSignature(snapshot);
+        if (signature === lastSavedLoggerStateSignature) {
+            performanceStats.sharedStateSuppressed += 1;
+            return;
+        }
+        try {
+            const response = await fetch(`/api/nco-logger/${npid}`, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({ action: "loggerState", state: snapshot })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok)
+                throw new Error(data.errorMessage || `${response.status} ${response.statusText}`);
+            const saved = data.message?.loggerState;
+            if (saved?.updated_at) {
+                lastServerLoggerRevision = Number(saved.updated_at);
+                local.sharedUpdatedAt = Number(saved.updated_at);
+            }
+            lastSavedLoggerStateSignature = signature;
+            performanceStats.sharedStateSent += 1;
+            storageSet();
+        }
+        catch (error) {
+            console.warn("[WVARC NCO Logger] Shared state save failed", error);
+            setStatus(`Logger state could not be saved: ${error.message || String(error)}`, "warning");
+        }
+    }
+    const sharedStateSaveCoordinator = new CoalescedAsyncRequest(saveSharedSnapshotOnce);
     function publishSharedSnapshotSafely() {
         if (!canManageStations())
             return;
         if (loggerStateSaveTimer)
             window.clearTimeout(loggerStateSaveTimer);
-        loggerStateSaveTimer = window.setTimeout(async () => {
+        loggerStateSaveTimer = window.setTimeout(() => {
             loggerStateSaveTimer = null;
-            try {
-                const response = await fetch(`/api/nco-logger/${npid}`, {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: { "Content-Type": "application/json", Accept: "application/json" },
-                    body: JSON.stringify({ action: "loggerState", state: sharedSnapshot() })
-                });
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok)
-                    throw new Error(data.errorMessage || `${response.status} ${response.statusText}`);
-                const saved = data.message?.loggerState;
-                if (saved?.updated_at) {
-                    lastServerLoggerRevision = Number(saved.updated_at);
-                    local.sharedUpdatedAt = Number(saved.updated_at);
-                }
-                storageSet();
-            }
-            catch (error) {
-                console.warn("[WVARC NCO Logger] Shared state save failed", error);
-                setStatus(`Logger state could not be saved: ${error.message || String(error)}`, "warning");
-            }
+            void sharedStateSaveCoordinator.request();
         }, 180);
     }
     async function runReadCommand(command) {
@@ -1177,10 +1212,15 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 control.removeAttribute("tabindex");
         });
     }
-    function normalizeChatDisplay() {
-        deduplicateChatMessages();
-        normalizeLatestChatPrompt();
-        nativeChat()?.querySelectorAll(".chat-message-author, .chat-message-sender, .chat-sender, .chat-author, .chat-user, .chat-user-name, .chat-username").forEach(element => {
+    const matchingChatElements = (root, selector) => root instanceof Element
+        ? [...(root.matches(selector) ? [root] : []), ...root.querySelectorAll(selector)]
+        : [];
+    function normalizeChatDisplay(roots = [nativeChat()], includeGlobalChecks = true) {
+        if (includeGlobalChecks) {
+            deduplicateChatMessages();
+            normalizeLatestChatPrompt();
+        }
+        roots.flatMap(root => matchingChatElements(root, ".chat-message-author, .chat-message-sender, .chat-sender, .chat-author, .chat-user, .chat-user-name, .chat-username")).forEach(element => {
             const text = String(element.textContent || "").trim();
             if (/^[^()]{1,50}\([A-Z0-9/-]{3,15}\)$/.test(text)) {
                 const normalized = text.replace(/\s*\(/, " (");
@@ -1188,7 +1228,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                     element.textContent = normalized;
             }
         });
-        nativeChat()?.querySelectorAll(".chat-message *").forEach(element => {
+        roots.flatMap(root => matchingChatElements(root, ".chat-message *")).forEach(element => {
             if (element.childElementCount || element.matches(".chat-text, .chat-message-content"))
                 return;
             const text = String(element.textContent || "");
@@ -1198,7 +1238,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                     element.textContent = normalized;
             }
         });
-        nativeChat()?.querySelectorAll(".chat-message-content img").forEach(image => {
+        roots.flatMap(root => matchingChatElements(root, ".chat-message-content img")).forEach(image => {
             const container = image.closest(".chat-message-content");
             if (!container || container.querySelector(":scope > .nch-chat-download"))
                 return;
@@ -1212,14 +1252,21 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             container.appendChild(button);
         });
     }
-    function safeNormalizeChatDisplay() {
+    function safeNormalizeChatDisplay(records = null) {
         const chat = nativeChat();
         const observer = chatObserver;
         const resumeObserver = Boolean(chat && observer && chatObserverHost === chat);
         if (resumeObserver)
             observer.disconnect();
         try {
-            normalizeChatDisplay();
+            const mutationRecords = Array.isArray(records) ? records : [];
+            const roots = mutationRecords.flatMap(record => [...record.addedNodes]).filter(node => node instanceof Element);
+            const removedMessage = mutationRecords.some(record => [...record.removedNodes].some(node => node instanceof Element && (node.matches(".chat-message, [data-message-id]") || node.querySelector(".chat-message, [data-message-id]"))));
+            const addedMessage = roots.some(node => node.matches(".chat-message, [data-message-id]") || node.querySelector(".chat-message, [data-message-id]"));
+            const includeGlobalChecks = !mutationRecords.length || (removedMessage && !addedMessage);
+            normalizeChatDisplay(roots.length ? roots : [chat], includeGlobalChecks);
+            if (!includeGlobalChecks && addedMessage && chat?.querySelector(".nch-stale-latest"))
+                normalizeLatestChatPrompt();
         }
         catch (error) {
             console.warn("NCO Helper chat normalization skipped:", error);
@@ -2564,9 +2611,18 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         ${stationActionTray(station, details, call, busy)}
       </div>`;
     }
+    function updateStationGroup(element, html) {
+        if (!element || renderedStationGroupHtml.get(element) === html)
+            return false;
+        element.innerHTML = html;
+        renderedStationGroupHtml.set(element, html);
+        performanceStats.stationDomWrites += 1;
+        return true;
+    }
     function renderQueue() {
         if (!panel)
             return;
+        const renderStartedAt = performance.now();
         const focusedNote = document.activeElement?.matches?.("[data-note-input]")
             ? {
                 call: normalizeCall(document.activeElement.dataset.noteInput),
@@ -2584,21 +2640,30 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         const checkedOut = ordered(visibleStations.filter(s => s.checkedState === false), "checkedOutOrder");
         const activeRaw = visibleStations.filter(s => s.checkedState === true);
         const lurkers = ordered(visibleStations.filter(s => s.checkedState === null), "lurkerOrder");
-        activeRaw.forEach(station => {
-            local.ioCalls = local.ioCalls.filter(call => call !== normalizeCall(station.callSign));
-        });
+        const activeCalls = new Set(activeRaw.map(station => normalizeCall(station.callSign)));
+        local.ioCalls = local.ioCalls.filter(call => !activeCalls.has(call));
         const activeOrdered = ordered(activeRaw, "order");
-        const ncos = activeOrdered.filter(s => s.role === "netcontrol");
-        const loggers = activeOrdered.filter(s => s.role === "netlogger");
-        const relays = activeOrdered.filter(s => s.role === "netrelay");
-        const guests = activeOrdered.filter(s => !["netcontrol", "netlogger", "netrelay"].includes(s.role) && detailsFor(s.callSign).specialGuest);
-        const active = activeOrdered.filter(s => !ncos.includes(s) && !loggers.includes(s) && !relays.includes(s) && !guests.includes(s));
-        panel.querySelector("[data-role='checked-out']").innerHTML =
-            checkedOut.map(s => stationRow(s, "checkedOutOrder")).join("") || `<p class="nch-empty">None</p>`;
-        const displayedActive = [...ncos, ...loggers, ...relays, ...guests, ...active];
+        const activeGroups = { ncos: [], loggers: [], relays: [], guests: [], active: [] };
+        activeOrdered.forEach(station => {
+            if (station.role === "netcontrol")
+                activeGroups.ncos.push(station);
+            else if (station.role === "netlogger")
+                activeGroups.loggers.push(station);
+            else if (station.role === "netrelay")
+                activeGroups.relays.push(station);
+            else if (detailsFor(station.callSign).specialGuest)
+                activeGroups.guests.push(station);
+            else
+                activeGroups.active.push(station);
+        });
+        const checkedOutHtml = checkedOut.map(s => stationRow(s, "checkedOutOrder")).join("") || `<p class="nch-empty">None</p>`;
+        updateStationGroup(panel.querySelector("[data-role='checked-out']"), checkedOutHtml);
+        const displayedActive = [
+            ...activeGroups.ncos, ...activeGroups.loggers, ...activeGroups.relays, ...activeGroups.guests, ...activeGroups.active
+        ];
         const activeList = panel.querySelector("[data-role='active']");
-        activeList.innerHTML =
-            displayedActive.map(s => stationRow(s, "order")).join("") || `<p class="nch-empty">None</p>`;
+        const activeHtml = displayedActive.map(s => stationRow(s, "order")).join("") || `<p class="nch-empty">None</p>`;
+        updateStationGroup(activeList, activeHtml);
         if (scrollActiveAfterRender) {
             scrollActiveAfterRender = false;
             requestAnimationFrame(() => { activeList.scrollTop = activeList.scrollHeight; });
@@ -2611,12 +2676,23 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         const checkedOutHeadingNote = panel.querySelector("[data-role='checked-out-order-note']");
         if (checkedOutHeadingNote)
             checkedOutHeadingNote.textContent = canManageStations() ? "drag to reorder" : "read only";
-        panel.querySelector("[data-role='lurkers']").innerHTML =
-            lurkers.map(s => stationRow(s, "lurkerOrder")).join("") || `<p class="nch-empty">None</p>`;
-        const loggedCount = visibleStations.filter(station => typeof station.checkedState === "boolean").length;
-        const activeCount = visibleStations.filter(station => station.checkedState === true).length;
-        const checkedOutCount = visibleStations.filter(station => station.checkedState === false).length;
-        const recheckCount = visibleStations.filter(station => station.checkedState === true && detailsFor(station.callSign).recheck).length;
+        const lurkersHtml = lurkers.map(s => stationRow(s, "lurkerOrder")).join("") || `<p class="nch-empty">None</p>`;
+        updateStationGroup(panel.querySelector("[data-role='lurkers']"), lurkersHtml);
+        let loggedCount = 0;
+        let activeCount = 0;
+        let checkedOutCount = 0;
+        let recheckCount = 0;
+        visibleStations.forEach(station => {
+            if (typeof station.checkedState === "boolean")
+                loggedCount += 1;
+            if (station.checkedState === true) {
+                activeCount += 1;
+                if (detailsFor(station.callSign).recheck)
+                    recheckCount += 1;
+            }
+            else if (station.checkedState === false)
+                checkedOutCount += 1;
+        });
         panel.querySelector("[data-role='logged-count']").textContent = String(loggedCount);
         panel.querySelector("[data-role='active-count']").textContent = String(activeCount);
         panel.querySelector("[data-role='checked-out-count']").textContent = String(checkedOutCount);
@@ -2642,6 +2718,9 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             orientRowActions(targetRow);
         });
         syncViewer();
+        performanceStats.stationRenderCalls += 1;
+        performanceStats.stationRowsRendered += visibleStations.length;
+        recordTiming(performanceStats.stationRenderMs, performance.now() - renderStartedAt);
     }
     function orientRowActions(row) {
         if (!panel || !(row instanceof Element) || !row.classList.contains("nch-row"))
@@ -4548,9 +4627,12 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         syncViewer();
     }
     function scheduleRefresh(delayMs = 0) {
+        performanceStats.refreshScheduleRequests += 1;
         const scheduledAt = Date.now() + Math.max(0, Number(delayMs) || 0);
-        if (refreshScheduleTimer && scheduledAt >= refreshScheduledAt)
+        if (refreshScheduleTimer && scheduledAt >= refreshScheduledAt) {
+            performanceStats.refreshScheduleSuppressed += 1;
             return;
+        }
         if (refreshScheduleTimer)
             window.clearTimeout(refreshScheduleTimer);
         refreshScheduledAt = scheduledAt;
@@ -4562,7 +4644,50 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     }
     const refreshCoordinator = new CoalescedAsyncRequest(refreshOnce);
     const refresh = () => refreshCoordinator.request();
+    globalThis.NCOLoggerDiagnostics = Object.freeze({
+        snapshot: () => {
+            const uptimeMs = Math.max(1, performance.now() - performanceStats.startedAt);
+            const refreshStats = refreshCoordinator.stats;
+            return {
+                uptimeMs,
+                refresh: {
+                    ...refreshStats,
+                    requestsPerMinute: refreshStats.requests * 60000 / uptimeMs,
+                    scheduled: performanceStats.refreshScheduleRequests,
+                    scheduleSuppressed: performanceStats.refreshScheduleSuppressed,
+                    timing: timingSummary(performanceStats.refreshMs)
+                },
+                stationRender: {
+                    calls: performanceStats.stationRenderCalls,
+                    rowsProcessed: performanceStats.stationRowsRendered,
+                    domWrites: performanceStats.stationDomWrites,
+                    timing: timingSummary(performanceStats.stationRenderMs)
+                },
+                sharedState: {
+                    ...sharedStateSaveCoordinator.stats,
+                    sent: performanceStats.sharedStateSent,
+                    unchangedSuppressed: performanceStats.sharedStateSuppressed
+                },
+                lifecycle: {
+                    pollTimers: pollTimer === null ? 0 : 1,
+                    refreshTimers: refreshScheduleTimer === null ? 0 : 1,
+                    saveTimers: loggerStateSaveTimer === null ? 0 : 1,
+                    chatObservers: chatObserver === null ? 0 : 1
+                },
+                collections: {
+                    helperPeers: helperPeers.size,
+                    privateThreads: privateThreads.size,
+                    privateMessages: [...privateThreads.values()].reduce((sum, thread) => sum + thread.length, 0),
+                    pinnedChatMessages: pinnedChatMessages.size,
+                    qrzAttemptedCalls: qrzAttemptedCalls.size,
+                    avatarSources: avatarSourceCache.size,
+                    resolvedAvatars: resolvedAvatarDataUrls.size
+                }
+            };
+        }
+    });
     async function refreshOnce() {
+        const refreshStartedAt = performance.now();
         const requestSequence = ++refreshRequestSequence;
         try {
             const data = await fetchNet();
@@ -4641,6 +4766,9 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             if (panel)
                 setStatus(error.message || String(error), "error");
         }
+        finally {
+            recordTiming(performanceStats.refreshMs, performance.now() - refreshStartedAt);
+        }
     }
     const qrzStorageGet = () => new Promise(resolve => browserStorage.get([qrzUserKey, qrzAuthKey], resolve));
     const relayStorageGet = () => new Promise(resolve => browserStorage.get([relayTokenKey], resolve));
@@ -4696,7 +4824,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         storageSet();
         local.hiddenCalls.forEach(call => hiddenCalls.add(call));
         await refresh();
-        window.setInterval(() => scheduleRefresh(), POLL_MS);
+        pollTimer = window.setInterval(() => scheduleRefresh(), POLL_MS);
     });
     window.addEventListener("beforeunload", () => {
         if (statusTimer)
@@ -4705,6 +4833,9 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             clearTimeout(loggerStateSaveTimer);
         if (refreshScheduleTimer)
             clearTimeout(refreshScheduleTimer);
+        if (pollTimer !== null)
+            clearInterval(pollTimer);
+        pollTimer = null;
         window.removeEventListener("resize", handleWindowResize);
         window.removeEventListener("keydown", handleActionHotkey, true);
         stopSync();

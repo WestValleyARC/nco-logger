@@ -6,12 +6,38 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
 import {
     chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot,
-    recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, shouldScrollChatToLatest, SingleChatStream,
-    sortChatMessages
+    recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, isLatestChatMessage,
+    shouldScrollChatToLatest, SingleChatStream, sortChatMessages, trimOldestChatMessages
 } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
 
 const logger = createLogger('lib/chat.ts');
+const PUBLIC_MESSAGE_LIMIT = 1000;
+const DIRECT_MESSAGE_LIMIT = 500;
+const CHAT_TIMING_SAMPLE_LIMIT = 60;
+const chatPerformance = {
+    startedAt: performance.now(), fullRenders: 0, incrementalAppends: 0, renderedRows: 0,
+    fullRenderMs: [] as number[], incrementalAppendMs: [] as number[]
+};
+const recordChatTiming = (samples: number[], duration: number): void => {
+    samples.push(duration);
+    if (samples.length > CHAT_TIMING_SAMPLE_LIMIT) samples.shift();
+};
+const chatTimingSummary = (samples: number[]): { count: number; averageMs: number; maximumMs: number } => ({
+    count: samples.length,
+    averageMs: samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : 0,
+    maximumMs: samples.length ? Math.max(...samples) : 0
+});
+(globalThis as typeof globalThis & { NCOChatDiagnostics?: object }).NCOChatDiagnostics = Object.freeze({
+    snapshot: () => ({
+        uptimeMs: performance.now() - chatPerformance.startedAt,
+        fullRenders: chatPerformance.fullRenders,
+        incrementalAppends: chatPerformance.incrementalAppends,
+        renderedRows: chatPerformance.renderedRows,
+        fullRender: chatTimingSummary(chatPerformance.fullRenderMs),
+        incrementalAppend: chatTimingSummary(chatPerformance.incrementalAppendMs)
+    })
+});
 
 interface LocalChatMessage {
     id: string;
@@ -666,6 +692,7 @@ export class ChatWidget extends HTMLElement {
             reconcileChatSnapshot(
                 this.publicMessages, data.messages.filter(message => message.scope === 'public'), knownPublicIds
             );
+            trimOldestChatMessages(this.publicMessages, PUBLIC_MESSAGE_LIMIT);
             this.reconcileDirectMessages(data.directMessages, false);
             this.updateRecipients(data.recipients);
             this.inboxInitialized = true;
@@ -739,6 +766,7 @@ export class ChatWidget extends HTMLElement {
             }
             const isNew = !conversation.has(message.id);
             reconcileChatMessages(conversation, [message]);
+            trimOldestChatMessages(conversation, DIRECT_MESSAGE_LIMIT);
             recordPrivateUnread(this.unreadCounts, message.conversationUserId, shouldRecordPrivateUnread({
                 countUnread, isNew, mine: message.mine, ignored,
                 selected: this.selectedRecipientId === message.conversationUserId
@@ -767,14 +795,19 @@ export class ChatWidget extends HTMLElement {
                 let isNew = false;
                 if (message.scope === 'public') {
                     isNew = !message.cleared && reconcileChatMessages(this.publicMessages, [message]) === 1;
+                    trimOldestChatMessages(this.publicMessages, PUBLIC_MESSAGE_LIMIT);
                     if (message.cleared) this.publicMessages.delete(message.id);
-                    if (!this.selectedRecipientId) this.render({ preserveScroll: true });
+                    if (!this.selectedRecipientId && !this.renderLatestAppend(message)) {
+                        this.render({ preserveScroll: true });
+                    }
                 } else {
                     const conversationId = message.conversationUserId;
                     const conversation = conversationId ? this.directConversations.get(conversationId) : null;
                     isNew = Boolean(conversationId && !conversation?.has(message.id));
                     this.reconcileDirectMessages([message], this.inboxInitialized);
-                    if (conversationId === this.selectedRecipientId) this.render({ preserveScroll: true });
+                    if (conversationId === this.selectedRecipientId && !this.renderLatestAppend(message)) {
+                        this.render({ preserveScroll: true });
+                    }
                 }
                 if (isNew && !wasNearBottom && (message.scope === 'public' ? !this.selectedRecipientId
                     : message.conversationUserId === this.selectedRecipientId)) this.showNewMessages(true);
@@ -843,6 +876,7 @@ export class ChatWidget extends HTMLElement {
             reconcileChatSnapshot(
                 this.publicMessages, data.messages.filter(message => message.scope === 'public'), knownPublicIds
             );
+            trimOldestChatMessages(this.publicMessages, PUBLIC_MESSAGE_LIMIT);
             this.reconcileDirectMessages(data.directMessages, this.inboxInitialized);
             this.updateRecipients(data.recipients);
             this.inboxInitialized = true;
@@ -887,11 +921,14 @@ export class ChatWidget extends HTMLElement {
                 throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be sent'));
             }
             if (data.message.scope === 'direct') this.reconcileDirectMessages([data.message], false);
-            else reconcileChatMessages(this.publicMessages, [data.message]);
+            else {
+                reconcileChatMessages(this.publicMessages, [data.message]);
+                trimOldestChatMessages(this.publicMessages, PUBLIC_MESSAGE_LIMIT);
+            }
             input.value = '';
             if (this.selectedRecipientId === recipientId) {
                 this.setReply(null);
-                this.render({ forceBottom: true });
+                if (!this.renderLatestAppend(data.message, true)) this.render({ forceBottom: true });
             }
             this.setStatus('Live');
         } catch (err) {
@@ -959,10 +996,13 @@ export class ChatWidget extends HTMLElement {
                 throw new Error(chatRequestErrorMessage(response.status, data.error, 'Image could not be uploaded'));
             }
             if (data.message.scope === 'direct') this.reconcileDirectMessages([data.message], false);
-            else reconcileChatMessages(this.publicMessages, [data.message]);
+            else {
+                reconcileChatMessages(this.publicMessages, [data.message]);
+                trimOldestChatMessages(this.publicMessages, PUBLIC_MESSAGE_LIMIT);
+            }
             if (this.selectedRecipientId === recipientId) {
                 this.setReply(null);
-                this.render({ forceBottom: true });
+                if (!this.renderLatestAppend(data.message, true)) this.render({ forceBottom: true });
             }
             this.setStatus('Image shared', false, 2500);
         } catch (err) {
@@ -1074,7 +1114,10 @@ export class ChatWidget extends HTMLElement {
 
     private reconcileMutationMessage(message: LocalChatMessage): void {
         if (message.scope === 'direct') this.reconcileDirectMessages([message], false);
-        else reconcileChatMessages(this.publicMessages, [message]);
+        else {
+            reconcileChatMessages(this.publicMessages, [message]);
+            trimOldestChatMessages(this.publicMessages, PUBLIC_MESSAGE_LIMIT);
+        }
         const visible = message.scope === 'public'
             ? this.selectedRecipientId === null
             : message.conversationUserId === this.selectedRecipientId;
@@ -1118,6 +1161,7 @@ export class ChatWidget extends HTMLElement {
     private render(options: { forceBottom?: boolean; preserveScroll?: boolean } = {}): void {
         const container = this.querySelector<HTMLElement>('.chat-messages');
         if (!container) return;
+        const startedAt = performance.now();
         this.renderPinnedMessages();
         const snapshot = this.captureScrollSnapshot(container);
         const existingRows = new Map<string, HTMLElement>();
@@ -1126,7 +1170,8 @@ export class ChatWidget extends HTMLElement {
             if (id) existingRows.set(id, row);
         });
         const rows = document.createDocumentFragment();
-        sortChatMessages(this.messages.values()).forEach(message => {
+        const sortedMessages = sortChatMessages(this.messages.values());
+        sortedMessages.forEach(message => {
             const renderKey = this.messageRenderKey(message);
             const existing = existingRows.get(message.id);
             const row = existing?.dataset['renderKey'] === renderKey ? existing : this.renderMessage(message, renderKey);
@@ -1140,6 +1185,33 @@ export class ChatWidget extends HTMLElement {
             this.restoreScrollSnapshot(container, snapshot);
         }
         this.syncScrollTracking(container);
+        chatPerformance.fullRenders += 1;
+        chatPerformance.renderedRows += sortedMessages.length;
+        recordChatTiming(chatPerformance.fullRenderMs, performance.now() - startedAt);
+    }
+
+    private renderLatestAppend(message: LocalChatMessage, forceBottom = false): boolean {
+        const container = this.querySelector<HTMLElement>('.chat-messages');
+        if (!container) return false;
+        const existing = container.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(message.id)}"]`);
+        if (existing) return existing.dataset['renderKey'] === this.messageRenderKey(message);
+        if (!isLatestChatMessage(this.messages.values(), message)) return false;
+        const startedAt = performance.now();
+        const wasNearBottom = this.isNearBottom();
+        container.append(this.renderMessage(message));
+        while (container.childElementCount > this.messages.size) {
+            container.firstElementChild?.remove();
+        }
+        if (message.pinned && !this.selectedRecipientId) this.renderPinnedMessages();
+        if (shouldScrollChatToLatest(forceBottom, wasNearBottom)) {
+            container.scrollTop = container.scrollHeight;
+            this.showNewMessages(false);
+        }
+        this.syncScrollTracking(container);
+        chatPerformance.incrementalAppends += 1;
+        chatPerformance.renderedRows += 1;
+        recordChatTiming(chatPerformance.incrementalAppendMs, performance.now() - startedAt);
+        return true;
     }
 
     private captureScrollSnapshot(container: HTMLElement): ChatScrollSnapshot {

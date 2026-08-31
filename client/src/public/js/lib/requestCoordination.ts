@@ -21,11 +21,16 @@ export class ExclusiveKeyedOperation {
 export class CoalescedAsyncRequest {
     private inFlight: Promise<void> | null = null;
     private trailingRequested = false;
+    private requestCount = 0;
+    private executionCount = 0;
+    private coalescedCount = 0;
 
     constructor(private readonly operation: () => Promise<void>) {}
 
     request(): Promise<void> {
+        this.requestCount += 1;
         if (this.inFlight) {
+            this.coalescedCount += 1;
             this.trailingRequested = true;
             return this.inFlight;
         }
@@ -42,9 +47,18 @@ export class CoalescedAsyncRequest {
         return this.inFlight !== null;
     }
 
+    get stats(): Readonly<{ requests: number; executions: number; coalesced: number }> {
+        return {
+            requests: this.requestCount,
+            executions: this.executionCount,
+            coalesced: this.coalescedCount
+        };
+    }
+
     private async drain(): Promise<void> {
         do {
             this.trailingRequested = false;
+            this.executionCount += 1;
             await this.operation();
         } while (this.trailingRequested);
     }

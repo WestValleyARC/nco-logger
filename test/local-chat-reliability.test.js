@@ -79,8 +79,14 @@ test('chat reconnect and bridge lifecycle avoid redundant polling and initial hi
     assert.match(chat, /this\.clearConnectionRetry\(\)[\s\S]*this\.eventStream\.close\(\)[\s\S]*this\.connectionAbort\?\.abort\(\)/);
     assert.match(chat, /this\.historyReloadQueued = true/);
     assert.match(chat, /existing\?\.dataset\['renderKey'\] === renderKey \? existing : this\.renderMessage/);
+    assert.match(chat, /private renderLatestAppend\(/);
+    assert.match(chat, /container\.append\(this\.renderMessage\(message\)\)/);
+    assert.match(chat, /trimOldestChatMessages\(this\.publicMessages, PUBLIC_MESSAGE_LIMIT\)/);
+    assert.match(chat, /NCOChatDiagnostics/);
     assert.doesNotMatch(bridge, /setInterval\(attach/);
     assert.match(bridge, /new MutationObserver\(queueAttach\)/);
+    assert.match(bridge, /record\.addedNodes\.forEach\(addMessageNodes\)/);
+    assert.doesNotMatch(bridge, /boundChat\.querySelectorAll\("\[data-message-id\]"\)\.forEach/);
     assert.ok(server.indexOf("ChatMessage.watch(") < server.indexOf("writeEvent('ready'"));
     assert.match(server, /req\.once\('close', cleanup\)/);
     assert.match(server, /res\.once\('close', cleanup\)/);

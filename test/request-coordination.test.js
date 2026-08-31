@@ -56,6 +56,7 @@ test('refresh coordinator never overlaps requests and coalesces repeated trigger
     assert.equal(maxActive, 1);
     assert.equal(calls, 2);
     assert.equal(coordinator.active, false);
+    assert.deepEqual(coordinator.stats, { requests: 3, executions: 2, coalesced: 2 });
 });
 
 test('NCO logger routes command and polling refreshes through the coordination helpers', () => {
@@ -69,4 +70,18 @@ test('NCO logger routes command and polling refreshes through the coordination h
     assert.match(source, /new CoalescedAsyncRequest\(refreshOnce\)/);
     assert.match(source, /setInterval\(\(\) => scheduleRefresh\(\), POLL_MS\)/);
     assert.doesNotMatch(source, /setTimeout\(refresh, 350\)/);
+    assert.match(source, /pollTimer = window\.setInterval/);
+    assert.match(source, /clearInterval\(pollTimer\)/);
+    assert.match(source, /NCOLoggerDiagnostics = Object\.freeze/);
+});
+
+test('shared logger-state saves are single-flight and suppress unchanged content', () => {
+    const source = fs.readFileSync(
+        path.join(root, 'client/src/public/js/byView/liveNet/ncoLogger.js'), 'utf8'
+    );
+
+    assert.match(source, /new CoalescedAsyncRequest\(saveSharedSnapshotOnce\)/);
+    assert.match(source, /signature === lastSavedLoggerStateSignature/);
+    assert.match(source, /revision: undefined, updated_at: undefined/);
+    assert.match(source, /void sharedStateSaveCoordinator\.request\(\)/);
 });

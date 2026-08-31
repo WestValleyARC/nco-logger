@@ -17,11 +17,16 @@ export class CoalescedAsyncRequest {
     operation;
     inFlight = null;
     trailingRequested = false;
+    requestCount = 0;
+    executionCount = 0;
+    coalescedCount = 0;
     constructor(operation) {
         this.operation = operation;
     }
     request() {
+        this.requestCount += 1;
         if (this.inFlight) {
+            this.coalescedCount += 1;
             this.trailingRequested = true;
             return this.inFlight;
         }
@@ -35,9 +40,17 @@ export class CoalescedAsyncRequest {
     get active() {
         return this.inFlight !== null;
     }
+    get stats() {
+        return {
+            requests: this.requestCount,
+            executions: this.executionCount,
+            coalesced: this.coalescedCount
+        };
+    }
     async drain() {
         do {
             this.trailingRequested = false;
+            this.executionCount += 1;
             await this.operation();
         } while (this.trailingRequested);
     }
