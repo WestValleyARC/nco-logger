@@ -764,9 +764,22 @@ const streamEvents = async (req, res) => {
 
     res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive' });
     res.flushHeaders();
-    res.write(`event: ready\ndata: ${JSON.stringify({ netProfile: req.params.id, userId })}\n\n`);
+    const writeEvent = (event, data) => {
+        if (res.writableEnded || res.destroyed) return false;
+        return res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
     const ChatMessage = getChatMessage();
     const closeStreams = [];
+    let heartbeat = null;
+    let cleanedUp = false;
+    const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        if (heartbeat) clearInterval(heartbeat);
+        closeStreams.forEach(changeStream => void changeStream.close());
+    };
+    req.once('close', cleanup);
+    res.once('close', cleanup);
     try {
         const netProfile = new mongoose.Types.ObjectId(req.params.id);
         const currentUserObjectId = new mongoose.Types.ObjectId(userId);
@@ -777,7 +790,7 @@ const streamEvents = async (req, res) => {
         messageChangeStream.on('change', change => {
             if (!change.fullDocument || !shouldDeliverMessage(change.fullDocument, userId, ignoredUserIds)) return;
             const message = toChatMessage(change.fullDocument, access.role, userId);
-            res.write(`event: message\ndata: ${JSON.stringify(message)}\n\n`);
+            writeEvent('message', message);
         });
         messageChangeStream.on('error', err => {
             logger.warn(`Local chat SSE change stream closed: ${err.message}`);
@@ -791,10 +804,10 @@ const streamEvents = async (req, res) => {
         closeStreams.push(banChangeStream);
         banChangeStream.on('change', change => {
             if (change.fullDocument?.userProfile?.toString() !== userId) return;
-            res.write(`event: access\ndata: ${JSON.stringify({
+            writeEvent('access', {
                 suspended: true,
                 reason: change.fullDocument.reason || ''
-            })}\n\n`);
+            });
             res.end();
         });
         banChangeStream.on('error', err => {
@@ -811,7 +824,7 @@ const streamEvents = async (req, res) => {
                     ignoredUserIds,
                     awayInMs: Number(res.locals?.flexOpts?.awayInMs) || 120000
                 });
-                res.write(`event: recipients\ndata: ${JSON.stringify(recipients)}\n\n`);
+                writeEvent('recipients', recipients);
             } catch (err) {
                 logger.warn(`Local chat recipient refresh failed: ${err.message}`);
             }
@@ -830,7 +843,7 @@ const streamEvents = async (req, res) => {
         closeStreams.push(preferenceChangeStream);
         preferenceChangeStream.on('change', change => {
             ignoredUserIds = new Set((change.fullDocument?.ignoredPrivateUsers || []).map(participantId).filter(Boolean));
-            res.write(`event: preferences\ndata: ${JSON.stringify({ ignoredUserIds: [...ignoredUserIds] })}\n\n`);
+            writeEvent('preferences', { ignoredUserIds: [...ignoredUserIds] });
             void sendRecipients();
         });
         preferenceChangeStream.on('error', err => logger.warn(`Local chat preference stream closed: ${err.message}`));
@@ -838,11 +851,10 @@ const streamEvents = async (req, res) => {
         logger.warn(`Local chat SSE unavailable: ${err.message}`);
         return res.end();
     }
-    const heartbeat = setInterval(() => res.write(': keep-alive\n\n'), 25000);
-    req.on('close', () => {
-        clearInterval(heartbeat);
-        closeStreams.forEach(changeStream => void changeStream.close());
-    });
+    writeEvent('ready', { netProfile: req.params.id, userId });
+    heartbeat = setInterval(() => {
+        if (!res.writableEnded && !res.destroyed) res.write(': keep-alive\n\n');
+    }, 25000);
 };
 
 async function* fetchChatHistory({ npid, since, db = mongoose.connection }) {

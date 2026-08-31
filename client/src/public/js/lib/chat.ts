@@ -5,7 +5,8 @@ import { createLogger } from '#@client/lib/logger.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
 import {
-    clearPrivateUnread, reconcileChatMessages, recordPrivateUnread, shouldScrollChatToLatest, sortChatMessages
+    clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread,
+    ExclusiveChatOperation, shouldScrollChatToLatest, SingleChatStream, sortChatMessages
 } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
 
@@ -59,6 +60,13 @@ interface ChatHistoryResponse {
     error?: string;
 }
 
+interface ChatScrollSnapshot {
+    scrollTop: number;
+    nearBottom: boolean;
+    anchorId: string | null;
+    anchorOffset: number;
+}
+
 const isLocalChatMessage = (value: unknown): value is LocalChatMessage => {
     if (!value || typeof value !== 'object') return false;
     const message = value as Record<string, unknown>;
@@ -110,18 +118,21 @@ export class ChatWidget extends HTMLElement {
     private readonly npid = getNpid().toString();
     private readonly publicMessages = new Map<string, LocalChatMessage>();
     private readonly directConversations = new Map<string, Map<string, LocalChatMessage>>();
+    private readonly loadedDirectConversationIds = new Set<string>();
     private readonly recipients = new Map<string, ChatRecipient>();
     private readonly unreadCounts = new Map<string, number>();
     private readonly scrollPositions = new Map<string, number>();
     private readonly expandedPinnedMessageIds = new Set<string>();
     private selectedRecipientId: string | null = null;
     private inboxInitialized = false;
-    private eventSource: EventSource | null = null;
+    private readonly eventStream = new SingleChatStream<EventSource>();
     private connectionAbort: AbortController | null = null;
+    private connectionRetryTimer: number | null = null;
+    private connectionRetryAttempt = 0;
     private statusTimer: number | null = null;
-    private sending = false;
-    private uploading = false;
+    private readonly composerOperation = new ExclusiveChatOperation<'send' | 'upload'>();
     private reloadingHistory = false;
+    private historyReloadQueued = false;
     private editingMessageId: string | null = null;
     private editDraft = '';
     private savingEdit = false;
@@ -133,6 +144,10 @@ export class ChatWidget extends HTMLElement {
     private lightboxUrl = '';
     private lightboxMimeType = '';
     private previousBodyOverflow = '';
+    private lightboxScrollTop = 0;
+    private lightboxConversationKey = '';
+    private messageScrollHeight = 0;
+    private keepBottomOnImageLoad = true;
     private maxMessageChars = 2000;
     private maxUploadBytes = 5 * 1024 * 1024;
     private imageMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -201,6 +216,26 @@ export class ChatWidget extends HTMLElement {
     private readonly handleWindowResize = (): void => {
         const picker = this.querySelector<HTMLElement>('.chat-emoji-picker');
         if (picker && !picker.hidden) this.positionEmojiPicker();
+    };
+
+    private readonly handleMessageScroll = (): void => {
+        this.keepBottomOnImageLoad = this.isNearBottom();
+        if (this.keepBottomOnImageLoad) this.showNewMessages(false);
+    };
+
+    private readonly handleMessageImageLoad = (event: Event): void => {
+        const container = this.querySelector<HTMLElement>('.chat-messages');
+        const image = event.target;
+        if (!container || !(image instanceof HTMLImageElement) || !container.contains(image)) return;
+        const previousHeight = this.messageScrollHeight;
+        const nextHeight = container.scrollHeight;
+        if (this.keepBottomOnImageLoad) {
+            container.scrollTop = nextHeight;
+            this.showNewMessages(false);
+        } else if (previousHeight > 0 && image.getBoundingClientRect().top < container.getBoundingClientRect().top) {
+            container.scrollTop += Math.max(0, nextHeight - previousHeight);
+        }
+        this.messageScrollHeight = container.scrollHeight;
     };
 
     connectedCallback(): void {
@@ -280,9 +315,9 @@ export class ChatWidget extends HTMLElement {
         this.querySelector<HTMLButtonElement>('.chat-clear-button')?.addEventListener('click', () => void this.clearChat());
         this.querySelector<HTMLButtonElement>('.chat-recipient-toggle')?.addEventListener('click', () => this.toggleRecipientMenu());
         this.querySelector<HTMLButtonElement>('.chat-ignore-button')?.addEventListener('click', () => void this.toggleIgnore());
-        this.querySelector<HTMLElement>('.chat-messages')?.addEventListener('scroll', () => {
-            if (this.isNearBottom()) this.showNewMessages(false);
-        }, { passive: true });
+        const messageContainer = this.querySelector<HTMLElement>('.chat-messages');
+        messageContainer?.addEventListener('scroll', this.handleMessageScroll, { passive: true });
+        messageContainer?.addEventListener('load', this.handleMessageImageLoad, true);
         this.populateEmojiPicker();
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
@@ -290,8 +325,12 @@ export class ChatWidget extends HTMLElement {
         document.addEventListener('keydown', this.handleDocumentKeyDown);
         window.removeEventListener('resize', this.handleWindowResize);
         window.addEventListener('resize', this.handleWindowResize);
+        this.clearConnectionRetry();
+        this.eventStream.close();
         this.connectionAbort?.abort();
         this.connectionAbort = new AbortController();
+        this.connectionRetryAttempt = 0;
+        this.setStatus('Connecting…');
         void this.connect(this.connectionAbort.signal);
     }
 
@@ -300,10 +339,12 @@ export class ChatWidget extends HTMLElement {
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
         window.removeEventListener('resize', this.handleWindowResize);
         this.closeLightbox(false);
+        this.clearConnectionRetry();
         this.connectionAbort?.abort();
         this.connectionAbort = null;
-        this.eventSource?.close();
-        this.eventSource = null;
+        this.eventStream.close();
+        this.reloadingHistory = false;
+        this.historyReloadQueued = false;
         if (this.statusTimer !== null) window.clearTimeout(this.statusTimer);
         this.statusTimer = null;
     }
@@ -441,12 +482,16 @@ export class ChatWidget extends HTMLElement {
         this.toggleRecipientMenu(false);
         this.renderRecipientControls();
         this.render();
-        if (container) container.scrollTop = this.scrollPositions.get(this.conversationKey()) ?? container.scrollHeight;
-        if (recipientId) await this.loadDirectHistory(recipientId);
+        if (container) {
+            container.scrollTop = this.scrollPositions.get(this.conversationKey()) ?? container.scrollHeight;
+            this.syncScrollTracking(container);
+        }
+        if (recipientId && !this.loadedDirectConversationIds.has(recipientId)) await this.loadDirectHistory(recipientId);
         if (focusComposer) this.querySelector<HTMLTextAreaElement>('#local-chat-message')?.focus();
     }
 
     private async loadDirectHistory(recipientId: string): Promise<void> {
+        const knownIds = new Set(this.directConversations.get(recipientId)?.keys() || []);
         try {
             const options: RequestInit = { credentials: 'same-origin', headers: { Accept: 'application/json' } };
             const signal = this.connectionAbort?.signal;
@@ -463,7 +508,8 @@ export class ChatWidget extends HTMLElement {
                 conversation = new Map<string, LocalChatMessage>();
                 this.directConversations.set(recipientId, conversation);
             }
-            reconcileChatMessages(conversation, data.messages);
+            reconcileChatSnapshot(conversation, data.messages, knownIds);
+            this.loadedDirectConversationIds.add(recipientId);
             const recipient = this.recipients.get(recipientId);
             if (recipient && typeof data.ignored === 'boolean') recipient.ignored = data.ignored;
             if (this.selectedRecipientId === recipientId) {
@@ -549,12 +595,34 @@ export class ChatWidget extends HTMLElement {
         input.focus();
     }
 
+    private clearConnectionRetry(): void {
+        if (this.connectionRetryTimer !== null) window.clearTimeout(this.connectionRetryTimer);
+        this.connectionRetryTimer = null;
+    }
+
+    private scheduleConnectionRetry(signal: AbortSignal): void {
+        if (signal.aborted || this.connectionRetryTimer !== null) return;
+        const delay = Math.min(1000 * (2 ** this.connectionRetryAttempt), 15000);
+        this.connectionRetryAttempt += 1;
+        this.connectionRetryTimer = window.setTimeout(() => {
+            this.connectionRetryTimer = null;
+            if (signal.aborted) return;
+            this.setStatus('Connecting…');
+            void this.connect(signal);
+        }, delay);
+    }
+
     private async connect(signal: AbortSignal): Promise<void> {
+        const knownPublicIds = new Set(this.publicMessages.keys());
         try {
             const data = await this.fetchHistory(signal);
             if (signal.aborted) return;
+            this.clearConnectionRetry();
+            this.connectionRetryAttempt = 0;
             this.applyLimits(data);
-            reconcileChatMessages(this.publicMessages, data.messages.filter(message => message.scope === 'public'));
+            reconcileChatSnapshot(
+                this.publicMessages, data.messages.filter(message => message.scope === 'public'), knownPublicIds
+            );
             this.reconcileDirectMessages(data.directMessages, false);
             this.updateRecipients(data.recipients);
             this.inboxInitialized = true;
@@ -562,7 +630,9 @@ export class ChatWidget extends HTMLElement {
             this.openEvents(data.ssePath);
         } catch (err) {
             if (signal.aborted) return;
-            this.setStatus(err instanceof Error ? err.message : 'Chat unavailable', true);
+            logger.error('Local chat connection failed', err);
+            this.setStatus('Chat unavailable. Retrying…', true, 0);
+            this.scheduleConnectionRetry(signal);
         }
     }
 
@@ -623,16 +693,16 @@ export class ChatWidget extends HTMLElement {
     }
 
     private openEvents(path: string): void {
-        this.eventSource?.close();
-        const source = new EventSource(path, { withCredentials: true });
-        this.eventSource = source;
+        let receivedReady = false;
+        const source = this.eventStream.replace(() => new EventSource(path, { withCredentials: true }));
         source.addEventListener('ready', () => {
-            if (this.eventSource !== source) return;
-            this.setStatus('Live', false, 2000);
-            void this.reloadHistory();
+            if (!this.eventStream.owns(source)) return;
+            this.setStatus('Live');
+            if (receivedReady) this.requestHistoryReload();
+            receivedReady = true;
         });
         source.addEventListener('message', event => {
-            if (this.eventSource !== source) return;
+            if (!this.eventStream.owns(source)) return;
             try {
                 const rawData: unknown = event.data;
                 if (typeof rawData !== 'string') throw new Error('Chat event data is not text');
@@ -656,7 +726,7 @@ export class ChatWidget extends HTMLElement {
             } catch (err) { logger.error('Invalid local chat event', err); }
         });
         source.addEventListener('recipients', event => {
-            if (this.eventSource !== source) return;
+            if (!this.eventStream.owns(source)) return;
             try {
                 const recipients: unknown = JSON.parse(String(event.data));
                 if (!Array.isArray(recipients) || !recipients.every(isChatRecipient)) throw new Error('Invalid recipient list');
@@ -664,7 +734,7 @@ export class ChatWidget extends HTMLElement {
             } catch (err) { logger.error('Invalid local chat recipient event', err); }
         });
         source.addEventListener('preferences', event => {
-            if (this.eventSource !== source) return;
+            if (!this.eventStream.owns(source)) return;
             try {
                 const data = JSON.parse(String(event.data)) as { ignoredUserIds?: unknown };
                 if (!Array.isArray(data.ignoredUserIds)) return;
@@ -674,31 +744,46 @@ export class ChatWidget extends HTMLElement {
             } catch (err) { logger.error('Invalid local chat preference event', err); }
         });
         source.addEventListener('access', event => {
-            if (this.eventSource !== source) return;
+            if (!this.eventStream.owns(source)) return;
             try {
                 const data = JSON.parse(String(event.data)) as { suspended?: boolean; reason?: string };
                 if (!data.suspended) return;
                 this.suspended = true;
-                source.close();
+                this.eventStream.close();
                 this.setComposerDisabled(true);
                 this.setStatus(data.reason ? `Chat suspended: ${data.reason}` : 'Chat access has been suspended for this net', true);
             } catch (err) { logger.error('Invalid local chat access event', err); }
         });
         source.onerror = () => {
-            if (this.eventSource === source && !this.suspended) this.setStatus('Reconnecting…');
+            if (this.eventStream.owns(source) && !this.suspended) this.setStatus('Reconnecting…');
         };
     }
 
+    private requestHistoryReload(): void {
+        if (this.reloadingHistory) {
+            this.historyReloadQueued = true;
+            return;
+        }
+        void this.reloadHistory();
+    }
+
     private async reloadHistory(): Promise<void> {
-        if (this.reloadingHistory) return;
+        if (this.reloadingHistory) {
+            this.historyReloadQueued = true;
+            return;
+        }
         const signal = this.connectionAbort?.signal;
         if (!signal) return;
+        const knownPublicIds = new Set(this.publicMessages.keys());
         this.reloadingHistory = true;
+        this.historyReloadQueued = false;
         try {
             const data = await this.fetchHistory(signal);
             if (signal.aborted) return;
             this.applyLimits(data);
-            reconcileChatMessages(this.publicMessages, data.messages.filter(message => message.scope === 'public'));
+            reconcileChatSnapshot(
+                this.publicMessages, data.messages.filter(message => message.scope === 'public'), knownPublicIds
+            );
             this.reconcileDirectMessages(data.directMessages, this.inboxInitialized);
             this.updateRecipients(data.recipients);
             this.inboxInitialized = true;
@@ -706,30 +791,38 @@ export class ChatWidget extends HTMLElement {
         } catch (err) {
             if (signal.aborted) return;
             logger.error('Local chat reconnect history failed', err);
-            this.setStatus('Live updates restored; history refresh failed', true);
+            this.setStatus('Live updates restored; history refresh failed', true, 0);
         } finally {
             this.reloadingHistory = false;
+            if (this.historyReloadQueued && !signal.aborted) {
+                this.historyReloadQueued = false;
+                queueMicrotask(() => this.requestHistoryReload());
+            }
         }
     }
 
     private async send(event: SubmitEvent): Promise<void> {
         event.preventDefault();
-        if (this.sending) return;
         const input = this.querySelector<HTMLTextAreaElement>('#local-chat-message');
         const text = input?.value.trim() || '';
         if (!input || !text) return;
         const recipientId = this.selectedRecipientId;
-        this.sending = true;
+        const replyToId = this.replyingToId;
+        const signal = this.connectionAbort?.signal;
+        if (signal?.aborted) return;
+        if (!this.composerOperation.begin('send')) return;
         this.setComposerDisabled(true);
         this.setStatus('Sending…');
         try {
             const path = recipientId
                 ? `/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/messages`
                 : `/api/chat/${encodeURIComponent(this.npid)}/messages`;
-            const response = await fetch(path, {
+            const options: RequestInit = {
                 method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, replyTo: this.replyingToId })
-            });
+                body: JSON.stringify({ text, replyTo: replyToId })
+            };
+            if (signal) options.signal = signal;
+            const response = await fetch(path, options);
             const data = (await response.json()) as { message?: LocalChatMessage; error?: string };
             if (!response.ok || !data.message) throw new Error(data.error || 'Message could not be sent');
             if (data.message.scope === 'direct') this.reconcileDirectMessages([data.message], false);
@@ -739,13 +832,15 @@ export class ChatWidget extends HTMLElement {
                 this.setReply(null);
                 this.render({ forceBottom: true });
             }
-            this.setStatus('Live', false, 1500);
+            this.setStatus('Live');
         } catch (err) {
-            this.setStatus(err instanceof Error ? err.message : 'Message could not be sent', true);
+            if (!signal?.aborted) this.setStatus(err instanceof Error ? err.message : 'Message could not be sent', true);
         } finally {
-            this.sending = false;
-            this.setComposerDisabled(this.suspended);
-            input.focus();
+            this.composerOperation.end('send');
+            if (this.isConnected) {
+                this.setComposerDisabled(this.suspended || this.composerOperation.isActive());
+                input.focus();
+            }
         }
     }
 
@@ -763,8 +858,11 @@ export class ChatWidget extends HTMLElement {
     private async uploadImage(event: Event): Promise<void> {
         const fileInput = event.currentTarget as HTMLInputElement;
         const file = fileInput.files?.[0];
-        if (!file || this.uploading) return;
+        if (!file) return;
         const recipientId = this.selectedRecipientId;
+        const replyToId = this.replyingToId;
+        const signal = this.connectionAbort?.signal;
+        if (signal?.aborted) return;
         const button = this.querySelector<HTMLElement>('.chat-image-button');
         if (file.size > this.maxUploadBytes) {
             this.setStatus(`Image exceeds ${Math.floor(this.maxUploadBytes / 1024 / 1024)} MB`, true);
@@ -776,7 +874,8 @@ export class ChatWidget extends HTMLElement {
             fileInput.value = '';
             return;
         }
-        this.uploading = true;
+        if (!this.composerOperation.begin('upload')) return;
+        this.setComposerDisabled(true);
         if (button) button.setAttribute('aria-disabled', 'true');
         fileInput.disabled = true;
         this.setStatus('Uploading image…');
@@ -784,14 +883,16 @@ export class ChatWidget extends HTMLElement {
             const path = recipientId
                 ? `/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/images`
                 : `/api/chat/${encodeURIComponent(this.npid)}/images`;
-            const response = await fetch(path, {
+            const options: RequestInit = {
                 method: 'POST', credentials: 'same-origin',
                 headers: {
                     'Content-Type': file.type,
                     Accept: 'application/json',
-                    ...(this.replyingToId ? { 'X-Chat-Reply-To': this.replyingToId } : {})
+                    ...(replyToId ? { 'X-Chat-Reply-To': replyToId } : {})
                 }, body: file
-            });
+            };
+            if (signal) options.signal = signal;
+            const response = await fetch(path, options);
             const data = (await response.json()) as { message?: LocalChatMessage; error?: string };
             if (!response.ok || !data.message) throw new Error(data.error || 'Image could not be uploaded');
             if (data.message.scope === 'direct') this.reconcileDirectMessages([data.message], false);
@@ -802,12 +903,16 @@ export class ChatWidget extends HTMLElement {
             }
             this.setStatus('Image shared', false, 2500);
         } catch (err) {
-            this.setStatus(err instanceof Error ? err.message : 'Image could not be uploaded', true);
+            if (!signal?.aborted) this.setStatus(err instanceof Error ? err.message : 'Image could not be uploaded', true);
         } finally {
-            this.uploading = false;
+            this.composerOperation.end('upload');
             fileInput.value = '';
             fileInput.disabled = false;
             if (button) button.removeAttribute('aria-disabled');
+            if (this.isConnected) {
+                this.setComposerDisabled(this.suspended || this.composerOperation.isActive());
+                this.querySelector<HTMLTextAreaElement>('#local-chat-message')?.focus();
+            }
         }
     }
 
@@ -941,17 +1046,65 @@ export class ChatWidget extends HTMLElement {
         const container = this.querySelector<HTMLElement>('.chat-messages');
         if (!container) return;
         this.renderPinnedMessages();
-        const nearBottom = this.isNearBottom();
-        const previousScrollTop = container.scrollTop;
-        container.replaceChildren();
-        sortChatMessages(this.messages.values())
-            .forEach(message => container.append(this.renderMessage(message)));
-        if (shouldScrollChatToLatest(Boolean(options.forceBottom), nearBottom)) {
+        const snapshot = this.captureScrollSnapshot(container);
+        const existingRows = new Map<string, HTMLElement>();
+        container.querySelectorAll<HTMLElement>(':scope > [data-message-id]').forEach(row => {
+            const id = row.dataset['messageId'];
+            if (id) existingRows.set(id, row);
+        });
+        const rows = document.createDocumentFragment();
+        sortChatMessages(this.messages.values()).forEach(message => {
+            const renderKey = this.messageRenderKey(message);
+            const existing = existingRows.get(message.id);
+            const row = existing?.dataset['renderKey'] === renderKey ? existing : this.renderMessage(message, renderKey);
+            rows.append(row);
+        });
+        container.replaceChildren(rows);
+        if (shouldScrollChatToLatest(Boolean(options.forceBottom), snapshot.nearBottom)) {
             container.scrollTop = container.scrollHeight;
             this.showNewMessages(false);
         } else if (options.preserveScroll) {
-            container.scrollTop = previousScrollTop;
+            this.restoreScrollSnapshot(container, snapshot);
         }
+        this.syncScrollTracking(container);
+    }
+
+    private captureScrollSnapshot(container: HTMLElement): ChatScrollSnapshot {
+        const containerTop = container.getBoundingClientRect().top;
+        const rows = Array.from(container.querySelectorAll<HTMLElement>('[data-message-id]'));
+        const anchor = rows.find(row => row.getBoundingClientRect().bottom >= containerTop) || null;
+        return {
+            scrollTop: container.scrollTop,
+            nearBottom: this.isNearBottom(),
+            anchorId: anchor?.dataset['messageId'] || null,
+            anchorOffset: anchor ? anchor.getBoundingClientRect().top - containerTop : 0
+        };
+    }
+
+    private restoreScrollSnapshot(container: HTMLElement, snapshot: ChatScrollSnapshot): void {
+        const anchor = snapshot.anchorId
+            ? container.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(snapshot.anchorId)}"]`)
+            : null;
+        if (!anchor) {
+            container.scrollTop = snapshot.scrollTop;
+            return;
+        }
+        const currentOffset = anchor.getBoundingClientRect().top - container.getBoundingClientRect().top;
+        container.scrollTop = preserveScrollTop(snapshot.scrollTop, snapshot.anchorOffset, currentOffset);
+    }
+
+    private syncScrollTracking(container: HTMLElement): void {
+        this.messageScrollHeight = container.scrollHeight;
+        this.keepBottomOnImageLoad = this.isNearBottom();
+    }
+
+    private messageRenderKey(message: LocalChatMessage): string {
+        const replyTarget = message.replyTo ? this.messages.get(message.replyTo) : null;
+        return JSON.stringify([
+            message,
+            this.editingMessageId === message.id ? this.editDraft : null,
+            replyTarget ? [replyTarget.text, replyTarget.deleted, replyTarget.attachment?.kind || null] : null
+        ]);
     }
 
     private renderPinnedMessages(): void {
@@ -1020,10 +1173,11 @@ export class ChatWidget extends HTMLElement {
         });
     }
 
-    private renderMessage(message: LocalChatMessage): HTMLElement {
+    private renderMessage(message: LocalChatMessage, renderKey = this.messageRenderKey(message)): HTMLElement {
         const row = document.createElement('div');
         row.className = `chat-message border-bottom py-1${message.pinned ? ' chat-message-pinned' : ''}`;
         row.dataset['messageId'] = message.id;
+        row.dataset['renderKey'] = renderKey;
         const heading = document.createElement('div');
         const author = document.createElement('strong');
         author.className = 'chat-message-author';
@@ -1207,6 +1361,8 @@ export class ChatWidget extends HTMLElement {
         this.lightboxTrigger = trigger;
         this.lightboxUrl = url;
         this.lightboxMimeType = mimeType;
+        this.lightboxConversationKey = this.conversationKey();
+        this.lightboxScrollTop = this.querySelector<HTMLElement>('.chat-messages')?.scrollTop ?? 0;
         this.previousBodyOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         image.src = url;
@@ -1223,10 +1379,16 @@ export class ChatWidget extends HTMLElement {
         const image = this.querySelector<HTMLImageElement>('.chat-lightbox-image');
         image?.removeAttribute('src');
         document.body.style.overflow = this.previousBodyOverflow;
+        const container = this.querySelector<HTMLElement>('.chat-messages');
+        if (container && this.lightboxConversationKey === this.conversationKey()) {
+            container.scrollTop = this.lightboxScrollTop;
+            this.syncScrollTracking(container);
+        }
         if (returnFocus) this.lightboxTrigger?.focus();
         this.lightboxTrigger = null;
         this.lightboxUrl = '';
         this.lightboxMimeType = '';
+        this.lightboxConversationKey = '';
     }
 
     private async downloadLightboxImage(): Promise<void> {
@@ -1285,7 +1447,10 @@ export class ChatWidget extends HTMLElement {
         status.classList.toggle('text-danger', error);
         if (hideAfterMs > 0) {
             this.statusTimer = window.setTimeout(() => {
-                status.hidden = true;
+                const live = this.eventStream.active && !this.suspended;
+                status.textContent = live ? 'Live' : '';
+                status.hidden = !live;
+                status.classList.remove('text-danger');
                 this.statusTimer = null;
             }, hideAfterMs);
         }
