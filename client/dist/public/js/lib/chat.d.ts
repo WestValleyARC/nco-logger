@@ -6,6 +6,7 @@ export declare class ChatWidget extends HTMLElement {
     private readonly recipients;
     private readonly unreadCounts;
     private readonly scrollPositions;
+    private readonly expandedPinnedMessageIds;
     private selectedRecipientId;
     private inboxInitialized;
     private eventSource;
@@ -68,6 +69,7 @@ export declare class ChatWidget extends HTMLElement {
     private banAuthor;
     private clearChat;
     private render;
+    private renderPinnedMessages;
     private renderMessage;
     private appendEditor;
     private appendReplyReference;

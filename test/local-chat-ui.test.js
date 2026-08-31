@@ -128,12 +128,17 @@ test('message interactions are compact, accessible, and permission driven', () =
 
 test('native server-backed pins are not hidden or replaced by NCO helper normalization', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    const chat = read('client/src/public/js/lib/chat.ts');
     const css = read('client/dist/public/css/nco-logger.css');
     const normalize = source.slice(source.indexOf('function normalizeChatDisplay()'), source.indexOf('function safeNormalizeChatDisplay()'));
     assert.doesNotMatch(normalize, /nch-native-pin-control/);
     assert.doesNotMatch(normalize, /button\.className = "nch-pin-chat"/);
     assert.doesNotMatch(normalize, /renderPinnedChatStrip/);
     assert.doesNotMatch(css, /\.nch-native-pin-control\s*\{[^}]*display:\s*none/s);
+    assert.match(chat, /class="chat-pinned-strip" aria-label="Pinned public messages"/);
+    assert.match(chat, /this\.publicMessages\.values\(\)[\s\S]*message\.pinned/);
+    assert.match(chat, /className = 'chat-pinned-image'/);
+    assert.match(chat, /void this\.togglePin\(message\)/);
 });
 
 test('private chat keeps recipient, presence, unread, and ignore state inside the Chat module', () => {
