@@ -53,8 +53,8 @@ test('composer controls and text retain the intended accessible styling', () => 
     const source = read('client/src/public/js/lib/chat.ts');
     assert.match(css, /#local-chat-message\s*\{[^}]*resize:\s*none[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-icon-control:focus-visible/);
-    assert.match(css, /\.chat-icon-control\s*\{[^}]*width:\s*2\.5rem[^}]*font-size:\s*1\.35rem/s);
-    assert.match(css, /\.chat-form\s*\{[^}]*grid-template-columns:[^}]*2\.5rem 2\.5rem auto[^}]*gap:\s*0 !important/s);
+    assert.match(css, /\.chat-icon-control\s*\{[^}]*width:\s*2rem[^}]*font-size:\s*1\.35rem/s);
+    assert.match(css, /\.chat-form\s*\{[^}]*grid-template-columns:[^}]*2rem 2rem auto[^}]*gap:\s*0 !important/s);
     assert.match(css, /\.chat-emoji-tab\s*\{[^}]*font-size:\s*1\.35rem/s);
     assert.match(css, /\.chat-emoji-search::placeholder\s*\{[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-send-btn\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);
@@ -62,6 +62,8 @@ test('composer controls and text retain the intended accessible styling', () => 
     assert.match(source, /!picker\.contains\(target\)[\s\S]*toggleEmojiPicker\(false\)/);
     assert.match(source, /picker && !picker\.hidden[\s\S]*toggleEmojiPicker\(false\)/);
     assert.match(source, /button\.setAttribute\('aria-expanded', String\(open\)\)/);
+    assert.match(source, /<form class="chat-form">/);
+    assert.doesNotMatch(source, /chat-form[^"']*gap-2/);
     assert.match(source, /chat-lightbox-download[^>]*aria-label="Download original chat image"[^>]*>[\s\S]*<svg/);
     assert.doesNotMatch(source, />Download<\/button>/);
 });

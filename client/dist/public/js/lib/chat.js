@@ -105,7 +105,7 @@ export class ChatWidget extends HTMLElement {
                         <div class="chat-emoji-grid" role="group" aria-label="Available emoji"></div>
                         <div class="chat-emoji-empty text-muted" role="status" hidden>No emoji found</div>
                     </div>
-                    <form class="chat-form d-flex gap-2 align-items-end">
+                    <form class="chat-form">
                         <label class="visually-hidden" for="local-chat-message">Chat message</label>
                         <textarea id="local-chat-message" class="form-control chat-text-input" rows="1" autocomplete="off" placeholder="Message the net" required></textarea>
                         <button class="chat-icon-control chat-emoji-button" type="button" title="Add emoji" aria-label="Add emoji" aria-expanded="false">😊</button>
