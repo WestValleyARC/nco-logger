@@ -23,7 +23,7 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     const {
         createMessage, editMessage, uploadImage, deleteMessage, fetchChatHistory, toggleReaction,
         setMessagePin, banMessageAuthor, clearPublicChat, listMessages, listDirectMessages,
-        setPrivateIgnore, serveImage, PUBLIC_SCOPE_QUERY, RATE_LIMIT_COUNT
+        setPrivateIgnore, serveImage, PUBLIC_SCOPE_QUERY, PUBLIC_HISTORY_LIMIT, RATE_LIMIT_COUNT
     } = require('../server/dist/lib/localChat');
     const userOne = new mongoose.Types.ObjectId();
     const userTwo = new mongoose.Types.ObjectId();
@@ -435,7 +435,7 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     assert.deepEqual((await UserProfile.findById(userTwo).lean()).ignoredPrivateUsers.map(String), [userOne.toString()]);
 
     const historyStartedAt = Date.now();
-    const publicHistoryDocs = Array.from({ length: 520 }, (_value, index) => ({
+    const publicHistoryDocs = Array.from({ length: 1020 }, (_value, index) => ({
         _id: new mongoose.Types.ObjectId(), liveNet: liveNet._id, netProfile, userProfile: userNco,
         scope: 'public', recipientUserProfile: null, callSign: 'W1NCO', displayName: 'Net Control',
         text: `bounded-public-${index}`, reactions: [],
@@ -452,8 +452,16 @@ test('net participants exchange, interact with, and moderate local chat', { skip
         ...makeReq(userOne, 'W1AAA', 'Alice'),
         res: { locals: { flexOpts: { awayInMs: 120000 } } }
     });
-    assert.equal(boundedHistory.payload.messages.length, 500);
+    assert.equal(PUBLIC_HISTORY_LIMIT, 1000);
+    assert.equal(boundedHistory.payload.messages.length, PUBLIC_HISTORY_LIMIT);
     assert.equal(boundedHistory.payload.messages[0].text, 'bounded-public-20');
+    assert.equal(boundedHistory.payload.messages[999].text, 'bounded-public-1019');
+    assert.equal(boundedHistory.payload.messages.every((message, index, messages) =>
+        index === 0 || messages[index - 1].createdAt <= message.createdAt), true);
+    assert.equal(await ChatMessage.countDocuments({ netProfile, clearedAt: null, ...PUBLIC_SCOPE_QUERY }), 1020);
+    assert.ok(await ChatMessage.exists({ _id: publicHistoryDocs[0]._id }));
+    assert.equal((await ChatMessage.findById(otherMessage._id)).text, 'Other net must remain');
+    assert.equal(boundedHistory.payload.messages.some(message => message.text === 'Other net must remain'), false);
     assert.equal(boundedHistory.payload.directMessages.length, 1000);
     assert.equal(boundedHistory.payload.directMessages[0].text, 'bounded-direct-20');
     const boundedDirectHistory = await invoke(listDirectMessages, {
@@ -466,13 +474,13 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     for (let index = 0; index < RATE_LIMIT_COUNT; index += 1) {
         const reaction = await invoke(toggleReaction, {
             ...makeReq(userRelay, 'W1RLY', 'Relay', { emoji: '👍' }),
-            params: { id: netProfile.toString(), messageId: publicHistoryDocs[519]._id.toString() }
+            params: { id: netProfile.toString(), messageId: publicHistoryDocs[1019]._id.toString() }
         });
         assert.equal(reaction.status, 200);
     }
     const limitedReaction = await invoke(toggleReaction, {
         ...makeReq(userRelay, 'W1RLY', 'Relay', { emoji: '👍' }),
-        params: { id: netProfile.toString(), messageId: publicHistoryDocs[519]._id.toString() }
+        params: { id: netProfile.toString(), messageId: publicHistoryDocs[1019]._id.toString() }
     });
     assert.equal(limitedReaction.status, 429);
     assert.equal(limitedReaction.payload.error, 'Please wait before trying more chat actions');

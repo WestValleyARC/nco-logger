@@ -161,6 +161,16 @@ test('public messages expose reply, reaction, pin, and per-role action state', (
     assert.equal(result.canBan, true);
     assert.equal(result.canEdit, false);
     assert.equal(result.canDelete, false);
+    assert.equal(result.canMessagePrivately, true);
+
+    const ownerView = toPublicMessage({
+        _id: { toString: () => '507f1f77bcf86cd799439014' },
+        netProfile: { toString: () => '507f1f77bcf86cd799439015' },
+        userProfile: { toString: () => owner }, callSign: 'W1ABC', displayName: 'Alex', text: 'hello',
+        createdAt: new Date(), editedAt: null, deletedAt: null, clearedAt: null, reactions: []
+    }, 'netuser', owner);
+    assert.equal(ownerView.mine, true);
+    assert.equal(ownerView.canMessagePrivately, false);
 });
 
 test('chat message schema persists Phase 2 interaction state', () => {

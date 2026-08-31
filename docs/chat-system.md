@@ -22,7 +22,7 @@ updates `editedAt`, and never replaces an attachment. The `/ban` and `/unban` co
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/chat/:npid/messages` | Ordered history (up to 500), limits, and SSE path |
+| `GET` | `/api/chat/:npid/messages` | Ordered history (up to 1,000), limits, and SSE path |
 | `POST` | `/api/chat/:npid/messages` | Send `{ "text": "...", "replyTo": "optional-message-id" }` |
 | `GET` | `/api/chat/:npid/direct/:userId/messages` | Ordered history (up to 500) between the viewer and one known net user |
 | `POST` | `/api/chat/:npid/direct/:userId/messages` | Send a direct text message to one known net user |
@@ -72,7 +72,7 @@ Chat. Changing one does not alter or compound the other.
 
 ## History bounds and client performance
 
-The initial public history contains the newest 500 uncleared public messages. The initial direct
+The initial public history contains the newest 1,000 uncleared public messages. The initial direct
 inbox reconciliation contains the newest 1,000 direct messages involving the viewer across all
 peers, while opening one direct conversation fetches its newest 500 messages. Results are queried
 newest-first so MongoDB can apply the limit, then reversed into chronological display order. These

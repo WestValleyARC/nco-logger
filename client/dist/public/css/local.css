@@ -548,7 +548,10 @@ body {
 
 .chat-action-react { color: #ffd166; }
 .chat-action-reply { color: #71d6e8; }
-.chat-action-private { color: #c59cff; }
+.chat-action-private {
+    color: #f7c8ff;
+    text-shadow: 0 0 0.3rem rgba(226, 143, 255, 0.55);
+}
 .chat-action-edit { color: #ffad5a; }
 .chat-action-delete { color: #ff6b7a; }
 .chat-action-pin { color: #ff5263; }

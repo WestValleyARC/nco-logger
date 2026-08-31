@@ -18,6 +18,7 @@ const RATE_LIMIT_COUNT = Number(conf.chat_rate_limit_count) || 12;
 const RATE_LIMIT_WINDOW_MS = Number(conf.chat_rate_limit_window_ms) || 10000;
 const MAX_UPLOAD_MB = Math.min(Math.max(Number(conf.chat_max_upload_mb) || 5, 1), 10);
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+const PUBLIC_HISTORY_LIMIT = 1000;
 const UPLOAD_DIR = path.resolve(conf.chat_upload_dir || '/app/data/chat-uploads');
 const IMAGE_TYPES = Object.freeze({
     'image/png': 'png',
@@ -321,7 +322,7 @@ const listMessages = async (req, res) => {
         const messages = await ChatMessage.find({
             netProfile: req.params.id, clearedAt: null, ...PUBLIC_SCOPE_QUERY
         })
-            .sort({ createdAt: -1, _id: -1 }).limit(500);
+            .sort({ createdAt: -1, _id: -1 }).limit(PUBLIC_HISTORY_LIMIT);
         messages.reverse();
         const directMessages = await ChatMessage.find({
             netProfile: req.params.id,
@@ -1000,6 +1001,7 @@ module.exports = {
     detectImageType,
     attachmentPath,
     MAX_UPLOAD_BYTES,
+    PUBLIC_HISTORY_LIMIT,
     IMAGE_TYPES,
     UPLOAD_DIR,
     PUBLIC_SCOPE_QUERY,

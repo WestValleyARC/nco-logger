@@ -122,7 +122,10 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(css, /\.chat-message-actions\s*\{[^}]*position:\s*absolute[^}]*opacity:\s*0/s);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message-actions/);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message\s*\{[^}]*padding-bottom:\s*2\.35rem/s);
-    assert.match(css, /\.chat-action-private\s*\{\s*color:\s*#c59cff/);
+    assert.match(css, /\.chat-action-private\s*\{[^}]*color:\s*#f7c8ff[^}]*text-shadow:/s);
+    assert.match(source, /if \(message\.canMessagePrivately\)\s*\{[\s\S]*addAction\('✉', 'Message privately', 'chat-action-private'/);
+    assert.match(source, /button\.title = label/);
+    assert.match(source, /button\.setAttribute\('aria-label', `\$\{label\} message from \$\{message\.callSign\}`\)/);
     assert.match(css, /\.chat-message-pinned\s*\{/);
     assert.match(css, /\.chat-reaction-chip\.is-mine\s*\{/);
     assert.match(source, /chip\.setAttribute\('aria-pressed', String\(reaction\.reactedByMe\)\)/);

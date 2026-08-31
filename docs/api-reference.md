@@ -242,7 +242,7 @@ Response: EndPointResponse with `message` containing follow state or list.
 All chat routes require the authenticated cookie session, a callsign, and membership in the active
 net. See [chat-system.md](chat-system.md) for response and SSE event formats.
 
-- `GET /api/chat/:id/messages` — newest 500 public messages, newest 1,000 participant-only direct
+- `GET /api/chat/:id/messages` — newest 1,000 public messages, newest 1,000 participant-only direct
   messages for inbox reconciliation, configured limits, recipients, and the SSE path
 - `POST /api/chat/:id/messages` — send public `{ "text": "...", "replyTo": "optional-message-id" }`
 - `GET /api/chat/:id/direct/:userId/messages` — newest 500 messages in the exact two-party conversation
