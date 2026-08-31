@@ -183,13 +183,18 @@ body {
 }
 
 .chat-pinned-strip {
-    display: grid;
+    display: flex;
     flex: 0 0 auto;
-    max-height: min(32rem, 72%);
-    gap: 0.3rem;
-    padding: 0.35rem 0;
+    max-height: 86px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 6px;
     overflow-y: auto;
     border-bottom: 1px solid rgba(255, 200, 87, 0.45);
+}
+
+.chat-pinned-strip:has(.chat-pinned-item.is-expanded) {
+    max-height: min(40vh, 320px);
 }
 
 .chat-pinned-strip[hidden] {
@@ -199,9 +204,10 @@ body {
 .chat-pinned-item {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 0.4rem;
-    padding: 0.35rem 0.45rem;
+    align-items: center;
+    gap: 5px;
+    min-height: 24px;
+    padding: 2px 4px;
     background: rgba(255, 200, 87, 0.08);
     border: 1px solid rgba(255, 200, 87, 0.38);
     border-radius: 0.4rem;
@@ -212,11 +218,10 @@ body {
 }
 
 .chat-pinned-open {
-    display: grid;
+    display: flex;
     min-width: 0;
-    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.45rem;
+    gap: 5px;
     padding: 0;
     color: inherit;
     background: transparent;
@@ -238,8 +243,6 @@ body {
 }
 
 .chat-pinned-expand-label {
-    grid-column: 3;
-    grid-row: 1;
     padding: 0.2rem 0.45rem;
     color: #ffc857;
     background: rgba(255, 200, 87, 0.14);
@@ -251,39 +254,30 @@ body {
 }
 
 .chat-pinned-image {
-    width: 100%;
-    height: 5rem;
-    max-width: 100%;
-    max-height: 5rem;
-    grid-column: 1 / -1;
-    object-fit: contain;
+    width: 42px;
+    height: 28px;
+    flex: 0 0 auto;
+    object-fit: cover;
     border-radius: 0.3rem;
 }
 
 .chat-pinned-item.is-expanded .chat-pinned-open {
-    grid-template-columns: 1fr auto;
-}
-
-.chat-pinned-item.is-expanded .chat-pinned-open strong {
-    grid-column: 1;
-}
-
-.chat-pinned-item.is-expanded .chat-pinned-expand-label {
-    grid-column: 2;
-    grid-row: 1;
+    align-items: flex-start;
+    flex-direction: column;
 }
 
 .chat-pinned-item.is-expanded .chat-pinned-preview {
-    grid-column: 1 / -1;
     overflow: visible;
     text-overflow: clip;
     white-space: pre-wrap;
 }
 
 .chat-pinned-item.is-expanded .chat-pinned-image {
-    width: 100%;
-    max-width: 100%;
-    max-height: 28rem;
+    width: auto;
+    height: auto;
+    max-width: min(100%, 420px);
+    max-height: 220px;
+    object-fit: contain;
 }
 
 .chat-pinned-unpin {
