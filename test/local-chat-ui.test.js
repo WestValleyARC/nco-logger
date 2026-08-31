@@ -139,6 +139,8 @@ test('native server-backed pins are not hidden or replaced by NCO helper normali
     assert.match(chat, /this\.publicMessages\.values\(\)[\s\S]*message\.pinned/);
     assert.match(chat, /className = 'chat-pinned-image'/);
     assert.match(chat, /void this\.togglePin\(message\)/);
+    assert.match(read('client/dist/public/css/local.css'),
+        /\.chat-pinned-strip\s*\{[^}]*max-height:\s*min\(32rem, 72%\)/s);
 });
 
 test('private chat keeps recipient, presence, unread, and ignore state inside the Chat module', () => {
