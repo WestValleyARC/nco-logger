@@ -204,6 +204,7 @@ body {
 .chat-pinned-item {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
+    flex: 0 0 auto;
     align-items: center;
     gap: 5px;
     min-height: 24px;

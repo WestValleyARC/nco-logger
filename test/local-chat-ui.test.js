@@ -145,6 +145,8 @@ test('native server-backed pins are not hidden or replaced by NCO helper normali
     assert.match(read('client/dist/public/css/local.css'),
         /\.chat-pinned-image\s*\{[^}]*width:\s*42px[^}]*height:\s*28px[^}]*object-fit:\s*cover/s);
     assert.match(read('client/dist/public/css/local.css'),
+        /\.chat-pinned-item\s*\{[^}]*flex:\s*0 0 auto/s);
+    assert.match(read('client/dist/public/css/local.css'),
         /\.chat-pinned-item\.is-expanded \.chat-pinned-image\s*\{[^}]*max-width:\s*min\(100%, 420px\)[^}]*max-height:\s*220px/s);
     assert.match(read('client/dist/public/css/local.css'),
         /\.chat-pinned-expand-label\s*\{[^}]*border:[^}]*font-size:\s*0\.78rem[^}]*font-weight:\s*700/s);
