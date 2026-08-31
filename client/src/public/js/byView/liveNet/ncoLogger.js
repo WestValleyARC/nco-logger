@@ -1,3 +1,5 @@
+import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
+
 (() => {
   "use strict";
 
@@ -113,6 +115,8 @@
   let updatePromptDismissed = false;
   let refreshRequestSequence = 0;
   let refreshAppliedSequence = 0;
+  let refreshScheduleTimer = null;
+  let refreshScheduledAt = 0;
   let lastRemoteRenderSignature = "";
   let chatObserver = null;
   let chatObserverHost = null;
@@ -139,6 +143,7 @@
   const pinnedChatMessages = new Map();
   const expandedPinnedChatIds = new Set();
   let privateChatTarget = "";
+  const pendingCheckStateCalls = new ExclusiveKeyedOperation();
 
   const browserStorage = {
     get(keys, callback) {
@@ -395,7 +400,8 @@
       setStatus("That action is not available in the current helper mode.", "warning");
       return false;
     }
-    setStatus(commandMessage(command, "working"), "working");
+    let pendingCall = "";
+    let pendingCallAcquired = false;
     try {
       const [verb, rawValue = ""] = String(command).trim().split(/\s+/, 2);
       const actionByVerb = {
@@ -408,6 +414,15 @@
       const payload = { action };
       if (["f"].includes(verb)) payload.frequency = rawValue;
       else if (rawValue) payload.callSign = normalizeCall(rawValue);
+      if (["checkIn", "checkInHighlighted", "checkOut", "undoCheckIn", "checkInOut"].includes(action)) {
+        pendingCall = payload.callSign || "";
+        if (pendingCall && !pendingCheckStateCalls.begin(pendingCall)) {
+          setStatus(`${pendingCall} already has a check-state change in progress.`, "warning");
+          return false;
+        }
+        pendingCallAcquired = Boolean(pendingCall);
+      }
+      setStatus(commandMessage(command, "working"), "working");
       const response = await fetch(`/api/nco-logger/${npid}`, {
         method: "POST",
         credentials: "same-origin",
@@ -418,7 +433,7 @@
       if (!response.ok) throw new Error(data.errorMessage || `${response.status} ${response.statusText}`);
       setStatus(finalMessage || commandMessage(command, "success"), "success");
       if (canManageStations()) local.sharedUpdatedAt = Date.now();
-      window.setTimeout(refresh, 350);
+      scheduleRefresh(350);
       window.setTimeout(publishSharedSnapshotSafely, 900);
       return true;
     } catch (error) {
@@ -432,6 +447,8 @@
         setStatus(`Couldn’t complete that action: ${errorMessage}`, "error");
       }
       return false;
+    } finally {
+      if (pendingCallAcquired) pendingCheckStateCalls.end(pendingCall);
     }
   }
 
@@ -510,7 +527,7 @@
         ? `${callSign} ${state ? "highlighted" : "highlight cleared"}.`
         : `${callSign}’s hand ${state ? "raised" : "lowered"}.`;
       setStatus(completed, "success");
-      window.setTimeout(refresh, 350);
+      scheduleRefresh(350);
       return true;
     } catch (error) {
       setStatus(`Couldn’t update ${callSign}: ${error.message || String(error)}`, "error");
@@ -4287,7 +4304,22 @@
     syncViewer();
   }
 
-  async function refresh() {
+  function scheduleRefresh(delayMs = 0) {
+    const scheduledAt = Date.now() + Math.max(0, Number(delayMs) || 0);
+    if (refreshScheduleTimer && scheduledAt >= refreshScheduledAt) return;
+    if (refreshScheduleTimer) window.clearTimeout(refreshScheduleTimer);
+    refreshScheduledAt = scheduledAt;
+    refreshScheduleTimer = window.setTimeout(() => {
+      refreshScheduleTimer = null;
+      refreshScheduledAt = 0;
+      void refresh();
+    }, Math.max(0, scheduledAt - Date.now()));
+  }
+
+  const refreshCoordinator = new CoalescedAsyncRequest(refreshOnce);
+  const refresh = () => refreshCoordinator.request();
+
+  async function refreshOnce() {
     const requestSequence = ++refreshRequestSequence;
     try {
       const data = await fetchNet();
@@ -4416,11 +4448,12 @@
     storageSet();
     local.hiddenCalls.forEach(call => hiddenCalls.add(call));
     await refresh();
-    window.setInterval(refresh, POLL_MS);
+    window.setInterval(() => scheduleRefresh(), POLL_MS);
   });
   window.addEventListener("beforeunload", () => {
     if (statusTimer) clearTimeout(statusTimer);
     if (loggerStateSaveTimer) clearTimeout(loggerStateSaveTimer);
+    if (refreshScheduleTimer) clearTimeout(refreshScheduleTimer);
     window.removeEventListener("resize", handleWindowResize);
     window.removeEventListener("keydown", handleActionHotkey, true);
     stopSync();

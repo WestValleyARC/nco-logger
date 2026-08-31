@@ -2,7 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { sanitizeLoggerState } = require('../server/dist/controllers/ncoLoggerController');
+const netOps = require('../server/dist/lib/sharedNetOps');
+const { sanitizeLoggerState, setCheckedState } = require('../server/dist/controllers/ncoLoggerController');
 
 test('NCO logger state keeps shared operational fields and excludes private notes', () => {
     const state = sanitizeLoggerState({
@@ -41,4 +42,24 @@ test('NCO logger state keeps shared operational fields and excludes private note
 
 test('NCO logger state rejects oversized payloads', () => {
     assert.throws(() => sanitizeLoggerState({ details: { W1ABC: { junk: 'x'.repeat(100001) } } }), /too large/);
+});
+
+test('check-state controller returns structured path timing from sharedNetOps', async t => {
+    t.mock.method(netOps, 'checkState', async options => {
+        options.metrics.totalMs = 12.5;
+        options.metrics.stations = [{ callSign: 'W1ABC', path: 'existing-station-check-in', persistenceMs: 4.2 }];
+        return [{ callSign: 'W1ABC', checkedState: true, dupe: false }];
+    });
+    const result = await setCheckedState({
+        req: { user: { callSign: 'N0NCO' } },
+        res: { locals: { flexOpts: {} } },
+        liveNet: { _id: 'live-net' },
+        source: { role: 'netcontrol', checkedState: true },
+        target: 'W1ABC',
+        state: true
+    });
+
+    assert.equal(result.stations[0].checkedState, true);
+    assert.equal(result.timing.totalMs, 12.5);
+    assert.equal(result.timing.stations[0].path, 'existing-station-check-in');
 });

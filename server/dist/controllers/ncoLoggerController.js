@@ -47,15 +47,17 @@ function validateTarget(callSign) {
 
 async function setCheckedState({ req, res, liveNet, source, target, state, highlight = false }) {
     requireManager(source);
+    const timing = {};
     const result = await netOps.checkState({
         liveNet,
         srcStation: req.user.callSign,
         dstStations: [target],
         state,
         highlight,
-        flexOpts: res.locals.flexOpts
+        flexOpts: res.locals.flexOpts,
+        metrics: timing
     });
-    return { action: 'checkState', stations: result };
+    return { action: 'checkState', stations: result, timing };
 }
 
 async function toggleRole({ req, liveNet, source, target, desiredRole }) {
@@ -226,4 +228,4 @@ async function ncoLoggerAction(req, res) {
     }
 }
 
-module.exports = { ncoLoggerAction, sanitizeLoggerState };
+module.exports = { ncoLoggerAction, sanitizeLoggerState, setCheckedState };

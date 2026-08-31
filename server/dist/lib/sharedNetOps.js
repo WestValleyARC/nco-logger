@@ -11,6 +11,9 @@ const { getPendingUnfollow, getPendingAccountDelete } = require('../models/taskQ
 const { getStationInteraction } = require('../models/stationInteraction');
 const mongoose = require('mongoose');
 const { cleanupNetChat } = require('./localChat');
+const { performance } = require('node:perf_hooks');
+
+const elapsedMs = startedAt => Math.round((performance.now() - startedAt) * 10) / 10;
 
 function getModels(db = null) {
     return {
@@ -78,8 +81,12 @@ async function checkState({
     highlight = false,
     hand = false,
     flexOpts,
+    metrics = null,
+    qrzLookupFn = qrzLookup,
     db = mongoose.connection
 }) {
+    const operationStartedAt = performance.now();
+    const stationMetrics = new Map();
     // Validate state
     if (typeof state !== 'boolean' && state !== null) {
         throw new Error('checkState(): valid state options are true, false, or null');
@@ -102,7 +109,8 @@ async function checkState({
 
     const { level: myLevel, checkedState: myCheckedState } = await getStationDetail({
         lnid: liveNet._id,
-        station: srcStation.toUpperCase()
+        station: srcStation.toUpperCase(),
+        db
     });
 
     if (myCheckedState === false) {
@@ -148,11 +156,19 @@ async function checkState({
 
             if (liveNet.lookupTable.has(station.toUpperCase())) {
                 knownStations.push(station);
+                stationMetrics.set(station, {
+                    path: state === true
+                        ? 'existing-station-check-in'
+                        : state === false
+                            ? 'existing-station-check-out'
+                            : 'existing-station-update'
+                });
             } else {
                 if (state === false) {
                     throw new Error(`${s} must be checked-*in prior to check-*out (use io command for in-out)`);
                 } else {
                     newStations.push(station);
+                    stationMetrics.set(station, { path: 'new-station-local-profile' });
                 }
             }
         }
@@ -164,7 +180,8 @@ async function checkState({
             knownStations.map(async dstStation => {
                 const { level: targetLevel } = await getStationDetail({
                     lnid: liveNet._id,
-                    station: dstStation
+                    station: dstStation,
+                    db
                 });
 
                 if (myLevel >= targetLevel) {
@@ -192,14 +209,24 @@ async function checkState({
         newStations.map(async dstStation => {
             let userData;
             const dstStationUpper = dstStation.toUpperCase();
+            const timing = stationMetrics.get(dstStationUpper);
+            const profileStartedAt = performance.now();
 
             if (
                 !(userData = await UserProfile.findOne({
                     callSign: dstStationUpper
                 }))
             ) {
+                if (timing) timing.profileLookupMs = elapsedMs(profileStartedAt);
                 //they don't have an account
-                ({ result: userData, atQuota: qrzInQuotaWait } = await qrzLookup(dstStationUpper, flexOpts));
+                const qrzStartedAt = performance.now();
+                ({ result: userData } = await qrzLookupFn(dstStationUpper, flexOpts));
+                if (timing) {
+                    timing.path = 'new-station-qrz';
+                    timing.qrzLookupMs = elapsedMs(qrzStartedAt);
+                }
+            } else if (timing) {
+                timing.profileLookupMs = elapsedMs(profileStartedAt);
             }
 
             return new StationInteraction({
@@ -225,7 +252,7 @@ async function checkState({
     );
 
     // Update known stations
-    const knownResponses = knownIaDocs.map(dia => {
+    const knownResponses = await Promise.all(knownIaDocs.map(async dia => {
         const ts = tsIndex.get(dia.callSign.toUpperCase());
         const dupe = dia.checkedState === state;
 
@@ -249,7 +276,15 @@ async function checkState({
 
         // If the requested check-state is not a dupe, save the document
         if (!dupe) {
-            dia.save();
+            const persistenceStartedAt = performance.now();
+            try {
+                await dia.save();
+                const timing = stationMetrics.get(dia.callSign.toUpperCase());
+                if (timing) timing.persistenceMs = elapsedMs(persistenceStartedAt);
+            } catch (err) {
+                logger.error(`In dia.save(): ${err}`);
+                throw err;
+            }
         }
 
         return {
@@ -258,13 +293,16 @@ async function checkState({
             dupe,
             ts
         };
-    });
+    }));
 
     // Save new stations
     const newResponses = await Promise.all(
         newIaDocs.map(async dia => {
+            const persistenceStartedAt = performance.now();
             try {
                 await dia.save();
+                const timing = stationMetrics.get(dia.callSign.toUpperCase());
+                if (timing) timing.persistenceMs = elapsedMs(persistenceStartedAt);
             } catch (err) {
                 logger.error(`In dia.save(): ${err}`);
                 throw err;
@@ -294,6 +332,11 @@ async function checkState({
             logger.error(`In liveNet.save(): ${err}`);
             throw err;
         }
+    }
+
+    if (metrics && typeof metrics === 'object') {
+        metrics.totalMs = elapsedMs(operationStartedAt);
+        metrics.stations = [...stationMetrics.entries()].map(([callSign, timing]) => ({ callSign, ...timing }));
     }
 
     return [...knownResponses, ...newResponses].sort((a, b) => a.ts - b.ts);
