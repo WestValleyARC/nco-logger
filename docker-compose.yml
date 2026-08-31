@@ -18,6 +18,8 @@ services:
         build:
             context: .
             target: runtime
+            args:
+                APP_REVISION: ${APP_REVISION:-workspace}
         image: westvalleyarc/nco-logger:dev
         container_name: nco-logger-app
         restart: unless-stopped
@@ -45,6 +47,27 @@ services:
             timeout: 5s
             start_period: 20s
             retries: 3
+        develop:
+            watch:
+                # Hand-maintained runtime JS and generated browser assets can
+                # be synchronized into the same-server development container.
+                # Restarting recalculates asset fingerprints and reloads routes.
+                - action: sync+restart
+                  path: ./server/dist
+                  target: /app/server/dist
+                - action: sync+restart
+                  path: ./client/dist
+                  target: /app/client/dist
+                # Source-only edits need a full image build so TypeScript is
+                # compiled before the browser receives it.
+                - action: rebuild
+                  path: ./client/src
+                - action: rebuild
+                  path: ./package.json
+                - action: rebuild
+                  path: ./package-lock.json
+                - action: rebuild
+                  path: ./Dockerfile
 
     mongo:
         image: mongo:7

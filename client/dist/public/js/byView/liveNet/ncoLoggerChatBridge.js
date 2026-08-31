@@ -10,6 +10,7 @@
     let originalExecuteSlashDescriptor = null;
     let slashEnabled = false;
     let slashEnterHandled = false;
+    let attachQueued = false;
     const slashComposer = chat => chat?.querySelector(".chat-text-input, .chat-message-input, .chat-input, textarea[placeholder^='Message'], input[placeholder^='Message'], [contenteditable='true'][role='textbox']");
     const composerText = input => {
         if (!input || (typeof input !== "object" && typeof input !== "function"))
@@ -167,9 +168,14 @@
     }
     function attach() {
         const chat = document.querySelector("hl-chat");
+        if (slashEnabled)
+            bindSlashBridge();
         const connection = chat?.connection;
-        if (!chat || !connection?.on)
+        if (!chat || !connection?.on) {
+            if (boundChat && boundChat !== chat)
+                detach();
             return;
+        }
         if (chat === boundChat && connection === boundConnection)
             return;
         detach();
@@ -182,6 +188,15 @@
         deduplicateNativeChat();
         bindSlashBridge();
     }
+    function queueAttach() {
+        if (attachQueued)
+            return;
+        attachQueued = true;
+        queueMicrotask(() => {
+            attachQueued = false;
+            attach();
+        });
+    }
     document.addEventListener("nch-helper-slash-enable", () => {
         slashEnabled = true;
         bindSlashBridge();
@@ -190,10 +205,11 @@
         slashEnabled = false;
         disableSlashBridge();
     });
-    const attachTimer = window.setInterval(attach, 500);
+    const attachObserver = new MutationObserver(queueAttach);
+    attachObserver.observe(document.documentElement, { childList: true, subtree: true });
     attach();
     window.addEventListener("beforeunload", () => {
-        window.clearInterval(attachTimer);
+        attachObserver.disconnect();
         slashEnabled = false;
         disableSlashBridge();
         detach();

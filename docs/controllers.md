@@ -181,7 +181,7 @@ The status argument is a **string key** from the `HttpStatus` enum (e.g., `'OK'`
 - `GET /api/chat/:id/messages` — Retrieve ordered history
 - `POST /api/chat/:id/messages` — Send a message
 - `GET /api/chat/:id/events` — Subscribe over SSE
-- `DELETE /api/chat/:id/messages/:messageId` — Delete an owned or moderated message
+- `DELETE /api/chat/:id/messages/:messageId` — Delete the authenticated author's own message
 
 ## Request/Response Architecture
 

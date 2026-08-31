@@ -676,7 +676,7 @@
     chatImageHost = null;
     const chat = document.querySelector("hl-chat.nch-chat-docked");
     chat?.classList.remove("nch-chat-docked", "nch-chat-floating", "nch-chat-suspended");
-    ["--nch-chat-left", "--nch-chat-top", "--nch-chat-width", "--nch-chat-height", "--nch-font-adjust"].forEach(property =>
+    ["--nch-chat-left", "--nch-chat-top", "--nch-chat-width", "--nch-chat-height", "--nch-chat-font-size", "--nch-chat-composer-font-size", "--nch-chat-ui-font-size"].forEach(property =>
       chat?.style.removeProperty(property)
     );
   }
@@ -692,9 +692,10 @@
     local.chatFontPreset = chatPreset;
     local.helpFontPreset = helpPreset;
     panel?.style.setProperty("--nch-font-adjust", helperFontAdjustments[helperPreset]);
-    nativeChat()?.style.setProperty("--nch-font-adjust", helperFontAdjustments[helperPreset]);
+    nativeChat()?.style.removeProperty("--nch-font-adjust");
     nativeChat()?.style.setProperty("--nch-chat-font-size", `${CHAT_FONT_SIZES[chatPreset]}px`);
     nativeChat()?.style.setProperty("--nch-chat-composer-font-size", `${Math.max(11, CHAT_FONT_SIZES[chatPreset] - 1)}px`);
+    nativeChat()?.style.setProperty("--nch-chat-ui-font-size", `${Math.max(10, CHAT_FONT_SIZES[chatPreset] - 3)}px`);
     panel?.style.setProperty("--nch-help-font-size", `${HELP_FONT_SIZES[helpPreset]}px`);
     panel?.querySelectorAll("[data-helper-font]").forEach(button => {
       button.setAttribute("aria-pressed", String(button.dataset.helperFont === helperPreset));
@@ -964,7 +965,6 @@
       if (switchingThread || wasAtBottom) privateMessages.scrollTop = privateMessages.scrollHeight;
       else privateMessages.scrollTop = priorScrollTop;
     }
-    renderPinnedChatStrip();
   }
 
   function renderHelperChatUi() {
@@ -1139,28 +1139,6 @@
       button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg>';
       container.appendChild(button);
     });
-    nativeChat()?.querySelectorAll("button, [role='button']").forEach(control => {
-      if (control.matches(".nch-pin-chat, .nch-unpin-chat, .nch-pinned-chat-open")) return;
-      const label = String(control.getAttribute("aria-label") || control.title || control.textContent || "").trim();
-      if (!/^(?:un)?pin\b/i.test(label)) return;
-      control.classList.add("nch-native-pin-control");
-      control.setAttribute("aria-hidden", "true");
-      control.setAttribute("tabindex", "-1");
-    });
-    nativeChat()?.querySelectorAll(".chat-message, [data-message-id]").forEach(message => {
-      if (message.closest(".nch-pinned-chat-strip") || message.querySelector(":scope > .nch-pin-chat")) return;
-      const id = messagePinId(message) || makeLocalId("chatpin");
-      if (!message.dataset.messageId && !message.dataset.id) message.dataset.messageId = id;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "nch-pin-chat";
-      button.dataset.pinChat = id;
-      button.title = "Pin chat message";
-      button.setAttribute("aria-label", "Pin chat message");
-      button.textContent = "📌";
-      message.appendChild(button);
-    });
-    renderPinnedChatStrip();
   }
 
   function safeNormalizeChatDisplay() {
@@ -1263,7 +1241,7 @@
     }
     const chatControl = event.target.closest?.("button, [role='button']");
     const controlLabel = String(chatControl?.getAttribute("aria-label") || chatControl?.title || chatControl?.textContent || "").trim();
-    if (/^clear chat history$/i.test(controlLabel)) {
+    if (/^(?:clear chat history|delete all public chat messages)$/i.test(controlLabel)) {
       [0, 75, 300].forEach(delay => window.setTimeout(normalizeLatestChatPrompt, delay));
     }
     const download = event.target.closest?.(".nch-chat-download");

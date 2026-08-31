@@ -108,7 +108,9 @@ mongoose
 app.use(
     cookieSession({
         maxAge: 3.5 * 24 * 60 * 60 * 1000, // 3.5 days
-        keys: [conf.cookie_session_key]
+        keys: [conf.cookie_session_key],
+        sameSite: 'lax',
+        httpOnly: true
     })
 );
 
@@ -149,10 +151,24 @@ app.use(express.json());
 app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/readyz', (_req, res) => {
     const ready = mongoose.connection.readyState === 1;
-    res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not-ready' });
+    res.status(ready ? 200 : 503).json({
+        status: ready ? 'ready' : 'not-ready',
+        revision: process.env.APP_REVISION || 'workspace',
+        assetVersion: res.locals.serverInfo?.server?.appAssetVersion || 'unknown'
+    });
 });
 
-app.use(express.static(path.join(__dirname, '../../client/dist/public'), { maxAge: 7200000 }));
+app.use(express.static(path.join(__dirname, '../../client/dist/public'), {
+    maxAge: 7200000,
+    setHeaders: (res, filePath) => {
+        // ES module dependencies are imported without the entry point's query
+        // string. Revalidate scripts so a rebuilt container can never leave a
+        // browser on a fresh-but-obsolete module for the old two-hour max-age.
+        if (/\.(?:js|mjs)$/.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        }
+    }
+}));
 app.use('/views', viewRoutes);
 //API:CRUD Routes:
 app.use('/api/data/netprofiles', dataNetProfileRoutes);
@@ -171,6 +187,7 @@ app.use('/api/sse/livenets', sseLiveNetRoutes);
 app.use('/api/presence/livenets', presenceLiveNetRoutes);
 // Local chat uses the existing authenticated cookie session.
 app.use('/api/chat', chatRoutes);
+app.use('/api/chat', chatRoutes.chatRouteErrorHandler);
 //API Desc
 app.get('/api', (_req, res) => res.json(publicEndpoints(app)));
 logger.debug(`\n\nAPI:\n${JSON.stringify(publicEndpoints(app), null, 1)}\n`);

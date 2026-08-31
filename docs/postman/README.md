@@ -108,7 +108,7 @@ The following table summarises the endpoints included in the collection. See [AP
 | POST   | `/api/admin/interactions/:id`                              | Execute net admin command                        |
 | GET    | `/api/chat/:id/messages`                      | Get local chat history and SSE path              |
 | POST   | `/api/chat/:id/messages`                      | Send a local chat message                        |
-| DELETE | `/api/chat/:id/messages/:messageId`           | Delete an owned or moderated chat message        |
+| DELETE | `/api/chat/:id/messages/:messageId`           | Delete the authenticated author's chat message   |
 
 ## Important Notes
 

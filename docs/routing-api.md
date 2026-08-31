@@ -79,17 +79,28 @@ Note: The route is mounted at `/api/station/interactions` in `server.js`, so the
 - **Route**: `GET /api/presence/livenets/:id`
 - **Purpose**: Station presence polling; fallback for clients that cannot use SSE
 
-### Endorse Domain (`/api/endorse/`)
+### Local Chat Domain (`/api/chat/`)
 
-**Purpose**: Issue credentials to the client for use with external services.
+**Purpose**: First-party public/direct chat, authenticated images, moderation, and SSE. No external
+chat credential or hosted chat provider is required at runtime.
 
 **Routes**:
 
-- `GET|POST /api/chat/:id/messages` — Ordered local history and message send.
+- `GET|POST /api/chat/:id/messages` — Bounded public/direct bootstrap history and public send.
+- `GET|POST /api/chat/:id/direct/:userId/messages` — Exact two-party history and direct send.
+- `POST /api/chat/:id/images` and `/api/chat/:id/direct/:userId/images` — Authenticated images.
+- `PUT /api/chat/:id/direct/:userId/ignore` — Viewer-owned private ignore preference.
+- `PATCH|DELETE /api/chat/:id/messages/:messageId` — Edit or delete the author's own message.
+- `GET /api/chat/:id/messages/:messageId/image` — Authorized public/participant image retrieval.
+- `PUT /api/chat/:id/messages/:messageId/reaction` — Participant reaction toggle.
+- `PUT /api/chat/:id/messages/:messageId/pin` — NCO/Logger public pin mutation.
+- `POST /api/chat/:id/messages/:messageId/ban` — NCO-only ban by stored public-message author.
+- `DELETE /api/chat/:id/messages` — NCO-only public clear.
 - `GET /api/chat/:id/events` — Authenticated local chat SSE.
-- `DELETE /api/chat/:id/messages/:messageId` — Owned-message deletion or NCS/logger moderation.
+- See [Chat System](chat-system.md) for the complete route, privacy, and history-window contract.
 
-**Authorization**: `authCheck(REQ_CALLSIGN)` on all endorse routes.
+**Authorization**: Existing cookie authentication, callsign, and active-net membership on every route;
+mutation permissions are derived server-side.
 
 ### Utility Domain (`/api/util/`)
 
