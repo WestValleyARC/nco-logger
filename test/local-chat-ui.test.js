@@ -72,10 +72,26 @@ test('chat styles use content-derived cache-busting URLs', () => {
     const serverUtils = read('server/dist/lib/serverUtils.js');
     const localCssPartial = read('server/dist/views/partials/featureLocalCss.ejs');
     const liveNetView = read('server/dist/views/liveNet.ejs');
-    assert.match(serverUtils, /client\/dist\/public\/css\/local\.css/);
-    assert.match(serverUtils, /client\/dist\/public\/css\/nco-logger\.css/);
+    assert.match(serverUtils, /publicAssetRoot[\s\S]*client\/dist\/public/);
+    assert.match(serverUtils, /'css\/local\.css'/);
+    assert.match(serverUtils, /'css\/nco-logger\.css'/);
     assert.match(localCssPartial, /local\.css\?v=<%= server\.appAssetVersion %>/);
     assert.match(liveNetView, /nco-logger\.css\?v=<%= server\.appAssetVersion %>/);
+});
+
+test('application JavaScript cannot remain fresh after a same-server rebuild', () => {
+    const serverUtils = read('server/dist/lib/serverUtils.js');
+    const server = read('server/dist/server.js');
+    const compose = read('docker-compose.yml');
+    const refresh = read('scripts/refresh-compose.sh');
+    assert.match(serverUtils, /js\/lib\/chat\.js/);
+    assert.match(serverUtils, /js\/byView\/liveNet\/main\.js/);
+    assert.match(server, /max-age=0, must-revalidate/);
+    assert.match(server, /X-App-Asset-Version|appAssetVersion/);
+    assert.match(compose, /action: sync\+restart[\s\S]*path: \.\/server\/dist/);
+    assert.match(compose, /action: rebuild[\s\S]*path: \.\/client\/src/);
+    assert.match(refresh, /docker compose up -d --build --wait app/);
+    assert.match(refresh, /\/readyz/);
 });
 
 test('NCO Logger and Chat font scales use independent variables', () => {

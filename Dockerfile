@@ -15,8 +15,12 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
 
+ARG APP_REVISION=workspace
 ENV NODE_ENV=production \
-    PORT=3000
+    PORT=3000 \
+    APP_REVISION=${APP_REVISION}
+
+LABEL org.opencontainers.image.revision="${APP_REVISION}"
 
 WORKDIR /app
 

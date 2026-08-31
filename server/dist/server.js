@@ -149,10 +149,24 @@ app.use(express.json());
 app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/readyz', (_req, res) => {
     const ready = mongoose.connection.readyState === 1;
-    res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not-ready' });
+    res.status(ready ? 200 : 503).json({
+        status: ready ? 'ready' : 'not-ready',
+        revision: process.env.APP_REVISION || 'workspace',
+        assetVersion: res.locals.serverInfo?.server?.appAssetVersion || 'unknown'
+    });
 });
 
-app.use(express.static(path.join(__dirname, '../../client/dist/public'), { maxAge: 7200000 }));
+app.use(express.static(path.join(__dirname, '../../client/dist/public'), {
+    maxAge: 7200000,
+    setHeaders: (res, filePath) => {
+        // ES module dependencies are imported without the entry point's query
+        // string. Revalidate scripts so a rebuilt container can never leave a
+        // browser on a fresh-but-obsolete module for the old two-hour max-age.
+        if (/\.(?:js|mjs)$/.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        }
+    }
+}));
 app.use('/views', viewRoutes);
 //API:CRUD Routes:
 app.use('/api/data/netprofiles', dataNetProfileRoutes);

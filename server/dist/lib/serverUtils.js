@@ -18,12 +18,19 @@ const { createHash } = require('crypto');
 const { readFileSync } = require('fs');
 const path = require('path');
 const { version: appVersion } = require('../../../package.json');
-const appAssetRevision = createHash('sha256')
-    .update(readFileSync(path.join(__dirname, '../../../client/dist/public/css/app-shell.css')))
-    .update(readFileSync(path.join(__dirname, '../../../client/dist/public/css/local.css')))
-    .update(readFileSync(path.join(__dirname, '../../../client/dist/public/css/nco-logger.css')))
-    .digest('hex')
-    .slice(0, 12);
+const applicationAssetPaths = [
+    'css/app-shell.css',
+    'css/local.css',
+    'css/nco-logger.css',
+    'js/byView/liveNet/main.js',
+    'js/byView/liveNet/ncoLogger.js',
+    'js/lib/chat.js',
+    'js/lib/chatState.js'
+];
+const publicAssetRoot = path.join(__dirname, '../../../client/dist/public');
+const assetHash = createHash('sha256');
+applicationAssetPaths.forEach(assetPath => assetHash.update(readFileSync(path.join(publicAssetRoot, assetPath))));
+const appAssetRevision = assetHash.digest('hex').slice(0, 12);
 const appAssetVersion = `${appVersion}-${appAssetRevision}`;
 let qrzSessionKey = null;
 let qrzInQuotaWait = 0;
@@ -155,6 +162,9 @@ const addServerInfo = async (req, res, next) => {
                 chat
             }
         };
+
+        res.set('X-App-Revision', process.env.APP_REVISION || 'workspace');
+        res.set('X-App-Asset-Version', appAssetVersion);
 
         next();
     } catch (err) {

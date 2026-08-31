@@ -148,6 +148,33 @@ The development server (`npm run dev`) provides:
 - **Server TypeScript (the four `server/src/` files):** Also watched and compiled automatically
 - **Templates:** EJS templates are read from disk on each request, so edits take effect immediately
 
+### Same-server Docker workflow
+
+The Docker application is an immutable production-style image. A workspace edit or Git commit does
+not modify the running `nco-logger-app` container. After completing a change, use the repository's
+single refresh command:
+
+```bash
+bash scripts/refresh-compose.sh
+```
+
+This rebuilds and restarts the app, waits for database-backed readiness, and prints the exact Git
+revision and browser asset version reported by the new container. It does not clear MongoDB or chat
+uploads.
+
+During an active same-server development session, Compose Watch can synchronize hand-maintained
+server JavaScript and generated browser output, restarting the app whenever either changes:
+
+```bash
+docker compose up -d --build --wait
+docker compose watch
+```
+
+Edits under `client/src` trigger a full rebuild so TypeScript cannot drift from `client/dist`.
+JavaScript responses use `must-revalidate`, and application CSS/JS contributes to the server's asset
+fingerprint. A normal navigation or refresh is therefore sufficient after the container reports
+ready; browser cache clearing should not be part of the normal workflow.
+
 ## Migration Guide
 
 Goal: migrate a per-view plain JS `main.js` to TypeScript `main.ts` while keeping no-bundler runtime.
