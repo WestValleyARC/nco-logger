@@ -54,6 +54,7 @@ test('composer controls and text retain the intended accessible styling', () => 
     assert.match(css, /#local-chat-message\s*\{[^}]*resize:\s*none[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-icon-control:focus-visible/);
     assert.match(css, /\.chat-icon-control\s*\{[^}]*width:\s*3rem[^}]*font-size:\s*1\.35rem/s);
+    assert.match(css, /\.chat-form\s*\{[^}]*grid-template-columns:[^}]*3rem 3rem auto[^}]*gap:\s*0\.1rem !important/s);
     assert.match(css, /\.chat-emoji-tab\s*\{[^}]*font-size:\s*1\.35rem/s);
     assert.match(css, /\.chat-emoji-search::placeholder\s*\{[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-send-btn\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);

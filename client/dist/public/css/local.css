@@ -143,7 +143,7 @@ body {
 .chat-form {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) 3rem 3rem auto;
-    gap: 0.35rem !important;
+    gap: 0.1rem !important;
     align-items: end;
 }
 
@@ -336,7 +336,7 @@ body {
 
     .chat-form {
         grid-template-columns: minmax(6rem, 1fr) 3rem 3rem auto;
-        gap: 0.2rem !important;
+        gap: 0.1rem !important;
     }
 
     .chat-lightbox-card {
