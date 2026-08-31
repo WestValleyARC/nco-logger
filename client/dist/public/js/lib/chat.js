@@ -119,7 +119,9 @@ export class ChatWidget extends HTMLElement {
                         <div class="chat-lightbox-header">
                             <strong id="chat-lightbox-title">Chat image</strong>
                             <div class="chat-lightbox-controls">
-                                <button class="chat-lightbox-download" type="button" aria-label="Download original chat image">Download</button>
+                                <button class="chat-lightbox-download" type="button" aria-label="Download original chat image" title="Download image">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"></path></svg>
+                                </button>
                                 <button class="chat-lightbox-close" type="button" aria-label="Close image viewer">×</button>
                             </div>
                         </div>

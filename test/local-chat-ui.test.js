@@ -53,11 +53,16 @@ test('composer controls and text retain the intended accessible styling', () => 
     const source = read('client/src/public/js/lib/chat.ts');
     assert.match(css, /#local-chat-message\s*\{[^}]*resize:\s*none[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-icon-control:focus-visible/);
+    assert.match(css, /\.chat-icon-control\s*\{[^}]*width:\s*3rem[^}]*font-size:\s*1\.35rem/s);
+    assert.match(css, /\.chat-emoji-tab\s*\{[^}]*font-size:\s*1\.35rem/s);
+    assert.match(css, /\.chat-emoji-search::placeholder\s*\{[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-send-btn\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);
     assert.match(css, /@media \(max-width: 520px\), \(max-height: 520px\)/);
     assert.match(source, /!picker\.contains\(target\)[\s\S]*toggleEmojiPicker\(false\)/);
     assert.match(source, /picker && !picker\.hidden[\s\S]*toggleEmojiPicker\(false\)/);
     assert.match(source, /button\.setAttribute\('aria-expanded', String\(open\)\)/);
+    assert.match(source, /chat-lightbox-download[^>]*aria-label="Download original chat image"[^>]*>[\s\S]*<svg/);
+    assert.doesNotMatch(source, />Download<\/button>/);
 });
 
 test('NCO Logger and Chat font scales use independent variables', () => {
