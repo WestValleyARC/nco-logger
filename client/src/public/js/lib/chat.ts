@@ -1377,7 +1377,11 @@ export class ChatWidget extends HTMLElement {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = `chat-message-action ${className}`;
-            button.textContent = icon;
+            const iconElement = document.createElement('span');
+            iconElement.className = 'chat-message-action-icon';
+            iconElement.setAttribute('aria-hidden', 'true');
+            iconElement.textContent = icon;
+            button.append(iconElement);
             button.title = label;
             button.setAttribute('aria-label', `${label} message from ${message.callSign}`);
             button.addEventListener('click', action);
