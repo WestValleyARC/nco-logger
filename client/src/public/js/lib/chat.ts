@@ -990,7 +990,7 @@ export class ChatWidget extends HTMLElement {
             const expandLabel = document.createElement('span');
             expandLabel.className = 'chat-pinned-expand-label';
             expandLabel.textContent = expanded ? 'Collapse ▴' : 'Show full ▾';
-            open.append(author, preview);
+            open.append(author, preview, expandLabel);
             if (message.attachment && this.safeAttachmentUrl(message)) {
                 const image = document.createElement('img');
                 image.className = 'chat-pinned-image';
@@ -999,7 +999,6 @@ export class ChatWidget extends HTMLElement {
                 image.loading = 'lazy';
                 open.append(image);
             }
-            open.append(expandLabel);
             open.addEventListener('click', () => {
                 if (expanded) this.expandedPinnedMessageIds.delete(message.id);
                 else this.expandedPinnedMessageIds.add(message.id);
