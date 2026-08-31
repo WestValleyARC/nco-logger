@@ -108,7 +108,9 @@ mongoose
 app.use(
     cookieSession({
         maxAge: 3.5 * 24 * 60 * 60 * 1000, // 3.5 days
-        keys: [conf.cookie_session_key]
+        keys: [conf.cookie_session_key],
+        sameSite: 'lax',
+        httpOnly: true
     })
 );
 
@@ -185,6 +187,7 @@ app.use('/api/sse/livenets', sseLiveNetRoutes);
 app.use('/api/presence/livenets', presenceLiveNetRoutes);
 // Local chat uses the existing authenticated cookie session.
 app.use('/api/chat', chatRoutes);
+app.use('/api/chat', chatRoutes.chatRouteErrorHandler);
 //API Desc
 app.get('/api', (_req, res) => res.json(publicEndpoints(app)));
 logger.debug(`\n\nAPI:\n${JSON.stringify(publicEndpoints(app), null, 1)}\n`);

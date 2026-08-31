@@ -4,8 +4,10 @@ const {
     cleanMessage, toPublicMessage, detectImageType, createMessage, editMessage, deleteMessage, uploadImage,
     toggleReaction, setMessagePin, banMessageAuthor, clearPublicChat, authorizeChatAction,
     summarizeReactions, toggleReactionValue, toChatMessage, canViewMessage, shouldDeliverMessage,
-    directConversationQuery, listDirectMessages, setPrivateIgnore, serveImage
+    directConversationQuery, listDirectMessages, setPrivateIgnore, serveImage, chatEventForViewer,
+    messageScope, attachmentPath, PUBLIC_SCOPE_QUERY, DIRECT_SCOPE_QUERY, banUserHelper
 } = require('../server/dist/lib/localChat');
+const { requireSameOriginMutation, chatRouteErrorHandler } = require('../server/dist/routes/chatRoutes');
 const { chatMessageSchema } = require('../server/dist/models/chatMessage');
 const { userProfileSchema } = require('../server/dist/models/userProfile');
 
@@ -67,6 +69,7 @@ test('image signatures are detected without trusting filenames', () => {
         mimeType: 'image/jpeg', extension: 'jpg'
     });
     assert.equal(detectImageType(Buffer.from('<svg><script>alert(1)</script></svg>')), null);
+    assert.throws(() => attachmentPath('../../private.png'), /Invalid attachment storage name/);
 });
 
 test('public image metadata exposes an authenticated URL but not its storage name', () => {
@@ -124,6 +127,9 @@ test('quick reactions toggle once per user and summarize counts for the viewer',
         { emoji: '❤️', count: 1, reactedByMe: false },
         { emoji: '😂', count: 1, reactedByMe: true }
     ]);
+    assert.deepEqual(summarizeReactions([
+        { emoji: '👍', userProfile: one }, { emoji: '👍', userProfile: one }
+    ], one), [{ emoji: '👍', count: 1, reactedByMe: true }]);
 });
 
 test('public messages expose reply, reaction, pin, and per-role action state', () => {
@@ -177,6 +183,23 @@ test('direct messages serialize only for their sender and recipient regardless o
     assert.equal(recipientView.canPin, false);
     assert.equal(recipientView.canBan, false);
     assert.equal(recipientView.canReply, true);
+    assert.equal(chatEventForViewer(message, 'netcontrol', unrelatedNco), null);
+    assert.equal(chatEventForViewer(message, 'netlogger', unrelatedNco), null);
+    assert.equal(chatEventForViewer(message, 'netuser', recipient)?.text, 'private');
+});
+
+test('recipient-bearing legacy records fail closed as private messages', () => {
+    const sender = '507f1f77bcf86cd799439011';
+    const recipient = '507f1f77bcf86cd799439012';
+    const legacyDirect = { userProfile: sender, recipientUserProfile: recipient };
+    assert.equal(messageScope(legacyDirect), 'direct');
+    assert.equal(canViewMessage(legacyDirect, recipient), true);
+    assert.equal(canViewMessage(legacyDirect, '507f1f77bcf86cd799439013'), false);
+    assert.deepEqual(PUBLIC_SCOPE_QUERY.$or, [
+        { scope: 'public', recipientUserProfile: null },
+        { scope: { $exists: false }, recipientUserProfile: null }
+    ]);
+    assert.equal(DIRECT_SCOPE_QUERY.$or.length, 2);
 });
 
 test('ignored private senders are suppressed without affecting public delivery or sender delivery', () => {
@@ -192,11 +215,52 @@ test('ignored private senders are suppressed without affecting public delivery o
 
 test('direct conversation queries are restricted to the exact two participants', () => {
     const query = directConversationQuery('507f1f77bcf86cd799439010', '507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012');
-    assert.equal(query.scope, 'direct');
-    assert.deepEqual(query.$or, [
+    assert.equal(query.$and[0], DIRECT_SCOPE_QUERY);
+    assert.deepEqual(query.$and[1].$or, [
         { userProfile: '507f1f77bcf86cd799439011', recipientUserProfile: '507f1f77bcf86cd799439012' },
         { userProfile: '507f1f77bcf86cd799439012', recipientUserProfile: '507f1f77bcf86cd799439011' }
     ]);
+});
+
+test('chat mutations reject explicit cross-site requests', () => {
+    const invoke = headers => {
+        let status = 200;
+        let payload;
+        let nextCalled = false;
+        const req = {
+            method: 'POST', protocol: 'https',
+            get(name) { return headers[name.toLowerCase()]; }
+        };
+        const res = {
+            status(code) { status = code; return this; },
+            json(body) { payload = body; return this; }
+        };
+        requireSameOriginMutation(req, res, () => { nextCalled = true; });
+        return { status, payload, nextCalled };
+    };
+    assert.equal(invoke({ host: 'logger.example', origin: 'https://logger.example' }).nextCalled, true);
+    assert.equal(invoke({ host: 'logger.example', origin: 'https://evil.example' }).status, 403);
+    assert.equal(invoke({ host: 'logger.example', 'sec-fetch-site': 'cross-site' }).status, 403);
+});
+
+test('central ban helper rejects self-ban attempts', async () => {
+    const userId = '507f1f77bcf86cd799439011';
+    await assert.rejects(banUserHelper({
+        npid: '507f1f77bcf86cd799439010', userIdToBan: userId,
+        bannedByUserId: userId, targetCallsign: 'W1ABC'
+    }), /cannot ban yourself/);
+});
+
+test('malformed chat JSON receives a bounded JSON error', () => {
+    let status = 200;
+    let payload;
+    const err = Object.assign(new SyntaxError('Unexpected token'), { status: 400, body: '{' });
+    chatRouteErrorHandler(err, {}, {
+        status(code) { status = code; return this; },
+        json(body) { payload = body; return this; }
+    }, () => assert.fail('malformed JSON should not reach the next handler'));
+    assert.equal(status, 400);
+    assert.equal(payload.error, 'Malformed JSON request');
 });
 
 test('Phase 3 schema stores direct scope, recipient identity, and personal ignore preferences', () => {

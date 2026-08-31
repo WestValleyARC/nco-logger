@@ -28,12 +28,28 @@ const IMAGE_TYPES = Object.freeze({
 const QUICK_REACTIONS = Object.freeze(['👍', '❤️', '😂', '😮']);
 const PIN_ROLES = new Set(['netcontrol', 'netlogger']);
 const rateWindows = new Map();
-const PUBLIC_SCOPE_QUERY = Object.freeze({ $or: [{ scope: 'public' }, { scope: { $exists: false } }] });
+const PUBLIC_SCOPE_QUERY = Object.freeze({
+    $or: [
+        { scope: 'public', recipientUserProfile: null },
+        { scope: { $exists: false }, recipientUserProfile: null }
+    ]
+});
+const DIRECT_SCOPE_QUERY = Object.freeze({
+    $or: [
+        { scope: 'direct' },
+        { scope: { $exists: false }, recipientUserProfile: { $exists: true, $ne: null } }
+    ]
+});
 
 const isObjectId = value => mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === value;
 
-const messageScope = message => message?.scope === 'direct' ? 'direct' : 'public';
 const participantId = value => (value?._id || value)?.toString?.() || '';
+// A recipient always makes a message private, including legacy or malformed
+// records whose explicit scope is missing. Fail closed rather than exposing a
+// private record through public history, SSE, moderation, or exports.
+const messageScope = message => message?.scope === 'direct' || participantId(message?.recipientUserProfile)
+    ? 'direct'
+    : 'public';
 const isDirectParticipant = (message, userId) => messageScope(message) === 'direct'
     && [participantId(message.userProfile), participantId(message.recipientUserProfile)].includes(String(userId));
 const canViewMessage = (message, userId) => messageScope(message) === 'public' || isDirectParticipant(message, userId);
@@ -58,11 +74,15 @@ const authorizeChatAction = ({
 };
 
 const summarizeReactions = (reactions = [], currentUserId = '') => QUICK_REACTIONS.map(emoji => {
-    const matching = reactions.filter(reaction => reaction.emoji === emoji);
+    const matching = new Map();
+    reactions.filter(reaction => reaction.emoji === emoji).forEach(reaction => {
+        const userId = participantId(reaction.userProfile);
+        if (userId) matching.set(userId, reaction);
+    });
     return {
         emoji,
-        count: matching.length,
-        reactedByMe: matching.some(reaction => reaction.userProfile?.toString() === currentUserId)
+        count: matching.size,
+        reactedByMe: matching.has(currentUserId)
     };
 }).filter(reaction => reaction.count > 0);
 
@@ -125,6 +145,11 @@ const toChatMessage = (message, role = 'netuser', currentUserId = '') => {
 
 const toPublicMessage = toChatMessage;
 
+const chatEventForViewer = (message, role, userId, ignoredUserIds = new Set()) => {
+    if (!shouldDeliverMessage(message, userId, ignoredUserIds)) return null;
+    return toChatMessage(message, role, userId);
+};
+
 const detectImageType = buffer => {
     if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
     if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
@@ -162,7 +187,8 @@ const getNetAccess = async ({ npid, userId, db = mongoose.connection }) => {
     const StationInteraction = getStationInteraction(db);
     const liveNet = await LiveNet.findOne({ netProfile: npid });
     if (!liveNet) return null;
-    const interaction = await StationInteraction.findOne({ liveNet: liveNet._id, userProfile: userId });
+    const interaction = await StationInteraction.findOne({ liveNet: liveNet._id, userProfile: userId })
+        .sort({ updatedAt: -1, _id: -1 });
     if (!interaction) return null;
     return {
         liveNet,
@@ -179,10 +205,12 @@ const getIgnoredUserIds = async (userId, db = mongoose.connection) => {
 
 const directConversationQuery = (npid, firstUserId, secondUserId) => ({
     netProfile: npid,
-    scope: 'direct',
-    $or: [
-        { userProfile: firstUserId, recipientUserProfile: secondUserId },
-        { userProfile: secondUserId, recipientUserProfile: firstUserId }
+    $and: [
+        DIRECT_SCOPE_QUERY,
+        { $or: [
+            { userProfile: firstUserId, recipientUserProfile: secondUserId },
+            { userProfile: secondUserId, recipientUserProfile: firstUserId }
+        ] }
     ]
 });
 
@@ -285,8 +313,10 @@ const listMessages = async (req, res) => {
         messages.reverse();
         const directMessages = await ChatMessage.find({
             netProfile: req.params.id,
-            scope: 'direct',
-            $or: [{ userProfile: userId }, { recipientUserProfile: userId }]
+            $and: [
+                DIRECT_SCOPE_QUERY,
+                { $or: [{ userProfile: userId }, { recipientUserProfile: userId }] }
+            ]
         }).sort({ createdAt: -1, _id: -1 }).limit(1000);
         directMessages.reverse();
         const recipients = await listRecipientsForAccess({
@@ -359,7 +389,10 @@ const setPrivateIgnore = async (req, res) => {
         if (!access) return sendError(res, 403, 'Net access required');
         const peer = await getDirectPeer({ access, peerUserId: req.params.userId, currentUserId: userId });
         if (!peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
-        const ignored = req.body?.ignored !== false;
+        if (typeof req.body?.ignored !== 'boolean') {
+            return sendError(res, 400, 'Ignore preference must be a boolean');
+        }
+        const ignored = req.body.ignored;
         const UserProfile = getUserProfile();
         await UserProfile.updateOne(
             { _id: req.user._id },
@@ -541,13 +574,16 @@ const serveImage = async (req, res) => {
         if (!message?.attachment?.storageName) return sendError(res, 404, 'Image not found');
         const ignoredUserIds = await getIgnoredUserIds(userId);
         if (!shouldDeliverMessage(message, userId, ignoredUserIds)) return sendError(res, 404, 'Image not found');
+        const extension = IMAGE_TYPES[message.attachment.mimeType];
+        if (!extension) return sendError(res, 404, 'Image not found');
         const data = await fs.promises.readFile(attachmentPath(message.attachment.storageName));
         res.set({
             'Content-Type': message.attachment.mimeType,
             'Content-Length': String(data.length),
-            'Content-Disposition': `inline; filename="chat-image.${IMAGE_TYPES[message.attachment.mimeType]}"`,
+            'Content-Disposition': `inline; filename="chat-image.${extension}"`,
             'Cache-Control': 'private, no-store',
             'X-Content-Type-Options': 'nosniff',
+            'Cross-Origin-Resource-Policy': 'same-origin',
             'Content-Security-Policy': "default-src 'none'; sandbox"
         });
         return res.send(data);
@@ -788,8 +824,9 @@ const streamEvents = async (req, res) => {
         });
         closeStreams.push(messageChangeStream);
         messageChangeStream.on('change', change => {
-            if (!change.fullDocument || !shouldDeliverMessage(change.fullDocument, userId, ignoredUserIds)) return;
-            const message = toChatMessage(change.fullDocument, access.role, userId);
+            if (!change.fullDocument) return;
+            const message = chatEventForViewer(change.fullDocument, access.role, userId, ignoredUserIds);
+            if (!message) return;
             writeEvent('message', message);
         });
         messageChangeStream.on('error', err => {
@@ -833,7 +870,15 @@ const streamEvents = async (req, res) => {
             $match: { 'fullDocument.liveNet': access.liveNet._id }
         }], { fullDocument: 'updateLookup' });
         closeStreams.push(presenceChangeStream);
-        presenceChangeStream.on('change', () => void sendRecipients());
+        presenceChangeStream.on('change', change => {
+            const interaction = change.fullDocument;
+            if (participantId(interaction?.userProfile) === userId && interaction.role !== access.role) {
+                // Reconnect so history and all server-derived UI permissions
+                // are serialized with the viewer's current role.
+                return res.end();
+            }
+            return void sendRecipients();
+        });
         presenceChangeStream.on('error', err => logger.warn(`Local chat presence stream closed: ${err.message}`));
 
         const UserProfile = getUserProfile();
@@ -886,6 +931,9 @@ const cleanupNetChat = async (npid, db = mongoose.connection) => {
 };
 
 const banUserHelper = async ({ npid, userIdToBan, bannedByUserId, targetCallsign, reason = '', db = mongoose.connection }) => {
+    if (participantId(userIdToBan) === participantId(bannedByUserId)) {
+        throw Object.assign(new Error('You cannot ban yourself from chat'), { status: 403 });
+    }
     const ChatBan = getChatBan(db);
     await ChatBan.findOneAndUpdate(
         { netProfile: npid, userProfile: userIdToBan },
@@ -921,6 +969,7 @@ module.exports = {
     cleanMessage,
     toPublicMessage,
     toChatMessage,
+    chatEventForViewer,
     canViewMessage,
     shouldDeliverMessage,
     isDirectParticipant,
@@ -931,7 +980,10 @@ module.exports = {
     toggleReactionValue,
     QUICK_REACTIONS,
     detectImageType,
+    attachmentPath,
     MAX_UPLOAD_BYTES,
     IMAGE_TYPES,
-    UPLOAD_DIR
+    UPLOAD_DIR,
+    PUBLIC_SCOPE_QUERY,
+    DIRECT_SCOPE_QUERY
 };

@@ -23,12 +23,13 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     const {
         createMessage, editMessage, uploadImage, deleteMessage, fetchChatHistory, toggleReaction,
         setMessagePin, banMessageAuthor, clearPublicChat, listMessages, listDirectMessages,
-        setPrivateIgnore, serveImage
+        setPrivateIgnore, serveImage, PUBLIC_SCOPE_QUERY
     } = require('../server/dist/lib/localChat');
     const userOne = new mongoose.Types.ObjectId();
     const userTwo = new mongoose.Types.ObjectId();
     const userNco = new mongoose.Types.ObjectId();
     const userOtherLogger = new mongoose.Types.ObjectId();
+    const userRelay = new mongoose.Types.ObjectId();
     const netProfile = new mongoose.Types.ObjectId();
     const LiveNet = getLiveNet();
     const StationInteraction = getStationInteraction();
@@ -41,13 +42,15 @@ test('net participants exchange, interact with, and moderate local chat', { skip
         { callSign: 'W1AAA', createdBy: 'user', role: 'netuser', userProfile: userOne, liveNet: liveNet._id, netProfile },
         { callSign: 'W1BBB', createdBy: 'user', role: 'netlogger', userProfile: userTwo, liveNet: liveNet._id, netProfile },
         { callSign: 'W1NCO', createdBy: 'user', role: 'netcontrol', userProfile: userNco, liveNet: liveNet._id, netProfile },
-        { callSign: 'W1LOG', createdBy: 'user', role: 'netlogger', userProfile: userOtherLogger, liveNet: liveNet._id, netProfile }
+        { callSign: 'W1LOG', createdBy: 'user', role: 'netlogger', userProfile: userOtherLogger, liveNet: liveNet._id, netProfile },
+        { callSign: 'W1RLY', createdBy: 'user', role: 'netrelay', userProfile: userRelay, liveNet: liveNet._id, netProfile }
     ]);
     await UserProfile.create([
         { _id: userOne, callSign: 'W1AAA', displayName: 'Alice', email: 'alice-phase3@example.com', lastAuthVia: 'email' },
         { _id: userTwo, callSign: 'W1BBB', displayName: 'Bobby', email: 'bob-phase3@example.com', lastAuthVia: 'email' },
         { _id: userNco, callSign: 'W1NCO', displayName: 'Net Control', email: 'nco-phase3@example.com', lastAuthVia: 'email' },
-        { _id: userOtherLogger, callSign: 'W1LOG', displayName: 'Logger', email: 'logger-phase3@example.com', lastAuthVia: 'email' }
+        { _id: userOtherLogger, callSign: 'W1LOG', displayName: 'Logger', email: 'logger-phase3@example.com', lastAuthVia: 'email' },
+        { _id: userRelay, callSign: 'W1RLY', displayName: 'Relay', email: 'relay-phase4b@example.com', lastAuthVia: 'email' }
     ]);
 
     const invoke = async (handler, req) => {
@@ -101,12 +104,22 @@ test('net participants exchange, interact with, and moderate local chat', { skip
         params: { id: netProfile.toString(), messageId: sent.payload.message.id }
     });
     assert.equal(forbiddenPin.status, 403);
+    const relayPin = await invoke(setMessagePin, {
+        ...makeReq(userRelay, 'W1RLY', 'Relay', { pinned: false }),
+        params: { id: netProfile.toString(), messageId: sent.payload.message.id }
+    });
+    assert.equal(relayPin.status, 403);
 
     const forbiddenBan = await invoke(banMessageAuthor, {
         ...makeReq(userTwo, 'W1BBB', 'Bob'),
         params: { id: netProfile.toString(), messageId: sent.payload.message.id }
     });
     assert.equal(forbiddenBan.status, 403);
+    const relayBan = await invoke(banMessageAuthor, {
+        ...makeReq(userRelay, 'W1RLY', 'Relay'),
+        params: { id: netProfile.toString(), messageId: sent.payload.message.id }
+    });
+    assert.equal(relayBan.status, 403);
 
     const longCreate = await invoke(createMessage, makeReq(userOne, 'W1AAA', 'Alice', { text: 'x'.repeat(2001) }));
     assert.equal(longCreate.status, 400);
@@ -227,12 +240,25 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     assert.equal(directReply.payload.message.replyTo, directSent.payload.message.id);
     assert.equal(directReply.payload.message.scope, 'direct');
 
+    await ChatMessage.collection.insertOne({
+        liveNet: liveNet._id, netProfile, userProfile: userOne, recipientUserProfile: userTwo,
+        callSign: 'W1AAA', displayName: 'Alice', text: 'Legacy private', reactions: [],
+        createdAt: new Date(), updatedAt: new Date()
+    });
+    const publicIsolation = await invoke(listMessages, {
+        ...makeReq(userNco, 'W1NCO', 'Net Control'),
+        res: { locals: { flexOpts: { awayInMs: 120000 } } }
+    });
+    assert.equal(publicIsolation.payload.messages.some(message => message.text === 'Legacy private'), false);
+
     const privateHistory = await invoke(listDirectMessages, {
         ...makeReq(userTwo, 'W1BBB', 'Bobby'),
         params: { id: netProfile.toString(), userId: userOne.toString() }
     });
     assert.equal(privateHistory.status, 200);
-    assert.deepEqual(privateHistory.payload.messages.map(message => message.text), ['Private hello', 'Private reply']);
+    assert.deepEqual(privateHistory.payload.messages.map(message => message.text), [
+        'Private hello', 'Private reply', 'Legacy private'
+    ]);
     const unrelatedNcoHistory = await invoke(listDirectMessages, {
         ...makeReq(userNco, 'W1NCO', 'Net Control'),
         params: { id: netProfile.toString(), userId: userOne.toString() }
@@ -243,6 +269,11 @@ test('net participants exchange, interact with, and moderate local chat', { skip
         params: { id: netProfile.toString(), userId: userOne.toString() }
     });
     assert.deepEqual(unrelatedLoggerHistory.payload.messages, []);
+    const unrelatedUserHistory = await invoke(listDirectMessages, {
+        ...makeReq(userRelay, 'W1RLY', 'Relay'),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.deepEqual(unrelatedUserHistory.payload.messages, []);
 
     const unrelatedReaction = await invoke(toggleReaction, {
         ...makeReq(userNco, 'W1NCO', 'Net Control', { emoji: '👍' }),
@@ -258,7 +289,7 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     assert.equal(directImage.status, 201);
     const directImageDoc = await ChatMessage.findById(directImage.payload.message.id);
     const directImagePath = path.join(uploadDir, directImageDoc.attachment.storageName);
-    const invokeImage = async (userId, callSign) => {
+    const invokeImage = async (userId, callSign, requestedNet = netProfile.toString()) => {
         let status = 200;
         let payload;
         const headers = {};
@@ -270,18 +301,34 @@ test('net participants exchange, interact with, and moderate local chat', { skip
         };
         await serveImage({
             ...makeReq(userId, callSign, callSign),
-            params: { id: netProfile.toString(), messageId: directImage.payload.message.id }
+            params: { id: requestedNet, messageId: directImage.payload.message.id }
         }, res);
         return { status, payload, headers };
     };
-    assert.equal((await invokeImage(userTwo, 'W1BBB')).status, 200);
+    assert.equal((await invokeImage(userOne, 'W1AAA')).status, 200);
+    const recipientImage = await invokeImage(userTwo, 'W1BBB');
+    assert.equal(recipientImage.status, 200);
+    assert.equal(recipientImage.headers['Cache-Control'], 'private, no-store');
+    assert.equal(recipientImage.headers['Cross-Origin-Resource-Policy'], 'same-origin');
     assert.equal((await invokeImage(userNco, 'W1NCO')).status, 404);
+    assert.equal((await invokeImage(userOtherLogger, 'W1LOG')).status, 404);
+    assert.equal((await invokeImage(userRelay, 'W1RLY')).status, 404);
+
+    const invalidIgnore = await invoke(setPrivateIgnore, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby', { ignored: 'false' }),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.equal(invalidIgnore.status, 400);
 
     const ignored = await invoke(setPrivateIgnore, {
         ...makeReq(userTwo, 'W1BBB', 'Bobby', { ignored: true }),
         params: { id: netProfile.toString(), userId: userOne.toString() }
     });
     assert.equal(ignored.payload.ignored, true);
+    const ownerProfile = await UserProfile.findById(userOne).lean();
+    const ignoringProfile = await UserProfile.findById(userTwo).lean();
+    assert.deepEqual((ownerProfile.ignoredPrivateUsers || []).map(String), []);
+    assert.deepEqual((ignoringProfile.ignoredPrivateUsers || []).map(String), [userOne.toString()]);
     const ignoredHistory = await invoke(listDirectMessages, {
         ...makeReq(userTwo, 'W1BBB', 'Bobby'),
         params: { id: netProfile.toString(), userId: userOne.toString() }
@@ -317,6 +364,13 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     assert.equal(deletedDirectReply.status, 200);
     assert.equal(deletedDirectReply.payload.message.deleted, true);
 
+    const ncoMessage = await invoke(createMessage, makeReq(userNco, 'W1NCO', 'Net Control', { text: 'NCO note' }));
+    const selfBan = await invoke(banMessageAuthor, {
+        ...makeReq(userNco, 'W1NCO', 'Net Control'),
+        params: { id: netProfile.toString(), messageId: ncoMessage.payload.message.id }
+    });
+    assert.equal(selfBan.status, 403);
+
     const banTarget = await invoke(createMessage, makeReq(userTwo, 'W1BBB', 'Bob', { text: 'Ban target' }));
     const banned = await invoke(banMessageAuthor, {
         ...makeReq(userNco, 'W1NCO', 'Net Control', { reason: 'Test moderation' }),
@@ -329,20 +383,47 @@ test('net participants exchange, interact with, and moderate local chat', { skip
 
     const forbiddenClear = await invoke(clearPublicChat, makeReq(userOne, 'W1AAA', 'Alice'));
     assert.equal(forbiddenClear.status, 403);
+    const loggerClear = await invoke(clearPublicChat, makeReq(userOtherLogger, 'W1LOG', 'Logger'));
+    assert.equal(loggerClear.status, 403);
+    const relayClear = await invoke(clearPublicChat, makeReq(userRelay, 'W1RLY', 'Relay'));
+    assert.equal(relayClear.status, 403);
     const otherNetProfile = new mongoose.Types.ObjectId();
+    const otherLiveNet = await LiveNet.create({
+        netProfile: otherNetProfile, netControl: userOne,
+        url: `/views/livenet/${otherNetProfile}`, lookupTable: {}
+    });
+    await StationInteraction.create({
+        callSign: 'W1AAA', createdBy: 'user', role: 'netcontrol', userProfile: userOne,
+        liveNet: otherLiveNet._id, netProfile: otherNetProfile
+    });
     const otherMessage = await ChatMessage.create({
-        liveNet: liveNet._id, netProfile: otherNetProfile, userProfile: userOne,
+        liveNet: otherLiveNet._id, netProfile: otherNetProfile, userProfile: userOne,
         callSign: 'W1AAA', displayName: 'Alice', text: 'Other net must remain'
+    });
+    const crossNetHistory = await invoke(listMessages, {
+        ...makeReq(userOne, 'W1AAA', 'Alice'),
+        res: { locals: { flexOpts: { awayInMs: 120000 } } }
+    });
+    assert.equal(crossNetHistory.payload.messages.some(message => message.text === 'Other net must remain'), false);
+    assert.equal((await invokeImage(userOne, 'W1AAA', otherNetProfile.toString())).status, 404);
+    await invoke(setPrivateIgnore, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby', { ignored: true }),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
     });
     const cleared = await invoke(clearPublicChat, makeReq(userNco, 'W1NCO', 'Net Control'));
     assert.equal(cleared.status, 200);
     assert.equal(cleared.payload.cleared, true);
     assert.equal(await ChatMessage.countDocuments({
-        netProfile, clearedAt: null, $or: [{ scope: 'public' }, { scope: { $exists: false } }]
+        netProfile, clearedAt: null, ...PUBLIC_SCOPE_QUERY
     }), 0);
-    assert.equal(await ChatMessage.countDocuments({ netProfile, scope: 'direct', clearedAt: null }), 3);
+    assert.equal(await ChatMessage.countDocuments({
+        netProfile,
+        $or: [{ scope: 'direct' }, { scope: { $exists: false }, recipientUserProfile: { $ne: null } }],
+        clearedAt: null
+    }), 4);
     assert.equal((await fs.promises.stat(directImagePath)).size, png.length);
     assert.equal((await ChatMessage.findById(otherMessage._id)).text, 'Other net must remain');
+    assert.deepEqual((await UserProfile.findById(userTwo).lean()).ignoredPrivateUsers.map(String), [userOne.toString()]);
 
     } finally {
         await mongoose.connection.dropDatabase();
