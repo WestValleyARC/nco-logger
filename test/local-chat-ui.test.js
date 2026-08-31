@@ -127,6 +127,8 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(css, /\.chat-reaction-chip\.is-mine\s*\{/);
     assert.match(source, /chip\.setAttribute\('aria-pressed', String\(reaction\.reactedByMe\)\)/);
     assert.match(source, /reactionButton\.setAttribute\('aria-expanded', 'false'\)/);
+    assert.match(source, /event\.key !== 'ArrowDown' && event\.key !== 'ArrowUp'/);
+    assert.match(source, /\['ArrowDown', 'ArrowUp', 'Home', 'End'\]/);
     assert.match(css, /\.chat-header-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto minmax\(0, 1fr\)/s);
     assert.match(css, /\.chat-clear-button\s*\{[^}]*grid-column:\s*2[^}]*justify-self:\s*center[^}]*color:\s*#ff5263/s);
     assert.doesNotMatch(source, /has-pin-action/);
@@ -188,4 +190,6 @@ test('chat request errors distinguish authentication, authorization, and rate li
     assert.match(state, /status === 403[\s\S]*Permission denied/);
     assert.match(state, /status === 429[\s\S]*Rate limit reached/);
     assert.match(source, /chatRequestErrorMessage\(response\.status, data\.error/);
+    assert.match(source, /reconcileMutationMessage\(data\.message\)/);
+    assert.match(source, /message\.scope === 'direct'[\s\S]*reconcileDirectMessages\(\[message\], false\)/);
 });

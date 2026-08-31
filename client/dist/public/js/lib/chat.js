@@ -253,7 +253,30 @@ export class ChatWidget extends HTMLElement {
         this.querySelector('.chat-new-messages')?.addEventListener('click', () => this.scrollToLatest());
         this.querySelector('.chat-reply-cancel')?.addEventListener('click', () => this.setReply(null));
         this.querySelector('.chat-clear-button')?.addEventListener('click', () => void this.clearChat());
-        this.querySelector('.chat-recipient-toggle')?.addEventListener('click', () => this.toggleRecipientMenu());
+        const recipientToggle = this.querySelector('.chat-recipient-toggle');
+        const recipientMenu = this.querySelector('.chat-recipient-menu');
+        recipientToggle?.addEventListener('click', () => this.toggleRecipientMenu());
+        recipientToggle?.addEventListener('keydown', event => {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')
+                return;
+            event.preventDefault();
+            this.toggleRecipientMenu(true);
+            const choices = recipientMenu?.querySelectorAll('.chat-recipient-choice');
+            (event.key === 'ArrowUp' ? choices?.[choices.length - 1] : choices?.[0])?.focus();
+        });
+        recipientMenu?.addEventListener('keydown', event => {
+            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key))
+                return;
+            const choices = Array.from(recipientMenu.querySelectorAll('.chat-recipient-choice'));
+            if (!choices.length)
+                return;
+            event.preventDefault();
+            const current = Math.max(0, choices.indexOf(document.activeElement));
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1
+                : event.key === 'ArrowDown' ? (current + 1) % choices.length
+                    : (current - 1 + choices.length) % choices.length;
+            choices[next]?.focus();
+        });
         this.querySelector('.chat-ignore-button')?.addEventListener('click', () => void this.toggleIgnore());
         const messageContainer = this.querySelector('.chat-messages');
         messageContainer?.addEventListener('scroll', this.handleMessageScroll, { passive: true });
@@ -996,10 +1019,9 @@ export class ChatWidget extends HTMLElement {
             if (!response.ok || !data.message) {
                 throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be edited'));
             }
-            reconcileChatMessages(this.messages, [data.message]);
             this.editingMessageId = null;
             this.editDraft = '';
-            this.render({ preserveScroll: true });
+            this.reconcileMutationMessage(data.message);
             this.setStatus('Message updated', false, 2500);
         }
         catch (err) {
@@ -1023,10 +1045,9 @@ export class ChatWidget extends HTMLElement {
             if (!response.ok || !data.message) {
                 throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be deleted'));
             }
-            reconcileChatMessages(this.messages, [data.message]);
             if (this.editingMessageId === messageId)
                 this.editingMessageId = null;
-            this.render({ preserveScroll: true });
+            this.reconcileMutationMessage(data.message);
         }
         catch (err) {
             this.setStatus(err instanceof Error ? err.message : 'Delete failed', true);
@@ -1059,14 +1080,23 @@ export class ChatWidget extends HTMLElement {
             const data = (await response.json());
             if (!response.ok)
                 throw new Error(chatRequestErrorMessage(response.status, data.error, 'Chat action failed'));
-            if (data.message) {
-                reconcileChatMessages(this.messages, [data.message]);
-                this.render({ preserveScroll: true });
-            }
+            if (data.message)
+                this.reconcileMutationMessage(data.message);
         }
         catch (err) {
             this.setStatus(err instanceof Error ? err.message : 'Chat action failed', true);
         }
+    }
+    reconcileMutationMessage(message) {
+        if (message.scope === 'direct')
+            this.reconcileDirectMessages([message], false);
+        else
+            reconcileChatMessages(this.publicMessages, [message]);
+        const visible = message.scope === 'public'
+            ? this.selectedRecipientId === null
+            : message.conversationUserId === this.selectedRecipientId;
+        if (visible)
+            this.render({ preserveScroll: true });
     }
     async toggleReaction(message, emoji) {
         if (!message.canReact)

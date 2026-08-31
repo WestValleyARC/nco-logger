@@ -28,6 +28,7 @@ const IMAGE_TYPES = Object.freeze({
 const QUICK_REACTIONS = Object.freeze(['👍', '❤️', '😂', '😮']);
 const PIN_ROLES = new Set(['netcontrol', 'netlogger']);
 const rateWindows = new Map();
+let lastRateWindowSweep = 0;
 const PUBLIC_SCOPE_QUERY = Object.freeze({
     $or: [
         { scope: 'public', recipientUserProfile: null },
@@ -257,8 +258,15 @@ const cleanMessage = value => {
     return sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} }).replace(/\r\n?/g, '\n').trim();
 };
 
-const rateLimitAllows = userId => {
-    const now = Date.now();
+const rateLimitAllows = (userId, now = Date.now()) => {
+    if (now - lastRateWindowSweep >= RATE_LIMIT_WINDOW_MS) {
+        rateWindows.forEach((timestamps, id) => {
+            const active = timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
+            if (active.length) rateWindows.set(id, active);
+            else rateWindows.delete(id);
+        });
+        lastRateWindowSweep = now;
+    }
     const recent = (rateWindows.get(userId) || []).filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
     if (recent.length >= RATE_LIMIT_COUNT) {
         rateWindows.set(userId, recent);
@@ -270,6 +278,10 @@ const rateLimitAllows = userId => {
 };
 
 const sendError = (res, status, error) => res.status(status).json({ endpointVersion: '1.0', error });
+const sendRateLimit = res => {
+    res.set?.('Retry-After', String(Math.max(1, Math.ceil(RATE_LIMIT_WINDOW_MS / 1000))));
+    return sendError(res, 429, 'Please wait before trying more chat actions');
+};
 
 const isBanned = async ({ npid, userId, db = mongoose.connection }) => {
     const ChatBan = getChatBan(db);
@@ -392,6 +404,7 @@ const setPrivateIgnore = async (req, res) => {
         if (typeof req.body?.ignored !== 'boolean') {
             return sendError(res, 400, 'Ignore preference must be a boolean');
         }
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const ignored = req.body.ignored;
         const UserProfile = getUserProfile();
         await UserProfile.updateOne(
@@ -418,7 +431,6 @@ const createMessage = async (req, res) => {
         if (await isBanned({ npid: req.params.id, userId })) {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
-        if (!rateLimitAllows(userId)) return sendError(res, 429, 'Please wait before sending more messages');
         const text = cleanMessage(req.body?.text);
         if (!text) return sendError(res, 400, 'Message text is required');
         if (text.length > MAX_MESSAGE_CHARS) return sendError(res, 400, `Message exceeds ${MAX_MESSAGE_CHARS} characters`);
@@ -432,6 +444,7 @@ const createMessage = async (req, res) => {
             ChatMessage, npid: req.params.id, replyTo: req.body?.replyTo, scope,
             senderUserId: userId, recipientUserId: participantId(peer?.userProfile)
         });
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const message = await ChatMessage.create({
             liveNet: access.liveNet._id,
             netProfile: req.params.id,
@@ -468,12 +481,12 @@ const editMessage = async (req, res) => {
         if (!message) return sendError(res, 404, 'Message not found');
         if (message.userProfile.toString() !== userId) return sendError(res, 403, 'Not authorized');
         if (message.deletedAt) return sendError(res, 409, 'Deleted messages cannot be edited');
-        if (!rateLimitAllows(userId)) return sendError(res, 429, 'Please wait before editing more messages');
         const text = cleanMessage(req.body?.text);
         if (!text && !message.attachment?.storageName) return sendError(res, 400, 'Message text is required');
         if (text.length > MAX_MESSAGE_CHARS) {
             return sendError(res, 400, `Message exceeds ${MAX_MESSAGE_CHARS} characters`);
         }
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         message.text = text;
         message.editedAt = new Date();
         await message.save();
@@ -496,7 +509,6 @@ const uploadImage = async (req, res) => {
         if (await isBanned({ npid: req.params.id, userId })) {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
-        if (!rateLimitAllows(userId)) return sendError(res, 429, 'Please wait before sending more messages');
         if (!Buffer.isBuffer(req.body) || !req.body.length) return sendError(res, 400, 'Image data is required');
         if (req.body.length > MAX_UPLOAD_BYTES) return sendError(res, 413, `Image exceeds ${MAX_UPLOAD_MB} MB`);
 
@@ -512,11 +524,6 @@ const uploadImage = async (req, res) => {
             access, peerUserId: req.params.userId, currentUserId: userId
         }) : null;
         if (scope === 'direct' && !peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
-
-        await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
-        storageName = `${crypto.randomUUID()}.${detected.extension}`;
-        await fs.promises.writeFile(attachmentPath(storageName), req.body, { flag: 'wx', mode: 0o600 });
-
         const ChatMessage = getChatMessage();
         const replyTarget = await findReplyTarget({
             ChatMessage,
@@ -526,6 +533,12 @@ const uploadImage = async (req, res) => {
             senderUserId: userId,
             recipientUserId: participantId(peer?.userProfile)
         });
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
+
+        await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
+        storageName = `${crypto.randomUUID()}.${detected.extension}`;
+        await fs.promises.writeFile(attachmentPath(storageName), req.body, { flag: 'wx', mode: 0o600 });
+
         const message = await ChatMessage.create({
             liveNet: access.liveNet._id,
             netProfile: req.params.id,
@@ -611,6 +624,7 @@ const deleteMessage = async (req, res) => {
         if (!message) return sendError(res, 404, 'Message not found');
         if (message.userProfile.toString() !== userId) return sendError(res, 403, 'Not authorized');
         if (message.deletedAt || message.clearedAt) return sendError(res, 409, 'Message is already unavailable');
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         await removeAttachment(message.attachment);
         message.text = '';
         message.attachment = undefined;
@@ -653,6 +667,7 @@ const toggleReaction = async (req, res) => {
             deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt), scope, participant })) {
             return sendError(res, 409, 'Message is unavailable for reactions');
         }
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const reacted = (message.reactions || []).some(reaction =>
             reaction.emoji === emoji && reaction.userProfile?.toString() === userId
         );
@@ -694,6 +709,7 @@ const setMessagePin = async (req, res) => {
             deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt), scope, participant })) {
             return sendError(res, 403, 'Only the NCO or Logger can pin messages');
         }
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const pinned = typeof req.body?.pinned === 'boolean' ? req.body.pinned : !message.pinnedAt;
         message.pinnedAt = pinned ? new Date() : null;
         message.pinnedBy = pinned ? req.user._id : null;
@@ -728,6 +744,7 @@ const banMessageAuthor = async (req, res) => {
             deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt), scope, participant })) {
             return sendError(res, 403, 'Only the NCO can ban another chat participant');
         }
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         await banUserHelper({
             npid: req.params.id,
             userIdToBan: message.userProfile,
@@ -755,6 +772,7 @@ const clearPublicChat = async (req, res) => {
         if (!authorizeChatAction({ role: access.role, action: 'clear' })) {
             return sendError(res, 403, 'Only the NCO can clear public chat');
         }
+        if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const ChatMessage = getChatMessage();
         const query = { netProfile: req.params.id, clearedAt: null, ...PUBLIC_SCOPE_QUERY };
         const attachments = await ChatMessage.find({ ...query, 'attachment.storageName': { $exists: true } })
@@ -985,5 +1003,8 @@ module.exports = {
     IMAGE_TYPES,
     UPLOAD_DIR,
     PUBLIC_SCOPE_QUERY,
-    DIRECT_SCOPE_QUERY
+    DIRECT_SCOPE_QUERY,
+    rateLimitAllows,
+    RATE_LIMIT_COUNT,
+    RATE_LIMIT_WINDOW_MS
 };

@@ -77,6 +77,7 @@ export declare class ChatWidget extends HTMLElement {
     private setReply;
     private messagePreview;
     private updateMessage;
+    private reconcileMutationMessage;
     private toggleReaction;
     private togglePin;
     private banAuthor;

@@ -9,6 +9,11 @@ The active-net page uses the first-party WVARC NCO Logger dashboard. The impleme
 - `client/dist/public/css/nco-logger.css` and `client/dist/public/img/nco-logger-default-avatar.svg` are first-party static assets.
 - `server/dist/views/liveNet.ejs` mounts only the logger UI and the authenticated chat host; the former live-net widget layout is no longer rendered.
 
+The chat host is the first-party `<hl-chat>` widget. Public and one-to-one private messages use the
+local REST/SSE implementation documented in [chat-system.md](chat-system.md); no hosted chat SDK,
+token endorsement, or external chat service is required. The logger bridge handles docking and
+slash-command interception but does not own message persistence or privacy enforcement.
+
 ## Server integration
 
 Core mutations use `POST /api/nco-logger/:id` with semantic actions rather than the legacy admin command-line endpoint. The controller enforces NCO/Logger role rules and delegates domain mutations to `sharedNetOps`.

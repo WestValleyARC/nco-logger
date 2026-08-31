@@ -314,7 +314,27 @@ export class ChatWidget extends HTMLElement {
         this.querySelector<HTMLButtonElement>('.chat-new-messages')?.addEventListener('click', () => this.scrollToLatest());
         this.querySelector<HTMLButtonElement>('.chat-reply-cancel')?.addEventListener('click', () => this.setReply(null));
         this.querySelector<HTMLButtonElement>('.chat-clear-button')?.addEventListener('click', () => void this.clearChat());
-        this.querySelector<HTMLButtonElement>('.chat-recipient-toggle')?.addEventListener('click', () => this.toggleRecipientMenu());
+        const recipientToggle = this.querySelector<HTMLButtonElement>('.chat-recipient-toggle');
+        const recipientMenu = this.querySelector<HTMLElement>('.chat-recipient-menu');
+        recipientToggle?.addEventListener('click', () => this.toggleRecipientMenu());
+        recipientToggle?.addEventListener('keydown', event => {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+            event.preventDefault();
+            this.toggleRecipientMenu(true);
+            const choices = recipientMenu?.querySelectorAll<HTMLButtonElement>('.chat-recipient-choice');
+            (event.key === 'ArrowUp' ? choices?.[choices.length - 1] : choices?.[0])?.focus();
+        });
+        recipientMenu?.addEventListener('keydown', event => {
+            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+            const choices = Array.from(recipientMenu.querySelectorAll<HTMLButtonElement>('.chat-recipient-choice'));
+            if (!choices.length) return;
+            event.preventDefault();
+            const current = Math.max(0, choices.indexOf(document.activeElement as HTMLButtonElement));
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1
+                : event.key === 'ArrowDown' ? (current + 1) % choices.length
+                    : (current - 1 + choices.length) % choices.length;
+            choices[next]?.focus();
+        });
         this.querySelector<HTMLButtonElement>('.chat-ignore-button')?.addEventListener('click', () => void this.toggleIgnore());
         const messageContainer = this.querySelector<HTMLElement>('.chat-messages');
         messageContainer?.addEventListener('scroll', this.handleMessageScroll, { passive: true });
@@ -996,10 +1016,9 @@ export class ChatWidget extends HTMLElement {
             if (!response.ok || !data.message) {
                 throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be edited'));
             }
-            reconcileChatMessages(this.messages, [data.message]);
             this.editingMessageId = null;
             this.editDraft = '';
-            this.render({ preserveScroll: true });
+            this.reconcileMutationMessage(data.message);
             this.setStatus('Message updated', false, 2500);
         } catch (err) {
             this.setStatus(err instanceof Error ? err.message : 'Message could not be edited', true);
@@ -1021,9 +1040,8 @@ export class ChatWidget extends HTMLElement {
             if (!response.ok || !data.message) {
                 throw new Error(chatRequestErrorMessage(response.status, data.error, 'Message could not be deleted'));
             }
-            reconcileChatMessages(this.messages, [data.message]);
             if (this.editingMessageId === messageId) this.editingMessageId = null;
-            this.render({ preserveScroll: true });
+            this.reconcileMutationMessage(data.message);
         } catch (err) { this.setStatus(err instanceof Error ? err.message : 'Delete failed', true); }
     }
 
@@ -1050,11 +1068,17 @@ export class ChatWidget extends HTMLElement {
             const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/${path}`, options);
             const data = (await response.json()) as { message?: LocalChatMessage; error?: string };
             if (!response.ok) throw new Error(chatRequestErrorMessage(response.status, data.error, 'Chat action failed'));
-            if (data.message) {
-                reconcileChatMessages(this.messages, [data.message]);
-                this.render({ preserveScroll: true });
-            }
+            if (data.message) this.reconcileMutationMessage(data.message);
         } catch (err) { this.setStatus(err instanceof Error ? err.message : 'Chat action failed', true); }
+    }
+
+    private reconcileMutationMessage(message: LocalChatMessage): void {
+        if (message.scope === 'direct') this.reconcileDirectMessages([message], false);
+        else reconcileChatMessages(this.publicMessages, [message]);
+        const visible = message.scope === 'public'
+            ? this.selectedRecipientId === null
+            : message.conversationUserId === this.selectedRecipientId;
+        if (visible) this.render({ preserveScroll: true });
     }
 
     private async toggleReaction(message: LocalChatMessage, emoji: string): Promise<void> {

@@ -24,7 +24,7 @@ updates `editedAt`, and never replaces an attachment. The `/ban` and `/unban` co
 | --- | --- | --- |
 | `GET` | `/api/chat/:npid/messages` | Ordered history (up to 500), limits, and SSE path |
 | `POST` | `/api/chat/:npid/messages` | Send `{ "text": "...", "replyTo": "optional-message-id" }` |
-| `GET` | `/api/chat/:npid/direct/:userId/messages` | Ordered history between the viewer and one known net user |
+| `GET` | `/api/chat/:npid/direct/:userId/messages` | Ordered history (up to 500) between the viewer and one known net user |
 | `POST` | `/api/chat/:npid/direct/:userId/messages` | Send a direct text message to one known net user |
 | `POST` | `/api/chat/:npid/direct/:userId/images` | Send a direct image to one known net user |
 | `PUT` | `/api/chat/:npid/direct/:userId/ignore` | Set `{ "ignored": true|false }` for the viewer's private-message preference |
@@ -70,10 +70,38 @@ every SSE connection and deduplicates POST/SSE races by stable message ID.
 The NCO Logger display settings maintain separate type scales for the Logger helpers and native
 Chat. Changing one does not alter or compound the other.
 
+## History bounds and client performance
+
+The initial public history contains the newest 500 uncleared public messages. The initial direct
+inbox reconciliation contains the newest 1,000 direct messages involving the viewer across all
+peers, while opening one direct conversation fetches its newest 500 messages. Results are queried
+newest-first so MongoDB can apply the limit, then reversed into chronological display order. These
+windows only bound API and browser state: older database records are not deleted. The current UI
+does not paginate beyond the window. The net-close transcript intentionally streams the complete
+public history in batches because it is an operational export rather than an interactive view.
+
+The client stores messages by stable ID, updates only rows whose render key changed, and limits
+sorting/DOM work to the bounded active conversation. It fetches each opened direct conversation
+once per widget lifecycle, keeps one EventSource, and removes document/window listeners and the SSE
+stream during teardown. Image load handling preserves the reader's position when intrinsic image
+dimensions become available.
+
+## Accessibility
+
+The recipient selector supports Tab plus Arrow Up/Down, Home, and End navigation and returns focus
+when dismissed. Message actions have visible focus states, text alternatives, and remain available
+on coarse-pointer/touch devices. Reaction controls expose pressed state, presence includes
+Available/Unavailable text rather than color alone, and status changes use polite live regions. The
+image viewer is an `aria-modal` dialog with a focus loop, Escape handling, and focus return to the
+originating thumbnail. Destructive moderation actions use native confirmation dialogs.
+
 ## Security and lifecycle
 
 Message HTML is stripped, the browser renders with `textContent`, identifiers are validated,
-message length is bounded, and a per-user rate window limits bursts. Deleted text is blanked in
+message length is bounded, and one shared per-user rate window limits validated text, direct,
+image, edit, delete, reaction, ignore, pin, ban, and public-clear mutations. Invalid or unauthorized
+requests are rejected before consuming the normal-use allowance. A limited response is `429` with
+a compact safe error and `Retry-After`; the browser displays `Rate limit reached`. Deleted text is blanked in
 storage and never returned. Image access repeats authentication and active-net membership checks. A
 direct image additionally requires the requester to be its sender or recipient and honors the
 recipient's ignore preference; random storage names are never exposed. Ban targets are derived from
@@ -110,3 +138,20 @@ indexes build through normal Mongoose initialization.
 
 The old `/api/endorse/chat/:npid` token route no longer exists. Extension code should use the local
 REST endpoints and subscribe to the returned `ssePath`. No separate token or API key is required.
+
+## Known operational boundaries
+
+- Direct messages are access-controlled to their two participants but are not end-to-end
+  encrypted; the application/database operator can access stored records and must document the
+  applicable privacy and retention policy.
+- SSE delivery and live presence depend on MongoDB change streams, so MongoDB must run as a replica
+  set. Temporary disconnects reconcile from bounded history, but messages older than those windows
+  require direct database/export access because the UI has no older-history pagination.
+- The rate window is process-local. It is effective for the standard single application process;
+  multi-instance deployments need a shared limiter at the proxy or application layer for a global
+  abuse limit.
+- Images live on the configured persistent filesystem volume. Multi-instance deployments need
+  shared storage, and operators must back up and monitor that volume.
+- Native `EventSource`, Custom Elements, and modern ES modules are required. Current evergreen
+  Chrome, Edge, Firefox, and Safari are the intended browser class; obsolete browsers need no
+  compatibility fallback.

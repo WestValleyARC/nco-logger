@@ -5,7 +5,8 @@ const {
     toggleReaction, setMessagePin, banMessageAuthor, clearPublicChat, authorizeChatAction,
     summarizeReactions, toggleReactionValue, toChatMessage, canViewMessage, shouldDeliverMessage,
     directConversationQuery, listDirectMessages, setPrivateIgnore, serveImage, chatEventForViewer,
-    messageScope, attachmentPath, PUBLIC_SCOPE_QUERY, DIRECT_SCOPE_QUERY, banUserHelper
+    messageScope, attachmentPath, PUBLIC_SCOPE_QUERY, DIRECT_SCOPE_QUERY, banUserHelper,
+    rateLimitAllows, RATE_LIMIT_COUNT, RATE_LIMIT_WINDOW_MS
 } = require('../server/dist/lib/localChat');
 const { requireSameOriginMutation, chatRouteErrorHandler } = require('../server/dist/routes/chatRoutes');
 const { chatMessageSchema } = require('../server/dist/models/chatMessage');
@@ -130,6 +131,16 @@ test('quick reactions toggle once per user and summarize counts for the viewer',
     assert.deepEqual(summarizeReactions([
         { emoji: '👍', userProfile: one }, { emoji: '👍', userProfile: one }
     ], one), [{ emoji: '👍', count: 1, reactedByMe: true }]);
+});
+
+test('the shared chat rate window bounds bursts and releases stale users', () => {
+    const userId = 'rate-limit-test-user';
+    const startedAt = Date.now() + RATE_LIMIT_WINDOW_MS;
+    for (let index = 0; index < RATE_LIMIT_COUNT; index += 1) {
+        assert.equal(rateLimitAllows(userId, startedAt), true);
+    }
+    assert.equal(rateLimitAllows(userId, startedAt), false);
+    assert.equal(rateLimitAllows(userId, startedAt + RATE_LIMIT_WINDOW_MS), true);
 });
 
 test('public messages expose reply, reaction, pin, and per-role action state', () => {

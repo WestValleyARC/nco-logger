@@ -242,20 +242,30 @@ Response: EndPointResponse with `message` containing follow state or list.
 All chat routes require the authenticated cookie session, a callsign, and membership in the active
 net. See [chat-system.md](chat-system.md) for response and SSE event formats.
 
-- `GET /api/chat/:id/messages` — ordered local history and the SSE path
-- `POST /api/chat/:id/messages` — send `{ "text": "..." }`
+- `GET /api/chat/:id/messages` — newest 500 public messages, newest 1,000 participant-only direct
+  messages for inbox reconciliation, configured limits, recipients, and the SSE path
+- `POST /api/chat/:id/messages` — send public `{ "text": "...", "replyTo": "optional-message-id" }`
+- `GET /api/chat/:id/direct/:userId/messages` — newest 500 messages in the exact two-party conversation
+- `POST /api/chat/:id/direct/:userId/messages` — send a participant-only direct text message
+- `POST /api/chat/:id/direct/:userId/images` — send a participant-only direct image
+- `PUT /api/chat/:id/direct/:userId/ignore` — persist the viewer's ignore/unignore preference
 - `PATCH /api/chat/:id/messages/:messageId` — edit your own text or image caption while preserving
   the original message ID and creation timestamp
 - `POST /api/chat/:id/images` — upload raw image bytes using the matching image `Content-Type`;
   accepts PNG, JPEG, GIF, and WebP up to the configured limit and returns `201`
 - `GET /api/chat/:id/messages/:messageId/image` — retrieve an attachment; access is private to
-  authenticated members of the active net
-- `DELETE /api/chat/:id/messages/:messageId` — delete an owned message or moderate as NCS/logger
+  authenticated active-net members for public images and exact participants for direct images
+- `DELETE /api/chat/:id/messages/:messageId` — delete your own message
+- `PUT /api/chat/:id/messages/:messageId/reaction` — toggle a supported reaction
+- `PUT /api/chat/:id/messages/:messageId/pin` — set public pin state as NCO or Logger
+- `POST /api/chat/:id/messages/:messageId/ban` — ban the public message author as NCO
+- `DELETE /api/chat/:id/messages` — clear the current net's public chat as NCO
 - `GET /api/chat/:id/events` — local chat SSE stream
 
 History and SSE messages may include `attachment: { kind: "image", mimeType, size, url }`. Internal
 storage names are not exposed. Image uploads return `413` when too large and `415` for an unsupported
-or mismatched file signature.
+or mismatched file signature. Chat mutations share one per-user burst window. A limited request
+returns `429`, a safe JSON error, and `Retry-After`.
 
 ### GET /api/util/resolvelocation
 

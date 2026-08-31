@@ -23,7 +23,7 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     const {
         createMessage, editMessage, uploadImage, deleteMessage, fetchChatHistory, toggleReaction,
         setMessagePin, banMessageAuthor, clearPublicChat, listMessages, listDirectMessages,
-        setPrivateIgnore, serveImage, PUBLIC_SCOPE_QUERY
+        setPrivateIgnore, serveImage, PUBLIC_SCOPE_QUERY, RATE_LIMIT_COUNT
     } = require('../server/dist/lib/localChat');
     const userOne = new mongoose.Types.ObjectId();
     const userTwo = new mongoose.Types.ObjectId();
@@ -56,9 +56,18 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     const invoke = async (handler, req) => {
         let status = 200;
         let payload;
-        const res = { status(code) { status = code; return this; }, json(body) { payload = body; return this; } };
+        const headers = {};
+        const res = {
+            status(code) { status = code; return this; },
+            json(body) { payload = body; return this; },
+            set(name, value) {
+                if (typeof name === 'object') Object.assign(headers, name);
+                else headers[name] = value;
+                return this;
+            }
+        };
         await handler(req, res);
-        return { status, payload };
+        return { status, payload, headers };
     };
     const makeReq = (userId, callSign, displayName, body = {}) => ({
         params: { id: netProfile.toString() }, body,
@@ -424,6 +433,50 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     assert.equal((await fs.promises.stat(directImagePath)).size, png.length);
     assert.equal((await ChatMessage.findById(otherMessage._id)).text, 'Other net must remain');
     assert.deepEqual((await UserProfile.findById(userTwo).lean()).ignoredPrivateUsers.map(String), [userOne.toString()]);
+
+    const historyStartedAt = Date.now();
+    const publicHistoryDocs = Array.from({ length: 520 }, (_value, index) => ({
+        _id: new mongoose.Types.ObjectId(), liveNet: liveNet._id, netProfile, userProfile: userNco,
+        scope: 'public', recipientUserProfile: null, callSign: 'W1NCO', displayName: 'Net Control',
+        text: `bounded-public-${index}`, reactions: [],
+        createdAt: new Date(historyStartedAt + index), updatedAt: new Date(historyStartedAt + index)
+    }));
+    const directHistoryDocs = Array.from({ length: 1020 }, (_value, index) => ({
+        _id: new mongoose.Types.ObjectId(), liveNet: liveNet._id, netProfile, userProfile: userTwo,
+        scope: 'direct', recipientUserProfile: userOne, callSign: 'W1BBB', displayName: 'Bobby',
+        text: `bounded-direct-${index}`, reactions: [],
+        createdAt: new Date(historyStartedAt + 1000 + index), updatedAt: new Date(historyStartedAt + 1000 + index)
+    }));
+    await ChatMessage.collection.insertMany([...publicHistoryDocs, ...directHistoryDocs]);
+    const boundedHistory = await invoke(listMessages, {
+        ...makeReq(userOne, 'W1AAA', 'Alice'),
+        res: { locals: { flexOpts: { awayInMs: 120000 } } }
+    });
+    assert.equal(boundedHistory.payload.messages.length, 500);
+    assert.equal(boundedHistory.payload.messages[0].text, 'bounded-public-20');
+    assert.equal(boundedHistory.payload.directMessages.length, 1000);
+    assert.equal(boundedHistory.payload.directMessages[0].text, 'bounded-direct-20');
+    const boundedDirectHistory = await invoke(listDirectMessages, {
+        ...makeReq(userOne, 'W1AAA', 'Alice'),
+        params: { id: netProfile.toString(), userId: userTwo.toString() }
+    });
+    assert.equal(boundedDirectHistory.payload.messages.length, 500);
+    assert.equal(boundedDirectHistory.payload.messages[0].text, 'bounded-direct-520');
+
+    for (let index = 0; index < RATE_LIMIT_COUNT; index += 1) {
+        const reaction = await invoke(toggleReaction, {
+            ...makeReq(userRelay, 'W1RLY', 'Relay', { emoji: '👍' }),
+            params: { id: netProfile.toString(), messageId: publicHistoryDocs[519]._id.toString() }
+        });
+        assert.equal(reaction.status, 200);
+    }
+    const limitedReaction = await invoke(toggleReaction, {
+        ...makeReq(userRelay, 'W1RLY', 'Relay', { emoji: '👍' }),
+        params: { id: netProfile.toString(), messageId: publicHistoryDocs[519]._id.toString() }
+    });
+    assert.equal(limitedReaction.status, 429);
+    assert.equal(limitedReaction.payload.error, 'Please wait before trying more chat actions');
+    assert.ok(Number(limitedReaction.headers['Retry-After']) >= 1);
 
     } finally {
         await mongoose.connection.dropDatabase();
