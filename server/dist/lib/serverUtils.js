@@ -18,11 +18,13 @@ const { createHash } = require('crypto');
 const { readFileSync } = require('fs');
 const path = require('path');
 const { version: appVersion } = require('../../../package.json');
-const appShellRevision = createHash('sha256')
+const appAssetRevision = createHash('sha256')
     .update(readFileSync(path.join(__dirname, '../../../client/dist/public/css/app-shell.css')))
+    .update(readFileSync(path.join(__dirname, '../../../client/dist/public/css/local.css')))
+    .update(readFileSync(path.join(__dirname, '../../../client/dist/public/css/nco-logger.css')))
     .digest('hex')
     .slice(0, 12);
-const appAssetVersion = `${appVersion}-${appShellRevision}`;
+const appAssetVersion = `${appVersion}-${appAssetRevision}`;
 let qrzSessionKey = null;
 let qrzInQuotaWait = 0;
 let qrzReqPrevQuota;

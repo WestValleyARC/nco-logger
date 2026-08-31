@@ -142,8 +142,8 @@ body {
 
 .chat-form {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 3rem 3rem auto;
-    gap: 0.1rem !important;
+    grid-template-columns: minmax(0, 1fr) 2.5rem 2.5rem auto;
+    gap: 0 !important;
     align-items: end;
 }
 
@@ -170,9 +170,9 @@ body {
 
 .chat-icon-control {
     display: inline-flex;
-    width: 3rem;
+    width: 2.5rem;
     height: 2.4rem;
-    min-width: 3rem;
+    min-width: 2.5rem;
     align-items: center;
     justify-content: center;
     padding: 0;
@@ -335,8 +335,8 @@ body {
     }
 
     .chat-form {
-        grid-template-columns: minmax(6rem, 1fr) 3rem 3rem auto;
-        gap: 0.1rem !important;
+        grid-template-columns: minmax(6rem, 1fr) 2.5rem 2.5rem auto;
+        gap: 0 !important;
     }
 
     .chat-lightbox-card {
