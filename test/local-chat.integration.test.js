@@ -7,7 +7,7 @@ const path = require('path');
 
 const uri = process.env.TEST_MONGODB_URI;
 
-test('two net users exchange, stream, retrieve, and moderate local chat', { skip: !uri }, async () => {
+test('net participants exchange, interact with, and moderate local chat', { skip: !uri }, async () => {
     let uploadDir;
     await mongoose.connect(uri);
     try {
@@ -19,9 +19,13 @@ test('two net users exchange, stream, retrieve, and moderate local chat', { skip
     const { getLiveNet } = require('../server/dist/models/liveNet');
     const { getStationInteraction } = require('../server/dist/models/stationInteraction');
     const { getChatMessage } = require('../server/dist/models/chatMessage');
-    const { createMessage, editMessage, uploadImage, deleteMessage, fetchChatHistory } = require('../server/dist/lib/localChat');
+    const {
+        createMessage, editMessage, uploadImage, deleteMessage, fetchChatHistory, toggleReaction,
+        setMessagePin, banMessageAuthor, clearPublicChat
+    } = require('../server/dist/lib/localChat');
     const userOne = new mongoose.Types.ObjectId();
     const userTwo = new mongoose.Types.ObjectId();
+    const userNco = new mongoose.Types.ObjectId();
     const netProfile = new mongoose.Types.ObjectId();
     const LiveNet = getLiveNet();
     const StationInteraction = getStationInteraction();
@@ -31,7 +35,8 @@ test('two net users exchange, stream, retrieve, and moderate local chat', { skip
     });
     await StationInteraction.create([
         { callSign: 'W1AAA', createdBy: 'user', role: 'netuser', userProfile: userOne, liveNet: liveNet._id, netProfile },
-        { callSign: 'W1BBB', createdBy: 'user', role: 'netlogger', userProfile: userTwo, liveNet: liveNet._id, netProfile }
+        { callSign: 'W1BBB', createdBy: 'user', role: 'netlogger', userProfile: userTwo, liveNet: liveNet._id, netProfile },
+        { callSign: 'W1NCO', createdBy: 'user', role: 'netcontrol', userProfile: userNco, liveNet: liveNet._id, netProfile }
     ]);
 
     const invoke = async (handler, req) => {
@@ -55,6 +60,42 @@ test('two net users exchange, stream, retrieve, and moderate local chat', { skip
     assert.equal(sent.status, 201);
     assert.equal(sent.payload.message.text, 'Hello two');
     assert.equal((await change).fullDocument.callSign, 'W1AAA');
+
+    const reply = await invoke(createMessage, makeReq(userTwo, 'W1BBB', 'Bob', {
+        text: 'Reply received', replyTo: sent.payload.message.id
+    }));
+    assert.equal(reply.status, 201);
+    assert.equal(reply.payload.message.replyTo, sent.payload.message.id);
+
+    const reacted = await invoke(toggleReaction, {
+        ...makeReq(userTwo, 'W1BBB', 'Bob', { emoji: '👍' }),
+        params: { id: netProfile.toString(), messageId: sent.payload.message.id }
+    });
+    assert.equal(reacted.status, 200);
+    assert.deepEqual(reacted.payload.message.reactions, [{ emoji: '👍', count: 1, reactedByMe: true }]);
+    const unreacted = await invoke(toggleReaction, {
+        ...makeReq(userTwo, 'W1BBB', 'Bob', { emoji: '👍' }),
+        params: { id: netProfile.toString(), messageId: sent.payload.message.id }
+    });
+    assert.deepEqual(unreacted.payload.message.reactions, []);
+
+    const pinned = await invoke(setMessagePin, {
+        ...makeReq(userTwo, 'W1BBB', 'Bob', { pinned: true }),
+        params: { id: netProfile.toString(), messageId: sent.payload.message.id }
+    });
+    assert.equal(pinned.status, 200);
+    assert.equal(pinned.payload.message.pinned, true);
+    const forbiddenPin = await invoke(setMessagePin, {
+        ...makeReq(userOne, 'W1AAA', 'Alice', { pinned: false }),
+        params: { id: netProfile.toString(), messageId: sent.payload.message.id }
+    });
+    assert.equal(forbiddenPin.status, 403);
+
+    const forbiddenBan = await invoke(banMessageAuthor, {
+        ...makeReq(userTwo, 'W1BBB', 'Bob'),
+        params: { id: netProfile.toString(), messageId: sent.payload.message.id }
+    });
+    assert.equal(forbiddenBan.status, 403);
 
     const longCreate = await invoke(createMessage, makeReq(userOne, 'W1AAA', 'Alice', { text: 'x'.repeat(2001) }));
     assert.equal(longCreate.status, 400);
@@ -144,13 +185,41 @@ test('two net users exchange, stream, retrieve, and moderate local chat', { skip
     });
     assert.equal(deletedEdit.status, 409);
 
-    const imageDeleted = await invoke(deleteMessage, {
+    const forbiddenImageDelete = await invoke(deleteMessage, {
         ...makeReq(userTwo, 'W1BBB', 'Bob'),
+        params: { id: netProfile.toString(), messageId: imageSent.payload.message.id }
+    });
+    assert.equal(forbiddenImageDelete.status, 403);
+    const imageDeleted = await invoke(deleteMessage, {
+        ...makeReq(userOne, 'W1AAA', 'Alice'),
         params: { id: netProfile.toString(), messageId: imageSent.payload.message.id }
     });
     assert.equal(imageDeleted.status, 200);
     assert.equal(imageDeleted.payload.message.attachment, null);
     await assert.rejects(fs.promises.access(imagePath));
+
+    const banTarget = await invoke(createMessage, makeReq(userTwo, 'W1BBB', 'Bob', { text: 'Ban target' }));
+    const banned = await invoke(banMessageAuthor, {
+        ...makeReq(userNco, 'W1NCO', 'Net Control', { reason: 'Test moderation' }),
+        params: { id: netProfile.toString(), messageId: banTarget.payload.message.id }
+    });
+    assert.equal(banned.status, 200);
+    assert.equal(banned.payload.callSign, 'W1BBB');
+    const bannedSend = await invoke(createMessage, makeReq(userTwo, 'W1BBB', 'Bob', { text: 'Blocked' }));
+    assert.equal(bannedSend.status, 403);
+
+    const forbiddenClear = await invoke(clearPublicChat, makeReq(userOne, 'W1AAA', 'Alice'));
+    assert.equal(forbiddenClear.status, 403);
+    const otherNetProfile = new mongoose.Types.ObjectId();
+    const otherMessage = await ChatMessage.create({
+        liveNet: liveNet._id, netProfile: otherNetProfile, userProfile: userOne,
+        callSign: 'W1AAA', displayName: 'Alice', text: 'Other net must remain'
+    });
+    const cleared = await invoke(clearPublicChat, makeReq(userNco, 'W1NCO', 'Net Control'));
+    assert.equal(cleared.status, 200);
+    assert.equal(cleared.payload.cleared, true);
+    assert.equal(await ChatMessage.countDocuments({ netProfile, clearedAt: null }), 0);
+    assert.equal((await ChatMessage.findById(otherMessage._id)).text, 'Other net must remain');
 
     } finally {
         await mongoose.connection.dropDatabase();

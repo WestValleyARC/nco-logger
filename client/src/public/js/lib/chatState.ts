@@ -18,3 +18,6 @@ export const reconcileChatMessages = <T extends IdentifiedChatMessage>(
 
 export const sortChatMessages = <T extends IdentifiedChatMessage>(messages: Iterable<T>): T[] =>
     [...messages].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+
+export const shouldScrollChatToLatest = (initialLoad: boolean, wasNearBottom: boolean): boolean =>
+    initialLoad || wasNearBottom;

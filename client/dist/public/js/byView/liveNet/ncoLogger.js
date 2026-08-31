@@ -1005,7 +1005,6 @@
             else
                 privateMessages.scrollTop = priorScrollTop;
         }
-        renderPinnedChatStrip();
     }
     function renderHelperChatUi() {
         try {
@@ -1194,32 +1193,6 @@
             button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg>';
             container.appendChild(button);
         });
-        nativeChat()?.querySelectorAll("button, [role='button']").forEach(control => {
-            if (control.matches(".nch-pin-chat, .nch-unpin-chat, .nch-pinned-chat-open"))
-                return;
-            const label = String(control.getAttribute("aria-label") || control.title || control.textContent || "").trim();
-            if (!/^(?:un)?pin\b/i.test(label))
-                return;
-            control.classList.add("nch-native-pin-control");
-            control.setAttribute("aria-hidden", "true");
-            control.setAttribute("tabindex", "-1");
-        });
-        nativeChat()?.querySelectorAll(".chat-message, [data-message-id]").forEach(message => {
-            if (message.closest(".nch-pinned-chat-strip") || message.querySelector(":scope > .nch-pin-chat"))
-                return;
-            const id = messagePinId(message) || makeLocalId("chatpin");
-            if (!message.dataset.messageId && !message.dataset.id)
-                message.dataset.messageId = id;
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "nch-pin-chat";
-            button.dataset.pinChat = id;
-            button.title = "Pin chat message";
-            button.setAttribute("aria-label", "Pin chat message");
-            button.textContent = "📌";
-            message.appendChild(button);
-        });
-        renderPinnedChatStrip();
     }
     function safeNormalizeChatDisplay() {
         const chat = nativeChat();

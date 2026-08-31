@@ -8,4 +8,5 @@ export const reconcileChatMessages = (messages, incoming) => {
     return added;
 };
 export const sortChatMessages = (messages) => [...messages].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+export const shouldScrollChatToLatest = (initialLoad, wasNearBottom) => initialLoad || wasNearBottom;
 //# sourceMappingURL=chatState.js.map

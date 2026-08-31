@@ -87,3 +87,28 @@ test('NCO Logger and Chat font scales use independent variables', () => {
     assert.match(css, /\.chat-message-author[^}]*var\(--nch-chat-font-size\)/s);
     assert.doesNotMatch(css, /hl-chat[^\n{]*\{[^}]*--nch-font-adjust/s);
 });
+
+test('message interactions are compact, accessible, and permission driven', () => {
+    const source = read('client/src/public/js/lib/chat.ts');
+    const css = read('client/dist/public/css/local.css');
+    assert.match(source, /message\.canReact/);
+    assert.match(source, /message\.canReply/);
+    assert.match(source, /message\.canPin/);
+    assert.match(source, /message\.canBan/);
+    assert.match(source, /\['👍', '❤️', '😂', '😮'\]/);
+    assert.match(source, /window\.confirm\(`Ban/);
+    assert.match(source, /window\.confirm\('Clear all public chat messages/);
+    assert.match(source, /Original message unavailable/);
+    assert.match(css, /\.chat-message-actions\s*\{[^}]*position:\s*absolute[^}]*opacity:\s*0/s);
+    assert.match(css, /@media \(hover: none\)[\s\S]*\.chat-message-actions/);
+    assert.match(css, /\.chat-message-pinned\s*\{/);
+    assert.match(css, /\.chat-reaction-chip\.is-mine\s*\{/);
+});
+
+test('native server-backed pins are not hidden or replaced by NCO helper normalization', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    const normalize = source.slice(source.indexOf('function normalizeChatDisplay()'), source.indexOf('function safeNormalizeChatDisplay()'));
+    assert.doesNotMatch(normalize, /nch-native-pin-control/);
+    assert.doesNotMatch(normalize, /button\.className = "nch-pin-chat"/);
+    assert.doesNotMatch(normalize, /renderPinnedChatStrip/);
+});

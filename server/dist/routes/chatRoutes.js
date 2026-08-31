@@ -9,6 +9,10 @@ const {
     uploadImage,
     serveImage,
     deleteMessage,
+    toggleReaction,
+    setMessagePin,
+    banMessageAuthor,
+    clearPublicChat,
     streamEvents,
     MAX_UPLOAD_BYTES
 } = require('../lib/localChat');
@@ -19,8 +23,12 @@ router.get('/:id/messages', listMessages);
 router.post('/:id/messages', createMessage);
 router.patch('/:id/messages/:messageId', editMessage);
 router.post('/:id/images', imageBody, uploadImage);
+router.delete('/:id/messages', clearPublicChat);
 router.get('/:id/messages/:messageId/image', serveImage);
 router.delete('/:id/messages/:messageId', deleteMessage);
+router.put('/:id/messages/:messageId/reaction', toggleReaction);
+router.put('/:id/messages/:messageId/pin', setMessagePin);
+router.post('/:id/messages/:messageId/ban', banMessageAuthor);
 router.get('/:id/events', streamEvents);
 
 router.use((err, _req, res, next) => {

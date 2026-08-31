@@ -15,6 +15,12 @@ const chatMessageSchema = new Schema(
             default: '',
             maxlength: 2000
         },
+        replyTo: { type: Schema.Types.ObjectId, ref: 'ChatMessage', default: null, index: true },
+        reactions: [{
+            _id: false,
+            emoji: { type: String, enum: ['👍', '❤️', '😂', '😮'], required: true },
+            userProfile: { type: Schema.Types.ObjectId, ref: 'UserProfile', required: true }
+        }],
         attachment: {
             _id: false,
             kind: { type: String, enum: ['image'] },
@@ -24,7 +30,10 @@ const chatMessageSchema = new Schema(
         },
         editedAt: { type: Date, default: null },
         deletedAt: { type: Date, default: null },
-        moderatedBy: { type: Schema.Types.ObjectId, ref: 'UserProfile', default: null }
+        clearedAt: { type: Date, default: null },
+        moderatedBy: { type: Schema.Types.ObjectId, ref: 'UserProfile', default: null },
+        pinnedAt: { type: Date, default: null },
+        pinnedBy: { type: Schema.Types.ObjectId, ref: 'UserProfile', default: null }
     },
     { timestamps: true }
 );
