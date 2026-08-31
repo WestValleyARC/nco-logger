@@ -11,6 +11,7 @@ const { getLiveNet } = require('../models/liveNet');
 const { getStationInteraction } = require('../models/stationInteraction');
 const { getChatMessage } = require('../models/chatMessage');
 const { getChatBan } = require('../models/chatBan');
+const { getUserProfile } = require('../models/userProfile');
 
 const MAX_MESSAGE_CHARS = Math.min(Number(conf.chat_max_message_chars) || 2000, 2000);
 const RATE_LIMIT_COUNT = Number(conf.chat_rate_limit_count) || 12;
@@ -27,14 +28,30 @@ const IMAGE_TYPES = Object.freeze({
 const QUICK_REACTIONS = Object.freeze(['👍', '❤️', '😂', '😮']);
 const PIN_ROLES = new Set(['netcontrol', 'netlogger']);
 const rateWindows = new Map();
+const PUBLIC_SCOPE_QUERY = Object.freeze({ $or: [{ scope: 'public' }, { scope: { $exists: false } }] });
 
 const isObjectId = value => mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === value;
 
-const authorizeChatAction = ({ role = 'netuser', action, mine = false, deleted = false, cleared = false }) => {
+const messageScope = message => message?.scope === 'direct' ? 'direct' : 'public';
+const participantId = value => (value?._id || value)?.toString?.() || '';
+const isDirectParticipant = (message, userId) => messageScope(message) === 'direct'
+    && [participantId(message.userProfile), participantId(message.recipientUserProfile)].includes(String(userId));
+const canViewMessage = (message, userId) => messageScope(message) === 'public' || isDirectParticipant(message, userId);
+const shouldDeliverMessage = (message, userId, ignoredUserIds = new Set()) => {
+    if (messageScope(message) === 'public') return true;
+    if (!isDirectParticipant(message, userId)) return false;
+    const incoming = participantId(message.recipientUserProfile) === String(userId);
+    return !incoming || !ignoredUserIds.has(participantId(message.userProfile));
+};
+
+const authorizeChatAction = ({
+    role = 'netuser', action, mine = false, deleted = false, cleared = false, scope = 'public', participant = true
+}) => {
+    if (!participant) return false;
     if (cleared) return false;
-    if (action === 'clear') return role === 'netcontrol';
-    if (action === 'ban') return role === 'netcontrol' && !mine && !deleted;
-    if (action === 'pin') return PIN_ROLES.has(role) && !deleted;
+    if (action === 'clear') return scope === 'public' && role === 'netcontrol';
+    if (action === 'ban') return scope === 'public' && role === 'netcontrol' && !mine && !deleted;
+    if (action === 'pin') return scope === 'public' && PIN_ROLES.has(role) && !deleted;
     if (action === 'edit' || action === 'delete') return mine && !deleted;
     if (action === 'react' || action === 'reply') return !deleted;
     return false;
@@ -62,10 +79,15 @@ const toggleReactionValue = (reactions = [], emoji, userId) => {
     return normalized;
 };
 
-const toPublicMessage = (message, role = 'netuser', currentUserId = '') => {
+const toChatMessage = (message, role = 'netuser', currentUserId = '') => {
     const deleted = Boolean(message.deletedAt);
     const cleared = Boolean(message.clearedAt);
-    const mine = message.userProfile.toString() === currentUserId;
+    const senderUserId = participantId(message.userProfile);
+    const recipientUserId = participantId(message.recipientUserProfile) || null;
+    const scope = messageScope(message);
+    const mine = senderUserId === currentUserId;
+    const participant = scope === 'public' || isDirectParticipant(message, currentUserId);
+    if (!participant) throw new Error('Direct chat message cannot be serialized for a non-participant');
     const netProfile = message.netProfile?.toString() || '';
     const attachment = !deleted && !cleared && netProfile && message.attachment?.storageName ? {
         kind: 'image',
@@ -75,6 +97,10 @@ const toPublicMessage = (message, role = 'netuser', currentUserId = '') => {
     } : null;
     return {
         id: message._id.toString(),
+        scope,
+        senderUserId,
+        recipientUserId,
+        conversationUserId: scope === 'direct' ? (mine ? recipientUserId : senderUserId) : null,
         callSign: message.callSign,
         displayName: message.displayName || '',
         text: deleted ? '' : message.text,
@@ -87,14 +113,17 @@ const toPublicMessage = (message, role = 'netuser', currentUserId = '') => {
         reactions: cleared || deleted ? [] : summarizeReactions(message.reactions || [], currentUserId),
         pinned: !cleared && Boolean(message.pinnedAt),
         mine,
-        canReact: authorizeChatAction({ role, action: 'react', mine, deleted, cleared }),
-        canReply: authorizeChatAction({ role, action: 'reply', mine, deleted, cleared }),
-        canEdit: authorizeChatAction({ role, action: 'edit', mine, deleted, cleared }),
-        canDelete: authorizeChatAction({ role, action: 'delete', mine, deleted, cleared }),
-        canPin: authorizeChatAction({ role, action: 'pin', mine, deleted, cleared }),
-        canBan: authorizeChatAction({ role, action: 'ban', mine, deleted, cleared })
+        canReact: authorizeChatAction({ role, action: 'react', mine, deleted, cleared, scope, participant }),
+        canReply: authorizeChatAction({ role, action: 'reply', mine, deleted, cleared, scope, participant }),
+        canEdit: authorizeChatAction({ role, action: 'edit', mine, deleted, cleared, scope, participant }),
+        canDelete: authorizeChatAction({ role, action: 'delete', mine, deleted, cleared, scope, participant }),
+        canPin: authorizeChatAction({ role, action: 'pin', mine, deleted, cleared, scope, participant }),
+        canBan: authorizeChatAction({ role, action: 'ban', mine, deleted, cleared, scope, participant }),
+        canMessagePrivately: scope === 'public' && !mine && !deleted && !cleared && Boolean(senderUserId)
     };
 };
+
+const toPublicMessage = toChatMessage;
 
 const detectImageType = buffer => {
     if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
@@ -142,6 +171,59 @@ const getNetAccess = async ({ npid, userId, db = mongoose.connection }) => {
     };
 };
 
+const getIgnoredUserIds = async (userId, db = mongoose.connection) => {
+    const UserProfile = getUserProfile(db);
+    const profile = await UserProfile.findById(userId).select('ignoredPrivateUsers').lean();
+    return new Set((profile?.ignoredPrivateUsers || []).map(participantId).filter(Boolean));
+};
+
+const directConversationQuery = (npid, firstUserId, secondUserId) => ({
+    netProfile: npid,
+    scope: 'direct',
+    $or: [
+        { userProfile: firstUserId, recipientUserProfile: secondUserId },
+        { userProfile: secondUserId, recipientUserProfile: firstUserId }
+    ]
+});
+
+const getDirectPeer = async ({ access, peerUserId, currentUserId, db = mongoose.connection }) => {
+    if (!isObjectId(String(peerUserId)) || String(peerUserId) === String(currentUserId)) return null;
+    const StationInteraction = getStationInteraction(db);
+    return StationInteraction.findOne({
+        liveNet: access.liveNet._id,
+        userProfile: peerUserId
+    }).sort({ updatedAt: -1 });
+};
+
+const listRecipientsForAccess = async ({ access, currentUserId, ignoredUserIds, awayInMs = 120000,
+    db = mongoose.connection }) => {
+    const StationInteraction = getStationInteraction(db);
+    const interactions = await StationInteraction.find({
+        liveNet: access.liveNet._id,
+        userProfile: { $ne: null }
+    }).sort({ updatedAt: -1 }).lean();
+    const seen = new Set();
+    const recipients = [];
+    interactions.forEach(interaction => {
+        const userId = participantId(interaction.userProfile);
+        if (!userId || userId === String(currentUserId) || seen.has(userId)) return;
+        seen.add(userId);
+        const online = Boolean(interaction.lastSeen)
+            && Date.now() - new Date(interaction.lastSeen).getTime() < awayInMs;
+        recipients.push({
+            userId,
+            callSign: interaction.callSign || '',
+            displayName: interaction.displayName || '',
+            role: interaction.role || 'netuser',
+            presence: online ? 'online' : 'offline',
+            presenceLabel: online ? 'Connected to this net' : 'Not currently connected to this net',
+            ignored: ignoredUserIds.has(userId)
+        });
+    });
+    return recipients.sort((a, b) => Number(b.presence === 'online') - Number(a.presence === 'online')
+        || a.callSign.localeCompare(b.callSign));
+};
+
 const cleanMessage = value => {
     if (typeof value !== 'string') return '';
     return sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} }).replace(/\r\n?/g, '\n').trim();
@@ -166,11 +248,21 @@ const isBanned = async ({ npid, userId, db = mongoose.connection }) => {
     return Boolean(await ChatBan.exists({ netProfile: npid, userProfile: userId }));
 };
 
-const findReplyTarget = async ({ ChatMessage, npid, replyTo }) => {
+const findReplyTarget = async ({ ChatMessage, npid, replyTo, scope = 'public', senderUserId, recipientUserId }) => {
     if (replyTo === undefined || replyTo === null || replyTo === '') return null;
     if (!isObjectId(String(replyTo))) throw Object.assign(new Error('Invalid reply message identifier'), { status: 400 });
     const target = await ChatMessage.findOne({ _id: replyTo, netProfile: npid, clearedAt: null });
     if (!target || target.deletedAt) throw Object.assign(new Error('Reply target is unavailable'), { status: 409 });
+    if (messageScope(target) !== scope) {
+        throw Object.assign(new Error('Reply scope does not match the selected conversation'), { status: 409 });
+    }
+    if (scope === 'direct') {
+        const expected = new Set([String(senderUserId), String(recipientUserId)]);
+        const actual = new Set([participantId(target.userProfile), participantId(target.recipientUserProfile)]);
+        if (expected.size !== actual.size || [...expected].some(id => !actual.has(id))) {
+            throw Object.assign(new Error('Reply target is outside this private conversation'), { status: 403 });
+        }
+    }
     return target;
 };
 
@@ -183,13 +275,33 @@ const listMessages = async (req, res) => {
         if (await isBanned({ npid: req.params.id, userId: req.user._id.toString() })) {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
+        const userId = req.user._id.toString();
+        const ignoredUserIds = await getIgnoredUserIds(userId);
         const ChatMessage = getChatMessage();
-        const messages = await ChatMessage.find({ netProfile: req.params.id, clearedAt: null })
+        const messages = await ChatMessage.find({
+            netProfile: req.params.id, clearedAt: null, ...PUBLIC_SCOPE_QUERY
+        })
             .sort({ createdAt: -1, _id: -1 }).limit(500);
         messages.reverse();
+        const directMessages = await ChatMessage.find({
+            netProfile: req.params.id,
+            scope: 'direct',
+            $or: [{ userProfile: userId }, { recipientUserProfile: userId }]
+        }).sort({ createdAt: -1, _id: -1 }).limit(1000);
+        directMessages.reverse();
+        const recipients = await listRecipientsForAccess({
+            access,
+            currentUserId: userId,
+            ignoredUserIds,
+            awayInMs: Number(res.locals?.flexOpts?.awayInMs) || 120000
+        });
         return res.json({
-            endpointVersion: '1.0',
-            messages: messages.map(message => toPublicMessage(message, access.role, req.user._id.toString())),
+            endpointVersion: '1.1',
+            messages: messages.map(message => toChatMessage(message, access.role, userId)),
+            directMessages: directMessages.filter(message => shouldDeliverMessage(message, userId, ignoredUserIds))
+                .map(message => toChatMessage(message, access.role, userId)),
+            recipients,
+            currentUserId: userId,
             viewerRole: access.role,
             limits: {
                 maxMessageChars: MAX_MESSAGE_CHARS,
@@ -201,6 +313,64 @@ const listMessages = async (req, res) => {
     } catch (err) {
         logger.error(`Local chat history failed: ${err.message}`);
         return sendError(res, 500, 'Chat history is temporarily unavailable');
+    }
+};
+
+const listDirectMessages = async (req, res) => {
+    try {
+        if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+        if (!isObjectId(req.params.id) || !isObjectId(req.params.userId)) {
+            return sendError(res, 400, 'Invalid private conversation identifier');
+        }
+        const userId = req.user._id.toString();
+        const access = await getNetAccess({ npid: req.params.id, userId });
+        if (!access) return sendError(res, 403, 'Net access required');
+        if (await isBanned({ npid: req.params.id, userId })) {
+            return sendError(res, 403, 'Chat access has been suspended for this net');
+        }
+        const peer = await getDirectPeer({ access, peerUserId: req.params.userId, currentUserId: userId });
+        if (!peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
+        const ignoredUserIds = await getIgnoredUserIds(userId);
+        const ChatMessage = getChatMessage();
+        const messages = await ChatMessage.find(directConversationQuery(req.params.id, userId, req.params.userId))
+            .sort({ createdAt: -1, _id: -1 }).limit(500);
+        messages.reverse();
+        return res.json({
+            endpointVersion: '1.1',
+            peerUserId: req.params.userId,
+            ignored: ignoredUserIds.has(req.params.userId),
+            messages: messages.filter(message => shouldDeliverMessage(message, userId, ignoredUserIds))
+                .map(message => toChatMessage(message, access.role, userId))
+        });
+    } catch (err) {
+        logger.error(`Private chat history failed: ${err.message}`);
+        return sendError(res, 500, 'Private chat history is temporarily unavailable');
+    }
+};
+
+const setPrivateIgnore = async (req, res) => {
+    try {
+        if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+        if (!isObjectId(req.params.id) || !isObjectId(req.params.userId)) {
+            return sendError(res, 400, 'Invalid private conversation identifier');
+        }
+        const userId = req.user._id.toString();
+        const access = await getNetAccess({ npid: req.params.id, userId });
+        if (!access) return sendError(res, 403, 'Net access required');
+        const peer = await getDirectPeer({ access, peerUserId: req.params.userId, currentUserId: userId });
+        if (!peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
+        const ignored = req.body?.ignored !== false;
+        const UserProfile = getUserProfile();
+        await UserProfile.updateOne(
+            { _id: req.user._id },
+            ignored
+                ? { $addToSet: { ignoredPrivateUsers: peer.userProfile } }
+                : { $pull: { ignoredPrivateUsers: peer.userProfile } }
+        );
+        return res.json({ endpointVersion: '1.1', userId: req.params.userId, ignored });
+    } catch (err) {
+        logger.error(`Private chat ignore update failed: ${err.message}`);
+        return sendError(res, 500, 'Private chat preference could not be updated');
     }
 };
 
@@ -219,18 +389,28 @@ const createMessage = async (req, res) => {
         const text = cleanMessage(req.body?.text);
         if (!text) return sendError(res, 400, 'Message text is required');
         if (text.length > MAX_MESSAGE_CHARS) return sendError(res, 400, `Message exceeds ${MAX_MESSAGE_CHARS} characters`);
+        const scope = req.params.userId ? 'direct' : 'public';
+        const peer = scope === 'direct' ? await getDirectPeer({
+            access, peerUserId: req.params.userId, currentUserId: userId
+        }) : null;
+        if (scope === 'direct' && !peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
         const ChatMessage = getChatMessage();
-        const replyTarget = await findReplyTarget({ ChatMessage, npid: req.params.id, replyTo: req.body?.replyTo });
+        const replyTarget = await findReplyTarget({
+            ChatMessage, npid: req.params.id, replyTo: req.body?.replyTo, scope,
+            senderUserId: userId, recipientUserId: participantId(peer?.userProfile)
+        });
         const message = await ChatMessage.create({
             liveNet: access.liveNet._id,
             netProfile: req.params.id,
             userProfile: req.user._id,
             callSign: req.user.callSign,
             displayName: req.user.displayName || req.user.callSign,
+            scope,
+            recipientUserProfile: peer?.userProfile || null,
             text,
             replyTo: replyTarget?._id || null
         });
-        return res.status(201).json({ endpointVersion: '1.0', message: toPublicMessage(message, access.role, userId) });
+        return res.status(201).json({ endpointVersion: '1.1', message: toChatMessage(message, access.role, userId) });
     } catch (err) {
         if (err.status) return sendError(res, err.status, err.message);
         logger.error(`Local chat send failed: ${err.message}`);
@@ -264,7 +444,7 @@ const editMessage = async (req, res) => {
         message.text = text;
         message.editedAt = new Date();
         await message.save();
-        return res.json({ endpointVersion: '1.0', message: toPublicMessage(message, access.role, userId) });
+        return res.json({ endpointVersion: '1.1', message: toChatMessage(message, access.role, userId) });
     } catch (err) {
         logger.error(`Local chat edit failed: ${err.message}`);
         return sendError(res, 500, 'Message could not be edited');
@@ -294,6 +474,12 @@ const uploadImage = async (req, res) => {
             return sendError(res, 415, 'Image content does not match its declared type');
         }
 
+        const scope = req.params.userId ? 'direct' : 'public';
+        const peer = scope === 'direct' ? await getDirectPeer({
+            access, peerUserId: req.params.userId, currentUserId: userId
+        }) : null;
+        if (scope === 'direct' && !peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
+
         await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
         storageName = `${crypto.randomUUID()}.${detected.extension}`;
         await fs.promises.writeFile(attachmentPath(storageName), req.body, { flag: 'wx', mode: 0o600 });
@@ -302,7 +488,10 @@ const uploadImage = async (req, res) => {
         const replyTarget = await findReplyTarget({
             ChatMessage,
             npid: req.params.id,
-            replyTo: req.get?.('x-chat-reply-to')
+            replyTo: req.get?.('x-chat-reply-to'),
+            scope,
+            senderUserId: userId,
+            recipientUserId: participantId(peer?.userProfile)
         });
         const message = await ChatMessage.create({
             liveNet: access.liveNet._id,
@@ -310,6 +499,8 @@ const uploadImage = async (req, res) => {
             userProfile: req.user._id,
             callSign: req.user.callSign,
             displayName: req.user.displayName || req.user.callSign,
+            scope,
+            recipientUserProfile: peer?.userProfile || null,
             text: '',
             replyTo: replyTarget?._id || null,
             attachment: {
@@ -317,8 +508,8 @@ const uploadImage = async (req, res) => {
             }
         });
         return res.status(201).json({
-            endpointVersion: '1.0',
-            message: toPublicMessage(message, access.role, userId)
+            endpointVersion: '1.1',
+            message: toChatMessage(message, access.role, userId)
         });
     } catch (err) {
         if (storageName) await removeAttachment({ storageName });
@@ -348,6 +539,8 @@ const serveImage = async (req, res) => {
             'attachment.kind': 'image'
         });
         if (!message?.attachment?.storageName) return sendError(res, 404, 'Image not found');
+        const ignoredUserIds = await getIgnoredUserIds(userId);
+        if (!shouldDeliverMessage(message, userId, ignoredUserIds)) return sendError(res, 404, 'Image not found');
         const data = await fs.promises.readFile(attachmentPath(message.attachment.storageName));
         res.set({
             'Content-Type': message.attachment.mimeType,
@@ -392,7 +585,7 @@ const deleteMessage = async (req, res) => {
         message.moderatedBy = null;
         await message.save();
         logger.info(`Chat message ${message._id} deleted in net ${req.params.id}`);
-        return res.json({ endpointVersion: '1.0', message: toPublicMessage(message, access.role, userId) });
+        return res.json({ endpointVersion: '1.1', message: toChatMessage(message, access.role, userId) });
     } catch (err) {
         logger.error(`Local chat delete failed: ${err.message}`);
         return sendError(res, 500, 'Message could not be deleted');
@@ -417,8 +610,11 @@ const toggleReaction = async (req, res) => {
         const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
         if (!message) return sendError(res, 404, 'Message not found');
         const mine = message.userProfile.toString() === userId;
+        const scope = messageScope(message);
+        const participant = canViewMessage(message, userId);
+        if (!participant) return sendError(res, 404, 'Message not found');
         if (!authorizeChatAction({ role: access.role, action: 'react', mine,
-            deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt) })) {
+            deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt), scope, participant })) {
             return sendError(res, 409, 'Message is unavailable for reactions');
         }
         const reacted = (message.reactions || []).some(reaction =>
@@ -432,7 +628,7 @@ const toggleReaction = async (req, res) => {
             { new: true }
         );
         if (!updated) return sendError(res, 409, 'Message is unavailable for reactions');
-        return res.json({ endpointVersion: '1.0', message: toPublicMessage(updated, access.role, userId) });
+        return res.json({ endpointVersion: '1.1', message: toChatMessage(updated, access.role, userId) });
     } catch (err) {
         logger.error(`Local chat reaction failed: ${err.message}`);
         return sendError(res, 500, 'Reaction could not be updated');
@@ -455,15 +651,18 @@ const setMessagePin = async (req, res) => {
         const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
         if (!message) return sendError(res, 404, 'Message not found');
         const mine = message.userProfile.toString() === userId;
+        const scope = messageScope(message);
+        const participant = canViewMessage(message, userId);
+        if (!participant) return sendError(res, 404, 'Message not found');
         if (!authorizeChatAction({ role: access.role, action: 'pin', mine,
-            deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt) })) {
+            deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt), scope, participant })) {
             return sendError(res, 403, 'Only the NCO or Logger can pin messages');
         }
         const pinned = typeof req.body?.pinned === 'boolean' ? req.body.pinned : !message.pinnedAt;
         message.pinnedAt = pinned ? new Date() : null;
         message.pinnedBy = pinned ? req.user._id : null;
         await message.save();
-        return res.json({ endpointVersion: '1.0', message: toPublicMessage(message, access.role, userId) });
+        return res.json({ endpointVersion: '1.1', message: toChatMessage(message, access.role, userId) });
     } catch (err) {
         logger.error(`Local chat pin failed: ${err.message}`);
         return sendError(res, 500, 'Pin could not be updated');
@@ -486,8 +685,11 @@ const banMessageAuthor = async (req, res) => {
         const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
         if (!message) return sendError(res, 404, 'Message not found');
         const mine = message.userProfile.toString() === userId;
+        const scope = messageScope(message);
+        const participant = canViewMessage(message, userId);
+        if (!participant) return sendError(res, 404, 'Message not found');
         if (!authorizeChatAction({ role: access.role, action: 'ban', mine,
-            deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt) })) {
+            deleted: Boolean(message.deletedAt), cleared: Boolean(message.clearedAt), scope, participant })) {
             return sendError(res, 403, 'Only the NCO can ban another chat participant');
         }
         await banUserHelper({
@@ -518,7 +720,7 @@ const clearPublicChat = async (req, res) => {
             return sendError(res, 403, 'Only the NCO can clear public chat');
         }
         const ChatMessage = getChatMessage();
-        const query = { netProfile: req.params.id, clearedAt: null };
+        const query = { netProfile: req.params.id, clearedAt: null, ...PUBLIC_SCOPE_QUERY };
         const attachments = await ChatMessage.find({ ...query, 'attachment.storageName': { $exists: true } })
             .select('attachment.storageName').lean();
         const clearedAt = new Date();
@@ -544,6 +746,7 @@ const clearPublicChat = async (req, res) => {
 const streamEvents = async (req, res) => {
     let userId;
     let access;
+    let ignoredUserIds;
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
         if (!isObjectId(req.params.id)) return sendError(res, 400, 'Invalid net identifier');
@@ -553,6 +756,7 @@ const streamEvents = async (req, res) => {
         if (await isBanned({ npid: req.params.id, userId })) {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
+        ignoredUserIds = await getIgnoredUserIds(userId);
     } catch (err) {
         logger.error(`Local chat SSE authorization failed: ${err.message}`);
         return sendError(res, 500, 'Chat events are temporarily unavailable');
@@ -560,20 +764,20 @@ const streamEvents = async (req, res) => {
 
     res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive' });
     res.flushHeaders();
-    res.write(`event: ready\ndata: ${JSON.stringify({ netProfile: req.params.id })}\n\n`);
+    res.write(`event: ready\ndata: ${JSON.stringify({ netProfile: req.params.id, userId })}\n\n`);
     const ChatMessage = getChatMessage();
     const closeStreams = [];
     try {
         const netProfile = new mongoose.Types.ObjectId(req.params.id);
+        const currentUserObjectId = new mongoose.Types.ObjectId(userId);
         const messageChangeStream = ChatMessage.watch([{ $match: { 'fullDocument.netProfile': netProfile } }], {
             fullDocument: 'updateLookup'
         });
         closeStreams.push(messageChangeStream);
         messageChangeStream.on('change', change => {
-            if (change.fullDocument) {
-                const message = toPublicMessage(change.fullDocument, access.role, userId);
-                res.write(`event: message\ndata: ${JSON.stringify(message)}\n\n`);
-            }
+            if (!change.fullDocument || !shouldDeliverMessage(change.fullDocument, userId, ignoredUserIds)) return;
+            const message = toChatMessage(change.fullDocument, access.role, userId);
+            res.write(`event: message\ndata: ${JSON.stringify(message)}\n\n`);
         });
         messageChangeStream.on('error', err => {
             logger.warn(`Local chat SSE change stream closed: ${err.message}`);
@@ -597,6 +801,39 @@ const streamEvents = async (req, res) => {
             logger.warn(`Local chat ban stream closed: ${err.message}`);
             res.end();
         });
+
+        const StationInteraction = getStationInteraction();
+        const sendRecipients = async () => {
+            try {
+                const recipients = await listRecipientsForAccess({
+                    access,
+                    currentUserId: userId,
+                    ignoredUserIds,
+                    awayInMs: Number(res.locals?.flexOpts?.awayInMs) || 120000
+                });
+                res.write(`event: recipients\ndata: ${JSON.stringify(recipients)}\n\n`);
+            } catch (err) {
+                logger.warn(`Local chat recipient refresh failed: ${err.message}`);
+            }
+        };
+        const presenceChangeStream = StationInteraction.watch([{
+            $match: { 'fullDocument.liveNet': access.liveNet._id }
+        }], { fullDocument: 'updateLookup' });
+        closeStreams.push(presenceChangeStream);
+        presenceChangeStream.on('change', () => void sendRecipients());
+        presenceChangeStream.on('error', err => logger.warn(`Local chat presence stream closed: ${err.message}`));
+
+        const UserProfile = getUserProfile();
+        const preferenceChangeStream = UserProfile.watch([{
+            $match: { 'documentKey._id': currentUserObjectId }
+        }], { fullDocument: 'updateLookup' });
+        closeStreams.push(preferenceChangeStream);
+        preferenceChangeStream.on('change', change => {
+            ignoredUserIds = new Set((change.fullDocument?.ignoredPrivateUsers || []).map(participantId).filter(Boolean));
+            res.write(`event: preferences\ndata: ${JSON.stringify({ ignoredUserIds: [...ignoredUserIds] })}\n\n`);
+            void sendRecipients();
+        });
+        preferenceChangeStream.on('error', err => logger.warn(`Local chat preference stream closed: ${err.message}`));
     } catch (err) {
         logger.warn(`Local chat SSE unavailable: ${err.message}`);
         return res.end();
@@ -611,7 +848,7 @@ const streamEvents = async (req, res) => {
 async function* fetchChatHistory({ npid, since, db = mongoose.connection }) {
     if (!isObjectId(npid)) throw new Error('Malformed net profile identifier');
     const ChatMessage = getChatMessage(db);
-    const query = { netProfile: npid, deletedAt: null };
+    const query = { netProfile: npid, deletedAt: null, ...PUBLIC_SCOPE_QUERY };
     if (since) query.createdAt = { $gte: new Date(since) };
     const messages = await ChatMessage.find(query).sort({ createdAt: 1, _id: 1 }).lean();
     const batchSize = 100;
@@ -652,6 +889,8 @@ const unbanUserHelper = async ({ npid, userIdToUnban, db = mongoose.connection }
 
 module.exports = {
     listMessages,
+    listDirectMessages,
+    setPrivateIgnore,
     createMessage,
     editMessage,
     uploadImage,
@@ -669,6 +908,12 @@ module.exports = {
     getNetAccess,
     cleanMessage,
     toPublicMessage,
+    toChatMessage,
+    canViewMessage,
+    shouldDeliverMessage,
+    isDirectParticipant,
+    directConversationQuery,
+    messageScope,
     authorizeChatAction,
     summarizeReactions,
     toggleReactionValue,

@@ -4,6 +4,10 @@ Chat is part of the logger and has no hosted provider. Messages and moderation s
 MongoDB; authenticated browsers receive updates over Server-Sent Events (SSE). A separate message
 stream is keyed by both `LiveNet` and `NetProfile`.
 
+Messages have a `scope` of `public` or `direct`. Direct messages store one authenticated sender and
+one authenticated recipient. Server-side queries and live delivery require the viewer to be one of
+those two users; NCO and Logger roles do not override direct-message privacy.
+
 ## Authentication and access
 
 All chat endpoints use the existing signed cookie session. The server derives callsign, display
@@ -20,6 +24,10 @@ updates `editedAt`, and never replaces an attachment. The `/ban` and `/unban` co
 | --- | --- | --- |
 | `GET` | `/api/chat/:npid/messages` | Ordered history (up to 500), limits, and SSE path |
 | `POST` | `/api/chat/:npid/messages` | Send `{ "text": "...", "replyTo": "optional-message-id" }` |
+| `GET` | `/api/chat/:npid/direct/:userId/messages` | Ordered history between the viewer and one known net user |
+| `POST` | `/api/chat/:npid/direct/:userId/messages` | Send a direct text message to one known net user |
+| `POST` | `/api/chat/:npid/direct/:userId/images` | Send a direct image to one known net user |
+| `PUT` | `/api/chat/:npid/direct/:userId/ignore` | Set `{ "ignored": true|false }` for the viewer's private-message preference |
 | `PATCH` | `/api/chat/:npid/messages/:messageId` | Edit the author's text/image caption |
 | `POST` | `/api/chat/:npid/images` | Upload a raw PNG, JPEG, GIF, or WebP image |
 | `GET` | `/api/chat/:npid/messages/:messageId/image` | Retrieve an authenticated image attachment |
@@ -30,12 +38,22 @@ updates `editedAt`, and never replaces an attachment. The `/ban` and `/unban` co
 | `DELETE` | `/api/chat/:npid/messages` | Clear only this net's public chat (NCO) |
 | `GET` | `/api/chat/:npid/events` | SSE stream for inserts and updates |
 
-SSE sends `ready`, `message`, and suspension `access` events. `message` data includes reply linkage,
+SSE sends `ready`, `message`, `recipients`, `preferences`, and suspension `access` events. Public
+`message` events reach eligible net participants. Direct `message` events are serialized only for
+the sender and recipient, and ignored incoming direct messages are omitted without notifying the
+sender. `message` data includes scope, authenticated participant IDs, reply linkage,
 grouped reaction counts with the current user's state, compact pin state, and server-derived action
 permissions in addition to identity, content, timestamps, and attachments. Image attachments expose
 only `kind`, `mimeType`, `size`, and an authenticated same-origin `url`; the storage filename is
-never returned. Native `EventSource` reconnects automatically. Errors return
-`{ "endpointVersion": "1.0", "error": "safe message" }` with an appropriate HTTP status.
+never returned. Native `EventSource` reconnects automatically. Errors return a versioned
+`{ "error": "safe message" }` payload with an appropriate HTTP status.
+
+The recipient selector remains inside Chat and defaults to `Everyone`. Its availability indicator
+means connected to the current net/session, based on the existing station `lastSeen` window; known
+offline users remain selectable and can receive persisted messages later. Unread counts are
+session-local, increment only for incoming messages outside the open conversation, and clear when
+that conversation opens. Ignore lists persist on the authenticated `UserProfile`, affect direct
+messages only, and are reversible without notifying the ignored user.
 
 The floating emoji picker provides searchable Smileys, People, Animals, Food, Activities, Travel,
 Objects, Symbols, and Flags categories. It inserts ordinary Unicode at the current caret or
@@ -56,10 +74,12 @@ Chat. Changing one does not alter or compound the other.
 
 Message HTML is stripped, the browser renders with `textContent`, identifiers are validated,
 message length is bounded, and a per-user rate window limits bursts. Deleted text is blanked in
-storage and never returned. Image access repeats authentication and active-net membership checks.
-Ban targets are derived from the stored message author rather than client-supplied identity. Clear
-operations are scoped to the current `NetProfile`; they soft-clear public messages for auditability,
-remove associated files, and do not touch another net or any separate private/helper channel.
+storage and never returned. Image access repeats authentication and active-net membership checks. A
+direct image additionally requires the requester to be its sender or recipient and honors the
+recipient's ignore preference; random storage names are never exposed. Ban targets are derived from
+the stored message author rather than client-supplied identity. Clear operations are scoped to the
+current `NetProfile` and public scope; they soft-clear public messages for auditability, remove
+associated public files, and do not touch direct messages, ignore preferences, or another net.
 The server detects the file signature rather than trusting `Content-Type`, rejects SVG, generates
 random storage names, and serves accepted files with `nosniff` and a restrictive CSP. Deleting an
 image message removes its file. Server timestamps and `_id` provide stable ordering.
@@ -82,10 +102,11 @@ removed with the rest of that net's chat data.
 
 ## Migration
 
-MongoDB requires no offline migration. Mongoose adds the optional `replyTo`, `reactions`,
-`pinnedAt`, `pinnedBy`, and `clearedAt` fields as messages are created or changed; existing messages
-continue to read with empty/default interaction state. Deploying application code and restarting the
-service is sufficient when this phase is eventually released.
+MongoDB requires no offline migration. Mongoose treats messages without `scope` as public while new
+records receive the `public` default. Direct records add `scope: direct` and
+`recipientUserProfile`; user profiles add `ignoredPrivateUsers`. Deploying application code and
+restarting the service is sufficient when this phase is eventually released. The new compound
+indexes build through normal Mongoose initialization.
 
 The old `/api/endorse/chat/:npid` token route no longer exists. Extension code should use the local
 REST endpoints and subscribe to the returned `ssePath`. No separate token or API key is required.

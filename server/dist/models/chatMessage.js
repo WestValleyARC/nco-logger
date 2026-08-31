@@ -8,6 +8,10 @@ const chatMessageSchema = new Schema(
         liveNet: { type: Schema.Types.ObjectId, ref: 'LiveNet', required: true, index: true },
         netProfile: { type: Schema.Types.ObjectId, ref: 'NetProfile', required: true, index: true },
         userProfile: { type: Schema.Types.ObjectId, ref: 'UserProfile', required: true, index: true },
+        scope: { type: String, enum: ['public', 'direct'], default: 'public', required: true, index: true },
+        recipientUserProfile: {
+            type: Schema.Types.ObjectId, ref: 'UserProfile', default: null, index: true
+        },
         callSign: { type: String, required: true, maxlength: 12 },
         displayName: { type: String, default: '', maxlength: 80 },
         text: {
@@ -39,6 +43,12 @@ const chatMessageSchema = new Schema(
 );
 
 chatMessageSchema.pre('validate', function (next) {
+    if (this.scope === 'direct' && !this.recipientUserProfile) {
+        this.invalidate('recipientUserProfile', 'A direct message requires a recipient');
+    }
+    if (this.scope === 'public' && this.recipientUserProfile) {
+        this.invalidate('recipientUserProfile', 'A public message cannot have a private recipient');
+    }
     if (!this.deletedAt && !this.text && !this.attachment?.storageName) {
         this.invalidate('text', 'A chat message requires text or an image');
     }
@@ -46,6 +56,9 @@ chatMessageSchema.pre('validate', function (next) {
 });
 
 chatMessageSchema.index({ netProfile: 1, createdAt: 1, _id: 1 });
+chatMessageSchema.index({
+    netProfile: 1, scope: 1, userProfile: 1, recipientUserProfile: 1, createdAt: 1, _id: 1
+});
 
 module.exports = {
     getChatMessage: db => modelMaker({ db, m: 'ChatMessage', s: chatMessageSchema }),

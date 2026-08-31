@@ -21,3 +21,12 @@ export const sortChatMessages = <T extends IdentifiedChatMessage>(messages: Iter
 
 export const shouldScrollChatToLatest = (initialLoad: boolean, wasNearBottom: boolean): boolean =>
     initialLoad || wasNearBottom;
+
+export const recordPrivateUnread = (counts: Map<string, number>, senderUserId: string, shouldCount: boolean): void => {
+    if (!shouldCount || !senderUserId) return;
+    counts.set(senderUserId, (counts.get(senderUserId) || 0) + 1);
+};
+
+export const clearPrivateUnread = (counts: Map<string, number>, senderUserId: string): void => {
+    if (senderUserId) counts.delete(senderUserId);
+};

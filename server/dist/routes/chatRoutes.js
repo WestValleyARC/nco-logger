@@ -4,6 +4,8 @@ const express = require('express');
 const router = express.Router();
 const {
     listMessages,
+    listDirectMessages,
+    setPrivateIgnore,
     createMessage,
     editMessage,
     uploadImage,
@@ -21,6 +23,10 @@ const imageBody = express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES });
 
 router.get('/:id/messages', listMessages);
 router.post('/:id/messages', createMessage);
+router.get('/:id/direct/:userId/messages', listDirectMessages);
+router.post('/:id/direct/:userId/messages', createMessage);
+router.post('/:id/direct/:userId/images', imageBody, uploadImage);
+router.put('/:id/direct/:userId/ignore', setPrivateIgnore);
 router.patch('/:id/messages/:messageId', editMessage);
 router.post('/:id/images', imageBody, uploadImage);
 router.delete('/:id/messages', clearPublicChat);

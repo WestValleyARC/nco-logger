@@ -4,13 +4,19 @@ import { LiveNetReactiveStore } from '#@client/lib/stores.js';
 import { createLogger } from '#@client/lib/logger.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
-import { reconcileChatMessages, shouldScrollChatToLatest, sortChatMessages } from '#@client/lib/chatState.js';
+import {
+    clearPrivateUnread, reconcileChatMessages, recordPrivateUnread, shouldScrollChatToLatest, sortChatMessages
+} from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
 
 const logger = createLogger('lib/chat.ts');
 
 interface LocalChatMessage {
     id: string;
+    scope: 'public' | 'direct';
+    senderUserId: string;
+    recipientUserId: string | null;
+    conversationUserId: string | null;
     callSign: string;
     displayName: string;
     text: string;
@@ -29,10 +35,24 @@ interface LocalChatMessage {
     canDelete: boolean;
     canPin: boolean;
     canBan: boolean;
+    canMessagePrivately: boolean;
+}
+
+interface ChatRecipient {
+    userId: string;
+    callSign: string;
+    displayName: string;
+    role: 'netcontrol' | 'netlogger' | 'netrelay' | 'netuser';
+    presence: 'online' | 'offline';
+    presenceLabel: string;
+    ignored: boolean;
 }
 
 interface ChatHistoryResponse {
     messages: LocalChatMessage[];
+    directMessages: LocalChatMessage[];
+    recipients: ChatRecipient[];
+    currentUserId: string;
     limits: { maxMessageChars: number; maxUploadBytes: number; imageMimeTypes: string[] };
     ssePath: string;
     viewerRole: 'netcontrol' | 'netlogger' | 'netrelay' | 'netuser';
@@ -50,6 +70,10 @@ const isLocalChatMessage = (value: unknown): value is LocalChatMessage => {
         && typeof (attachment as Record<string, unknown>)['url'] === 'string');
     return typeof message['id'] === 'string'
         && typeof message['callSign'] === 'string'
+        && (message['scope'] === 'public' || message['scope'] === 'direct')
+        && typeof message['senderUserId'] === 'string'
+        && (message['recipientUserId'] === null || typeof message['recipientUserId'] === 'string')
+        && (message['conversationUserId'] === null || typeof message['conversationUserId'] === 'string')
         && typeof message['displayName'] === 'string'
         && typeof message['text'] === 'string'
         && typeof message['createdAt'] === 'string'
@@ -66,12 +90,31 @@ const isLocalChatMessage = (value: unknown): value is LocalChatMessage => {
         && typeof message['canDelete'] === 'boolean'
         && typeof message['canPin'] === 'boolean'
         && typeof message['canBan'] === 'boolean'
+        && typeof message['canMessagePrivately'] === 'boolean'
         && validAttachment;
+};
+
+const isChatRecipient = (value: unknown): value is ChatRecipient => {
+    if (!value || typeof value !== 'object') return false;
+    const recipient = value as Record<string, unknown>;
+    return typeof recipient['userId'] === 'string'
+        && typeof recipient['callSign'] === 'string'
+        && typeof recipient['displayName'] === 'string'
+        && ['netcontrol', 'netlogger', 'netrelay', 'netuser'].includes(String(recipient['role']))
+        && ['online', 'offline'].includes(String(recipient['presence']))
+        && typeof recipient['presenceLabel'] === 'string'
+        && typeof recipient['ignored'] === 'boolean';
 };
 
 export class ChatWidget extends HTMLElement {
     private readonly npid = getNpid().toString();
-    private messages = new Map<string, LocalChatMessage>();
+    private readonly publicMessages = new Map<string, LocalChatMessage>();
+    private readonly directConversations = new Map<string, Map<string, LocalChatMessage>>();
+    private readonly recipients = new Map<string, ChatRecipient>();
+    private readonly unreadCounts = new Map<string, number>();
+    private readonly scrollPositions = new Map<string, number>();
+    private selectedRecipientId: string | null = null;
+    private inboxInitialized = false;
     private eventSource: EventSource | null = null;
     private connectionAbort: AbortController | null = null;
     private statusTimer: number | null = null;
@@ -93,6 +136,16 @@ export class ChatWidget extends HTMLElement {
     private maxUploadBytes = 5 * 1024 * 1024;
     private imageMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
+    private get messages(): Map<string, LocalChatMessage> {
+        if (!this.selectedRecipientId) return this.publicMessages;
+        let messages = this.directConversations.get(this.selectedRecipientId);
+        if (!messages) {
+            messages = new Map<string, LocalChatMessage>();
+            this.directConversations.set(this.selectedRecipientId, messages);
+        }
+        return messages;
+    }
+
     private readonly handleDocumentPointerDown = (event: PointerEvent): void => {
         const target = event.target;
         if (!(target instanceof Node)) return;
@@ -104,6 +157,11 @@ export class ChatWidget extends HTMLElement {
         this.querySelectorAll<HTMLElement>('.chat-quick-reactions:not([hidden])').forEach(menu => {
             if (!menu.contains(target) && !menu.parentElement?.contains(target)) menu.hidden = true;
         });
+        const recipientMenu = this.querySelector<HTMLElement>('.chat-recipient-menu');
+        const recipientToggle = this.querySelector<HTMLButtonElement>('.chat-recipient-toggle');
+        if (recipientMenu && !recipientMenu.hidden && !recipientMenu.contains(target) && !recipientToggle?.contains(target)) {
+            this.toggleRecipientMenu(false);
+        }
     };
 
     private readonly handleDocumentKeyDown = (event: KeyboardEvent): void => {
@@ -129,6 +187,13 @@ export class ChatWidget extends HTMLElement {
             event.preventDefault();
             this.toggleEmojiPicker(false);
             this.querySelector<HTMLButtonElement>('.chat-emoji-button')?.focus();
+            return;
+        }
+        const recipientMenu = this.querySelector<HTMLElement>('.chat-recipient-menu');
+        if (recipientMenu && !recipientMenu.hidden) {
+            event.preventDefault();
+            this.toggleRecipientMenu(false);
+            this.querySelector<HTMLButtonElement>('.chat-recipient-toggle')?.focus();
         }
     };
 
@@ -147,6 +212,14 @@ export class ChatWidget extends HTMLElement {
                     <div class="chat-status small text-muted" role="status" aria-live="polite">Connecting…</div>
                     <button class="chat-clear-button" type="button" title="Delete all public chat messages" aria-label="Delete all public chat messages" hidden>Delete All Messages</button>
                 </div>
+                <div class="chat-conversation-bar">
+                    <div class="chat-recipient-selector">
+                        <button class="chat-recipient-toggle" type="button" aria-haspopup="menu" aria-expanded="false">To: Everyone ▾</button>
+                        <div class="chat-recipient-menu" role="menu" aria-label="Choose chat recipient" hidden></div>
+                    </div>
+                    <span class="chat-private-unread" role="status" aria-live="polite" hidden></span>
+                    <button class="chat-ignore-button" type="button" hidden>Ignore private messages</button>
+                </div>
                 <div class="chat-messages flex-grow-1 overflow-auto" style="min-height:0" aria-live="polite"></div>
                 <button class="btn btn-sm btn-outline-info chat-new-messages align-self-center mt-1" type="button" hidden>New messages ↓</button>
                 <div class="chat-composer-wrap position-relative mt-2">
@@ -163,7 +236,7 @@ export class ChatWidget extends HTMLElement {
                     </div>
                     <form class="chat-form">
                         <label class="visually-hidden" for="local-chat-message">Chat message</label>
-                        <textarea id="local-chat-message" class="form-control chat-text-input" rows="1" autocomplete="off" placeholder="Message the net" required></textarea>
+                        <textarea id="local-chat-message" class="form-control chat-text-input" rows="1" autocomplete="off" placeholder="Message the net…" required></textarea>
                         <button class="chat-icon-control chat-emoji-button" type="button" title="Add emoji" aria-label="Add emoji" aria-expanded="false">😊</button>
                         <button class="chat-icon-control chat-image-button" type="button" title="Share image" aria-label="Share image">🖼️</button>
                         <input id="local-chat-image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
@@ -203,6 +276,8 @@ export class ChatWidget extends HTMLElement {
         this.querySelector<HTMLButtonElement>('.chat-new-messages')?.addEventListener('click', () => this.scrollToLatest());
         this.querySelector<HTMLButtonElement>('.chat-reply-cancel')?.addEventListener('click', () => this.setReply(null));
         this.querySelector<HTMLButtonElement>('.chat-clear-button')?.addEventListener('click', () => void this.clearChat());
+        this.querySelector<HTMLButtonElement>('.chat-recipient-toggle')?.addEventListener('click', () => this.toggleRecipientMenu());
+        this.querySelector<HTMLButtonElement>('.chat-ignore-button')?.addEventListener('click', () => void this.toggleIgnore());
         this.querySelector<HTMLElement>('.chat-messages')?.addEventListener('scroll', () => {
             if (this.isNearBottom()) this.showNewMessages(false);
         }, { passive: true });
@@ -278,6 +353,158 @@ export class ChatWidget extends HTMLElement {
         });
     }
 
+    private toggleRecipientMenu(force?: boolean): void {
+        const menu = this.querySelector<HTMLElement>('.chat-recipient-menu');
+        const toggle = this.querySelector<HTMLButtonElement>('.chat-recipient-toggle');
+        if (!menu || !toggle) return;
+        const open = force ?? menu.hidden;
+        menu.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) menu.querySelector<HTMLButtonElement>('[aria-current="true"], button')?.focus();
+    }
+
+    private recipientLabel(recipient: ChatRecipient): string {
+        return recipient.displayName && recipient.displayName !== recipient.callSign
+            ? `${recipient.callSign} — ${recipient.displayName}` : recipient.callSign;
+    }
+
+    private renderRecipientControls(): void {
+        const menu = this.querySelector<HTMLElement>('.chat-recipient-menu');
+        const toggle = this.querySelector<HTMLButtonElement>('.chat-recipient-toggle');
+        const ignore = this.querySelector<HTMLButtonElement>('.chat-ignore-button');
+        const unreadStatus = this.querySelector<HTMLElement>('.chat-private-unread');
+        if (!menu || !toggle || !ignore || !unreadStatus) return;
+        menu.replaceChildren();
+        const addChoice = (label: string, recipientId: string | null, recipient?: ChatRecipient): void => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'chat-recipient-choice';
+            button.setAttribute('role', 'menuitem');
+            button.setAttribute('aria-current', String(this.selectedRecipientId === recipientId));
+            const dot = document.createElement('span');
+            dot.className = `chat-presence-dot ${recipient?.presence === 'online' ? 'is-online' : 'is-offline'}`;
+            dot.setAttribute('aria-hidden', 'true');
+            const text = document.createElement('span');
+            text.textContent = `${label}${recipient?.ignored ? ' · Ignored' : ''}`;
+            if (recipient) button.append(dot);
+            button.append(text);
+            const unread = recipientId ? this.unreadCounts.get(recipientId) || 0 : 0;
+            if (unread > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'chat-recipient-unread';
+                badge.textContent = String(unread);
+                badge.setAttribute('aria-label', `${unread} unread private message${unread === 1 ? '' : 's'}`);
+                button.append(badge);
+            }
+            const availability = recipient?.presenceLabel || 'Public net chat';
+            button.setAttribute('aria-label', `${label}, ${availability}${recipient?.ignored ? ', private messages ignored' : ''}${unread ? `, ${unread} unread` : ''}`);
+            button.addEventListener('click', () => void this.switchConversation(recipientId));
+            menu.append(button);
+        };
+        addChoice('Everyone', null);
+        this.recipients.forEach(recipient => addChoice(this.recipientLabel(recipient), recipient.userId, recipient));
+
+        const selected = this.selectedRecipientId ? this.recipients.get(this.selectedRecipientId) : null;
+        toggle.textContent = selected ? `To: ${this.recipientLabel(selected)} ▾` : 'To: Everyone ▾';
+        toggle.setAttribute('aria-label', selected
+            ? `Chat recipient: ${this.recipientLabel(selected)}, ${selected.presenceLabel}`
+            : 'Chat recipient: Everyone');
+        ignore.hidden = !selected;
+        if (selected) ignore.textContent = selected.ignored ? 'Unignore' : 'Ignore private messages';
+        const totalUnread = [...this.unreadCounts.values()].reduce((total, count) => total + count, 0);
+        unreadStatus.hidden = totalUnread === 0;
+        unreadStatus.textContent = totalUnread ? `${totalUnread} private unread` : '';
+        const clear = this.querySelector<HTMLButtonElement>('.chat-clear-button');
+        if (clear) clear.hidden = this.viewerRole !== 'netcontrol' || Boolean(selected);
+        const input = this.querySelector<HTMLTextAreaElement>('#local-chat-message');
+        if (input) {
+            input.placeholder = selected ? `Message ${selected.callSign} privately…` : 'Message the net…';
+            input.setAttribute('aria-label', selected
+                ? `Private message to ${this.recipientLabel(selected)}` : 'Message everyone on the net');
+        }
+    }
+
+    private conversationKey(recipientId = this.selectedRecipientId): string {
+        return recipientId || 'public';
+    }
+
+    private async switchConversation(recipientId: string | null, focusComposer = false): Promise<void> {
+        if (recipientId && !this.recipients.has(recipientId)) return;
+        const container = this.querySelector<HTMLElement>('.chat-messages');
+        if (container) this.scrollPositions.set(this.conversationKey(), container.scrollTop);
+        this.selectedRecipientId = recipientId;
+        clearPrivateUnread(this.unreadCounts, recipientId || '');
+        this.setReply(null);
+        this.cancelEditing(false);
+        this.toggleRecipientMenu(false);
+        this.renderRecipientControls();
+        this.render();
+        if (container) container.scrollTop = this.scrollPositions.get(this.conversationKey()) ?? container.scrollHeight;
+        if (recipientId) await this.loadDirectHistory(recipientId);
+        if (focusComposer) this.querySelector<HTMLTextAreaElement>('#local-chat-message')?.focus();
+    }
+
+    private async loadDirectHistory(recipientId: string): Promise<void> {
+        try {
+            const options: RequestInit = { credentials: 'same-origin', headers: { Accept: 'application/json' } };
+            const signal = this.connectionAbort?.signal;
+            if (signal) options.signal = signal;
+            const response = await fetch(
+                `/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/messages`, options
+            );
+            const data = (await response.json()) as { messages?: unknown; ignored?: boolean; error?: string };
+            if (!response.ok || !Array.isArray(data.messages) || !data.messages.every(isLocalChatMessage)) {
+                throw new Error(data.error || 'Private chat history unavailable');
+            }
+            let conversation = this.directConversations.get(recipientId);
+            if (!conversation) {
+                conversation = new Map<string, LocalChatMessage>();
+                this.directConversations.set(recipientId, conversation);
+            }
+            reconcileChatMessages(conversation, data.messages);
+            const recipient = this.recipients.get(recipientId);
+            if (recipient && typeof data.ignored === 'boolean') recipient.ignored = data.ignored;
+            if (this.selectedRecipientId === recipientId) {
+                this.renderRecipientControls();
+                this.render({ preserveScroll: true });
+            }
+        } catch (err) {
+            if (!this.connectionAbort?.signal.aborted) {
+                this.setStatus(err instanceof Error ? err.message : 'Private chat history unavailable', true);
+            }
+        }
+    }
+
+    private async toggleIgnore(): Promise<void> {
+        const recipientId = this.selectedRecipientId;
+        const recipient = recipientId ? this.recipients.get(recipientId) : null;
+        if (!recipientId || !recipient) return;
+        const ignored = !recipient.ignored;
+        try {
+            const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/ignore`, {
+                method: 'PUT', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ ignored })
+            });
+            const data = (await response.json()) as { ignored?: boolean; error?: string };
+            if (!response.ok || typeof data.ignored !== 'boolean') throw new Error(data.error || 'Ignore preference could not be updated');
+            recipient.ignored = data.ignored;
+            this.unreadCounts.delete(recipientId);
+            if (data.ignored) {
+                const conversation = this.directConversations.get(recipientId);
+                conversation?.forEach((message, id) => { if (!message.mine) conversation.delete(id); });
+            } else {
+                await this.loadDirectHistory(recipientId);
+            }
+            this.renderRecipientControls();
+            this.render({ preserveScroll: true });
+            this.setStatus(data.ignored ? `Private messages from ${recipient.callSign} ignored`
+                : `Private messages from ${recipient.callSign} restored`, false, 3000);
+        } catch (err) {
+            this.setStatus(err instanceof Error ? err.message : 'Ignore preference could not be updated', true);
+        }
+    }
+
     private toggleEmojiPicker(force?: boolean): void {
         const picker = this.querySelector<HTMLElement>('.chat-emoji-picker');
         const button = this.querySelector<HTMLButtonElement>('.chat-emoji-button');
@@ -325,7 +552,10 @@ export class ChatWidget extends HTMLElement {
             const data = await this.fetchHistory(signal);
             if (signal.aborted) return;
             this.applyLimits(data);
-            reconcileChatMessages(this.messages, data.messages);
+            reconcileChatMessages(this.publicMessages, data.messages.filter(message => message.scope === 'public'));
+            this.reconcileDirectMessages(data.directMessages, false);
+            this.updateRecipients(data.recipients);
+            this.inboxInitialized = true;
             this.render({ forceBottom: true });
             this.openEvents(data.ssePath);
         } catch (err) {
@@ -340,6 +570,11 @@ export class ChatWidget extends HTMLElement {
         });
         const data = (await response.json()) as ChatHistoryResponse;
         if (!response.ok) throw new Error(data.error || 'Chat history unavailable');
+        if (!Array.isArray(data.messages) || !data.messages.every(isLocalChatMessage)
+            || !Array.isArray(data.directMessages) || !data.directMessages.every(isLocalChatMessage)
+            || !Array.isArray(data.recipients) || !data.recipients.every(isChatRecipient)) {
+            throw new Error('Chat history response is invalid');
+        }
         return data;
     }
 
@@ -351,7 +586,38 @@ export class ChatWidget extends HTMLElement {
         const input = this.querySelector<HTMLTextAreaElement>('#local-chat-message');
         if (input) input.maxLength = this.maxMessageChars;
         const clear = this.querySelector<HTMLButtonElement>('.chat-clear-button');
-        if (clear) clear.hidden = this.viewerRole !== 'netcontrol';
+        if (clear) clear.hidden = this.viewerRole !== 'netcontrol' || this.selectedRecipientId !== null;
+    }
+
+    private updateRecipients(recipients: ChatRecipient[]): void {
+        const selected = this.selectedRecipientId;
+        this.recipients.clear();
+        recipients.forEach(recipient => this.recipients.set(recipient.userId, recipient));
+        const selectedWasRemoved = Boolean(selected && !this.recipients.has(selected));
+        if (selectedWasRemoved) {
+            this.selectedRecipientId = null;
+            this.setReply(null);
+            this.cancelEditing(false);
+        }
+        this.renderRecipientControls();
+        if (selectedWasRemoved) this.render({ forceBottom: true });
+    }
+
+    private reconcileDirectMessages(messages: LocalChatMessage[], countUnread: boolean): void {
+        messages.forEach(message => {
+            if (message.scope !== 'direct' || !message.conversationUserId) return;
+            if (!message.mine && this.recipients.get(message.conversationUserId)?.ignored) return;
+            let conversation = this.directConversations.get(message.conversationUserId);
+            if (!conversation) {
+                conversation = new Map<string, LocalChatMessage>();
+                this.directConversations.set(message.conversationUserId, conversation);
+            }
+            const isNew = !conversation.has(message.id);
+            reconcileChatMessages(conversation, [message]);
+            recordPrivateUnread(this.unreadCounts, message.conversationUserId,
+                countUnread && isNew && !message.mine && this.selectedRecipientId !== message.conversationUserId);
+        });
+        this.renderRecipientControls();
     }
 
     private openEvents(path: string): void {
@@ -371,11 +637,39 @@ export class ChatWidget extends HTMLElement {
                 const message: unknown = JSON.parse(rawData);
                 if (!isLocalChatMessage(message)) throw new Error('Chat event has an invalid message');
                 const wasNearBottom = this.isNearBottom();
-                const isNew = !message.cleared && reconcileChatMessages(this.messages, [message]) === 1;
-                if (message.cleared) this.messages.delete(message.id);
-                this.render({ preserveScroll: true });
-                if (isNew && !wasNearBottom) this.showNewMessages(true);
+                let isNew = false;
+                if (message.scope === 'public') {
+                    isNew = !message.cleared && reconcileChatMessages(this.publicMessages, [message]) === 1;
+                    if (message.cleared) this.publicMessages.delete(message.id);
+                    if (!this.selectedRecipientId) this.render({ preserveScroll: true });
+                } else {
+                    const conversationId = message.conversationUserId;
+                    const conversation = conversationId ? this.directConversations.get(conversationId) : null;
+                    isNew = Boolean(conversationId && !conversation?.has(message.id));
+                    this.reconcileDirectMessages([message], this.inboxInitialized);
+                    if (conversationId === this.selectedRecipientId) this.render({ preserveScroll: true });
+                }
+                if (isNew && !wasNearBottom && (message.scope === 'public' ? !this.selectedRecipientId
+                    : message.conversationUserId === this.selectedRecipientId)) this.showNewMessages(true);
             } catch (err) { logger.error('Invalid local chat event', err); }
+        });
+        source.addEventListener('recipients', event => {
+            if (this.eventSource !== source) return;
+            try {
+                const recipients: unknown = JSON.parse(String(event.data));
+                if (!Array.isArray(recipients) || !recipients.every(isChatRecipient)) throw new Error('Invalid recipient list');
+                this.updateRecipients(recipients);
+            } catch (err) { logger.error('Invalid local chat recipient event', err); }
+        });
+        source.addEventListener('preferences', event => {
+            if (this.eventSource !== source) return;
+            try {
+                const data = JSON.parse(String(event.data)) as { ignoredUserIds?: unknown };
+                if (!Array.isArray(data.ignoredUserIds)) return;
+                const ignored = new Set(data.ignoredUserIds.filter((id): id is string => typeof id === 'string'));
+                this.recipients.forEach(recipient => { recipient.ignored = ignored.has(recipient.userId); });
+                this.renderRecipientControls();
+            } catch (err) { logger.error('Invalid local chat preference event', err); }
         });
         source.addEventListener('access', event => {
             if (this.eventSource !== source) return;
@@ -402,7 +696,10 @@ export class ChatWidget extends HTMLElement {
             const data = await this.fetchHistory(signal);
             if (signal.aborted) return;
             this.applyLimits(data);
-            reconcileChatMessages(this.messages, data.messages);
+            reconcileChatMessages(this.publicMessages, data.messages.filter(message => message.scope === 'public'));
+            this.reconcileDirectMessages(data.directMessages, this.inboxInitialized);
+            this.updateRecipients(data.recipients);
+            this.inboxInitialized = true;
             this.render({ preserveScroll: true });
         } catch (err) {
             if (signal.aborted) return;
@@ -419,20 +716,27 @@ export class ChatWidget extends HTMLElement {
         const input = this.querySelector<HTMLTextAreaElement>('#local-chat-message');
         const text = input?.value.trim() || '';
         if (!input || !text) return;
+        const recipientId = this.selectedRecipientId;
         this.sending = true;
         this.setComposerDisabled(true);
         this.setStatus('Sending…');
         try {
-            const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/messages`, {
+            const path = recipientId
+                ? `/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/messages`
+                : `/api/chat/${encodeURIComponent(this.npid)}/messages`;
+            const response = await fetch(path, {
                 method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text, replyTo: this.replyingToId })
             });
             const data = (await response.json()) as { message?: LocalChatMessage; error?: string };
             if (!response.ok || !data.message) throw new Error(data.error || 'Message could not be sent');
-            reconcileChatMessages(this.messages, [data.message]);
+            if (data.message.scope === 'direct') this.reconcileDirectMessages([data.message], false);
+            else reconcileChatMessages(this.publicMessages, [data.message]);
             input.value = '';
-            this.setReply(null);
-            this.render({ forceBottom: true });
+            if (this.selectedRecipientId === recipientId) {
+                this.setReply(null);
+                this.render({ forceBottom: true });
+            }
             this.setStatus('Live', false, 1500);
         } catch (err) {
             this.setStatus(err instanceof Error ? err.message : 'Message could not be sent', true);
@@ -458,6 +762,7 @@ export class ChatWidget extends HTMLElement {
         const fileInput = event.currentTarget as HTMLInputElement;
         const file = fileInput.files?.[0];
         if (!file || this.uploading) return;
+        const recipientId = this.selectedRecipientId;
         const button = this.querySelector<HTMLElement>('.chat-image-button');
         if (file.size > this.maxUploadBytes) {
             this.setStatus(`Image exceeds ${Math.floor(this.maxUploadBytes / 1024 / 1024)} MB`, true);
@@ -474,7 +779,10 @@ export class ChatWidget extends HTMLElement {
         fileInput.disabled = true;
         this.setStatus('Uploading image…');
         try {
-            const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/images`, {
+            const path = recipientId
+                ? `/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/images`
+                : `/api/chat/${encodeURIComponent(this.npid)}/images`;
+            const response = await fetch(path, {
                 method: 'POST', credentials: 'same-origin',
                 headers: {
                     'Content-Type': file.type,
@@ -484,9 +792,12 @@ export class ChatWidget extends HTMLElement {
             });
             const data = (await response.json()) as { message?: LocalChatMessage; error?: string };
             if (!response.ok || !data.message) throw new Error(data.error || 'Image could not be uploaded');
-            reconcileChatMessages(this.messages, [data.message]);
-            this.setReply(null);
-            this.render({ forceBottom: true });
+            if (data.message.scope === 'direct') this.reconcileDirectMessages([data.message], false);
+            else reconcileChatMessages(this.publicMessages, [data.message]);
+            if (this.selectedRecipientId === recipientId) {
+                this.setReply(null);
+                this.render({ forceBottom: true });
+            }
             this.setStatus('Image shared', false, 2500);
         } catch (err) {
             this.setStatus(err instanceof Error ? err.message : 'Image could not be uploaded', true);
@@ -508,10 +819,10 @@ export class ChatWidget extends HTMLElement {
         editor?.setSelectionRange(editor.value.length, editor.value.length);
     }
 
-    private cancelEditing(): void {
+    private cancelEditing(render = true): void {
         this.editingMessageId = null;
         this.editDraft = '';
-        this.render({ preserveScroll: true });
+        if (render) this.render({ preserveScroll: true });
     }
 
     private async saveEdit(message: LocalChatMessage): Promise<void> {
@@ -609,7 +920,7 @@ export class ChatWidget extends HTMLElement {
     }
 
     private async clearChat(): Promise<void> {
-        if (this.viewerRole !== 'netcontrol'
+        if (this.viewerRole !== 'netcontrol' || this.selectedRecipientId !== null
             || !window.confirm('Clear all public chat messages for this net? This cannot be undone.')) return;
         try {
             const response = await fetch(`/api/chat/${encodeURIComponent(this.npid)}/messages`, {
@@ -617,7 +928,7 @@ export class ChatWidget extends HTMLElement {
             });
             const data = (await response.json()) as { error?: string };
             if (!response.ok) throw new Error(data.error || 'Public chat could not be cleared');
-            this.messages.clear();
+            this.publicMessages.clear();
             this.setReply(null);
             this.render({ forceBottom: true });
             this.setStatus('Public chat cleared', false, 3000);
@@ -760,7 +1071,7 @@ export class ChatWidget extends HTMLElement {
 
     private appendMessageActions(row: HTMLElement, message: LocalChatMessage): void {
         if (!message.canReact && !message.canReply && !message.canEdit && !message.canDelete
-            && !message.canPin && !message.canBan) return;
+            && !message.canPin && !message.canBan && !message.canMessagePrivately) return;
         const controls = document.createElement('div');
         controls.className = 'chat-message-actions';
         const addAction = (icon: string, label: string, className: string, action: () => void): HTMLButtonElement => {
@@ -794,6 +1105,11 @@ export class ChatWidget extends HTMLElement {
             controls.append(menu);
         }
         if (message.canReply) addAction('↩', 'Reply to', 'chat-action-reply', () => this.setReply(message));
+        if (message.canMessagePrivately) {
+            addAction('✉', 'Message privately', 'chat-action-private', () => {
+                void this.switchConversation(message.senderUserId, true);
+            });
+        }
         if (message.canEdit) {
             addAction('✎', 'Edit', 'chat-action-edit', () => this.startEditing(message));
         }

@@ -19,24 +19,35 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     const { getLiveNet } = require('../server/dist/models/liveNet');
     const { getStationInteraction } = require('../server/dist/models/stationInteraction');
     const { getChatMessage } = require('../server/dist/models/chatMessage');
+    const { getUserProfile } = require('../server/dist/models/userProfile');
     const {
         createMessage, editMessage, uploadImage, deleteMessage, fetchChatHistory, toggleReaction,
-        setMessagePin, banMessageAuthor, clearPublicChat
+        setMessagePin, banMessageAuthor, clearPublicChat, listMessages, listDirectMessages,
+        setPrivateIgnore, serveImage
     } = require('../server/dist/lib/localChat');
     const userOne = new mongoose.Types.ObjectId();
     const userTwo = new mongoose.Types.ObjectId();
     const userNco = new mongoose.Types.ObjectId();
+    const userOtherLogger = new mongoose.Types.ObjectId();
     const netProfile = new mongoose.Types.ObjectId();
     const LiveNet = getLiveNet();
     const StationInteraction = getStationInteraction();
     const ChatMessage = getChatMessage();
+    const UserProfile = getUserProfile();
     const liveNet = await LiveNet.create({
         netProfile, netControl: userOne, url: `/views/livenet/${netProfile}`, lookupTable: {}
     });
     await StationInteraction.create([
         { callSign: 'W1AAA', createdBy: 'user', role: 'netuser', userProfile: userOne, liveNet: liveNet._id, netProfile },
         { callSign: 'W1BBB', createdBy: 'user', role: 'netlogger', userProfile: userTwo, liveNet: liveNet._id, netProfile },
-        { callSign: 'W1NCO', createdBy: 'user', role: 'netcontrol', userProfile: userNco, liveNet: liveNet._id, netProfile }
+        { callSign: 'W1NCO', createdBy: 'user', role: 'netcontrol', userProfile: userNco, liveNet: liveNet._id, netProfile },
+        { callSign: 'W1LOG', createdBy: 'user', role: 'netlogger', userProfile: userOtherLogger, liveNet: liveNet._id, netProfile }
+    ]);
+    await UserProfile.create([
+        { _id: userOne, callSign: 'W1AAA', displayName: 'Alice', email: 'alice-phase3@example.com', lastAuthVia: 'email' },
+        { _id: userTwo, callSign: 'W1BBB', displayName: 'Bobby', email: 'bob-phase3@example.com', lastAuthVia: 'email' },
+        { _id: userNco, callSign: 'W1NCO', displayName: 'Net Control', email: 'nco-phase3@example.com', lastAuthVia: 'email' },
+        { _id: userOtherLogger, callSign: 'W1LOG', displayName: 'Logger', email: 'logger-phase3@example.com', lastAuthVia: 'email' }
     ]);
 
     const invoke = async (handler, req) => {
@@ -198,6 +209,114 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     assert.equal(imageDeleted.payload.message.attachment, null);
     await assert.rejects(fs.promises.access(imagePath));
 
+    const directSent = await invoke(createMessage, {
+        ...makeReq(userOne, 'W1AAA', 'Alice', { text: 'Private hello' }),
+        params: { id: netProfile.toString(), userId: userTwo.toString() }
+    });
+    assert.equal(directSent.status, 201);
+    assert.equal(directSent.payload.message.scope, 'direct');
+    assert.equal(directSent.payload.message.recipientUserId, userTwo.toString());
+    assert.equal(directSent.payload.message.canPin, false);
+    assert.equal(Object.hasOwn(directSent.payload, 'ignored'), false);
+
+    const directReply = await invoke(createMessage, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby', { text: 'Private reply', replyTo: directSent.payload.message.id }),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.equal(directReply.status, 201);
+    assert.equal(directReply.payload.message.replyTo, directSent.payload.message.id);
+    assert.equal(directReply.payload.message.scope, 'direct');
+
+    const privateHistory = await invoke(listDirectMessages, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby'),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.equal(privateHistory.status, 200);
+    assert.deepEqual(privateHistory.payload.messages.map(message => message.text), ['Private hello', 'Private reply']);
+    const unrelatedNcoHistory = await invoke(listDirectMessages, {
+        ...makeReq(userNco, 'W1NCO', 'Net Control'),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.deepEqual(unrelatedNcoHistory.payload.messages, []);
+    const unrelatedLoggerHistory = await invoke(listDirectMessages, {
+        ...makeReq(userOtherLogger, 'W1LOG', 'Logger'),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.deepEqual(unrelatedLoggerHistory.payload.messages, []);
+
+    const unrelatedReaction = await invoke(toggleReaction, {
+        ...makeReq(userNco, 'W1NCO', 'Net Control', { emoji: '👍' }),
+        params: { id: netProfile.toString(), messageId: directSent.payload.message.id }
+    });
+    assert.equal(unrelatedReaction.status, 404);
+
+    const directImage = await invoke(uploadImage, {
+        ...makeReq(userOne, 'W1AAA', 'Alice'), body: png,
+        params: { id: netProfile.toString(), userId: userTwo.toString() },
+        get: header => header === 'content-type' ? 'image/png' : undefined
+    });
+    assert.equal(directImage.status, 201);
+    const directImageDoc = await ChatMessage.findById(directImage.payload.message.id);
+    const directImagePath = path.join(uploadDir, directImageDoc.attachment.storageName);
+    const invokeImage = async (userId, callSign) => {
+        let status = 200;
+        let payload;
+        const headers = {};
+        const res = {
+            status(code) { status = code; return this; },
+            json(body) { payload = body; return this; },
+            set(values) { Object.assign(headers, values); return this; },
+            send(body) { payload = body; return this; }
+        };
+        await serveImage({
+            ...makeReq(userId, callSign, callSign),
+            params: { id: netProfile.toString(), messageId: directImage.payload.message.id }
+        }, res);
+        return { status, payload, headers };
+    };
+    assert.equal((await invokeImage(userTwo, 'W1BBB')).status, 200);
+    assert.equal((await invokeImage(userNco, 'W1NCO')).status, 404);
+
+    const ignored = await invoke(setPrivateIgnore, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby', { ignored: true }),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.equal(ignored.payload.ignored, true);
+    const ignoredHistory = await invoke(listDirectMessages, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby'),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.deepEqual(ignoredHistory.payload.messages.map(message => message.text), ['Private reply']);
+    assert.equal((await invokeImage(userTwo, 'W1BBB')).status, 404);
+    const publicWhileIgnored = await invoke(listMessages, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby'),
+        res: { locals: { flexOpts: { awayInMs: 120000 } } }
+    });
+    assert.equal(publicWhileIgnored.payload.messages.some(message => message.callSign === 'W1AAA'), true);
+    const unignored = await invoke(setPrivateIgnore, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby', { ignored: false }),
+        params: { id: netProfile.toString(), userId: userOne.toString() }
+    });
+    assert.equal(unignored.payload.ignored, false);
+    assert.equal((await invokeImage(userTwo, 'W1BBB')).status, 200);
+    const forbiddenDirectEdit = await invoke(editMessage, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby', { text: 'Not my private message' }),
+        params: { id: netProfile.toString(), messageId: directSent.payload.message.id }
+    });
+    assert.equal(forbiddenDirectEdit.status, 403);
+    const editedDirect = await invoke(editMessage, {
+        ...makeReq(userOne, 'W1AAA', 'Alice', { text: 'Private hello edited' }),
+        params: { id: netProfile.toString(), messageId: directSent.payload.message.id }
+    });
+    assert.equal(editedDirect.status, 200);
+    assert.equal(editedDirect.payload.message.scope, 'direct');
+    const deletedDirectReply = await invoke(deleteMessage, {
+        ...makeReq(userTwo, 'W1BBB', 'Bobby'),
+        params: { id: netProfile.toString(), messageId: directReply.payload.message.id }
+    });
+    assert.equal(deletedDirectReply.status, 200);
+    assert.equal(deletedDirectReply.payload.message.deleted, true);
+
     const banTarget = await invoke(createMessage, makeReq(userTwo, 'W1BBB', 'Bob', { text: 'Ban target' }));
     const banned = await invoke(banMessageAuthor, {
         ...makeReq(userNco, 'W1NCO', 'Net Control', { reason: 'Test moderation' }),
@@ -218,7 +337,11 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     const cleared = await invoke(clearPublicChat, makeReq(userNco, 'W1NCO', 'Net Control'));
     assert.equal(cleared.status, 200);
     assert.equal(cleared.payload.cleared, true);
-    assert.equal(await ChatMessage.countDocuments({ netProfile, clearedAt: null }), 0);
+    assert.equal(await ChatMessage.countDocuments({
+        netProfile, clearedAt: null, $or: [{ scope: 'public' }, { scope: { $exists: false } }]
+    }), 0);
+    assert.equal(await ChatMessage.countDocuments({ netProfile, scope: 'direct', clearedAt: null }), 3);
+    assert.equal((await fs.promises.stat(directImagePath)).size, png.length);
     assert.equal((await ChatMessage.findById(otherMessage._id)).text, 'Other net must remain');
 
     } finally {

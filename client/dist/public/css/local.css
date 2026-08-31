@@ -72,6 +72,116 @@ body {
     color: #ff8b96;
 }
 
+.chat-conversation-bar {
+    position: relative;
+    z-index: 6;
+    display: flex;
+    min-height: 2rem;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.15rem 0 0.35rem;
+    border-bottom: 1px solid rgba(116, 198, 212, 0.18);
+}
+
+.chat-recipient-selector {
+    position: relative;
+    min-width: 0;
+}
+
+.chat-recipient-toggle,
+.chat-ignore-button {
+    padding: 0.2rem 0.4rem;
+    color: var(--chat-accent-bright);
+    background: rgba(116, 198, 212, 0.08);
+    border: 1px solid rgba(116, 198, 212, 0.45);
+    border-radius: 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.25;
+}
+
+.chat-recipient-toggle {
+    max-width: min(20rem, 65vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-recipient-toggle:hover,
+.chat-recipient-toggle:focus-visible,
+.chat-ignore-button:hover,
+.chat-ignore-button:focus-visible {
+    color: #fff;
+    border-color: var(--chat-accent-bright);
+    outline: none;
+}
+
+.chat-recipient-menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    display: grid;
+    width: min(24rem, calc(100vw - 2rem));
+    max-height: min(22rem, 55vh);
+    padding: 0.3rem;
+    overflow-y: auto;
+    background: #11191e;
+    border: 1px solid var(--chat-accent);
+    border-radius: 0.4rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.55);
+}
+
+.chat-recipient-menu[hidden] {
+    display: none;
+}
+
+.chat-recipient-choice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.45rem;
+    color: #e8f3f5;
+    background: transparent;
+    border: 0;
+    border-radius: 0.3rem;
+    text-align: left;
+}
+
+.chat-recipient-choice:hover,
+.chat-recipient-choice:focus-visible,
+.chat-recipient-choice[aria-current='true'] {
+    background: rgba(116, 198, 212, 0.18);
+    outline: none;
+}
+
+.chat-presence-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+}
+
+.chat-presence-dot.is-online { background: #43d17a; }
+.chat-presence-dot.is-offline { background: #7d8790; }
+
+.chat-recipient-unread,
+.chat-private-unread {
+    padding: 0.08rem 0.35rem;
+    color: #11191e;
+    background: #ffd166;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.chat-ignore-button {
+    margin-left: auto;
+    color: #ffb1b9;
+    border-color: rgba(255, 82, 99, 0.5);
+}
+
 .chat-clear-button:focus-visible {
     outline: 2px solid #ff8b96;
     outline-offset: 2px;

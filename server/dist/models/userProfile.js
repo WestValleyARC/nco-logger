@@ -113,7 +113,11 @@ const userProfileSchema = new Schema(
                     default: Date.now
                 }
             }
-        ]
+        ],
+        ignoredPrivateUsers: [{
+            type: Schema.Types.ObjectId,
+            ref: 'UserProfile'
+        }]
     },
     { timestamps: true }
 );

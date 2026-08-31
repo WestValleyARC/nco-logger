@@ -22,3 +22,15 @@ test('history and SSE races reconcile by stable message id', async () => {
     assert.equal(messages.size, 1);
     assert.equal(messages.get('one').text, 'updated');
 });
+
+test('private unread counts increment off-conversation and clear when opened', async () => {
+    const { recordPrivateUnread, clearPrivateUnread } = await loadState();
+    const counts = new Map();
+    recordPrivateUnread(counts, 'sender-a', true);
+    recordPrivateUnread(counts, 'sender-a', true);
+    recordPrivateUnread(counts, 'sender-b', false);
+    assert.equal(counts.get('sender-a'), 2);
+    assert.equal(counts.has('sender-b'), false);
+    clearPrivateUnread(counts, 'sender-a');
+    assert.equal(counts.has('sender-a'), false);
+});

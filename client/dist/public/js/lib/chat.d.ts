@@ -1,7 +1,13 @@
 import { LiveNetReactiveStore } from '#@client/lib/stores.js';
 export declare class ChatWidget extends HTMLElement {
     private readonly npid;
-    private messages;
+    private readonly publicMessages;
+    private readonly directConversations;
+    private readonly recipients;
+    private readonly unreadCounts;
+    private readonly scrollPositions;
+    private selectedRecipientId;
+    private inboxInitialized;
     private eventSource;
     private connectionAbort;
     private statusTimer;
@@ -22,6 +28,7 @@ export declare class ChatWidget extends HTMLElement {
     private maxMessageChars;
     private maxUploadBytes;
     private imageMimeTypes;
+    private get messages();
     private readonly handleDocumentPointerDown;
     private readonly handleDocumentKeyDown;
     private readonly handleWindowResize;
@@ -29,12 +36,21 @@ export declare class ChatWidget extends HTMLElement {
     disconnectedCallback(): void;
     private populateEmojiPicker;
     private renderEmojiChoices;
+    private toggleRecipientMenu;
+    private recipientLabel;
+    private renderRecipientControls;
+    private conversationKey;
+    private switchConversation;
+    private loadDirectHistory;
+    private toggleIgnore;
     private toggleEmojiPicker;
     private positionEmojiPicker;
     private insertEmoji;
     private connect;
     private fetchHistory;
     private applyLimits;
+    private updateRecipients;
+    private reconcileDirectMessages;
     private openEvents;
     private reloadHistory;
     private send;

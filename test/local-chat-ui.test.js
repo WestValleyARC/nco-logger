@@ -135,3 +135,19 @@ test('native server-backed pins are not hidden or replaced by NCO helper normali
     assert.doesNotMatch(normalize, /renderPinnedChatStrip/);
     assert.doesNotMatch(css, /\.nch-native-pin-control\s*\{[^}]*display:\s*none/s);
 });
+
+test('private chat keeps recipient, presence, unread, and ignore state inside the Chat module', () => {
+    const source = read('client/src/public/js/lib/chat.ts');
+    const css = read('client/dist/public/css/local.css');
+    assert.match(source, /To: Everyone ▾/);
+    assert.match(source, /Message \$\{selected\.callSign\} privately…/);
+    assert.match(source, /Message the net…/);
+    assert.match(source, /chat-recipient-unread/);
+    assert.match(source, /Ignore private messages/);
+    assert.match(source, /Message privately/);
+    assert.match(source, /clearPrivateUnread/);
+    assert.match(source, /direct\/\$\{encodeURIComponent\(recipientId\)\}\/messages/);
+    assert.match(css, /\.chat-presence-dot\.is-online\s*\{\s*background:\s*#43d17a/);
+    assert.match(css, /\.chat-presence-dot\.is-offline\s*\{\s*background:\s*#7d8790/);
+    assert.doesNotMatch(source, /WebSocket/);
+});

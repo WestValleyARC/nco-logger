@@ -3,9 +3,11 @@ const assert = require('node:assert/strict');
 const {
     cleanMessage, toPublicMessage, detectImageType, createMessage, editMessage, deleteMessage, uploadImage,
     toggleReaction, setMessagePin, banMessageAuthor, clearPublicChat, authorizeChatAction,
-    summarizeReactions, toggleReactionValue
+    summarizeReactions, toggleReactionValue, toChatMessage, canViewMessage, shouldDeliverMessage,
+    directConversationQuery, listDirectMessages, setPrivateIgnore, serveImage
 } = require('../server/dist/lib/localChat');
 const { chatMessageSchema } = require('../server/dist/models/chatMessage');
+const { userProfileSchema } = require('../server/dist/models/userProfile');
 
 test('chat content is reduced to safe plain text', () => {
     assert.equal(cleanMessage(' <script>alert(1)</script><b>Hello</b> '), 'Hello');
@@ -50,7 +52,7 @@ test('chat mutation handlers require authentication', async () => {
         return { status, payload };
     };
     for (const handler of [createMessage, editMessage, deleteMessage, uploadImage, toggleReaction,
-        setMessagePin, banMessageAuthor, clearPublicChat]) {
+        setMessagePin, banMessageAuthor, clearPublicChat, listDirectMessages, setPrivateIgnore, serveImage]) {
         const result = await invoke(handler, { params: { id: '507f1f77bcf86cd799439013', messageId: '507f1f77bcf86cd799439012' } });
         assert.equal(result.status, 401);
         assert.equal(result.payload.error, 'Authentication required');
@@ -150,4 +152,55 @@ test('chat message schema persists Phase 2 interaction state', () => {
     assert.ok(chatMessageSchema.path('pinnedAt'));
     assert.ok(chatMessageSchema.path('pinnedBy'));
     assert.ok(chatMessageSchema.path('clearedAt'));
+});
+
+test('direct messages serialize only for their sender and recipient regardless of role', () => {
+    const sender = '507f1f77bcf86cd799439011';
+    const recipient = '507f1f77bcf86cd799439012';
+    const unrelatedNco = '507f1f77bcf86cd799439013';
+    const message = {
+        _id: { toString: () => '507f1f77bcf86cd799439014' },
+        netProfile: { toString: () => '507f1f77bcf86cd799439015' },
+        userProfile: { toString: () => sender },
+        recipientUserProfile: { toString: () => recipient },
+        scope: 'direct', callSign: 'W1AAA', displayName: 'Alice', text: 'private',
+        createdAt: new Date(), editedAt: null, deletedAt: null, clearedAt: null, reactions: []
+    };
+    assert.equal(canViewMessage(message, sender), true);
+    assert.equal(canViewMessage(message, recipient), true);
+    assert.equal(canViewMessage(message, unrelatedNco), false);
+    assert.throws(() => toChatMessage(message, 'netcontrol', unrelatedNco), /non-participant/);
+    assert.throws(() => toChatMessage(message, 'netlogger', unrelatedNco), /non-participant/);
+    const recipientView = toChatMessage(message, 'netuser', recipient);
+    assert.equal(recipientView.scope, 'direct');
+    assert.equal(recipientView.conversationUserId, sender);
+    assert.equal(recipientView.canPin, false);
+    assert.equal(recipientView.canBan, false);
+    assert.equal(recipientView.canReply, true);
+});
+
+test('ignored private senders are suppressed without affecting public delivery or sender delivery', () => {
+    const sender = '507f1f77bcf86cd799439011';
+    const recipient = '507f1f77bcf86cd799439012';
+    const direct = { scope: 'direct', userProfile: sender, recipientUserProfile: recipient };
+    assert.equal(shouldDeliverMessage(direct, recipient, new Set()), true);
+    assert.equal(shouldDeliverMessage(direct, recipient, new Set([sender])), false);
+    assert.equal(shouldDeliverMessage(direct, sender, new Set([recipient])), true);
+    assert.equal(shouldDeliverMessage(direct, '507f1f77bcf86cd799439013', new Set()), false);
+    assert.equal(shouldDeliverMessage({ scope: 'public', userProfile: sender }, recipient, new Set([sender])), true);
+});
+
+test('direct conversation queries are restricted to the exact two participants', () => {
+    const query = directConversationQuery('507f1f77bcf86cd799439010', '507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012');
+    assert.equal(query.scope, 'direct');
+    assert.deepEqual(query.$or, [
+        { userProfile: '507f1f77bcf86cd799439011', recipientUserProfile: '507f1f77bcf86cd799439012' },
+        { userProfile: '507f1f77bcf86cd799439012', recipientUserProfile: '507f1f77bcf86cd799439011' }
+    ]);
+});
+
+test('Phase 3 schema stores direct scope, recipient identity, and personal ignore preferences', () => {
+    assert.ok(chatMessageSchema.path('scope'));
+    assert.ok(chatMessageSchema.path('recipientUserProfile'));
+    assert.ok(userProfileSchema.path('ignoredPrivateUsers'));
 });
