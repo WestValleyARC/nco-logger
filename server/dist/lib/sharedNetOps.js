@@ -83,6 +83,12 @@ async function applyDeferredQrzEnrichment({ dia, liveNetId, callSign, baseline, 
                 { $set: { [interactionField]: value } }
             );
         }
+        if (result?.photo) {
+            await StationInteraction.updateOne(
+                { _id: dia._id, photo: baseline.photo },
+                { $set: { photo: result.photo } }
+            );
+        }
         await StationInteraction.updateOne(
             { _id: dia._id },
             { $set: { qrzLookupStatus: status, qrzLookupAt: new Date() } }
@@ -422,7 +428,7 @@ async function checkStateUnlocked({
             dia,
             liveNetId: liveNet._id,
             callSign: pending.callSign,
-            baseline: { displayName: dia.displayName ?? null, location: dia.location ?? null },
+            baseline: { displayName: dia.displayName ?? null, location: dia.location ?? null, photo: dia.photo ?? null },
             lookup: pending.lookup,
             db
         });

@@ -3,7 +3,7 @@
 const mongoose = require('mongoose');
 const { ResponseHandler } = require('../lib/responseUtils');
 const { logger } = require('../lib/logger');
-const { wellFormedCall } = require('../lib/serverUtils');
+const { wellFormedCall, qrzLookup } = require('../lib/serverUtils');
 const netOps = require('../lib/sharedNetOps');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
@@ -58,6 +58,18 @@ async function setCheckedState({ req, res, liveNet, source, target, state, highl
         metrics: timing
     });
     return { action: 'checkState', stations: result, timing };
+}
+
+async function lookupQrzProfile({ target, flexOpts, qrzLookupFn = qrzLookup }) {
+    const startedAt = performance.now();
+    const lookup = await qrzLookupFn(target, flexOpts);
+    return {
+        action: 'qrzProfile',
+        callSign: target,
+        qrzStatus: lookup.outcome,
+        qrzLookupMs: Math.round((performance.now() - startedAt) * 100) / 100,
+        profile: lookup.result || null
+    };
 }
 
 async function toggleRole({ req, liveNet, source, target, desiredRole }) {
@@ -200,6 +212,8 @@ async function runAction(req, res) {
             const owner = user ? (await netOps.netOwnerCheck({ npid: netProfile._id, upid: user._id })).confirmed : false;
             return { action, callSign, ...detail, owner };
         }
+        case 'qrzProfile':
+            return lookupQrzProfile({ target, flexOpts: res.locals.flexOpts });
         case 'loggerState':
             requireManager(source);
             liveNet.loggerState = sanitizeLoggerState(req.body?.state);
@@ -228,4 +242,4 @@ async function ncoLoggerAction(req, res) {
     }
 }
 
-module.exports = { ncoLoggerAction, sanitizeLoggerState, setCheckedState };
+module.exports = { ncoLoggerAction, sanitizeLoggerState, setCheckedState, lookupQrzProfile };

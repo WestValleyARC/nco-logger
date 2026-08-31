@@ -74,7 +74,9 @@ function harness({ known = true, checkedState = false, localProfile = null, save
     const db = { model: name => models[name] || {} };
     const qrzLookupFn = async () => {
         if (qrzDelayMs) await delay(qrzDelayMs);
-        return { result: { displayName: 'QRZ Operator', location: 'Phoenix, AZ' }, atQuota: false, outcome: 'success' };
+        return { result: {
+            displayName: 'QRZ Operator', location: 'Phoenix, AZ', photo: 'https://files.qrz.com/q/w1abc/photo.jpg'
+        }, atQuota: false, outcome: 'success' };
     };
 
     return {
@@ -173,6 +175,7 @@ test('unknown station with slow QRZ logs first and enriches later', async () => 
     await Promise.all(deferredTasks);
     assert.equal(setup.savedNewStations[0].displayName, 'QRZ Operator');
     assert.equal(setup.savedNewStations[0].location, 'Phoenix, AZ');
+    assert.equal(setup.savedNewStations[0].photo, 'https://files.qrz.com/q/w1abc/photo.jpg');
     assert.equal(setup.savedNewStations[0].qrzLookupStatus, 'later-success');
 });
 

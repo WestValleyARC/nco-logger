@@ -70,8 +70,8 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
 
   const stateKey = `ncs-helper:${npid}`;
   const layoutKey = "ncs-helper:layout";
-  const qrzUserKey = "ncs-helper:qrz-user";
-  const qrzAuthKey = "ncs-helper:qrz-auth";
+  const legacyQrzUserKey = "ncs-helper:qrz-user";
+  const legacyQrzAuthKey = "ncs-helper:qrz-auth";
   const relayTokenKey = "ncs-helper:relay-token";
   const sharedProfileKey = "ncs-helper:shared-profiles";
   const selfCall = () =>
@@ -94,9 +94,6 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
   const noteDrafts = new Map();
   const avatarSourceCache = new Map();
   const resolvedAvatarDataUrls = new Map();
-  let qrzSessionKey = "";
-  let qrzUsername = "";
-  let qrzPassword = "";
   let relayToken = "";
   let relayConnectionState = "unavailable";
   let qrzLookupRunning = false;
@@ -234,10 +231,6 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
       chatFontPreset: normalizeFontPreset(local.chatFontPreset),
       helpFontPreset: normalizeFontPreset(local.helpFontPreset)
     }
-  });
-  const storeQrzUsername = () => browserStorage.set({ [qrzUserKey]: qrzUsername });
-  const storeQrzAuth = () => browserStorage.set({
-    [qrzAuthKey]: { username: qrzUsername, password: qrzPassword }
   });
   const storeSharedProfiles = () => browserStorage.set({ [sharedProfileKey]: sharedProfiles });
 
@@ -380,12 +373,6 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     } catch {
       return "";
     }
-  };
-
-  const maskedPasswordHint = value => {
-    const password = String(value || "");
-    if (!password) return "";
-    return "•".repeat(Math.min(12, Math.max(8, password.length)));
   };
 
   async function fetchNet() {
@@ -572,79 +559,29 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     }
   }
 
-  const xmlText = (doc, name) =>
-    doc.getElementsByTagNameNS("*", name)[0]?.textContent?.trim() ||
-    doc.getElementsByTagName(name)[0]?.textContent?.trim() || "";
-
-  async function qrzLogin() {
-    const username = normalizeCall(panel?.querySelector("[data-role='qrz-user']")?.value || qrzUsername);
-    const password = panel?.querySelector("[data-role='qrz-password']")?.value || qrzPassword;
-    if (!username || !password) throw new Error("Enter your QRZ username and password under QRZ Setup.");
-
-    qrzUsername = username;
-    qrzPassword = password;
-    storeQrzUsername();
-    const body = new URLSearchParams({
-      username,
-      password,
-      agent: `NCOHelperByKE7WIL-${VERSION}`
-    });
-    const response = await fetch("https://xmldata.qrz.com/xml/current/", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body
-    });
-    if (!response.ok) throw new Error(`QRZ login failed (${response.status}).`);
-    const doc = new DOMParser().parseFromString(await response.text(), "application/xml");
-    const error = xmlText(doc, "Error");
-    if (error) throw new Error(`QRZ: ${error}`);
-    qrzSessionKey = xmlText(doc, "Key");
-    if (!qrzSessionKey) throw new Error(xmlText(doc, "Message") || "QRZ did not return a session key.");
-    const alert = xmlText(doc, "Alert");
-    const passwordInput = panel?.querySelector("[data-role='qrz-password']");
-    if (passwordInput) passwordInput.value = "";
-    refreshQrzPasswordHint();
-    storeQrzAuth();
-    if (alert) setStatus(`QRZ alert: ${alert}`, "warning");
-  }
-
-  async function lookupQrz(callSign, allowSessionRetry = true, options = {}) {
+  async function lookupQrz(callSign, options = {}) {
     const { silent = false } = options;
     const call = normalizeCall(callSign || panel?.querySelector("[data-role='callsign']")?.value);
     if (!call) return setStatus("Enter a callsign first.", "error");
     if (!silent) setStatus(`Looking up ${call} on QRZ…`, "working");
     try {
-      if (!qrzSessionKey) await qrzLogin();
-      const url = new URL("https://xmldata.qrz.com/xml/current/");
-      url.searchParams.set("s", qrzSessionKey);
-      url.searchParams.set("callsign", call);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`QRZ lookup failed (${response.status}).`);
-      const doc = new DOMParser().parseFromString(await response.text(), "application/xml");
-      const error = xmlText(doc, "Error");
-      if (error) {
-        if (/session|timeout|key/i.test(error) && allowSessionRetry && qrzPassword) {
-          qrzSessionKey = "";
-          await qrzLogin();
-          return lookupQrz(call, false, options);
-        }
-        if (/session|timeout|key/i.test(error)) {
-          qrzSessionKey = "";
-          storeQrzAuth();
-        }
-        throw new Error(`QRZ: ${error}`);
-      }
-      const city = xmlText(doc, "addr2");
-      const state = xmlText(doc, "state");
-      const country = xmlText(doc, "country");
-      const location = formatLocation([city, state].filter(Boolean).join(", ") || country);
-      const firstName = formatName(xmlText(doc, "fname").split(/\s+/)[0] || "");
-      const lastName = formatName(xmlText(doc, "name"));
-      const qrzMessage = xmlText(doc, "Message");
-      const displayName = [firstName, lastName].filter(Boolean).join(" ");
-      const photo = safeImageUrl(xmlText(doc, "image"));
+      const response = await fetch(`/api/nco-logger/${npid}`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ action: "qrzProfile", callSign: call })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.errorMessage || `Server QRZ lookup failed (${response.status}).`);
+      const result = data.message || {};
+      const profile = result.profile;
+      const qrzStatus = String(result.qrzStatus || "service-error");
+      if (!profile || typeof profile !== "object") throw new Error(`Server QRZ outcome: ${qrzStatus}.`);
+      const location = formatLocation(profile.location);
+      const displayName = formatName(profile.displayName);
+      const photo = safeImageUrl(profile.photo);
       if (!location && !displayName && !photo) {
-        throw new Error(xmlText(doc, "Message") || `QRZ returned no profile information for ${call}.`);
+        throw new Error(`QRZ returned no profile information for ${call}.`);
       }
 
       const current = detailsFor(call);
@@ -671,8 +608,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
       if (normalizeCall(panel?.querySelector("[data-role='callsign']")?.value) === call) loadEditor(call);
       renderQueue();
       if (silent && call === selfCall() && !photo && panel?.querySelector("[data-role='status']")?.dataset.type !== "success") {
-        const reason = qrzMessage ? `: ${qrzMessage}` : ".";
-        setStatus(`QRZ returned no photo for ${call}${reason} Using the default avatar.`, "warning");
+        setStatus(`QRZ returned no photo for ${call}. Using the default avatar.`, "warning");
       }
       if (!silent) {
         const summary = [displayName, location].filter(Boolean).join(" · ") || `${call} profile loaded.`;
@@ -686,7 +622,6 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
   }
 
   function queueMissingQrzPhotos() {
-    if (!qrzPassword && !qrzSessionKey) return;
     const staleBefore = Date.now() - 24 * 60 * 60 * 1000;
     const priority = station => {
       if (normalizeCall(station.callSign) === selfCall()) return 0;
@@ -711,10 +646,10 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
   async function processQrzLookupQueue() {
     if (qrzLookupRunning || !qrzLookupQueue.length) return;
     qrzLookupRunning = true;
-    while (qrzLookupQueue.length && (qrzPassword || qrzSessionKey)) {
+    while (qrzLookupQueue.length) {
       const call = qrzLookupQueue.shift();
       qrzAttemptedCalls.add(call);
-      await lookupQrz(call, true, { silent: true });
+      await lookupQrz(call, { silent: true });
       await new Promise(resolve => window.setTimeout(resolve, 250));
     }
     qrzLookupRunning = false;
@@ -1470,16 +1405,6 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     syncNativeChatVisibility();
     photoTrigger?.focus?.();
     photoTrigger = null;
-  }
-
-  function refreshQrzPasswordHint() {
-    const input = panel?.querySelector("[data-role='qrz-password']");
-    const hint = panel?.querySelector("[data-role='qrz-password-hint']");
-    if (!input || !hint) return;
-    const masked = maskedPasswordHint(qrzPassword);
-    input.placeholder = masked;
-    hint.textContent = masked ? `Saved password: ${masked}` : "No QRZ password saved.";
-    hint.dataset.saved = masked ? "true" : "false";
   }
 
   function detailsFor(callSign) {
@@ -3702,10 +3627,10 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             </header>
             <div class="nch-help-content">
               <section><h3>Getting started</h3><p>Open an active WVARC net. The logger detects your current role and opens in NCO, Logger, Relay, or Viewer Mode.</p></section>
-              <section><h3>Interface modules</h3><p>Station Controls handles callsign entry and permitted net actions. Chat docks the native conversation. Active Log shows connected stations. Checked Out shows completed contacts. Lurkers shows visible visitors who are not yet logged. QRZ Setup is available from Menu.</p></section>
+              <section><h3>Interface modules</h3><p>Station Controls handles callsign entry and permitted net actions. Chat docks the native conversation. Active Log shows connected stations. Checked Out shows completed contacts. Lurkers shows visible visitors who are not yet logged.</p></section>
               <section><h3>Modes and permissions</h3><ul><li><strong>NCO:</strong> full permitted check-in, checkout, editing, role, handoff, ordering, and confirmed Close Net controls.</li><li><strong>Logger:</strong> permitted station management, Undo Check-in for non-NCO stations, and Relay assignment, without NCO-only Close Net, undoing the NCO, Logger assignment, or NCO handoff.</li><li><strong>Relay and Viewer:</strong> read-only station lists, chat, private notes, layout controls, and the operator's own hand control.</li></ul></section>
               <section><h3>Checking stations in</h3><p>Enter a callsign and press Enter. Mobile, Short Time, Portable, and In &amp; Out perform the same QRZ lookup and real check-in while adding the selected status. Undo Check-in removes the callsign currently entered in Station Controls from the native net log and returns that station to Lurkers if they are still watching. Logger may use Undo Check-in except against the NCO. Close Net remains NCO-only and sends nothing until the confirmation button is selected.</p></section>
-              <section><h3>QRZ and photos</h3><p>New-station check-ins use the server's configured QRZ integration. Profile photos use the returned station image and fall back to the bundled default avatar.</p></section>
+              <section><h3>QRZ and photos</h3><p>All callsign and profile-photo lookups use the server's shared QRZ integration. Personal QRZ credentials are not requested or stored in the browser. Profile photos use the returned station image and fall back to the bundled default avatar.</p></section>
               <section><h3>Station rows</h3><p>Move the pointer anywhere over a station row, or focus it with the keyboard, to change the row color and open its available controls without making the row taller. Active Log controls use about half of the row width and float over the right side of following rows. Right-click a row to pin or unpin its controls; Shift-right-click keeps the browser menu. Checked Out and Lurker rows use small inline controls that temporarily replace the row text instead of covering other stations. Active tags and role tags are labeled and color matched; select a tag’s × to clear it. There are no colored edge tabs.</p></section>
               <section data-role="slash-command-help">${slashHelpHtml()}</section>
               <section><h3>Notes, names, and locations</h3><p>Use Note in an Active Log row’s hover tray to edit a private one-line note; saved notes remain visible. Notes are not synchronized. Edit Station changes only callsign, name, and location; Enter saves and Escape cancels. Name and location overrides saved by the authenticated NCO or Logger persist across nets and sessions and are shared with every installed helper, including Relay and Viewer, while remaining helper-only. Names, suffixes, and locations are formatted consistently.</p></section>
@@ -4011,33 +3936,6 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         startSync();
         refreshRelaySetup();
         setStatus("Saved relay token removed. Local helper operation continues.", "success");
-      }
-      if (target.dataset.role === "qrz-login") {
-        setStatus("Signing in to QRZ…", "working");
-        try {
-          await qrzLogin();
-          setStatus("QRZ login saved and ready.", "success");
-          const qrzMenu = panel.querySelector("details.nch-qrz");
-          if (qrzMenu) qrzMenu.open = false;
-          qrzAttemptedCalls.clear();
-          latestStations.forEach(station => {
-            const call = normalizeCall(station.callSign);
-            const current = detailsFor(call);
-            local.details[call] = { ...current, qrzPhotoChecked: false, qrzCheckedAt: 0 };
-          });
-          storageSet();
-          queueMissingQrzPhotos();
-        } catch (error) {
-          setStatus(error.message || String(error), "error");
-        }
-      }
-      if (target.dataset.role === "forget-qrz") {
-        qrzPassword = "";
-        qrzSessionKey = "";
-        browserStorage.remove(qrzAuthKey);
-        panel.querySelector("[data-role='qrz-password']").value = "";
-        refreshQrzPasswordHint();
-        setStatus("Saved QRZ login removed.", "success");
       }
       if (target.dataset.quickTag) {
         await lookupAndCheckIn(panel.querySelector("[data-role='callsign']").value, target.dataset.quickTag);
@@ -4518,20 +4416,15 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     }
   }
 
-  const qrzStorageGet = () => new Promise(resolve =>
-    browserStorage.get([qrzUserKey, qrzAuthKey], resolve)
-  );
   const relayStorageGet = () => new Promise(resolve =>
     browserStorage.get([relayTokenKey], resolve)
   );
   window.addEventListener("resize", handleWindowResize);
   window.addEventListener("keydown", handleActionHotkey, true);
-  Promise.all([qrzStorageGet(), relayStorageGet(), storageGet()]).then(async ([qrzData, relayData, saved]) => {
-    const savedAuth = qrzData[qrzAuthKey] || {};
-    qrzUsername = normalizeCall(savedAuth.username || qrzData[qrzUserKey] || selfCall());
-    qrzPassword = typeof savedAuth.password === "string" ? savedAuth.password : "";
+  Promise.all([relayStorageGet(), storageGet()]).then(async ([relayData, saved]) => {
+    browserStorage.remove(legacyQrzUserKey);
+    browserStorage.remove(legacyQrzAuthKey);
     relayToken = globalThis.NCOHelperRelay?.validToken(relayData[relayTokenKey]) ? relayData[relayTokenKey] : "";
-    qrzSessionKey = "";
     sharedProfiles = Object.fromEntries(Object.entries(saved.sharedProfiles || {}).flatMap(([rawCall, value]) => {
       const call = normalizeCall(rawCall);
       if (!/^[A-Z0-9/-]{2,15}$/.test(call) || !value || typeof value !== "object") return [];

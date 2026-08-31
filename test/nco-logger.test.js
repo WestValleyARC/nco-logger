@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const netOps = require('../server/dist/lib/sharedNetOps');
-const { sanitizeLoggerState, setCheckedState } = require('../server/dist/controllers/ncoLoggerController');
+const { sanitizeLoggerState, setCheckedState, lookupQrzProfile } = require('../server/dist/controllers/ncoLoggerController');
 
 test('NCO logger state keeps shared operational fields and excludes private notes', () => {
     const state = sanitizeLoggerState({
@@ -62,4 +62,25 @@ test('check-state controller returns structured path timing from sharedNetOps', 
     assert.equal(result.stations[0].checkedState, true);
     assert.equal(result.timing.totalMs, 12.5);
     assert.equal(result.timing.stations[0].path, 'existing-station-check-in');
+});
+
+test('browser QRZ profile action returns only sanitized server lookup data and status', async () => {
+    const result = await lookupQrzProfile({
+        target: 'W1ABC',
+        flexOpts: { qrzDataReqTimeoutMs: 1000 },
+        qrzLookupFn: async () => ({
+            outcome: 'success', atQuota: false,
+            result: {
+                callSign: 'W1ABC', displayName: 'Test Operator', location: 'Phoenix, AZ',
+                photo: 'https://files.qrz.com/q/w1abc/photo.jpg'
+            }
+        })
+    });
+
+    assert.equal(result.action, 'qrzProfile');
+    assert.equal(result.qrzStatus, 'success');
+    assert.equal(result.profile.displayName, 'Test Operator');
+    assert.equal(result.profile.photo, 'https://files.qrz.com/q/w1abc/photo.jpg');
+    assert.equal(typeof result.qrzLookupMs, 'number');
+    assert.equal(JSON.stringify(result).includes('session'), false);
 });

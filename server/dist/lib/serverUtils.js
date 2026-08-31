@@ -36,7 +36,9 @@ let qrzSessionKey = null;
 let qrzInQuotaWait = 0;
 let qrzReqPrevQuota;
 let qrzAuthenticationPromise = null;
+let qrzAuthenticationRejectedUntil = 0;
 const qrzLookupPromises = new Map();
+const QRZ_AUTH_REJECTION_COOLDOWN_MS = 5 * 60 * 1000;
 const REQ_LOGIN = 0x0001;
 const REQ_CALLSIGN = 0x0010;
 const REQ_NETOWNER = 0x0100;
@@ -259,6 +261,14 @@ const resolveLocation = async ({ lat, lon }) => {
 };
 
 const qrzResponse = (result, outcome, atQuota = false) => ({ result, atQuota, outcome });
+const qrzImageUrl = value => {
+    try {
+        const url = new URL(String(value || ''));
+        return url.protocol === 'https:' ? url.href : null;
+    } catch {
+        return null;
+    }
+};
 const qrzFailureOutcome = err => {
     if (err?.code === 'QRZ_MALFORMED') return 'malformed-response';
     if (['ECONNABORTED', 'ETIMEDOUT'].includes(err?.code) || /timeout/i.test(String(err?.message || ''))) return 'timeout';
@@ -283,7 +293,8 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
         if (cached && Date.now() - new Date(cached.updatedAt).getTime() < ttlMs) {
             logger.info(`qrzLookup(${callSign}): cache hit`);
             const result = cached.toObject();
-            return qrzResponse({ callSign: result.callSign, displayName: result.displayName, location: result.location, lat: result.geo?.coordinates?.[1], lon: result.geo?.coordinates?.[0] }, 'success-cache');
+            return qrzResponse({ callSign: result.callSign, displayName: result.displayName, location: result.location,
+                photo: qrzImageUrl(result.photo), lat: result.geo?.coordinates?.[1], lon: result.geo?.coordinates?.[0] }, 'success-cache');
         }
         if (cached) await cached.deleteOne();
     } catch (err) {
@@ -311,6 +322,9 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
     };
     const authenticate = async refresh => {
         if (qrzSessionKey && !refresh) return qrzSessionKey;
+        if (Date.now() < qrzAuthenticationRejectedUntil) {
+            return { key: null, outcome: 'auth-session-failure' };
+        }
         if (!qrzAuthenticationPromise) {
             qrzAuthenticationPromise = (async () => {
                 try {
@@ -321,6 +335,7 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
                     }, qrzSessionReqTimeoutMs);
                     if (session.Error || !session.Key) {
                         qrzSessionKey = null;
+                        qrzAuthenticationRejectedUntil = Date.now() + QRZ_AUTH_REJECTION_COOLDOWN_MS;
                         logger.warn('QRZ authentication rejected');
                         return { key: null, outcome: 'auth-session-failure' };
                     }
@@ -332,6 +347,7 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
                         return { key: null, outcome: 'quota' };
                     }
                     qrzSessionKey = String(session.Key);
+                    qrzAuthenticationRejectedUntil = 0;
                     logger.info('QRZ session established');
                     return { key: qrzSessionKey, outcome: 'success' };
                 } catch (err) {
@@ -381,21 +397,24 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
                 logger.warn(`qrzLookup(${callSign}): QRZ returned an error`);
                 return qrzResponse(null, 'service-error');
             }
-            const displayName = nameCase(station.nickname || station.name_fmt || '');
+            const displayName = nameCase(station.nickname || station.name_fmt ||
+                [station.fname, station.name].filter(Boolean).join(' ') || '');
             const country = String(station.country || '');
             const city = String(station.addr2 || '');
             const state = String(station.state || '');
             const location = country.includes('United States')
                 ? [city && toTitleCase(city), state && state.toUpperCase()].filter(Boolean).join(', ')
                 : [city && toTitleCase(city), country && `(${country})`].filter(Boolean).join(' ');
-            if (!displayName && !location) return qrzResponse(null, 'no-data');
+            const photo = qrzImageUrl(station.image);
+            if (!displayName && !location && !photo) return qrzResponse(null, 'no-data');
             const lat = Number(station.lat);
             const lon = Number(station.lon);
             const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);
-            const cacheRecord = { callSign, displayName, location };
+            const cacheRecord = { callSign, displayName, location, photo };
             if (hasCoordinates) cacheRecord.geo = { type: 'Point', coordinates: [lon, lat] };
             await QrzCache.findOneAndUpdate({ callSign }, cacheRecord, { upsert: true, new: true, setDefaultsOnInsert: true });
-            return qrzResponse({ callSign, displayName, location, lat: hasCoordinates ? lat : undefined, lon: hasCoordinates ? lon : undefined }, 'success');
+            return qrzResponse({ callSign, displayName, location, photo,
+                lat: hasCoordinates ? lat : undefined, lon: hasCoordinates ? lon : undefined }, 'success');
         } catch (err) {
             lastOutcome = qrzFailureOutcome(err);
             logger.warn(`qrzLookup(${callSign}): request unavailable (attempt ${attempt + 1})`);
@@ -441,6 +460,7 @@ const resetQrzSessionForTests = () => {
     qrzInQuotaWait = 0;
     qrzReqPrevQuota = undefined;
     qrzAuthenticationPromise = null;
+    qrzAuthenticationRejectedUntil = 0;
     qrzLookupPromises.clear();
 };
 

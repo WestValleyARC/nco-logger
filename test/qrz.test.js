@@ -133,6 +133,32 @@ test('malformed QRZ response is distinguished', async t => {
     assert.equal(result.outcome, 'malformed-response');
 });
 
+test('successful lookup accepts current QRZ name and image fields', async t => {
+    let call = 0;
+    t.mock.method(axios, 'get', async () => ({
+        data: call++ === 0 ? authXml() : lookupXml(
+            '<Callsign><fname>Fred L</fname><name>Lloyd</name><addr2>St Louis</addr2><state>MO</state>' +
+            '<country>United States</country><image>https://files.qrz.com/q/aa7bq/aa7bq.jpg</image></Callsign>' +
+            '<Session><Key>SESSION</Key><Count>2</Count></Session>'
+        )
+    }));
+    const result = await qrzLookup('AA7BQ', options, fakeDb(new Map()));
+    assert.equal(result.outcome, 'success');
+    assert.match(result.result.displayName, /Fred.*Lloyd/i);
+    assert.equal(result.result.location, 'St Louis, MO');
+    assert.equal(result.result.photo, 'https://files.qrz.com/q/aa7bq/aa7bq.jpg');
+});
+
+test('rejected credentials enter a bounded cooldown instead of repeatedly authenticating', async t => {
+    const get = t.mock.method(axios, 'get', async () => ({
+        data: '<QRZDatabase><Session><Error>Username/password incorrect</Error></Session></QRZDatabase>'
+    }));
+    const db = fakeDb(new Map());
+    assert.equal((await qrzLookup('W1ABC', options, db)).outcome, 'auth-session-failure');
+    assert.equal((await qrzLookup('K7XYZ', options, db)).outcome, 'auth-session-failure');
+    assert.equal(get.mock.callCount(), 1);
+});
+
 test('parallel lookups for one callsign share authentication and lookup work', async t => {
     let call = 0;
     t.mock.method(axios, 'get', async () => {
