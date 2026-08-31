@@ -119,9 +119,8 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(css, /@media \(hover: none\)[\s\S]*\.chat-message-actions/);
     assert.match(css, /\.chat-message-pinned\s*\{/);
     assert.match(css, /\.chat-reaction-chip\.is-mine\s*\{/);
-    assert.match(source, /classList\.toggle\('has-pin-action', message\.canPin\)/);
-    assert.match(css, /\.chat-message-actions\.has-pin-action\s*\{[^}]*opacity:\s*1[^}]*pointer-events:\s*auto/s);
-    assert.match(css, /has-pin-action > \.chat-message-action:not\(\.chat-action-pin\)\s*\{[^}]*display:\s*none/s);
+    assert.doesNotMatch(source, /has-pin-action/);
+    assert.match(css, /\.chat-message:hover \.chat-message-actions,[\s\S]*opacity:\s*1[\s\S]*pointer-events:\s*auto/s);
 });
 
 test('native server-backed pins are not hidden or replaced by NCO helper normalization', () => {
