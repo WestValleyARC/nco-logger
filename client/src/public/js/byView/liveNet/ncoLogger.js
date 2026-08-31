@@ -676,7 +676,7 @@
     chatImageHost = null;
     const chat = document.querySelector("hl-chat.nch-chat-docked");
     chat?.classList.remove("nch-chat-docked", "nch-chat-floating", "nch-chat-suspended");
-    ["--nch-chat-left", "--nch-chat-top", "--nch-chat-width", "--nch-chat-height", "--nch-font-adjust"].forEach(property =>
+    ["--nch-chat-left", "--nch-chat-top", "--nch-chat-width", "--nch-chat-height", "--nch-chat-font-size", "--nch-chat-composer-font-size", "--nch-chat-ui-font-size"].forEach(property =>
       chat?.style.removeProperty(property)
     );
   }
@@ -692,9 +692,10 @@
     local.chatFontPreset = chatPreset;
     local.helpFontPreset = helpPreset;
     panel?.style.setProperty("--nch-font-adjust", helperFontAdjustments[helperPreset]);
-    nativeChat()?.style.setProperty("--nch-font-adjust", helperFontAdjustments[helperPreset]);
+    nativeChat()?.style.removeProperty("--nch-font-adjust");
     nativeChat()?.style.setProperty("--nch-chat-font-size", `${CHAT_FONT_SIZES[chatPreset]}px`);
     nativeChat()?.style.setProperty("--nch-chat-composer-font-size", `${Math.max(11, CHAT_FONT_SIZES[chatPreset] - 1)}px`);
+    nativeChat()?.style.setProperty("--nch-chat-ui-font-size", `${Math.max(10, CHAT_FONT_SIZES[chatPreset] - 3)}px`);
     panel?.style.setProperty("--nch-help-font-size", `${HELP_FONT_SIZES[helpPreset]}px`);
     panel?.querySelectorAll("[data-helper-font]").forEach(button => {
       button.setAttribute("aria-pressed", String(button.dataset.helperFont === helperPreset));

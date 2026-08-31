@@ -31,11 +31,17 @@ only `kind`, `mimeType`, `size`, and an authenticated same-origin `url`; the sto
 never returned. Native `EventSource` reconnects automatically. Errors return
 `{ "endpointVersion": "1.0", "error": "safe message" }` with an appropriate HTTP status.
 
-The compact categorized emoji picker inserts ordinary Unicode and requires no external script or
-provider. Chat supports text, images, message editing, message deletion, and live SSE updates.
-Selecting an image uploads it immediately and shows an explicit uploading, success, or failure
-status. The browser reconciles history after every SSE connection and deduplicates POST/SSE races by
-stable message ID.
+The floating emoji picker provides searchable Smileys, People, Animals, Food, Activities, Travel,
+Objects, Symbols, and Flags categories. It inserts ordinary Unicode at the current caret or
+selection and requires no external script or provider. Chat supports text, images, message editing,
+message deletion, and live SSE updates. Selecting an image uploads it immediately and shows an
+explicit uploading, success, or failure status. Posted images render as compact, contained
+thumbnails. Activating a thumbnail opens an in-page lightbox with close and authenticated download
+controls; Escape closes it and returns focus to the thumbnail. The browser reconciles history after
+every SSE connection and deduplicates POST/SSE races by stable message ID.
+
+The NCO Logger display settings maintain separate type scales for the Logger helpers and native
+Chat. Changing one does not alter or compound the other.
 
 ## Security and lifecycle
 

@@ -2,15 +2,8 @@ import { createLogger } from '#@client/lib/logger.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
 import { reconcileChatMessages, sortChatMessages } from '#@client/lib/chatState.js';
+import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
 const logger = createLogger('lib/chat.ts');
-const CHAT_EMOJI = [
-    { label: 'Faces', emoji: ['😀', '😃', '😄', '😁', '😂', '😊', '🙂', '😉', '😍', '🤩', '😎', '🤔', '😕', '😮', '😢', '😡'] },
-    { label: 'Hands', emoji: ['👍', '👎', '👌', '✋', '👋', '🙌', '👏', '🙏', '🤝', '💪'] },
-    { label: 'Status', emoji: ['✅', '☑️', '❌', '⚠️', '🚨', 'ℹ️', '❤️', '💚', '💙', '💯', '🎉'] },
-    { label: 'Radio and tech', emoji: ['📻', '🎙️', '📡', '🛰️', '📞', '📱', '💻', '🔋', '🔌', '⚡'] },
-    { label: 'Time and weather', emoji: ['⏰', '⏱️', '🕐', '🕑', '🕒', '☀️', '🌧️', '⛈️', '🌪️', '🔥', '❄️', '🌡️'] },
-    { label: 'Net symbols', emoji: ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣', '#️⃣', '*️⃣', '➕', '➖', '➡️', '⬆️', '⬇️'] }
-];
 const isLocalChatMessage = (value) => {
     if (!value || typeof value !== 'object')
         return false;
@@ -45,9 +38,56 @@ export class ChatWidget extends HTMLElement {
     editingMessageId = null;
     editDraft = '';
     savingEdit = false;
+    emojiCategory = CHAT_EMOJI_CATEGORIES[0]?.id ?? '';
+    lightboxTrigger = null;
+    lightboxUrl = '';
+    lightboxMimeType = '';
+    previousBodyOverflow = '';
     maxMessageChars = 2000;
     maxUploadBytes = 5 * 1024 * 1024;
     imageMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    handleDocumentPointerDown = (event) => {
+        const target = event.target;
+        if (!(target instanceof Node))
+            return;
+        const picker = this.querySelector('.chat-emoji-picker');
+        const toggle = this.querySelector('.chat-emoji-button');
+        if (picker && !picker.hidden && !picker.contains(target) && !toggle?.contains(target)) {
+            this.toggleEmojiPicker(false);
+        }
+    };
+    handleDocumentKeyDown = (event) => {
+        const lightbox = this.querySelector('.chat-lightbox');
+        if (lightbox && !lightbox.hidden) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                this.closeLightbox();
+            }
+            else if (event.key === 'Tab') {
+                const controls = Array.from(lightbox.querySelectorAll('button:not([disabled])'));
+                const first = controls[0];
+                const last = controls[controls.length - 1];
+                if (first && last && (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+                    event.preventDefault();
+                    (event.shiftKey ? last : first).focus();
+                }
+            }
+            return;
+        }
+        if (event.key !== 'Escape')
+            return;
+        const picker = this.querySelector('.chat-emoji-picker');
+        if (picker && !picker.hidden) {
+            event.preventDefault();
+            this.toggleEmojiPicker(false);
+            this.querySelector('.chat-emoji-button')?.focus();
+        }
+    };
+    handleWindowResize = () => {
+        const picker = this.querySelector('.chat-emoji-picker');
+        if (picker && !picker.hidden)
+            this.positionEmojiPicker();
+    };
     connectedCallback() {
         this.style.display = 'block';
         this.style.height = '100%';
@@ -57,15 +97,36 @@ export class ChatWidget extends HTMLElement {
                 <div class="chat-status small text-muted mb-1" role="status" aria-live="polite">Connecting…</div>
                 <div class="chat-messages flex-grow-1 overflow-auto" style="min-height:0" aria-live="polite"></div>
                 <button class="btn btn-sm btn-outline-info chat-new-messages align-self-center mt-1" type="button" hidden>New messages ↓</button>
-                <div class="chat-emoji-picker border rounded p-2 mt-2" role="group" aria-label="Choose an emoji" hidden></div>
-                <form class="chat-form d-flex gap-2 mt-2 align-items-end">
-                    <label class="visually-hidden" for="local-chat-message">Chat message</label>
-                    <textarea id="local-chat-message" class="form-control chat-text-input" rows="1" autocomplete="off" placeholder="Message the net" required></textarea>
-                    <button class="btn btn-outline-secondary chat-emoji-button" type="button" title="Add emoji" aria-label="Add emoji" aria-expanded="false">😊</button>
-                    <label class="btn btn-outline-secondary chat-image-button mb-0" for="local-chat-image" title="Share image" aria-label="Share image">🖼️</label>
-                    <input id="local-chat-image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
-                    <button class="btn btn-primary chat-send-btn" type="submit">Send</button>
-                </form>
+                <div class="chat-composer-wrap position-relative mt-2">
+                    <div class="chat-emoji-picker" role="dialog" aria-label="Emoji picker" hidden>
+                        <label class="visually-hidden" for="local-chat-emoji-search">Search emoji</label>
+                        <input id="local-chat-emoji-search" class="form-control form-control-sm chat-emoji-search" type="search" placeholder="Search emoji" autocomplete="off">
+                        <div class="chat-emoji-tabs" role="group" aria-label="Emoji categories"></div>
+                        <div class="chat-emoji-grid" role="group" aria-label="Available emoji"></div>
+                        <div class="chat-emoji-empty text-muted" role="status" hidden>No emoji found</div>
+                    </div>
+                    <form class="chat-form d-flex gap-2 align-items-end">
+                        <label class="visually-hidden" for="local-chat-message">Chat message</label>
+                        <textarea id="local-chat-message" class="form-control chat-text-input" rows="1" autocomplete="off" placeholder="Message the net" required></textarea>
+                        <button class="chat-icon-control chat-emoji-button" type="button" title="Add emoji" aria-label="Add emoji" aria-expanded="false">😊</button>
+                        <button class="chat-icon-control chat-image-button" type="button" title="Share image" aria-label="Share image">🖼️</button>
+                        <input id="local-chat-image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+                        <button class="btn btn-primary chat-send-btn" type="submit">Send</button>
+                    </form>
+                </div>
+                <div class="chat-lightbox" role="dialog" aria-modal="true" aria-labelledby="chat-lightbox-title" hidden>
+                    <div class="chat-lightbox-card">
+                        <div class="chat-lightbox-header">
+                            <strong id="chat-lightbox-title">Chat image</strong>
+                            <div class="chat-lightbox-controls">
+                                <button class="chat-lightbox-download" type="button" aria-label="Download original chat image">Download</button>
+                                <button class="chat-lightbox-close" type="button" aria-label="Close image viewer">×</button>
+                            </div>
+                        </div>
+                        <img class="chat-lightbox-image" alt="">
+                        <div class="chat-lightbox-status" role="status" aria-live="polite"></div>
+                    </div>
+                </div>
             </div>`;
         this.querySelector('.chat-form')?.addEventListener('submit', event => void this.send(event));
         this.querySelector('#local-chat-message')?.addEventListener('keydown', event => {
@@ -76,18 +137,33 @@ export class ChatWidget extends HTMLElement {
             }
         });
         this.querySelector('.chat-emoji-button')?.addEventListener('click', () => this.toggleEmojiPicker());
+        this.querySelector('.chat-image-button')?.addEventListener('click', () => {
+            this.querySelector('#local-chat-image')?.click();
+        });
         this.querySelector('#local-chat-image')?.addEventListener('change', event => void this.uploadImage(event));
+        this.querySelector('.chat-lightbox-close')?.addEventListener('click', () => this.closeLightbox());
+        this.querySelector('.chat-lightbox-download')?.addEventListener('click', () => void this.downloadLightboxImage());
         this.querySelector('.chat-new-messages')?.addEventListener('click', () => this.scrollToLatest());
         this.querySelector('.chat-messages')?.addEventListener('scroll', () => {
             if (this.isNearBottom())
                 this.showNewMessages(false);
         }, { passive: true });
         this.populateEmojiPicker();
+        document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
+        document.removeEventListener('keydown', this.handleDocumentKeyDown);
+        document.addEventListener('pointerdown', this.handleDocumentPointerDown);
+        document.addEventListener('keydown', this.handleDocumentKeyDown);
+        window.removeEventListener('resize', this.handleWindowResize);
+        window.addEventListener('resize', this.handleWindowResize);
         this.connectionAbort?.abort();
         this.connectionAbort = new AbortController();
         void this.connect(this.connectionAbort.signal);
     }
     disconnectedCallback() {
+        document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
+        document.removeEventListener('keydown', this.handleDocumentKeyDown);
+        window.removeEventListener('resize', this.handleWindowResize);
+        this.closeLightbox(false);
         this.connectionAbort?.abort();
         this.connectionAbort = null;
         this.eventSource?.close();
@@ -97,29 +173,50 @@ export class ChatWidget extends HTMLElement {
         this.statusTimer = null;
     }
     populateEmojiPicker() {
-        const picker = this.querySelector('.chat-emoji-picker');
-        if (!picker)
+        const tabs = this.querySelector('.chat-emoji-tabs');
+        const search = this.querySelector('.chat-emoji-search');
+        if (!tabs || !search)
             return;
-        CHAT_EMOJI.forEach(group => {
-            const section = document.createElement('div');
-            section.className = 'chat-emoji-group';
-            const label = document.createElement('div');
-            label.className = 'chat-emoji-label text-muted';
-            label.textContent = group.label;
-            section.append(label);
-            const choices = document.createElement('div');
-            choices.className = 'chat-emoji-choices';
-            group.emoji.forEach(emoji => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'btn btn-sm chat-emoji-choice';
-                button.textContent = emoji;
-                button.setAttribute('aria-label', `Insert ${emoji}`);
-                button.addEventListener('click', () => this.insertEmoji(emoji));
-                choices.append(button);
+        CHAT_EMOJI_CATEGORIES.forEach(category => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'chat-emoji-tab';
+            button.textContent = category.icon;
+            button.title = category.label;
+            button.setAttribute('aria-label', category.label);
+            button.addEventListener('click', () => {
+                this.emojiCategory = category.id;
+                search.value = '';
+                this.renderEmojiChoices();
             });
-            section.append(choices);
-            picker.append(section);
+            tabs.append(button);
+        });
+        search.addEventListener('input', () => this.renderEmojiChoices());
+        this.renderEmojiChoices();
+    }
+    renderEmojiChoices() {
+        const grid = this.querySelector('.chat-emoji-grid');
+        const search = this.querySelector('.chat-emoji-search');
+        const empty = this.querySelector('.chat-emoji-empty');
+        if (!grid || !search || !empty)
+            return;
+        const matches = filterChatEmoji(this.emojiCategory, search.value);
+        grid.replaceChildren();
+        matches.forEach(entry => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'chat-emoji-choice';
+            button.textContent = entry.emoji;
+            button.title = entry.name;
+            button.setAttribute('aria-label', `Insert ${entry.name}`);
+            button.addEventListener('click', () => this.insertEmoji(entry.emoji));
+            grid.append(button);
+        });
+        empty.hidden = matches.length > 0;
+        this.querySelectorAll('.chat-emoji-tab').forEach((button, index) => {
+            const active = CHAT_EMOJI_CATEGORIES[index]?.id === this.emojiCategory && !search.value.trim();
+            button.setAttribute('aria-pressed', String(active));
+            button.classList.toggle('active', active);
         });
     }
     toggleEmojiPicker(force) {
@@ -130,8 +227,27 @@ export class ChatWidget extends HTMLElement {
         const open = force ?? picker.hidden;
         picker.hidden = !open;
         button.setAttribute('aria-expanded', String(open));
-        if (open)
-            picker.querySelector('button')?.focus();
+        if (open) {
+            this.positionEmojiPicker();
+            this.querySelector('.chat-emoji-search')?.focus();
+        }
+    }
+    positionEmojiPicker() {
+        const picker = this.querySelector('.chat-emoji-picker');
+        const button = this.querySelector('.chat-emoji-button');
+        if (!picker || !button || picker.hidden)
+            return;
+        const margin = 8;
+        const buttonRect = button.getBoundingClientRect();
+        const width = Math.min(352, window.innerWidth - margin * 2);
+        picker.style.width = `${width}px`;
+        const pickerHeight = picker.offsetHeight;
+        const left = Math.min(Math.max(margin, buttonRect.right - width), window.innerWidth - width - margin);
+        const above = buttonRect.top - pickerHeight - margin;
+        const below = buttonRect.bottom + margin;
+        const top = above >= margin ? above : Math.min(below, window.innerHeight - pickerHeight - margin);
+        picker.style.left = `${Math.max(margin, left)}px`;
+        picker.style.top = `${Math.max(margin, top)}px`;
     }
     insertEmoji(emoji) {
         const input = this.querySelector('#local-chat-message');
@@ -139,7 +255,9 @@ export class ChatWidget extends HTMLElement {
             return;
         const start = input.selectionStart ?? input.value.length;
         const end = input.selectionEnd ?? start;
-        input.setRangeText(emoji, start, end, 'end');
+        const inserted = insertChatEmoji(input.value, start, end, emoji);
+        input.value = inserted.value;
+        input.setSelectionRange(inserted.caret, inserted.caret);
         this.toggleEmojiPicker(false);
         input.focus();
     }
@@ -419,7 +537,7 @@ export class ChatWidget extends HTMLElement {
         author.textContent = message.displayName && message.displayName !== message.callSign
             ? `${message.displayName} (${message.callSign})` : message.callSign;
         const time = document.createElement('small');
-        time.className = 'text-muted ms-2';
+        time.className = 'chat-message-timestamp text-muted ms-2';
         time.textContent = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         heading.append(author, time);
         if (message.editedAt && !message.deleted) {
@@ -438,18 +556,20 @@ export class ChatWidget extends HTMLElement {
             body.textContent = message.deleted ? '[message deleted]' : message.text;
             row.append(body);
             if (!message.deleted && message.attachment && this.safeAttachmentUrl(message)) {
-                const link = document.createElement('a');
-                link.href = message.attachment.url;
-                link.target = '_blank';
-                link.rel = 'noopener';
-                link.className = 'chat-image-link d-inline-block mt-1';
+                const imageButton = document.createElement('button');
+                imageButton.type = 'button';
+                imageButton.className = 'chat-image-link d-block mt-1';
+                imageButton.setAttribute('aria-label', `Open image shared by ${message.callSign}`);
                 const image = document.createElement('img');
                 image.src = message.attachment.url;
                 image.alt = `Image shared by ${message.callSign}`;
                 image.loading = 'lazy';
                 image.className = 'chat-image rounded';
-                link.append(image);
-                row.append(link);
+                imageButton.append(image);
+                imageButton.addEventListener('click', () => {
+                    this.openLightbox(message.attachment?.url ?? '', image.alt, message.attachment?.mimeType ?? '', imageButton);
+                });
+                row.append(imageButton);
             }
             this.appendMessageControls(row, message);
         }
@@ -524,6 +644,76 @@ export class ChatWidget extends HTMLElement {
         }
         catch {
             return false;
+        }
+    }
+    openLightbox(url, alt, mimeType, trigger) {
+        const lightbox = this.querySelector('.chat-lightbox');
+        const image = this.querySelector('.chat-lightbox-image');
+        const status = this.querySelector('.chat-lightbox-status');
+        if (!lightbox || !image || !url)
+            return;
+        this.lightboxTrigger = trigger;
+        this.lightboxUrl = url;
+        this.lightboxMimeType = mimeType;
+        this.previousBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        image.src = url;
+        image.alt = alt;
+        if (status)
+            status.textContent = '';
+        lightbox.hidden = false;
+        this.querySelector('.chat-lightbox-close')?.focus();
+    }
+    closeLightbox(returnFocus = true) {
+        const lightbox = this.querySelector('.chat-lightbox');
+        if (!lightbox || lightbox.hidden)
+            return;
+        lightbox.hidden = true;
+        const image = this.querySelector('.chat-lightbox-image');
+        image?.removeAttribute('src');
+        document.body.style.overflow = this.previousBodyOverflow;
+        if (returnFocus)
+            this.lightboxTrigger?.focus();
+        this.lightboxTrigger = null;
+        this.lightboxUrl = '';
+        this.lightboxMimeType = '';
+    }
+    async downloadLightboxImage() {
+        if (!this.lightboxUrl)
+            return;
+        const button = this.querySelector('.chat-lightbox-download');
+        const status = this.querySelector('.chat-lightbox-status');
+        if (button)
+            button.disabled = true;
+        if (status)
+            status.textContent = 'Preparing download…';
+        try {
+            const response = await fetch(this.lightboxUrl, { credentials: 'same-origin' });
+            if (!response.ok)
+                throw new Error('Image download failed');
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            const extension = {
+                'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp'
+            }[this.lightboxMimeType] ?? 'img';
+            anchor.href = objectUrl;
+            anchor.download = `chat-image.${extension}`;
+            anchor.hidden = true;
+            document.body.append(anchor);
+            anchor.click();
+            anchor.remove();
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+            if (status)
+                status.textContent = 'Download started';
+        }
+        catch (err) {
+            if (status)
+                status.textContent = err instanceof Error ? err.message : 'Image download failed';
+        }
+        finally {
+            if (button)
+                button.disabled = false;
         }
     }
     isNearBottom() {
