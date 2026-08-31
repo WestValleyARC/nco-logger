@@ -6,7 +6,7 @@ const { qrzLookup, resetQrzSessionForTests } = require('../server/dist/lib/serve
 
 const options = { qrzSessionReqTimeoutMs: 100, qrzDataReqTimeoutMs: 100, qrzReqQuota: 100 };
 const authXml = (key = 'SESSION') => `<QRZDatabase><Session><Key>${key}</Key><Count>1</Count></Session></QRZDatabase>`;
-const lookupXml = (body = '<Callsign><name_fmt>Alex Smith</name_fmt><addr2>Phoenix</addr2><state>AZ</state><country>United States</country><lat>33.4</lat><lon>-112.1</lon></Callsign><Session><Key>SESSION</Key><Count>2</Count>') => `<QRZDatabase>${body}</QRZDatabase>`;
+const lookupXml = (body = '<Callsign><fname>Alex</fname><name>Smith</name><name_fmt>Alex Q Smith</name_fmt><addr2>Phoenix</addr2><state>AZ</state><country>United States</country><lat>33.4</lat><lon>-112.1</lon></Callsign><Session><Key>SESSION</Key><Count>2</Count>') => `<QRZDatabase>${body}</QRZDatabase>`;
 
 const fakeDb = records => ({
     model: () => ({
@@ -54,9 +54,9 @@ test('successful authentication and lookup safely encode special characters', as
 
 test('cache hit avoids QRZ network calls', async t => {
     const get = t.mock.method(axios, 'get', async () => { throw new Error('should not run'); });
-    const records = new Map([['W1ABC', { callSign: 'W1ABC', displayName: 'Alex', location: 'Phoenix, AZ', updatedAt: new Date(), geo: { coordinates: [-112.1, 33.4] } }]]);
+    const records = new Map([['W1ABC', { callSign: 'W1ABC', displayName: 'Alex Smith', location: 'Phoenix, AZ', nameFormatVersion: 2, updatedAt: new Date(), geo: { coordinates: [-112.1, 33.4] } }]]);
     const result = await qrzLookup('W1ABC', options, fakeDb(records));
-    assert.equal(result.result.displayName, 'Alex');
+    assert.equal(result.result.displayName, 'Alex Smith');
     assert.equal(result.outcome, 'success-cache');
     assert.equal(get.mock.callCount(), 0);
 });
@@ -144,9 +144,22 @@ test('successful lookup accepts current QRZ name and image fields', async t => {
     }));
     const result = await qrzLookup('AA7BQ', options, fakeDb(new Map()));
     assert.equal(result.outcome, 'success');
-    assert.match(result.result.displayName, /Fred.*Lloyd/i);
+    assert.equal(result.result.displayName, 'Fred Lloyd');
     assert.equal(result.result.location, 'St Louis, MO');
     assert.equal(result.result.photo, 'https://files.qrz.com/q/aa7bq/aa7bq.jpg');
+});
+
+test('QRZ preferred first name and last name exclude middle initials', async t => {
+    let call = 0;
+    t.mock.method(axios, 'get', async () => ({
+        data: call++ === 0 ? authXml() : lookupXml(
+            '<Callsign><fname>Randall J</fname><name>Taylor</name><nickname>Randy</nickname>' +
+            '<name_fmt>Randall J &quot;Randy&quot; Taylor</name_fmt><addr2>Mesa</addr2><state>AZ</state>' +
+            '<country>United States</country></Callsign><Session><Key>SESSION</Key><Count>2</Count></Session>'
+        )
+    }));
+    const result = await qrzLookup('K7NNT', options, fakeDb(new Map()));
+    assert.equal(result.result.displayName, 'Randy Taylor');
 });
 
 test('rejected credentials enter a bounded cooldown instead of repeatedly authenticating', async t => {

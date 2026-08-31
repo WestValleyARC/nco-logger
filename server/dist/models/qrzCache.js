@@ -30,6 +30,7 @@ const qrzCacheSchema = new Schema(
             unique: false
         },
         photo: String,
+        nameFormatVersion: Number,
         geo: {
             type: { type: String },
             coordinates: [Number]

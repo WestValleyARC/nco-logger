@@ -3,6 +3,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     "use strict";
     const POLL_MS = 3000;
     const VERSION = "1.1.0-alpha.1";
+    const QRZ_NAME_VERSION = 3;
     const BUG_REPORT_URL = `mailto:ke7wil@gmail.com?subject=${encodeURIComponent(`WVARC NCO Logger Bug Report - ${VERSION}`)}&body=${encodeURIComponent(`Version: ${VERSION}\nLogger mode: \nWhat happened?\n\nWhat did you expect?\n\nSteps to reproduce:\n`)}`;
     const NOTE_MAX = 60;
     const MODULE_IDS = ["controls", "chat", "checkedOut", "active", "lurkers"];
@@ -608,12 +609,10 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 qrzPhoto: photo,
                 qrzPhotoChecked: true,
                 qrzCheckedAt: Date.now(),
-                qrzNameVersion: 2
+                qrzNameVersion: QRZ_NAME_VERSION
             };
             if (canManageStations()) {
                 const lookupProfile = {};
-                if (displayName)
-                    Object.assign(lookupProfile, { name: displayName, nameOverride: true, nameOrigin: "lookup" });
                 if (location)
                     Object.assign(lookupProfile, { location, locationOverride: true, locationOrigin: "lookup" });
                 if (Object.keys(lookupProfile).length) {
@@ -641,6 +640,18 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             return false;
         }
     }
+    async function saveStationName(callSign, displayName) {
+        const response = await fetch(`/api/nco-logger/${npid}`, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ action: "stationName", callSign: normalizeCall(callSign), displayName })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok)
+            throw new Error(data.errorMessage || `Station name save failed (${response.status}).`);
+        return data.message || {};
+    }
     function queueMissingQrzPhotos() {
         const staleBefore = Date.now() - 24 * 60 * 60 * 1000;
         const priority = station => {
@@ -661,7 +672,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         [...latestStations].sort((left, right) => priority(left) - priority(right)).forEach(station => {
             const call = normalizeCall(station.callSign);
             const saved = local.details[call] || {};
-            const isFresh = saved.qrzNameVersion === 2 && saved.qrzPhotoChecked &&
+            const isFresh = saved.qrzNameVersion === QRZ_NAME_VERSION && saved.qrzPhotoChecked &&
                 Number(saved.qrzCheckedAt || 0) > staleBefore;
             if (!call || isFresh || qrzAttemptedCalls.has(call) || qrzLookupQueue.includes(call))
                 return;
@@ -1471,7 +1482,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             location: locationOverride ? formatLocation(storedLocation) : formatLocation(String(storedLocation || "").trim() || station?.location || ""),
             name: nameOverride
                 ? formatName(String(storedName || "").trim())
-                : formatName((Number(saved.qrzNameVersion || 0) === 2 ? String(storedName || "").trim() : "") || station?.displayName || ""),
+                : formatName((Number(saved.qrzNameVersion || 0) === QRZ_NAME_VERSION ? String(storedName || "").trim() : "") || station?.displayName || ""),
             nameOverride,
             locationOverride,
             qrzPhoto: safeImageUrl(saved.qrzPhoto) || safeImageUrl(station?.photo),
@@ -1569,7 +1580,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             ...current,
             location: formatLocation(panel.querySelector("[data-role='location']").value),
             name: formatName(panel.querySelector("[data-role='name']").value),
-            qrzNameVersion: 2,
+            qrzNameVersion: QRZ_NAME_VERSION,
             mobile: quickTagState("mobile"),
             portable: quickTagState("portable"),
             shortTime: quickTagState("shortTime"),
@@ -1680,7 +1691,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             locationOverride: editedDetails.locationChanged ? Boolean(editedDetails.location) : Boolean(oldRaw.locationOverride),
             qrzPhoto: qrzDetails.qrzPhoto,
             qrzPhotoChecked: Boolean((local.details[newCall] || {}).qrzPhotoChecked),
-            qrzNameVersion: 2,
+            qrzNameVersion: QRZ_NAME_VERSION,
             note: String(editedDetails.note || oldRaw.note || "").slice(0, NOTE_MAX)
         };
         const correctedManualProfile = {};
@@ -1726,7 +1737,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         const editedDetails = {
             ...current,
             name: formatName(modal.querySelector("[data-modal='name']").value),
-            qrzNameVersion: 2,
+            qrzNameVersion: QRZ_NAME_VERSION,
             location: formatLocation(modal.querySelector("[data-modal='location']").value),
             nameChanged: formatName(modal.querySelector("[data-modal='name']").value) !== current.name,
             locationChanged: formatLocation(modal.querySelector("[data-modal='location']").value) !== current.location
@@ -1739,10 +1750,23 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         }
         const { nameChanged, locationChanged, ...savedDetails } = editedDetails;
         const manualProfile = {};
-        if (nameChanged)
-            Object.assign(manualProfile, {
-                name: savedDetails.nameOverride ? savedDetails.name : "", nameOverride: Boolean(savedDetails.nameOverride), nameOrigin: "manual"
-            });
+        if (nameChanged) {
+            try {
+                const savedName = await saveStationName(call, savedDetails.nameOverride ? savedDetails.name : "");
+                savedDetails.name = formatName(savedName.displayName);
+                savedDetails.nameOverride = Boolean(savedName.manualNameOverride);
+                savedDetails.qrzNameVersion = QRZ_NAME_VERSION;
+                Object.assign(manualProfile, {
+                    name: savedDetails.nameOverride ? savedDetails.name : "",
+                    nameOverride: savedDetails.nameOverride,
+                    nameOrigin: "manual"
+                });
+            }
+            catch (error) {
+                setStatus(`Couldn’t save ${call}’s name: ${error.message || String(error)}`, "error");
+                return;
+            }
+        }
         if (locationChanged)
             Object.assign(manualProfile, {
                 location: savedDetails.locationOverride ? savedDetails.location : "", locationOverride: Boolean(savedDetails.locationOverride), locationOrigin: "manual"
@@ -2839,6 +2863,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         };
     }
     const PROFILE_FIELDS = ["name", "location"];
+    const SHARED_PROFILE_FIELDS = ["location"];
     const profileFieldPresent = (profile, field) => Object.prototype.hasOwnProperty.call(profile || {}, `${field}Override`);
     const profileAuthorityRank = (role, origin) => {
         if (role === "netcontrol")
@@ -2878,6 +2903,8 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 continue;
             const origin = profile[`${field}Origin`] === "lookup" ? "lookup" : "manual";
             const enabled = Boolean(profile[`${field}Override`]);
+            if (field === "name" && origin === "lookup")
+                continue;
             if (origin === "lookup" && !enabled)
                 continue;
             if (!profileCandidateWins(saved, field, role, origin, timestamp, messageId)) {
@@ -2910,7 +2937,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             next[field] = accepted[field];
             next[`${field}Override`] = accepted[`${field}Override`];
             if (field === "name")
-                next.qrzNameVersion = accepted.nameOverride ? 2 : 0;
+                next.qrzNameVersion = accepted.nameOverride ? QRZ_NAME_VERSION : 0;
         }
         local.details[call] = next;
         storeSharedProfiles();
@@ -2921,7 +2948,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         if (!saved || typeof saved !== "object")
             return null;
         const profile = {};
-        for (const field of PROFILE_FIELDS) {
+        for (const field of SHARED_PROFILE_FIELDS) {
             if (!saved[`${field}AuthorityRole`])
                 continue;
             profile[field] = saved[`${field}Override`] ? saved[field] : "";
@@ -2941,7 +2968,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         if (!full)
             return null;
         const compact = {};
-        for (const field of PROFILE_FIELDS) {
+        for (const field of SHARED_PROFILE_FIELDS) {
             if (!profileFieldPresent(full, field))
                 continue;
             compact[field] = full[field];
@@ -2978,7 +3005,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             const call = normalizeCall(rawCall);
             if (!call || !value?.profile || typeof value.profile !== "object")
                 return;
-            for (const field of PROFILE_FIELDS) {
+            for (const field of SHARED_PROFILE_FIELDS) {
                 if (!profileFieldPresent(value.profile, field))
                     continue;
                 const senderRole = update.sender?.role || "";
@@ -3004,7 +3031,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         }
         else if (action === "profile") {
             const call = normalizeCall(String(payload.entity_id).replace(/^station:/, ""));
-            for (const field of PROFILE_FIELDS) {
+            for (const field of SHARED_PROFILE_FIELDS) {
                 if (!profileFieldPresent(payload.profile || {}, field))
                     continue;
                 const senderRole = update.sender?.role || "";
@@ -4676,6 +4703,8 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 return [];
             const migrated = { updatedAt: Number(value.updatedAt) || 0 };
             for (const field of PROFILE_FIELDS) {
+                if (field === "name")
+                    continue;
                 if (!Object.prototype.hasOwnProperty.call(value, `${field}Override`) && !value[`${field}AuthorityRole`])
                     continue;
                 const enabled = Boolean(value[`${field}Override`]);
@@ -4709,6 +4738,11 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             manualOrder: Boolean(saved.manualOrder),
             sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0
         };
+        for (const [rawCall, details] of Object.entries(local.details)) {
+            if (details?.nameOverride || Number(details?.qrzNameVersion || 0) < QRZ_NAME_VERSION) {
+                local.details[rawCall] = { ...details, name: "", nameOverride: false, qrzNameVersion: 0 };
+            }
+        }
         local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
         storeSharedProfiles();
         storageSet();

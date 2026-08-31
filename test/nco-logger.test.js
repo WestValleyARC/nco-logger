@@ -36,7 +36,8 @@ test('NCO logger state keeps shared operational fields and excludes private note
     assert.equal(state.details.W1ABC.tags.neededNext, true);
     assert.equal(state.details.W1ABC.tags.mobile, true);
     assert.equal(state.details.W1ABC.tags.unexpected, undefined);
-    assert.equal(state.details.W1ABC.profile.name, 'Test Operator');
+    assert.equal(state.details.W1ABC.profile.name, undefined);
+    assert.equal(state.details.W1ABC.profile.nameOverride, undefined);
     assert.equal(state.details.W1ABC.profile.injected, undefined);
 });
 
@@ -68,7 +69,7 @@ test('browser QRZ profile action returns only sanitized server lookup data and s
     const result = await lookupQrzProfile({
         target: 'W1ABC',
         flexOpts: { qrzDataReqTimeoutMs: 1000 },
-        qrzLookupFn: async () => ({
+        profileLookupFn: async () => ({
             outcome: 'success', atQuota: false,
             result: {
                 callSign: 'W1ABC', displayName: 'Test Operator', location: 'Phoenix, AZ',
@@ -81,6 +82,7 @@ test('browser QRZ profile action returns only sanitized server lookup data and s
     assert.equal(result.qrzStatus, 'success');
     assert.equal(result.profile.displayName, 'Test Operator');
     assert.equal(result.profile.photo, 'https://files.qrz.com/q/w1abc/photo.jpg');
+    assert.equal(result.manualNameOverride, false);
     assert.equal(typeof result.qrzLookupMs, 'number');
     assert.equal(JSON.stringify(result).includes('session'), false);
 });

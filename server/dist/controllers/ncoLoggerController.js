@@ -4,10 +4,12 @@ const mongoose = require('mongoose');
 const { ResponseHandler } = require('../lib/responseUtils');
 const { logger } = require('../lib/logger');
 const { wellFormedCall, qrzLookup } = require('../lib/serverUtils');
+const stationProfiles = require('../lib/stationProfileService');
 const netOps = require('../lib/sharedNetOps');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
 const UserProfile = require('../models/userProfile').getUserProfile(null);
+const StationInteraction = require('../models/stationInteraction').getStationInteraction(null);
 const { realtimeClients } = require('../lib/realtimeClients');
 
 const MANAGER_ROLES = new Set(['netcontrol', 'netlogger']);
@@ -60,16 +62,46 @@ async function setCheckedState({ req, res, liveNet, source, target, state, highl
     return { action: 'checkState', stations: result, timing };
 }
 
-async function lookupQrzProfile({ target, flexOpts, qrzLookupFn = qrzLookup }) {
+async function lookupQrzProfile({ target, flexOpts, db = mongoose.connection, profileLookupFn = stationProfiles.lookupStationProfile }) {
     const startedAt = performance.now();
-    const lookup = await qrzLookupFn(target, flexOpts);
+    const lookup = await profileLookupFn(target, flexOpts, db);
     return {
         action: 'qrzProfile',
         callSign: target,
         qrzStatus: lookup.outcome,
         qrzLookupMs: Math.round((performance.now() - startedAt) * 100) / 100,
-        profile: lookup.result || null
+        profile: lookup.result || null,
+        manualNameOverride: Boolean(lookup.manualNameOverride)
     };
+}
+
+async function setStationName({
+    req, liveNet, source, target, flexOpts, db = mongoose.connection,
+    profileService = stationProfiles, qrzLookupFn = qrzLookup,
+    StationInteractionModel = StationInteraction
+}) {
+    requireManager(source);
+    const requestedName = profileService.normalizeName(req.body?.displayName);
+    let displayName;
+    let manualNameOverride;
+    if (requestedName) {
+        const saved = await profileService.saveNameOverride({
+            callSign: target, displayName: requestedName, updatedBy: req.user.callSign, db
+        });
+        displayName = saved.displayName;
+        manualNameOverride = true;
+    } else {
+        const lookup = await qrzLookupFn(target, flexOpts, db);
+        displayName = profileService.normalizeName(lookup?.result?.displayName);
+        if (!displayName) throw new Error(`QRZ name is unavailable for ${target}; the manual name was not cleared`);
+        await profileService.clearNameOverride(target, db);
+        manualNameOverride = false;
+    }
+    const interactionId = liveNet.lookupTable.get(target)?.stationInteraction;
+    if (interactionId) {
+        await StationInteractionModel.updateOne({ _id: interactionId }, { $set: { displayName } });
+    }
+    return { action: 'stationName', callSign: target, displayName, manualNameOverride };
 }
 
 async function toggleRole({ req, liveNet, source, target, desiredRole }) {
@@ -150,7 +182,7 @@ function sanitizeLoggerState(value) {
         const profile = rawValue.profile;
         if (profile && typeof profile === 'object') {
             clean.profile = {};
-            for (const field of ['name', 'location']) {
+            for (const field of ['location']) {
                 if (!Object.prototype.hasOwnProperty.call(profile, `${field}Override`)) continue;
                 clean.profile[field] = String(profile[field] || '').trim().slice(0, 80);
                 clean.profile[`${field}Override`] = Boolean(profile[`${field}Override`]);
@@ -214,6 +246,11 @@ async function runAction(req, res) {
         }
         case 'qrzProfile':
             return lookupQrzProfile({ target, flexOpts: res.locals.flexOpts });
+        case 'stationName': {
+            const result = await setStationName({ req, liveNet, source, target, flexOpts: res.locals.flexOpts });
+            await realtimeClients.push(req.params.id);
+            return result;
+        }
         case 'loggerState':
             requireManager(source);
             liveNet.loggerState = sanitizeLoggerState(req.body?.state);
@@ -242,4 +279,4 @@ async function ncoLoggerAction(req, res) {
     }
 }
 
-module.exports = { ncoLoggerAction, sanitizeLoggerState, setCheckedState, lookupQrzProfile };
+module.exports = { ncoLoggerAction, sanitizeLoggerState, setCheckedState, lookupQrzProfile, setStationName };

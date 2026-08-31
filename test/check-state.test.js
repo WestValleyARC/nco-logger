@@ -6,7 +6,7 @@ const { checkState } = require('../server/dist/lib/sharedNetOps');
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-function harness({ known = true, checkedState = false, localProfile = null, saveDelayMs = 0, qrzDelayMs = 0 }) {
+function harness({ known = true, checkedState = false, localProfile = null, manualNameOverride = null, saveDelayMs = 0, qrzDelayMs = 0 }) {
     const sourceId = 'source-interaction';
     const targetId = 'target-interaction';
     let persistedState = checkedState;
@@ -69,7 +69,8 @@ function harness({ known = true, checkedState = false, localProfile = null, save
     const models = {
         LiveNet: { findById: async () => liveNet },
         StationInteraction,
-        UserProfile: { findOne: async () => localProfile }
+        UserProfile: { findOne: async () => localProfile },
+        StationNameOverride: { findOne: async () => manualNameOverride ? { displayName: manualNameOverride } : null }
     };
     const db = { model: name => models[name] || {} };
     const qrzLookupFn = async () => {
@@ -133,23 +134,37 @@ test('existing-station check-out awaits persistence and reports its path separat
     assert.ok(metrics.stations[0].persistenceMs >= 10);
 });
 
-test('new station with a local UserProfile reports the local-profile path without QRZ latency', async () => {
+test('ordinary server-profile nickname is ignored and QRZ full name enriches the fast local-profile path', async () => {
     const setup = harness({
         known: false,
-        localProfile: { _id: 'user-profile', displayName: 'Local Operator', location: 'Tempe, AZ' }
+        localProfile: { _id: 'user-profile', displayName: 'Randy', localNickname: 'Ran', location: 'Tempe, AZ' }
     });
     let qrzCalls = 0;
     setup.qrzLookupFn = async () => {
         qrzCalls++;
-        return { result: null, atQuota: false };
+        return { result: { displayName: 'Randy Taylor', location: 'Mesa, AZ' }, atQuota: false, outcome: 'success' };
     };
     const metrics = {};
-    await runCheckState(setup, true, metrics);
+    const deferredTasks = [];
+    await runCheckState(setup, true, metrics, { deferredTasks });
 
-    assert.equal(qrzCalls, 0);
-    assert.equal(setup.savedNewStations[0].displayName, 'Local Operator');
+    assert.equal(qrzCalls, 1);
+    assert.notEqual(setup.savedNewStations[0].displayName, 'Randy');
+    assert.equal(setup.savedNewStations[0].location, 'Tempe, AZ');
     assert.equal(metrics.stations[0].path, 'new-station-local-profile');
     assert.equal(metrics.stations[0].qrzLookupMs, undefined);
+    await Promise.all(deferredTasks);
+    assert.equal(setup.savedNewStations[0].displayName, 'Randy Taylor');
+    assert.equal(setup.savedNewStations[0].location, 'Tempe, AZ');
+});
+
+test('persistent manual name is restored immediately in a new net and QRZ cannot replace it', async () => {
+    const setup = harness({ known: false, manualNameOverride: 'Randy', qrzDelayMs: 20 });
+    const deferredTasks = [];
+    await runCheckState(setup, true, {}, { deferredTasks });
+    assert.equal(setup.savedNewStations[0].displayName, 'Randy');
+    await Promise.all(deferredTasks);
+    assert.equal(setup.savedNewStations[0].displayName, 'Randy');
 });
 
 test('unknown station with fast QRZ uses immediate enrichment within a configured wait budget', async () => {
