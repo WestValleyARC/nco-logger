@@ -143,9 +143,13 @@ const scheduleEditor = {
     startDate: document.getElementById('schedule_start_date'),
     startTime: document.getElementById('schedule_start_time'),
     endDate: document.getElementById('schedule_end_date'),
-    disable: document.getElementById('schedule_disable')
+    disable: document.getElementById('schedule_disable'),
+    occurrencesStatus: document.getElementById('schedule_occurrences_status'),
+    occurrencesList: document.getElementById('schedule_occurrences_list')
 };
 let currentSchedule = null;
+let preparationWindowTimer = null;
+let preparationWindowTargets = [];
 
 const browserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const localDateValue = date => {
@@ -213,12 +217,169 @@ const schedulePayload = () => {
     return payload;
 };
 
+const occurrenceLocalValues = startAt => {
+    const parts = Object.fromEntries(
+        new Intl.DateTimeFormat('en-CA', {
+            timeZone: currentSchedule.timezone,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).formatToParts(new Date(startAt)).map(part => [part.type, part.value])
+    );
+    return { localDate: `${parts.year}-${parts.month}-${parts.day}`, localStartTime: `${parts.hour}:${parts.minute}` };
+};
+
+const setOccurrencesStatus = (message = '', error = false) => {
+    scheduleEditor.occurrencesStatus.textContent = message;
+    scheduleEditor.occurrencesStatus.classList.toggle('is-error', error);
+};
+
+const occurrenceStatusLabel = occurrence => ({
+    scheduled: occurrence.isOverride ? 'Rescheduled' : 'Scheduled',
+    preparing: 'Preparing',
+    live: 'ON AIR',
+    cancelled: 'Cancelled'
+})[occurrence.status] || occurrence.status;
+
+const loadOccurrences = async profileId => {
+    scheduleEditor.occurrencesList.replaceChildren();
+    setOccurrencesStatus('Loading…');
+    const now = new Date();
+    const query = new URLSearchParams({
+        from: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        to: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        limit: '20'
+    });
+    try {
+        const response = await axios.get(`/api/data/netprofiles/${profileId}/occurrences?${query}`);
+        const occurrences = response.data.occurrences.filter(
+            occurrence => ['scheduled', 'preparing', 'live', 'cancelled'].includes(occurrence.status)
+        );
+        setOccurrencesStatus(occurrences.length ? `${occurrences.length} shown` : '');
+        if (!occurrences.length) {
+            const empty = document.createElement('p');
+            empty.className = 'schedule-occurrences-empty';
+            empty.textContent = 'No upcoming occurrences are available yet.';
+            scheduleEditor.occurrencesList.appendChild(empty);
+            return;
+        }
+
+        occurrences.forEach(occurrence => {
+            const item = document.createElement('article');
+            item.className = `schedule-occurrence is-${occurrence.status}${occurrence.isOverride ? ' is-override' : ''}`;
+            const summary = document.createElement('div');
+            summary.className = 'schedule-occurrence-summary';
+            const when = document.createElement('time');
+            when.dateTime = occurrence.startAt;
+            when.textContent = formatViewerDateTime(occurrence.startAt);
+            const badge = document.createElement('span');
+            badge.className = 'schedule-occurrence-status';
+            badge.textContent = occurrenceStatusLabel(occurrence);
+            summary.append(when, badge);
+            item.appendChild(summary);
+
+            const actions = document.createElement('div');
+            actions.className = 'schedule-occurrence-actions';
+            if (occurrence.status === 'scheduled') {
+                const reschedule = document.createElement('button');
+                reschedule.type = 'button';
+                reschedule.className = 'owned-net-action';
+                reschedule.textContent = 'Reschedule';
+                const cancel = document.createElement('button');
+                cancel.type = 'button';
+                cancel.className = 'owned-net-action is-danger';
+                cancel.textContent = 'Cancel';
+                actions.append(reschedule, cancel);
+
+                const editor = document.createElement('div');
+                editor.className = 'schedule-occurrence-editor';
+                editor.hidden = true;
+                const values = occurrenceLocalValues(occurrence.startAt);
+                const date = document.createElement('input');
+                date.type = 'date';
+                date.className = 'form-control app-input';
+                date.value = values.localDate;
+                date.setAttribute('aria-label', 'Occurrence date');
+                const time = document.createElement('input');
+                time.type = 'time';
+                time.className = 'form-control app-input';
+                time.value = values.localStartTime;
+                time.setAttribute('aria-label', 'Occurrence time');
+                const save = document.createElement('button');
+                save.type = 'button';
+                save.className = 'app-button app-button-secondary app-button-compact';
+                save.textContent = 'Save';
+                editor.append(date, time, save);
+                item.appendChild(editor);
+
+                reschedule.addEventListener('click', () => { editor.hidden = !editor.hidden; });
+                save.addEventListener('click', async () => {
+                    setOccurrencesStatus('Rescheduling…');
+                    try {
+                        await axios.patch(
+                            `/api/data/netprofiles/${profileId}/occurrences/${occurrence._id}`,
+                            { localDate: date.value, localStartTime: time.value }
+                        );
+                        await loadOccurrences(profileId);
+                        refreshNetList();
+                    } catch (error) {
+                        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not reschedule occurrence.', true);
+                    }
+                });
+                cancel.addEventListener('click', async () => {
+                    if (!window.confirm('Cancel only this scheduled occurrence?')) return;
+                    setOccurrencesStatus('Cancelling occurrence…');
+                    try {
+                        await axios.delete(`/api/data/netprofiles/${profileId}/occurrences/${occurrence._id}`);
+                        await loadOccurrences(profileId);
+                        refreshNetList();
+                    } catch (error) {
+                        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not cancel occurrence.', true);
+                    }
+                });
+            } else if (occurrence.status === 'preparing') {
+                const cancelPreparation = document.createElement('button');
+                cancelPreparation.type = 'button';
+                cancelPreparation.className = 'owned-net-action is-danger';
+                cancelPreparation.textContent = 'Cancel Preparation';
+                cancelPreparation.addEventListener('click', async () => {
+                    if (!window.confirm('Cancel preparation and return this occurrence to its scheduled state?')) return;
+                    setOccurrencesStatus('Cancelling preparation…');
+                    try {
+                        await axios.post(
+                            `/api/data/netprofiles/${profileId}/occurrences/${occurrence._id}/cancel-preparation`
+                        );
+                        await loadOccurrences(profileId);
+                        refreshNetList();
+                    } catch (error) {
+                        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not cancel preparation.', true);
+                    }
+                });
+                actions.appendChild(cancelPreparation);
+            }
+            if (actions.childElementCount) item.appendChild(actions);
+            scheduleEditor.occurrencesList.appendChild(item);
+        });
+    } catch (error) {
+        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not load upcoming occurrences.', true);
+    }
+};
+
+const showNoOccurrences = message => {
+    scheduleEditor.occurrencesList.replaceChildren();
+    const empty = document.createElement('p');
+    empty.className = 'schedule-occurrences-empty';
+    empty.textContent = message;
+    scheduleEditor.occurrencesList.appendChild(empty);
+    setOccurrencesStatus('');
+};
+
 const openScheduleEditor = async netProfile => {
     let scheduleLoaded = false;
     currentSchedule = null;
     scheduleEditor.profileId.value = netProfile._id;
     scheduleEditor.title.textContent = `Schedule ${netProfile.title}`;
     populateScheduleForm(null);
+    showNoOccurrences('Save a schedule to manage its upcoming occurrences.');
     setScheduleStatus('Loading schedule…');
     setScheduleBusy(true);
     bootstrap.Modal.getOrCreateInstance(scheduleEditor.modal).show();
@@ -226,6 +387,7 @@ const openScheduleEditor = async netProfile => {
         const response = await axios.get(`/api/data/netprofiles/${netProfile._id}/schedule`);
         currentSchedule = response.data.schedule;
         populateScheduleForm(currentSchedule);
+        await loadOccurrences(netProfile._id);
         scheduleLoaded = true;
         setScheduleStatus(currentSchedule.enabled
             ? 'Edit the active schedule.'
@@ -246,6 +408,48 @@ const openScheduleEditor = async netProfile => {
 const closeScheduleEditor = () => {
     bootstrap.Modal.getOrCreateInstance(scheduleEditor.modal).hide();
     refreshNetList();
+};
+
+const enablePreparationAction = ({ button, status, netProfile, scheduling }) => {
+    scheduling.canPrepare = true;
+    status.textContent = 'Ready to Prepare';
+    button.disabled = false;
+    button.title = 'Prepare scheduled net';
+    button.setAttribute('aria-label', `Prepare ${netProfile.title}`);
+    button.onclick = async () => {
+        button.disabled = true;
+        try {
+            const response = await axios.post(
+                `/api/data/netprofiles/${netProfile._id}/occurrences/${scheduling.nextOccurrence.id}/prepare`
+            );
+            window.location.href = response.data.liveNet.url;
+        } catch (error) {
+            button.disabled = false;
+            console.error(error.response?.data?.errorMessage || String(error));
+        }
+    };
+};
+
+const schedulePreparationWindowUpdate = () => {
+    clearTimeout(preparationWindowTimer);
+    preparationWindowTimer = null;
+    const now = Date.now();
+    const pending = [];
+    preparationWindowTargets.forEach(target => {
+        if (now >= target.opensAt) {
+            const graceEndsAt = Date.parse(target.scheduling.nextOccurrence.startAt) + 30 * 60 * 1000;
+            if (now < graceEndsAt) enablePreparationAction(target);
+        } else {
+            pending.push(target);
+        }
+    });
+    preparationWindowTargets = pending;
+    if (!pending.length) return;
+    const nextOpensAt = Math.min(...pending.map(target => target.opensAt));
+    preparationWindowTimer = window.setTimeout(
+        schedulePreparationWindowUpdate,
+        Math.min(Math.max(nextOpensAt - now + 25, 25), 2147483647)
+    );
 };
 
 function setNetProfileMode(mode) {
@@ -291,6 +495,10 @@ function refreshNetList() {
     const netCountElem = document.getElementById('net-count');
     const modalCollectionElem = document.getElementById('modal-collection');
     const modalTemplateElem = document.getElementById('modal-template');
+
+    clearTimeout(preparationWindowTimer);
+    preparationWindowTimer = null;
+    preparationWindowTargets = [];
 
     netListContainerElem.setAttribute('aria-busy', 'true');
     netListContainerElem.replaceChildren();
@@ -369,19 +577,8 @@ function refreshNetList() {
                         window.location.href = scheduling.actionUrl || `/views/livenet/${netProfile._id}`;
                     });
                 } else if (hasSchedule && scheduling.canPrepare && scheduling.nextOccurrence) {
-                    buttonStartElem.setAttribute('aria-label', `Prepare ${netProfile.title}`);
-                    buttonStartElem.title = 'Prepare scheduled net';
-                    buttonStartElem.addEventListener('click', async () => {
-                        buttonStartElem.disabled = true;
-                        try {
-                            const response = await axios.post(
-                                `/api/data/netprofiles/${netProfile._id}/occurrences/${scheduling.nextOccurrence.id}/prepare`
-                            );
-                            window.location.href = response.data.liveNet.url;
-                        } catch (error) {
-                            buttonStartElem.disabled = false;
-                            console.error(error.response?.data?.errorMessage || String(error));
-                        }
+                    enablePreparationAction({
+                        button: buttonStartElem, status: statusElem, netProfile, scheduling
                     });
                 } else if (hasSchedule) {
                     buttonStartElem.disabled = true;
@@ -389,6 +586,12 @@ function refreshNetList() {
                     buttonStartElem.setAttribute('aria-label', scheduling.nextOccurrence
                         ? `Preparation for ${netProfile.title} is not yet available`
                         : `${netProfile.title} has no upcoming occurrence`);
+                    const opensAt = Date.parse(scheduling.preparationOpensAt);
+                    if (scheduling.nextOccurrence && Number.isFinite(opensAt) && opensAt > Date.now()) {
+                        preparationWindowTargets.push({
+                            opensAt, button: buttonStartElem, status: statusElem, netProfile, scheduling
+                        });
+                    }
                 } else {
                     buttonStartElem.setAttribute('data-bs-toggle', 'modal');
                     buttonStartElem.setAttribute('data-bs-target', `#modal-${netProfile._id}`);
@@ -539,6 +742,7 @@ function refreshNetList() {
             });
 
             netListContainerElem.appendChild(netListUlElem);
+            schedulePreparationWindowUpdate();
         })
         .catch(err => {
             netListContainerElem.setAttribute('aria-busy', 'false');

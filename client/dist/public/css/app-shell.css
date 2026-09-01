@@ -2474,6 +2474,121 @@
     gap: 0.55rem;
 }
 
+.schedule-occurrences {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(92, 130, 145, 0.3);
+}
+
+.schedule-occurrences-heading {
+    display: flex;
+    gap: 0.75rem;
+    align-items: start;
+    justify-content: space-between;
+}
+
+.schedule-occurrences-heading h3,
+.schedule-occurrences-heading p {
+    margin: 0;
+}
+
+.schedule-occurrences-heading h3 {
+    color: var(--app-text);
+    font-size: 0.95rem;
+}
+
+.schedule-occurrences-heading p,
+.schedule-occurrences-heading > span,
+.schedule-occurrences-empty {
+    color: var(--app-muted);
+    font-size: 0.74rem;
+}
+
+.schedule-occurrences-heading p {
+    margin-top: 0.2rem;
+}
+
+.schedule-occurrences-heading > span.is-error {
+    color: #ff708e;
+}
+
+.schedule-occurrences-list {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.schedule-occurrences-empty {
+    margin: 0;
+    padding: 0.85rem;
+    border: 1px dashed rgba(92, 130, 145, 0.32);
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.schedule-occurrence {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid rgba(92, 130, 145, 0.28);
+    border-radius: 0.5rem;
+    background: rgba(3, 11, 18, 0.52);
+}
+
+.schedule-occurrence.is-cancelled {
+    opacity: 0.62;
+}
+
+.schedule-occurrence-summary,
+.schedule-occurrence-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.schedule-occurrence-summary {
+    justify-content: space-between;
+}
+
+.schedule-occurrence-summary time {
+    color: var(--app-text);
+    font-size: 0.82rem;
+}
+
+.schedule-occurrence-status {
+    padding: 0.16rem 0.4rem;
+    border-radius: 2rem;
+    color: var(--app-muted);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: rgba(155, 169, 178, 0.1);
+}
+
+.schedule-occurrence.is-preparing .schedule-occurrence-status,
+.schedule-occurrence.is-override .schedule-occurrence-status {
+    color: var(--app-cyan);
+    background: rgba(0, 200, 240, 0.11);
+}
+
+.schedule-occurrence.is-live .schedule-occurrence-status {
+    color: #ffb56f;
+    background: rgba(220, 131, 53, 0.14);
+}
+
+.schedule-occurrence-editor {
+    display: grid;
+    grid-template-columns: minmax(8rem, 1fr) minmax(7rem, 0.8fr) auto;
+    gap: 0.45rem;
+}
+
+.schedule-occurrence-editor[hidden] {
+    display: none;
+}
+
 .schedule-action-spacer {
     flex: 1 1 auto;
 }
@@ -2533,6 +2648,14 @@
 
     .schedule-editor-actions .app-button {
         flex: 1 1 100%;
+    }
+
+    .schedule-occurrences-heading {
+        flex-direction: column;
+    }
+
+    .schedule-occurrence-editor {
+        grid-template-columns: 1fr;
     }
 
     .schedule-action-spacer {
