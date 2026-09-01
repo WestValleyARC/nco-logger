@@ -53,7 +53,7 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
             const client = fs.readFileSync(path.join(__dirname, '../client/dist/public/js/byView/myNets/main.js'), 'utf8');
             assert.match(template, /id="input_title"[^>]*maxlength="100"/);
             assert.ok(template.includes('Add Connection'));
-            assert.ok(template.includes('Signal Reports'));
+            assert.ok(!template.includes('Signal Reports'));
             assert.ok(template.includes('Automatically Check In Lurkers'));
             for (const type of ['FM', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'Other']) {
                 assert.ok(client.includes(type));
@@ -116,7 +116,8 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
 
         await t.test('legacy Reflector survives unrelated edit and scheduling relationship is preserved', async () => {
             const legacy = await NetProfile.create({
-                title: 'Legacy Reflector', mode: 'Reflector', modeDetails: 'REF030C', owners: [owner._id]
+                title: 'Legacy Reflector', mode: 'Reflector', modeDetails: 'REF030C', owners: [owner._id],
+                restrictedSigReports: true
             });
             await UserProfile.updateOne({ _id: owner._id }, { $push: { myNets: legacy._id } });
             const schedule = await NetSchedule.create({
@@ -124,13 +125,14 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
             });
             const response = await request(`/${legacy._id}`, {
                 method: 'PATCH',
-                body: { title: 'Legacy Reflector Updated', restrictedSigReports: false, autoIn: false, notes: 'Updated notes' }
+                body: { title: 'Legacy Reflector Updated', autoIn: false, notes: 'Updated notes' }
             });
             assert.equal(response.status, 200);
             const saved = await NetProfile.findById(legacy._id);
             assert.equal(saved.mode, 'Reflector');
             assert.equal(saved.modeDetails, 'REF030C');
             assert.equal(saved.connections, undefined);
+            assert.equal(saved.restrictedSigReports, true);
             assert.equal(String((await NetSchedule.findById(schedule._id)).netProfile), String(legacy._id));
         });
 

@@ -436,7 +436,6 @@ window.netProfileEditByID = async function (id) {
     netProfileFormState.mode = 'edit';
 
     document.getElementById('input_title').value = res.data.title;
-    document.getElementById('input_restricted_sigrep').checked = res.data?.restrictedSigReports ? true : false;
     document.getElementById('input_auto_in').checked = res.data?.autoIn ? true : false;
     tinymce.get('input_notes').setContent(res.data.notes);
 
@@ -478,7 +477,6 @@ function np_submitHandler(e) {
 
     const dataPayload = {
         title,
-        restrictedSigReports: formDataToSend.get('restricted_sigrep') ? true : false,
         autoIn: formDataToSend.get('auto_in') ? true : false,
         notes: tinymce.get('input_notes').getContent()
     };

@@ -113,7 +113,9 @@ const netProfileUpdate = async (req, res) => {
 
             npresult.set({
                 title: req.body.title.trim(),
-                restrictedSigReports: req.body.restrictedSigReports ? true : false,
+                ...(hasOwn(req.body, 'restrictedSigReports')
+                    ? { restrictedSigReports: req.body.restrictedSigReports ? true : false }
+                    : {}),
                 autoIn: req.body.autoIn ? true : false,
                 notes: sanitizeNotes(req.body.notes),
                 ...operatingFields
