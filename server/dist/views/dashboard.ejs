@@ -8,15 +8,13 @@
   <title><%= server.appName %> <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
 </head>
 
-<body class="app-page">
-  <%- include('./partials/navbar', { user: user }) %>
+<body class="app-page landing-page">
+  <%- include('./partials/navbar', { user: user, landing: true }) %>
 
   <main class="app-main">
     <section class="landing-hero" aria-labelledby="landing-title">
       <div class="container">
-        <div class="row align-items-center">
-          <div class="col-lg-7 pe-lg-5">
-            <div class="landing-kicker">Built by West Valley ARC · For amateur radio</div>
+        <div class="landing-hero-copy">
             <h1 class="landing-title" id="landing-title">
               <span class="landing-title-phrase landing-title-run">Run a net.</span>
               <span class="landing-title-phrase landing-title-find">Find a net.</span>
@@ -26,107 +24,122 @@
               A modern home for amateur radio nets — schedule, discover, follow, check in, and participate from anywhere.
             </p>
             <div class="landing-actions">
-              <% if (user.isLoggedIn) { %>
-              <a class="app-button app-button-primary" href="/views/mynets">
-                <i class="bi bi-broadcast" aria-hidden="true"></i>
-                Start a net
+              <a class="app-button app-button-primary" href="<%= user.isLoggedIn ? '/views/mynets' : '/views/login' %>">
+                <i class="bi bi-play-fill" aria-hidden="true"></i>
+                START A NET
               </a>
-              <% } else { %>
-              <a class="app-button app-button-primary" href="/views/login">
-                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                Sign in to get started
-              </a>
-              <% } %>
-              <a class="app-button app-button-secondary" href="#scheduled-nets">
-                View schedule
-                <i class="bi bi-arrow-down" aria-hidden="true"></i>
+              <a class="app-button app-button-secondary" href="#net-schedule">
+                <i class="bi bi-calendar3" aria-hidden="true"></i>
+                VIEW SCHEDULE
               </a>
             </div>
-          </div>
-          <div class="col-lg-5">
-            <div class="landing-logo-panel" aria-hidden="true">
-              <img class="landing-logo" src="/img/nco-logger-logo.svg" alt="" />
-            </div>
-          </div>
         </div>
       </div>
     </section>
 
-    <section class="nets-section" id="live-nets" aria-labelledby="live-nets-title">
+    <section class="landing-features" aria-label="NCO Logger features">
       <div class="container">
-        <div class="section-heading">
-          <div>
-            <div class="section-eyebrow">On the air</div>
-            <h2 class="section-title" id="live-nets-title">Live nets</h2>
-          </div>
-          <p class="section-note">Select a net to join the live logger.</p>
-        </div>
-
-        <div class="nets-list" id="dashItemsContainer" aria-live="polite" aria-busy="true">
-          <div class="nets-state" id="nets-state">
-            <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
-            Checking for live nets…
-          </div>
-
-          <!-- Template for dynamically generated net rows. IDs are scoped to each cloned row. -->
-          <div id="netTemplate" class="net-card d-none">
-            <div class="net-card-main">
-              <a id="title-link" href="#" class="net-card-link text-muted">
-                <img src="/img/on-air-inactive2.png" id="onairimg" width="62" height="22" alt="Net status" />
-                <span id="title"></span>
-              </a>
-              <span class="text-tertiary">
-                <% if (user.isLoggedIn) { %>
-                <i class="bi bi-star favicon" aria-label="Add to favorites" role="button"></i>
-                <% } else { %>
-                <i class="d-none bi bi-star favicon" aria-hidden="true"></i>
-                <% } %>
-              </span>
+        <div class="landing-feature-grid">
+          <article class="landing-feature-card">
+            <span class="landing-feature-icon"><i class="bi bi-bullseye" aria-hidden="true"></i></span>
+            <div>
+              <h2>Accurate Logging</h2>
+              <p>Real-time check-ins and participant tracking.</p>
             </div>
-            <div class="net-card-meta">
-              <span id="startTime"></span>
-              <span id="frequency"></span>
+          </article>
+          <article class="landing-feature-card">
+            <span class="landing-feature-icon"><i class="bi bi-sliders" aria-hidden="true"></i></span>
+            <div>
+              <h2>Net Control Tools</h2>
+              <p>Everything NCOs need to run a smooth, organized net.</p>
             </div>
-          </div>
+          </article>
+          <article class="landing-feature-card">
+            <span class="landing-feature-icon"><i class="bi bi-chat-dots" aria-hidden="true"></i></span>
+            <div>
+              <h2>Chat &amp; Community</h2>
+              <p>Communicate with other participants during a live net.</p>
+            </div>
+          </article>
+          <article class="landing-feature-card">
+            <span class="landing-feature-icon landing-feature-icon-no-cost"><i class="bi bi-currency-dollar" aria-hidden="true"></i></span>
+            <div>
+              <h2>Free to Use</h2>
+              <p>Available to the amateur radio community at no cost.</p>
+            </div>
+          </article>
         </div>
       </div>
     </section>
 
-    <section class="scheduled-nets-section" id="scheduled-nets" aria-labelledby="scheduled-nets-title">
+    <section class="landing-net-board" id="net-schedule" aria-labelledby="net-schedule-title">
       <div class="container">
-        <div class="section-heading">
-          <div>
-            <div class="section-eyebrow">Plan ahead</div>
-            <h2 class="section-title" id="scheduled-nets-title">Scheduled nets</h2>
-          </div>
-          <p class="section-note">Find a net that fits your schedule.</p>
-        </div>
+        <h2 class="visually-hidden" id="net-schedule-title">Net schedule</h2>
 
-        <div class="scheduled-net-groups">
-          <section class="scheduled-net-group" aria-labelledby="todays-nets-title">
-            <header class="scheduled-net-group-heading">
+        <div class="landing-net-grid">
+          <section class="landing-net-panel landing-live-panel" id="live-nets" aria-labelledby="live-nets-title">
+            <header class="landing-net-panel-heading">
+              <span class="landing-live-dot" aria-hidden="true"></span>
+              <h3 id="live-nets-title">Live Nets</h3>
+              <span class="landing-live-count" id="live-nets-count" hidden></span>
+            </header>
+
+            <div class="nets-list" id="dashItemsContainer" aria-live="polite" aria-busy="true">
+              <div class="nets-state" id="nets-state">
+                <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
+                Checking for live nets…
+              </div>
+
+              <!-- Template for dynamically generated net rows. IDs are scoped to each cloned row. -->
+              <div id="netTemplate" class="net-card d-none">
+                <img class="landing-live-net-logo" src="/img/NCO_Logger_Logo_Tower_Only.png" alt="" />
+                <div class="landing-live-net-info">
+                  <span id="title" class="landing-live-net-title"></span>
+                  <span id="frequency" class="landing-live-net-frequency"></span>
+                  <span id="startTime" class="landing-live-net-time"></span>
+                </div>
+                <div class="landing-live-net-status">
+                  <% if (user.isLoggedIn) { %>
+                  <button type="button" class="landing-net-favorite favicon bi bi-star" aria-label="Toggle favorite"></button>
+                  <% } else { %>
+                  <button type="button" class="d-none landing-net-favorite favicon bi bi-star" aria-hidden="true" tabindex="-1"></button>
+                  <% } %>
+                  <div class="landing-live-net-state">
+                    <span class="landing-on-air" id="onairStatus" hidden>ON AIR</span>
+                    <span class="landing-check-in-count" id="checkInCount"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <a class="landing-net-action" href="#live-nets">View all live nets <span aria-hidden="true">→</span></a>
+          </section>
+
+          <section class="landing-net-panel" aria-labelledby="todays-nets-title">
+            <header class="landing-net-panel-heading">
+              <span class="landing-panel-icon"><i class="bi bi-calendar2-day" aria-hidden="true"></i></span>
               <h3 id="todays-nets-title">Today's Nets</h3>
-              <p>Scheduled for today, ordered by start time.</p>
             </header>
             <div class="scheduled-net-list" data-scheduled-net-list="today" aria-live="polite">
               <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
                 <i class="bi bi-calendar2-day" aria-hidden="true"></i>
-                No nets are scheduled for today.
+                No scheduled nets to display yet.
               </div>
             </div>
+            <span class="landing-net-action is-placeholder" aria-disabled="true">View today's schedule <span aria-hidden="true">→</span></span>
           </section>
 
-          <section class="scheduled-net-group" aria-labelledby="upcoming-nets-title">
-            <header class="scheduled-net-group-heading">
+          <section class="landing-net-panel" aria-labelledby="upcoming-nets-title">
+            <header class="landing-net-panel-heading">
+              <span class="landing-panel-icon"><i class="bi bi-calendar2-week" aria-hidden="true"></i></span>
               <h3 id="upcoming-nets-title">Upcoming Nets</h3>
-              <p>Future nets scheduled after today.</p>
             </header>
             <div class="scheduled-net-list" data-scheduled-net-list="upcoming" aria-live="polite">
               <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
                 <i class="bi bi-calendar2-week" aria-hidden="true"></i>
-                No upcoming nets have been scheduled yet.
+                Upcoming net scheduling is coming soon.
               </div>
             </div>
+            <span class="landing-net-action is-placeholder" aria-disabled="true">View full schedule <span aria-hidden="true">→</span></span>
           </section>
         </div>
 
@@ -159,7 +172,7 @@
 
   <%- include('./partials/pageBottomFeatures') %>
   <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
-  <%- include('./partials/footer') %>
+  <%- include('./partials/footer', { user: user, landing: true }) %>
 </body>
 
 </html>

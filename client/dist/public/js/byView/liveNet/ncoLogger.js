@@ -3294,8 +3294,11 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
         if (!panel)
             return;
         panel.dataset.userRole = currentUserRole;
-        panel.querySelector("[data-role='helper-title']").textContent = "WVARC NCO Logger";
-        panel.querySelector("[data-role='helper-byline']").textContent = "UI by KE7WIL";
+        const helperLogo = panel.querySelector("[data-role='helper-logo']");
+        if (helperLogo) {
+            helperLogo.src = "/img/NCO_Logger_Logo_compact.png";
+            helperLogo.alt = "NCO Logger by WVARC";
+        }
         const mode = panel.querySelector("[data-role='helper-mode']");
         if (mode) {
             mode.textContent = helperModeLabel();
@@ -3744,7 +3747,7 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
         panel.innerHTML = `
       <header>
         <a class="nch-helper-brand" href="/views/dashboard" aria-label="Return to the live nets page" title="Back to Live Nets">
-          <span class="nch-helper-title-line"><span data-role="helper-title">WVARC NCO Logger</span> <span class="nch-helper-byline" data-role="helper-byline">UI by KE7WIL</span></span>
+          <img class="nch-helper-logo" data-role="helper-logo" src="/img/NCO_Logger_Logo_compact.png" alt="NCO Logger">
           <small data-role="helper-version">Version ${escapeHtml(VERSION)}</small>
         </a>
         <div class="nch-net-title" data-role="net-title">

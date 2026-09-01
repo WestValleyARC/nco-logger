@@ -11,6 +11,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
     const rowCollectionElem = document.getElementById('dashItemsContainer');
     const rowTemplateElem = document.getElementById('netTemplate');
     const netsStateElem = document.getElementById('nets-state');
+    const liveNetsCountElem = document.getElementById('live-nets-count');
     let liveNetsLastHash;
 
     async function updateLiveNetsFromServer() {
@@ -47,10 +48,15 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
                 rowTemplateClone.classList.add('liveNetRow');
 
                 const netTitleElem = rowTemplateClone.querySelector('#title');
-                const titleLinkElem = rowTemplateClone.querySelector('#title-link');
                 netTitleElem.innerText = liveNet.title;
                 const netFreqElem = rowTemplateClone.querySelector('#frequency');
-                const onAirImgElem = rowTemplateClone.querySelector('#onairimg');
+                const onAirStatusElem = rowTemplateClone.querySelector('#onairStatus');
+                const checkInCountElem = rowTemplateClone.querySelector('#checkInCount');
+
+                rowTemplateClone.dataset.href = liveNet.url;
+                rowTemplateClone.setAttribute('role', 'link');
+                rowTemplateClone.setAttribute('tabindex', '0');
+                rowTemplateClone.setAttribute('aria-label', `Open ${liveNet.title}`);
 
                 const iconElem = rowTemplateClone.querySelector('.favicon');
                 iconElem.id = `fav-${liveNet.id}`;
@@ -68,6 +74,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
                         : liveNet.mode === 'Reflector'
                           ? `${liveNet.modeDetails}`
                           : `${liveNet.frequency} ${liveNet.mode}`;
+                checkInCountElem.textContent = `${liveNet.checkInCount} Check-In${liveNet.checkInCount === 1 ? '' : 's'}`;
 
                 let startTime = new Date(liveNet.createdAt);
 
@@ -76,23 +83,12 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
                 const startTimeElem = rowTemplateClone.querySelector('#startTime');
 
                 if (liveNet.started) {
-                    startTimeElem.innerHTML = '[ <em>In Progress</em> ]';
-
-                    if (liveNet.permanent === true) {
-                        onAirImgElem.setAttribute('src', '/img/on-air-active2-locked.png');
-                    } else {
-                        onAirImgElem.setAttribute('src', '/img/on-air-active2.png');
-                    }
-
-                    onAirImgElem.classList.add('onair-glow');
-
-                    titleLinkElem.classList.remove('text-muted');
-                    titleLinkElem.classList.add('text-light');
+                    startTimeElem.textContent = '';
+                    onAirStatusElem.hidden = false;
                 } else {
                     startTimeElem.innerText = '@' + startTime.toLocaleTimeString([], { timeStyle: 'short' });
                 }
 
-                titleLinkElem.setAttribute('href', liveNet.url);
                 rowCollectionElem.appendChild(rowTemplateClone);
             });
 
@@ -112,6 +108,10 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
                         '<i class="bi bi-moon-stars" aria-hidden="true"></i>No nets are live right now. Check back soon.';
                 }
             }
+            if (liveNetsCountElem) {
+                liveNetsCountElem.hidden = activeNets.length === 0;
+                liveNetsCountElem.textContent = activeNets.length > 0 ? `${activeNets.length} LIVE NOW` : '';
+            }
 
             return (liveNetsLastHash = liveNets.data.hash);
         } else {
@@ -119,7 +119,28 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
         }
     }
 
-    rowCollectionElem.addEventListener('click', favorites.handler.bind(favorites));
+    rowCollectionElem.addEventListener('click', event => {
+        const favorite = event.target.closest('.favicon');
+        if (favorite) {
+            event.preventDefault();
+            event.stopPropagation();
+            favorites.handler({ target: favorite });
+            return;
+        }
+
+        const row = event.target.closest('.liveNetRow');
+        if (row?.dataset.href) {
+            window.location.assign(row.dataset.href);
+        }
+    });
+
+    rowCollectionElem.addEventListener('keydown', event => {
+        const row = event.target.closest('.liveNetRow');
+        if (event.target === row && row?.dataset.href && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            window.location.assign(row.dataset.href);
+        }
+    });
 
     const loop = new Looper({
         label: 'Nets Update',
