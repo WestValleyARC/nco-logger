@@ -100,12 +100,8 @@ export declare class FavoritesList extends HamLiveElement<FavoritesReactiveStore
     protected getTemplate(): string;
     protected didMyDataSegmentChange(): boolean;
     protected render(onConnected: boolean): void;
-    private createHeaderRow;
-    private createRowElement;
-    private createCellElement;
-    private createTitleAndFavElement;
-    private createParenElement;
-    private createDetailsElement;
+    private createFavoriteCard;
+    private createEmptyState;
     protected onConnected(): void;
     protected onDisconnected(): void;
     static init(store: FavoritesReactiveStore): Promise<void>;

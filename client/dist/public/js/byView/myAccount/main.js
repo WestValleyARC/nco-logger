@@ -62,6 +62,7 @@ userProfileApi.index().then(userProfile => {
             document.getElementById('input_id').value = userProfile.data._id;
         } else {
             userProfileFormState.mode = 'edit';
+            userProfileFormState.mesg('info', 'Edit Existing Profile');
 
             if (userProfile.data.flaggedForDeletion) {
                 userProfileFormState.mesg('error', 'Account Flagged For Deletion');
@@ -199,6 +200,7 @@ document.getElementById('userprofile_form').addEventListener('submit', e => {
 
             setTimeout(() => {
                 userProfileFormState.mode = 'edit';
+                userProfileFormState.mesg('info', 'Edit Existing Profile');
             }, 15000);
         });
 });

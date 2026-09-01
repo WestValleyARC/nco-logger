@@ -8,57 +8,51 @@
   <title><%= server.appName %> - Account Settings <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
 </head>
 
-<body class="app-page">
+<body class="app-page settings-page">
   <%- include('./partials/navbar', { user: user }) %>
 
   <main class="app-main settings-main">
     <header class="settings-hero">
       <div class="container">
         <div class="landing-kicker">Operator settings</div>
-        <h1 class="workspace-title">Account settings</h1>
+        <h1 class="workspace-title">Account Settings</h1>
         <p class="workspace-copy">
           Keep your on-air identity accurate so net control and other operators know who is checking in.
         </p>
+        <img class="settings-header-tower" src="/img/NCO_Logger_Logo_Tower_Only.png" alt="" aria-hidden="true" />
       </div>
     </header>
 
     <div class="container settings-workspace">
       <div class="settings-grid">
         <aside class="app-panel settings-sidebar" aria-labelledby="settings-navigation-heading">
-          <img class="settings-club-logo" src="/img/wvarc-club-logo.png" alt="West Valley Amateur Radio Club" />
           <div>
-            <div class="section-eyebrow">WVARC NCO Logger</div>
-            <h2 id="settings-navigation-heading">Your account</h2>
+            <h2 id="settings-navigation-heading">Your Account</h2>
             <p>Your profile details appear in live nets and help other operators identify your station.</p>
           </div>
 
           <nav class="settings-navigation" aria-label="Account sections">
             <span class="settings-nav-item is-current" aria-current="page">
               <i class="bi bi-person" aria-hidden="true"></i>
-              Operator profile
+              Operator Profile
             </span>
             <a class="settings-nav-item" href="/views/favorites">
               <i class="bi bi-star" aria-hidden="true"></i>
-              Favorite nets
+              Favorite Nets
             </a>
             <a class="settings-nav-item" href="/views/dataprivacy">
               <i class="bi bi-shield-check" aria-hidden="true"></i>
-              Data privacy options
+              Data Privacy
             </a>
           </nav>
 
-          <div class="settings-policy-links">
-            <a href="/views/privacypolicy">Privacy</a>
-            <a href="/views/cookiepolicy">Cookies</a>
-            <a href="/views/termsofuse">Terms</a>
-          </div>
         </aside>
 
         <section class="app-panel settings-form-panel" aria-labelledby="profile-heading">
           <div class="panel-heading">
             <div>
               <div class="section-eyebrow">Station identity</div>
-              <h2 id="profile-heading">Operator profile</h2>
+              <h2 id="profile-heading">Operator Profile</h2>
             </div>
             <span class="form-status" id="userprofile_form_status" role="status" aria-live="polite"></span>
           </div>
@@ -67,9 +61,9 @@
           <form id="userprofile_form" class="app-form settings-form">
             <div class="app-form-grid">
               <div class="app-field">
-                <label for="input_display_name">Display name</label>
+                <label for="input_display_name">Name</label>
                 <input type="text" class="form-control app-input" id="input_display_name" name="display_name" placeholder="Your name" maxlength="20" minlength="2" autocomplete="name" required />
-                <small>Shown beside your callsign during a net.</small>
+                <small>Used as a fallback when a station name isn't available from QRZ or Net Control.</small>
               </div>
 
               <div class="app-field">
@@ -100,7 +94,7 @@
               <a class="app-button app-button-secondary" href="/views/dashboard">Cancel</a>
               <button class="app-button app-button-primary" type="submit">
                 <i class="bi bi-check-lg" aria-hidden="true"></i>
-                Save settings
+                Save Settings
               </button>
             </div>
           </form>

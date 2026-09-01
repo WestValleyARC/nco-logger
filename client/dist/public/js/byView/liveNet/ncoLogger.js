@@ -3294,11 +3294,8 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
         if (!panel)
             return;
         panel.dataset.userRole = currentUserRole;
-        const helperLogo = panel.querySelector("[data-role='helper-logo']");
-        if (helperLogo) {
-            helperLogo.src = "/img/NCO_Logger_Logo_compact.png";
-            helperLogo.alt = "NCO Logger by WVARC";
-        }
+        panel.querySelector("[data-role='helper-title']").textContent = "WVARC NCO Logger";
+        panel.querySelector("[data-role='helper-byline']").textContent = "UI by KE7WIL";
         const mode = panel.querySelector("[data-role='helper-mode']");
         if (mode) {
             mode.textContent = helperModeLabel();
@@ -3747,7 +3744,7 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
         panel.innerHTML = `
       <header>
         <a class="nch-helper-brand" href="/views/dashboard" aria-label="Return to the live nets page" title="Back to Live Nets">
-          <img class="nch-helper-logo" data-role="helper-logo" src="/img/NCO_Logger_Logo_compact.png" alt="NCO Logger">
+          <span class="nch-helper-title-line"><span data-role="helper-title">WVARC NCO Logger</span> <span class="nch-helper-byline" data-role="helper-byline">UI by KE7WIL</span></span>
           <small data-role="helper-version">Version ${escapeHtml(VERSION)}</small>
         </a>
         <div class="nch-net-title" data-role="net-title">
@@ -3827,7 +3824,7 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
             ${moduleResizeZones("active")}
           </section>
           <section class="nch-module nch-lurkers-fixed" data-module="lurkers">
-            <h3 class="nch-module-header" data-module-drag="lurkers" tabindex="0" aria-label="Move Lurkers"><span>Lurkers <small>visible to NetControl.live</small></span></h3>
+            <h3 class="nch-module-header" data-module-drag="lurkers" tabindex="0" aria-label="Move Lurkers"><span>Lurkers <small>visible to NCO Logger</small></span></h3>
             <div class="nch-module-content" data-role="lurkers"></div>
             ${moduleResizeZones("lurkers")}
           </section>

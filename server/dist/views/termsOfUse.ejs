@@ -1,40 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- hamlive-oss — MIT License. See LICENSE. -->
-
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title>NCO Logger - Terms of Use <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
 
-  <title><%= server.appName %> - Terms of Use <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-    </head>
+<body class="app-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-    <body class="bg-dark text-light">
-    <%- include('./partials/navbar', {user: user}) %>
+  <main class="app-main guide-main" id="terms-top">
+    <header class="guide-hero">
+      <div class="container">
+        <div class="landing-kicker">Service &amp; Community</div>
+        <h1 class="workspace-title">Terms of Use</h1>
+        <p class="workspace-copy">The community guidelines and service terms for using NCO Logger.</p>
+        <p class="workspace-copy">
+          <strong>Effective Date:</strong> September 1, 2026<br />
+          <strong>Last Updated:</strong> September 1, 2026
+        </p>
+      </div>
+    </header>
 
-    <div class="container">
-      <div class="row">
-        <div class="col p-md-2 m-md-3">
-          <h1 class="h3 mt-3">Terms of Use</h1>
+    <div class="container guide-workspace">
+      <div class="guide-grid">
+        <aside class="app-panel guide-contents" aria-labelledby="terms-contents-heading">
+          <div class="section-eyebrow">On This Page</div>
+          <h2 id="terms-contents-heading">Terms Contents</h2>
+          <nav aria-label="Terms of Use contents">
+            <ol class="guide-contents-list">
+              <li><a href="#about"><span>1.</span>About NCO Logger</a></li>
+              <li><a href="#accounts"><span>2.</span>Accounts and Callsign Information</a></li>
+              <li><a href="#acceptable-use"><span>3.</span>Acceptable Use</a></li>
+              <li><a href="#nets"><span>4.</span>Nets and Participation</a></li>
+              <li><a href="#net-control"><span>5.</span>Net Control and Net Owners</a></li>
+              <li><a href="#chat"><span>6.</span>Chat, Messages, and Uploaded Content</a></li>
+              <li><a href="#profiles"><span>7.</span>Net Profiles and Ownership</a></li>
+              <li><a href="#moderation"><span>8.</span>Moderation and Account Restrictions</a></li>
+              <li><a href="#deletion"><span>9.</span>Account Deletion</a></li>
+              <li><a href="#availability"><span>10.</span>Service Availability and Information Accuracy</a></li>
+              <li><a href="#third-parties"><span>11.</span>Third-Party Services</a></li>
+              <li><a href="#changes"><span>12.</span>Changes to NCO Logger and These Terms</a></li>
+              <li><a href="#contact"><span>13.</span>Contact Us</a></li>
+            </ol>
+          </nav>
+        </aside>
 
-          <div class="alert alert-warning mt-3" role="alert">
-            <strong>Operator action required.</strong> This is a placeholder. If you host this
-            application for your club or group, replace the contents of
-            <code>server/dist/views/termsOfUse.ejs</code> with terms of use appropriate to your
-            instance.
-          </div>
+        <article class="app-panel guide-content">
+          <section class="guide-section" id="about" aria-labelledby="about-heading">
+            <div class="guide-section-label">Section 01</div>
+            <h2 id="about-heading">1. About NCO Logger</h2>
+            <p>NCO Logger is an amateur-radio net logging, participation, and communication service operated by the <strong>West Valley Amateur Radio Club (WVARC)</strong>.</p>
+            <p>You may use portions of the service without signing in where NCO Logger permits it. Account-based and participation features may require authentication.</p>
+            <p>NCO Logger is not an emergency communications service and does not guarantee suitability for emergency communications.</p>
+          </section>
 
-          <p class="mt-3">
-            This open-source edition does not ship legal terms of use. The original hosted service's
-            terms were specific to its operator and are intentionally not included. The software
-            itself is provided under the MIT License — see the <code>LICENSE</code> file in the
-            repository.
-          </p>
-        </div>
+          <section class="guide-section" id="accounts" aria-labelledby="accounts-heading">
+            <div class="guide-section-label">Section 02</div>
+            <h2 id="accounts-heading">2. Accounts and Callsign Information</h2>
+            <p>You are responsible for providing reasonably accurate account and profile information. Where a feature requires a callsign or authenticated profile, you must provide the information required by that feature.</p>
+            <p>You must not intentionally:</p>
+            <ul>
+              <li>Impersonate another person or amateur-radio operator.</li>
+              <li>Use another person's account without authorization.</li>
+              <li>Provide misleading identity or callsign information for abusive or deceptive purposes.</li>
+              <li>Attempt to obtain unauthorized access to another account.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="acceptable-use" aria-labelledby="acceptable-use-heading">
+            <div class="guide-section-label">Section 03</div>
+            <h2 id="acceptable-use-heading">3. Acceptable Use</h2>
+            <p>You must not use NCO Logger to:</p>
+            <ul>
+              <li>Harass, threaten, or abuse others.</li>
+              <li>Send spam or intentionally disruptive messages.</li>
+              <li>Upload or distribute unlawful or malicious material.</li>
+              <li>Damage, disable, overload, exploit, or interfere with NCO Logger.</li>
+              <li>Attempt unauthorized access to accounts, systems, or data.</li>
+              <li>Deliberately interfere with another user's net operation.</li>
+              <li>Use automated methods in a way that intentionally disrupts or places unreasonable load on the service.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="nets" aria-labelledby="nets-heading">
+            <div class="guide-section-label">Section 04</div>
+            <h2 id="nets-heading">4. Nets and Participation</h2>
+            <p>NCO Logger provides tools for creating, managing, viewing, and participating in amateur-radio nets. You remain responsible for your own radio operation and compliance with rules applicable to your amateur-radio activities.</p>
+            <p>NCO Logger does not grant permission to transmit on any frequency, repeater, reflector, talkgroup, or other radio system.</p>
+            <p>Information about nets, schedules, frequencies, modes, participants, and connection methods may be supplied by users and may not always be complete or current.</p>
+          </section>
+
+          <section class="guide-section" id="net-control" aria-labelledby="net-control-heading">
+            <div class="guide-section-label">Section 05</div>
+            <h2 id="net-control-heading">5. Net Control and Net Owners</h2>
+            <p>Net owners, co-owners, Net Control Operators, loggers, and other operational roles may have different capabilities within NCO Logger.</p>
+            <p>Net owners and Net Control Operators are responsible for how they operate and moderate their nets. NCO Logger provides operational tools, but WVARC does not direct or endorse every statement, decision, or action made by an individual net owner, Net Control Operator, logger, or participant.</p>
+          </section>
+
+          <section class="guide-section" id="chat" aria-labelledby="chat-heading">
+            <div class="guide-section-label">Section 06</div>
+            <h2 id="chat-heading">6. Chat, Messages, and Uploaded Content</h2>
+            <p>NCO Logger provides communication features associated with live nets. You are responsible for the messages and images you submit.</p>
+            <ul>
+              <li>Use public chat for communication associated with the live net and its community.</li>
+              <li>Direct or private messaging does not make inappropriate or abusive conduct acceptable.</li>
+              <li>Do not upload content that you do not have permission to share.</li>
+              <li>You may delete your own messages where that feature is supported.</li>
+              <li>Net Control Operators may moderate public chat using available tools.</li>
+            </ul>
+            <p>WVARC may remove content or restrict access when reasonably necessary to protect users, the community, or operation of the service. The <a href="/views/privacypolicy">Privacy Policy</a> describes how NCO Logger handles information associated with chat and uploaded content.</p>
+          </section>
+
+          <section class="guide-section" id="profiles" aria-labelledby="profiles-heading">
+            <div class="guide-section-label">Section 07</div>
+            <h2 id="profiles-heading">7. Net Profiles and Ownership</h2>
+            <p>Users may create and manage saved net profiles and may share management through supported co-owner functionality. Profile ownership refers only to management permissions within NCO Logger.</p>
+            <p>Creating a profile does not establish ownership or exclusive rights over an amateur-radio frequency, repeater, reflector, talkgroup, callsign, net name, club name, or any other external radio resource or identifier.</p>
+          </section>
+
+          <section class="guide-section" id="moderation" aria-labelledby="moderation-heading">
+            <div class="guide-section-label">Section 08</div>
+            <h2 id="moderation-heading">8. Moderation and Account Restrictions</h2>
+            <p>WVARC may reasonably remove inappropriate content, restrict abusive use, suspend or remove accounts used to disrupt or abuse the service, and take protective action when necessary for security or reliable operation.</p>
+            <p>Questions about moderation or account action may be sent to <a href="mailto:logger@westvalleyarc.com">logger@westvalleyarc.com</a>.</p>
+          </section>
+
+          <section class="guide-section" id="deletion" aria-labelledby="deletion-heading">
+            <div class="guide-section-label">Section 09</div>
+            <h2 id="deletion-heading">9. Account Deletion</h2>
+            <p>You can request account deletion through NCO Logger's <strong>Data Privacy</strong> settings. The <a href="/views/privacypolicy">Privacy Policy</a> describes how account and associated data are handled.</p>
+            <p>After <strong>3 years without a login</strong>, NCO Logger sends an inactivity warning email and keeps the account active for another <strong>30 days</strong>. Signing in during that warning period cancels inactivity deletion. Continued inactivity after the warning period may result in deletion.</p>
+          </section>
+
+          <section class="guide-section" id="availability" aria-labelledby="availability-heading">
+            <div class="guide-section-label">Section 10</div>
+            <h2 id="availability-heading">10. Service Availability and Information Accuracy</h2>
+            <p>NCO Logger may occasionally be unavailable because of maintenance, failures, updates, or circumstances outside WVARC's control. WVARC may change, repair, update, or discontinue features as the service evolves.</p>
+            <p>User-supplied information may be inaccurate or outdated. External information, including callsign or profile information obtained through third-party services, may also contain errors or become outdated. Verify important radio operating information through appropriate sources.</p>
+          </section>
+
+          <section class="guide-section" id="third-parties" aria-labelledby="third-parties-heading">
+            <div class="guide-section-label">Section 11</div>
+            <h2 id="third-parties-heading">11. Third-Party Services</h2>
+            <p>NCO Logger uses third-party services for certain functions, including authentication, email delivery, callsign information, and profile images or other resources. Your use of those services may also be governed by their own terms and policies.</p>
+          </section>
+
+          <section class="guide-section" id="changes" aria-labelledby="changes-heading">
+            <div class="guide-section-label">Section 12</div>
+            <h2 id="changes-heading">12. Changes to NCO Logger and These Terms</h2>
+            <p>NCO Logger and these Terms may be updated as the service changes. Material changes to these Terms will be reflected by updating the Last Updated date and, where appropriate, notifying users through the service.</p>
+          </section>
+
+          <section class="guide-section" id="contact" aria-labelledby="contact-heading">
+            <div class="guide-section-label">Section 13</div>
+            <h2 id="contact-heading">13. Contact Us</h2>
+            <p>For questions about NCO Logger or these Terms, contact the West Valley Amateur Radio Club at <a href="mailto:logger@westvalleyarc.com">logger@westvalleyarc.com</a>.</p>
+          </section>
+        </article>
       </div>
     </div>
+  </main>
 
-    <%- include('./partials/pageBottomFeatures') %>
-    </body>
-    <%- include('./partials/footer') %>
+  <%- include('./partials/footer') %>
+  <%- include('./partials/pageBottomFeatures') %>
+</body>
 
 </html>

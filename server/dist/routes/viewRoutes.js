@@ -74,7 +74,7 @@ router.get('/termsofuse', (req, res) => {
 });
 
 router.get('/homepage', (req, res) => {
-    res.render('oAuth2Homepage', populate(req, res, { VIEW: 'oAuth2Homepage' }));
+    res.redirect('/');
 });
 
 module.exports = router;

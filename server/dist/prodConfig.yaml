@@ -17,7 +17,8 @@ background_tasks:
     flagAccounts:
         enabled: true
         options:
-            ttl_days: 180
+            inactivity_years: 3
+            inactivity_warning_days: 30
             account_create_min: 10
     deleteFlaggedAccounts:
         enabled: true

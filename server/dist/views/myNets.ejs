@@ -10,7 +10,7 @@
   <title><%= server.appName %> - My Nets <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
 </head>
 
-<body class="app-page">
+<body class="app-page net-manager-page">
   <%- include('./partials/navbar', { user: user }) %>
 
   <main class="app-main net-manager-main">
@@ -24,13 +24,8 @@
               Create reusable net profiles, update operating details, assign co-owners, and take a net live.
             </p>
           </div>
-          <div class="col-lg-4 text-lg-end">
-            <a class="app-button app-button-primary" href="#net-profile-editor">
-              <i class="bi bi-plus-lg" aria-hidden="true"></i>
-              Create a net profile
-            </a>
-          </div>
         </div>
+        <img class="net-manager-header-tower" src="/img/NCO_Logger_Logo_Tower_Only.png" alt="" aria-hidden="true" />
       </div>
     </header>
 
@@ -40,7 +35,7 @@
           <div class="panel-heading">
             <div>
               <div class="section-eyebrow">Your stations</div>
-              <h2 id="owned-nets-heading">Owned nets</h2>
+              <h2 id="owned-nets-heading">Owned Nets</h2>
             </div>
             <span class="panel-count" id="net-count" aria-label="Net count">0</span>
           </div>
@@ -57,7 +52,7 @@
           <div class="panel-heading">
             <div>
               <div class="section-eyebrow">Profile details</div>
-              <h2 id="net-profile-editor">Create or edit a net</h2>
+              <h2 id="net-profile-editor">Create or Edit a Net</h2>
             </div>
             <span class="form-status" id="netprofile_form_status" role="status" aria-live="polite"></span>
           </div>
@@ -132,7 +127,7 @@
             <input type="hidden" name="npid_for_netprofile" id="input_npid_for_netprofile" />
 
             <div class="app-form-actions">
-              <button type="reset" class="app-button app-button-secondary" onclick='netProfileFormState.mode = "new"; modeHandler()'>
+              <button type="reset" class="app-button app-button-secondary" onclick='setNetProfileMode("new"); modeHandler()'>
                 Clear / new profile
               </button>
               <button type="submit" class="app-button app-button-primary">

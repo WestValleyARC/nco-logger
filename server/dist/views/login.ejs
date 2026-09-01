@@ -8,14 +8,14 @@
   <title><%= server.appName %> - Sign in <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
 </head>
 
-<body class="app-page">
+<body class="app-page login-page">
   <%- include('./partials/navbar', { user: user }) %>
 
   <main class="login-main">
     <div class="container">
       <div class="login-layout mx-auto">
         <section class="login-intro" aria-labelledby="login-welcome">
-          <img class="login-logo" src="/img/wvarc-club-logo.png" alt="West Valley Amateur Radio Club" />
+          <img class="login-logo" src="/img/NCO_Logger_Logo_Tower_Only.png" alt="NCO Logger tower" />
           <div>
             <div class="landing-kicker">Secure operator access</div>
             <h1 id="login-welcome">Welcome back to the net.</h1>

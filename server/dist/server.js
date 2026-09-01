@@ -203,6 +203,10 @@ app.get('/logout', (_req, res) => {
     res.redirect('/auth/logout');
 });
 
+app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'Not Found' });
+});
+
 app.use((req, res) => {
     if (!res.headersSent) return res.status(404).render('404', populate(req, res, { VIEW: '404' }));
 });

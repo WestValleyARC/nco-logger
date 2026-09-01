@@ -20,6 +20,12 @@ const netProfileFormState = new FormState('netprofile', 'new');
 const netOwnerFormState = new FormState('netowner', 'new');
 const netProfileApi = new HttpClient('netprofile', '/api/data/netprofiles');
 
+function setNetProfileMode(mode) {
+    netProfileFormState.mode = mode;
+    if (mode === 'new') netProfileFormState.mesg('info', 'Create new net profile');
+}
+window.setNetProfileMode = setNetProfileMode;
+
 //Once we moved to es6 module imports, functions defined in modules are in their own namespace. In order to be accessible by
 //things like onClick(), the functions needed to be exposed to 'window':
 window.netProfileFormState = netProfileFormState;
@@ -316,7 +322,7 @@ function np_submitHandler(e) {
                 console.debug('Update: ', req);
                 refreshNetList();
                 // reset form back to new
-                netProfileFormState.mode = 'new';
+                setNetProfileMode('new');
             })
             .catch(error => {
                 if (error.response.data.errorMessage) {
@@ -349,7 +355,7 @@ function np_submitHandler(e) {
                 }
 
                 setTimeout(() => {
-                    netProfileFormState.mode = 'new';
+                    setNetProfileMode('new');
                 }, 8500);
             });
     } else {
@@ -394,7 +400,7 @@ document.getElementById('netowner_form').addEventListener('submit', netowner_sub
 //init
 formShow('formContainerNetProfile');
 refreshNetList();
-netProfileFormState.mode = 'new';
+setNetProfileMode('new');
 netOwnerFormState.mode = 'new';
 
 setTimeout(() => {

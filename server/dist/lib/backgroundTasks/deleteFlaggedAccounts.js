@@ -18,6 +18,17 @@ class DeleteFlaggedAccountsTask extends PluginBase {
 
                 if ((userProfileDoc = await this.data.model.UserProfile.findById(task.upid))) {
                     if (userProfileDoc.flaggedForDeletion) {
+                        if (!['manual', 'inactivity', 'missing-consent'].includes(userProfileDoc.deletionReason)) {
+                            logger.warn(
+                                `account ${userProfileDoc.id} has a legacy unclassified deletion flag; clearing it`
+                            );
+                            userProfileDoc.flaggedForDeletion = false;
+                            userProfileDoc.inactivityWarningSentAt = null;
+                            userProfileDoc.deletionReason = null;
+                            await userProfileDoc.save({ validateBeforeSave: false });
+                            await task.deleteOne({ _id: task._id });
+                            continue;
+                        }
                         logger.warn(`deleting account ${userProfileDoc.id}...`);
 
                         if (userProfileDoc.following?.length) {

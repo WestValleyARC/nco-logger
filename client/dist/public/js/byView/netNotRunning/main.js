@@ -18,6 +18,22 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
         exec: async ({ i }) => {
             const np = await netProfileDetailApi.index();
             document.getElementById('netTitle').innerText = `${np.data.title}`;
+            document.getElementById('waiting-card-title').innerText = `${np.data.title}`;
+
+            const connectionPrimary = document.getElementById('netConnectionPrimary');
+            const modeDetails = document.getElementById('netModeDetails');
+            const connectionGroup = document.getElementById('netConnection');
+            const connection = [np.data.frequency, np.data.mode]
+                .filter(value => typeof value === 'string' && value.trim())
+                .map(value => value.trim())
+                .join(' · ');
+            const detail = typeof np.data.modeDetails === 'string' ? np.data.modeDetails.trim() : '';
+
+            connectionPrimary.innerText = connection;
+            connectionPrimary.hidden = !connection;
+            modeDetails.innerText = detail;
+            modeDetails.hidden = !detail;
+            connectionGroup.hidden = !connection && !detail;
 
             favorites.interval(i);
 

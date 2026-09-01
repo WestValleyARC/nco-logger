@@ -7,12 +7,8 @@
       <img src="/img/NCO_Logger_Logo_navbar.png" class="landing-brand-logo" alt="NCO Logger by WVARC" />
     </a>
     <% } else { %>
-    <a href="/views/dashboard" class="navbar-brand" aria-label="<%= server.appName %> home — view active nets">
-      <img src="/img/WVARC-65th-Jeweled-Heritage-Medallion-Transparent.png" class="app-brand-mark" alt="" />
-      <span class="app-brand-copy" aria-hidden="true">
-        <strong>NCO Logger</strong>
-        <small>BY WVARC</small>
-      </span>
+    <a href="/views/dashboard" class="navbar-brand app-navbar-brand" aria-label="NCO Logger by WVARC home — view active nets">
+      <img src="/img/NCO_Logger_Logo_navbar.png" class="app-brand-logo" alt="NCO Logger by WVARC" />
     </a>
     <% } %>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu" aria-controls="navmenu" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,14 +23,21 @@
         </li>
         <% if (landingNavigation) { %>
         <li class="nav-item" role="none">
-          <a href="#net-schedule" class="nav-link" role="menuitem" tabindex="0">
-            Schedule
+          <a href="/views/mynets" class="nav-link" role="menuitem" tabindex="0">
+            Start a Net
           </a>
         </li>
         <% } else { %>
         <li class="nav-item" role="none">
           <a href="/views/mynets" class="nav-link" role="menuitem" tabindex="0">
-            Start Net
+            Start a Net
+          </a>
+        </li>
+        <% } %>
+        <% if (user.isLoggedIn && !landingNavigation) { %>
+        <li class="nav-item" role="none">
+          <a href="/views/favorites" class="nav-link" role="menuitem" tabindex="0">
+            Favorites
           </a>
         </li>
         <% } %>
@@ -57,14 +60,9 @@
         <% } else { %>
         <li class="nav-item" role="none">
           <a href="/views/login" class="nav-link" role="menuitem" tabindex="0">
-            <%= landingNavigation ? 'Log In' : 'Sign in' %>
+            Sign in
           </a>
         </li>
-        <% if (landingNavigation) { %>
-        <li class="nav-item" role="none">
-          <a href="/views/login" class="nav-link app-nav-sign-in" role="menuitem" tabindex="0">Sign Up</a>
-        </li>
-        <% } %>
         <% } %>
       </ul>
     </div>

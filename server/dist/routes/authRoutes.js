@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const gravatar = require('gravatar');
 const validator = require('validator');
 const { EmailBase, emailEnabled } = require('../lib/userNotification');
+const { clearInactivityDeletionOnLogin } = require('../lib/accountInactivity');
 
 //MagicLogin Auth:
 const sendMagicLink = async (destination, href, _code, req) => {
@@ -72,7 +73,7 @@ const magicLogin = new MagicLoginStrategy({
                 lastAuthVia: 'email',
                 photo: gravatar.url(payload.destination, { protocol: 'https' })
             }
-        ).then(currentUser => {
+        ).then(async currentUser => {
             if (currentUser) {
                 //already have the user
                     logger.debug('Magic Login returning user found');
@@ -81,6 +82,7 @@ const magicLogin = new MagicLoginStrategy({
 
                     done(null, false);
                 } else {
+                    await clearInactivityDeletionOnLogin({ userProfileDoc: currentUser, UserProfile });
                     done(null, currentUser);
                 }
             } else {
@@ -178,7 +180,7 @@ if (googleAuthEnabled) {
                     lastAuthVia: 'google',
                     photo: profile.photos[0].value
                 }
-            ).then(currentUser => {
+            ).then(async currentUser => {
                 if (currentUser) {
                     //already have the user
                     logger.debug('Google Auth returning user found');
@@ -188,6 +190,7 @@ if (googleAuthEnabled) {
 
                         done(null, false);
                     } else {
+                        await clearInactivityDeletionOnLogin({ userProfileDoc: currentUser, UserProfile });
                         done(null, currentUser);
                     }
                 } else {

@@ -14,6 +14,8 @@ export interface UserProfile extends Document<string> {
     lastAuthVia: 'google' | 'email';
     policyConsent: boolean;
     flaggedForDeletion: boolean;
+    inactivityWarningSentAt?: Date | null;
+    deletionReason?: 'manual' | 'inactivity' | 'missing-consent' | null;
     email: string;
     locked: boolean;
     superUser: boolean;

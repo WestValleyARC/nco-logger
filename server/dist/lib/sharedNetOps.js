@@ -915,11 +915,13 @@ async function closeNet({ netProfileDoc, liveNetDoc, quiet = false, db = mongoos
     }
 }
 
-async function flagAccountForDeletion({ userProfileDoc, db = mongoose.connection }) {
+async function flagAccountForDeletion({ userProfileDoc, deletionReason = 'manual', db = mongoose.connection }) {
     let { PendingAccountDelete } = getModels(db);
 
     if (userProfileDoc.locked === false && userProfileDoc.flaggedForDeletion !== true) {
         userProfileDoc.flaggedForDeletion = true;
+        userProfileDoc.deletionReason = deletionReason;
+        if (deletionReason !== 'inactivity') userProfileDoc.inactivityWarningSentAt = null;
 
         if (await userProfileDoc.save({ validateBeforeSave: false })) {
             if (
