@@ -35,6 +35,8 @@ const viewRoutes = require('./routes/viewRoutes');
 const cookieSession = require('cookie-session');
 const dailyDispatch = require('./lib/dailyProcessingDispatch');
 const UserProfile = require('./models/userProfile').getUserProfile(null);
+const NetSchedule = require('./models/netSchedule').getNetSchedule(null);
+const ScheduledOccurrence = require('./models/scheduledOccurrence').getScheduledOccurrence(null);
 const PORT = process.env['PORT'] ?? 3000;
 const { verifyTransport } = require('./lib/userNotification');
 
@@ -91,7 +93,8 @@ mongoose
     .connect(conf.dburi, {
         maxPoolSize: conf.realtime_mongoose_poolsize
     })
-    .then(() => {
+    .then(async () => {
+        await Promise.all([NetSchedule.init(), ScheduledOccurrence.init()]);
         logger.info('Connected to db (realtime pool)');
         if (useHttps) {
             https.createServer(sslOptions, app).listen(PORT);

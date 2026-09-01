@@ -39,6 +39,7 @@
         "humanize-duration": "^3.33.2",
         "json-escaping": "^2.0.0",
         "lodash": "^4.17.21",
+        "luxon": "^3.7.2",
         "mongoose": "^6.13.9",
         "mongoose-type-email": "^1.1.2",
         "mongoose-unique-validator": "^3.1.0",
