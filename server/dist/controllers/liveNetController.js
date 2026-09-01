@@ -6,6 +6,8 @@ const { conf } = require('../lib/configLib');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
 const StationInteraction = require('../models/stationInteraction').getStationInteraction(null);
+const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
+const { canAccessScheduledPreparation } = require('../lib/scheduling/lifecycle');
 const { netOwnerCheck } = require('../lib/sharedNetOps');
 const NodeCache = require('node-cache');
 const netListCache = new NodeCache({ stdTTL: 3, checkperiod: 60 });
@@ -87,6 +89,19 @@ const liveNetDetails = async (req, res, presenceOnly = false) => {
     try {
         // fetchNetProfileAndLiveNet will throw NetNotFoundError if the netprofile or livenet is not found
         const { liveNetDoc, netProfileDoc } = await helpers.fetchNetProfileAndLiveNet(npid);
+
+        if (liveNetDoc.occurrence && !liveNetDoc.started) {
+            const occurrence = await ScheduledOccurrence.findById(liveNetDoc.occurrence);
+            if (!canAccessScheduledPreparation({
+                netProfile: netProfileDoc,
+                liveNet: liveNetDoc,
+                occurrence,
+                user: req.user
+            })) {
+                handleResponse.sendError(res, 'FORBIDDEN', 'Scheduled net is not on the air');
+                return;
+            }
+        }
 
         if (liveNetDoc.closing) {
             helpers.handleClosing(handleResponse, res, npid);

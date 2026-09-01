@@ -11,6 +11,7 @@ const { getUserProfile } = require('../models/userProfile');
 const { getLiveNet } = require('../models/liveNet');
 const { getPendingUnfollow, getPendingAccountDelete } = require('../models/taskQueues');
 const { getStationInteraction } = require('../models/stationInteraction');
+const { getScheduledOccurrence } = require('../models/scheduledOccurrence');
 const mongoose = require('mongoose');
 const { cleanupNetChat } = require('./localChat');
 const { withKeyedOperations } = require('./keyedOperation');
@@ -25,7 +26,8 @@ function getModels(db = null) {
         LiveNet: getLiveNet(db),
         PendingUnfollow: getPendingUnfollow(db),
         PendingAccountDelete: getPendingAccountDelete(db),
-        StationInteraction: getStationInteraction(db)
+        StationInteraction: getStationInteraction(db),
+        ScheduledOccurrence: getScheduledOccurrence(db)
     };
 }
 
@@ -839,7 +841,7 @@ async function unFollow({ upid, npid, unlink, db = mongoose.connection }) {
 }
 
 async function closeNet({ netProfileDoc, liveNetDoc, quiet = false, db = mongoose.connection }) {
-    let { StationInteraction, UserProfile } = getModels(db);
+    let { StationInteraction, UserProfile, ScheduledOccurrence } = getModels(db);
 
     //cleanup SSE connection info in realtimeClients:
     realtimeClients.close(netProfileDoc._id.toString());
@@ -897,6 +899,15 @@ async function closeNet({ netProfileDoc, liveNetDoc, quiet = false, db = mongoos
     }
 
     try {
+        if (liveNetDoc.occurrence) {
+            await ScheduledOccurrence.updateOne(
+                { _id: liveNetDoc.occurrence, liveNet: liveNetDoc._id, status: 'live' },
+                {
+                    $set: { status: 'completed', completedAt: new Date() },
+                    $unset: { liveNet: 1 }
+                }
+            );
+        }
         await StationInteraction.deleteMany({ netProfile: netProfileDoc._id });
         await liveNetDoc.deleteOne();
 

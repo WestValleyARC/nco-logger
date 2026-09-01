@@ -11,6 +11,22 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
     const favorites = new FavClient(20000 / serverInfo.requestRateFactor, 4);
     const favIconElem = document.getElementById('fav-' + id);
     favIconElem.addEventListener('click', favorites.handler.bind(favorites));
+    const scheduledStartElem = document.getElementById('scheduledStart');
+    const showScheduledStart = value => {
+        const startAt = new Date(value);
+        if (!value || Number.isNaN(startAt.getTime())) {
+            scheduledStartElem.hidden = true;
+            return;
+        }
+        const minutes = Math.ceil((startAt.getTime() - Date.now()) / 60000);
+        scheduledStartElem.innerText = minutes > 1
+            ? `Starts in ${minutes} minutes`
+            : minutes === 1
+              ? 'Starts in 1 minute'
+              : 'Starting soon';
+        scheduledStartElem.hidden = false;
+    };
+    showScheduledStart(scheduledStartElem.dataset.startAt);
 
     const loop = new Looper({
         label: 'Net polling',
@@ -34,6 +50,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
             modeDetails.innerText = detail;
             modeDetails.hidden = !detail;
             connectionGroup.hidden = !connection && !detail;
+            showScheduledStart(np.data.scheduledStartAt);
 
             favorites.interval(i);
 

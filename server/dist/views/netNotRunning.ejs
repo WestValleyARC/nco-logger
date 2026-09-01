@@ -46,6 +46,7 @@
           <div class="waiting-activity" aria-hidden="true"><span></span><span></span><span></span></div>
           <div>
             <h3>Waiting for Net to Start</h3>
+            <p id="scheduledStart" data-start-at="<%= SCHEDULED_START_AT || '' %>" <%= SCHEDULED_START_AT ? '' : 'hidden' %>></p>
             <p>You can leave this page open. NCO Logger will automatically open the live net when it starts.</p>
           </div>
         </div>

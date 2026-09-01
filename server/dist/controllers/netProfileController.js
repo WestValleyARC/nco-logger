@@ -4,6 +4,8 @@ const { logger } = require('../lib/logger');
 const { netOwnerCheck, addNetOwner, delNet } = require('../lib/sharedNetOps');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
 const UserProfile = require('../models/userProfile').getUserProfile(null);
+const LiveNet = require('../models/liveNet').getLiveNet(null);
+const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const titleCase = require('ap-style-title-case');
 const { sanitizeNotes } = require('../lib/serverUtils');
 
@@ -30,6 +32,14 @@ const netProfileList = async (req, res) => {
 const netProfileDetails = async (req, res) => {
     try {
         const npresult = await NetProfile.findById(req.params.id);
+        const liveNet = npresult?.liveNet ? await LiveNet.findById(npresult.liveNet) : null;
+        const occurrence = liveNet?.occurrence
+            ? await ScheduledOccurrence.findById(liveNet.occurrence)
+            : await ScheduledOccurrence.findOne({
+                  netProfile: req.params.id,
+                  status: { $in: ['scheduled', 'preparing'] },
+                  startAt: { $gt: new Date() }
+              }).sort({ startAt: 1 });
         return res.json({
             endpointVersion: '1.0',
             _id: npresult._id,
@@ -40,7 +50,8 @@ const netProfileDetails = async (req, res) => {
             autoIn: npresult?.autoIn ? true : false,
             modeDetails: npresult.modeDetails,
             notes: sanitizeNotes(npresult.notes),
-            live: npresult.liveNet ? true : false
+            live: Boolean(liveNet && (!liveNet.occurrence || liveNet.started)),
+            scheduledStartAt: occurrence?.startAt || null
         });
     } catch (err) {
         res.status(500).json({

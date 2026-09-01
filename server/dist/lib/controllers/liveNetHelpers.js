@@ -275,7 +275,12 @@ const capturePresence = async ({ req, res, netProfileDoc, liveNetDoc }) => {
     const { callSign } = req.user;
     const level = roleLevels.get(role);
 
-    if (!liveNetDoc.started && level === 0) {
+    if (!liveNetDoc.started && level === 0 && liveNetDoc.occurrence) {
+        await require('../scheduling/lifecycle').transitionPreparedOccurrence({
+            occurrenceId: liveNetDoc.occurrence,
+            now: new Date(now)
+        });
+    } else if (!liveNetDoc.started && level === 0) {
         const startTime = new Date(liveNetDoc.createdAt);
         const adjustedStartTime = new Date(startTime.getTime() + liveNetDoc.countdownTimer * 60000);
 

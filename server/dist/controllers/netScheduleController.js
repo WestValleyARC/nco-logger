@@ -5,6 +5,7 @@ const { netOwnerCheck } = require('../lib/sharedNetOps');
 const { resolveLocalDateTime } = require('../lib/scheduling/recurrence');
 const NetSchedule = require('../models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
+const { prepareOccurrence, cancelPreparation } = require('../lib/scheduling/lifecycle');
 
 const ENDPOINT_VERSION = '1.0';
 const SCHEDULE_FIELDS = [
@@ -32,7 +33,9 @@ class ApiError extends Error {
 }
 
 const sendError = (res, error) => {
-    const status = error instanceof ApiError
+    const status = Number.isInteger(error?.status)
+        ? error.status
+        : error instanceof ApiError
         ? error.status
         : error?.code === 11000
           ? 409
@@ -279,6 +282,42 @@ const cancelOccurrence = async (req, res) => {
     }
 };
 
+const prepareScheduledOccurrence = async (req, res) => {
+    try {
+        const result = await prepareOccurrence({
+            npid: req.params.id,
+            occurrenceId: req.params.occurrenceId,
+            user: req.user
+        });
+        return res.json({
+            endpointVersion: ENDPOINT_VERSION,
+            occurrence: occurrenceResponse(result.occurrence),
+            liveNet: {
+                _id: result.liveNet._id,
+                started: result.liveNet.started,
+                startedAt: result.liveNet.startedAt,
+                url: result.liveNet.url
+            },
+            idempotent: result.idempotent
+        });
+    } catch (error) {
+        return sendError(res, error);
+    }
+};
+
+const cancelScheduledPreparation = async (req, res) => {
+    try {
+        const occurrence = await cancelPreparation({
+            npid: req.params.id,
+            occurrenceId: req.params.occurrenceId,
+            user: req.user
+        });
+        return res.json({ endpointVersion: ENDPOINT_VERSION, occurrence: occurrenceResponse(occurrence) });
+    } catch (error) {
+        return sendError(res, error);
+    }
+};
+
 module.exports = {
     getSchedule,
     createSchedule,
@@ -286,5 +325,7 @@ module.exports = {
     disableSchedule,
     listOccurrences,
     updateOccurrence,
-    cancelOccurrence
+    cancelOccurrence,
+    prepareScheduledOccurrence,
+    cancelScheduledPreparation
 };

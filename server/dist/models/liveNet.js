@@ -21,6 +21,11 @@ const liveNetSchema = new Schema(
             ref: 'NetProfile',
             required: [true, 'netprofile obj required by livenet']
         },
+        occurrence: {
+            type: Schema.Types.ObjectId,
+            ref: 'ScheduledOccurrence',
+            default: undefined
+        },
         netControl: {
             type: Schema.Types.ObjectId,
             ref: 'UserProfile',
@@ -60,6 +65,8 @@ const liveNetSchema = new Schema(
 liveNetSchema.plugin(uniqueValidator, {
     message: 'Attempted to start multiple nets at same URL'
 });
+
+liveNetSchema.index({ occurrence: 1 }, { unique: true, sparse: true });
 
 module.exports = {
     getLiveNet: db => modelMaker({ db, m: 'LiveNet', s: liveNetSchema }),

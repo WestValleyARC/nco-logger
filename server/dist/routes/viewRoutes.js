@@ -3,30 +3,44 @@
 const router = require('express').Router();
 const { populate, authCheck, REQ_CALLSIGN, REQ_LOGIN } = require('../lib/serverUtils');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
+const LiveNet = require('../models/liveNet').getLiveNet(null);
+const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
+const { canAccessScheduledPreparation } = require('../lib/scheduling/lifecycle');
 const { logger } = require('../lib/logger');
 
-router.get('/livenet/:id', authCheck(REQ_CALLSIGN), (req, res) => {
-    const npid = req.params.id;
-    NetProfile.findById(npid)
-        .then(npresult => {
-            const ejsData = {
-                NPID: npid,
-                PERM: Boolean(npresult?.permanent),
-                TITLE: npresult?.title ?? ''
-            };
-
-            if (Boolean(npresult?.liveNet)) {
-                ejsData['VIEW'] = 'liveNet';
-                res.render('liveNet', populate(req, res, ejsData));
-            } else {
-                ejsData['VIEW'] = 'netNotRunning';
-                res.render('netNotRunning', populate(req, res, ejsData));
-            }
-        })
-        .catch(err => {
-            res.redirect('/views/dashboard');
-            logger.error(err.stack);
+router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
+    try {
+        const npid = req.params.id;
+        const netProfile = await NetProfile.findById(npid);
+        if (!netProfile) return res.redirect('/views/dashboard');
+        const liveNet = netProfile.liveNet ? await LiveNet.findById(netProfile.liveNet) : null;
+        const occurrence = liveNet?.occurrence
+            ? await ScheduledOccurrence.findById(liveNet.occurrence)
+            : await ScheduledOccurrence.findOne({
+                  netProfile: npid,
+                  status: { $in: ['scheduled', 'preparing'] },
+                  startAt: { $gt: new Date() }
+              }).sort({ startAt: 1 });
+        const scheduledPreparation = Boolean(liveNet?.occurrence && !liveNet.started);
+        const mayPrepare = scheduledPreparation && canAccessScheduledPreparation({
+            netProfile,
+            liveNet,
+            occurrence,
+            user: req.user
         });
+        const showLogger = Boolean(liveNet) && (!scheduledPreparation || mayPrepare);
+        const ejsData = {
+            NPID: npid,
+            PERM: Boolean(netProfile.permanent),
+            TITLE: netProfile.title,
+            SCHEDULED_START_AT: occurrence?.startAt?.toISOString() || '',
+            VIEW: showLogger ? 'liveNet' : 'netNotRunning'
+        };
+        return res.render(ejsData.VIEW, populate(req, res, ejsData));
+    } catch (err) {
+        res.redirect('/views/dashboard');
+        logger.error(err.stack);
+    }
 });
 
 router.get('/myaccount', authCheck(REQ_LOGIN), (req, res) => {
