@@ -584,6 +584,47 @@ async function setNetRole({ lnid, station, newRole, db = mongoose.connection, se
     }
 }
 
+async function handoffNetControl({ lnid, sourceStation, targetStation, db = mongoose.connection, session }) {
+    if (!lnid) throw new Error('handoffNetControl(): missing lnid param');
+    if (!session) throw new Error('handoffNetControl(): transaction session required');
+    if (typeof sourceStation !== 'string' || !sourceStation)
+        throw new Error('handoffNetControl(): missing or invalid source station');
+    if (typeof targetStation !== 'string' || !targetStation)
+        throw new Error('handoffNetControl(): missing or invalid target station');
+
+    const sourceUpper = sourceStation.toUpperCase();
+    const targetUpper = targetStation.toUpperCase();
+    if (sourceUpper === targetUpper) throw new Error('handoffNetControl(): source and target must be different');
+
+    const { LiveNet, StationInteraction } = getModels(db);
+    const liveNet = await LiveNet.findById(lnid).session(session);
+    if (!liveNet) throw new Error(`handoffNetControl(): livenet ${lnid} not found in db`);
+
+    const sourceLookup = liveNet.lookupTable.get(sourceUpper);
+    const targetLookup = liveNet.lookupTable.get(targetUpper);
+    const source = sourceLookup
+        ? await StationInteraction.findById(sourceLookup.stationInteraction).session(session)
+        : null;
+    const target = targetLookup
+        ? await StationInteraction.findById(targetLookup.stationInteraction).session(session)
+        : null;
+
+    if (!source || source.checkedState !== true || source.role !== 'netcontrol')
+        throw new Error('Only the checked-in NCO can perform this action');
+    if (!source.userProfile || String(source.userProfile) !== String(liveNet.netControl))
+        throw new Error('The current NCO does not match the active net');
+    if (!target || target.checkedState !== true) throw new Error(`${targetUpper} must be checked in`);
+    if (!target.userProfile) throw new Error(`have ${targetUpper.toLowerCase()} create an account first`);
+
+    liveNet.netControl = target.userProfile;
+    target.role = 'netcontrol';
+    source.role = 'netlogger';
+
+    await liveNet.save({ session });
+    await target.save({ session });
+    await source.save({ session });
+}
+
 async function netOwnerCheck({ req, npid, upid, db = mongoose.connection, session = null }) {
     let { NetProfile } = getModels(db);
     let confirmed = false;
@@ -981,6 +1022,7 @@ module.exports = {
     highlight,
     createBulkUnfollowJob,
     setNetRole,
+    handoffNetControl,
     getStationDetail,
     roleLevels,
     flagAccountForDeletion,
