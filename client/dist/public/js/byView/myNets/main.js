@@ -15,6 +15,7 @@ tinymce.init({
 });
 
 import { HttpClient, FormState } from '#@client/lib/old__clientUtils.js';
+import { formatConnectionLines } from '#@client/lib/publicSchedule.js';
 
 const netProfileFormState = new FormState('netprofile', 'new');
 const netOwnerFormState = new FormState('netowner', 'new');
@@ -285,11 +286,16 @@ function refreshNetList() {
 
                 const operatingDetailsElem = document.createElement('div');
                 operatingDetailsElem.setAttribute('class', 'owned-net-details');
-                const frequency = netProfile.frequency && parseInt(netProfile.frequency) !== 0 ? netProfile.frequency : '';
-                const mode = netProfile.mode === 'Reflector' || netProfile.mode === 'CUSTOM'
-                    ? netProfile.modeDetails
-                    : netProfile.mode;
-                operatingDetailsElem.textContent = [frequency, mode].filter(Boolean).join(' · ') || 'Operating details not set';
+                const connectionLines = formatConnectionLines(netProfile);
+                if (connectionLines.length) {
+                    connectionLines.forEach(line => {
+                        const connectionElem = document.createElement('span');
+                        connectionElem.textContent = line;
+                        operatingDetailsElem.appendChild(connectionElem);
+                    });
+                } else {
+                    operatingDetailsElem.textContent = 'Operating details not set';
+                }
 
                 const scheduleDetailsElem = document.createElement('div');
                 scheduleDetailsElem.setAttribute('class', 'owned-net-schedule');

@@ -46,6 +46,8 @@ body.nco-logger-page > :is(#local-chat-container, hl-chat.nch-chat-staging):not(
 #netcontrol-ncs-helper .nch-header-menu-popover details > summary::-webkit-details-marker { display: none; }
 #netcontrol-ncs-helper .nch-header-menu[open] > summary { color: #132328; background: #8dd9e4; }
 #netcontrol-ncs-helper .nch-header-menu-popover { position: absolute; z-index: 90; top: calc(100% + 4px); right: 0; display: flex; width: min(250px, calc(100vw - 12px)); max-height: calc(100vh - 44px); flex-direction: column; gap: 3px; overflow: auto; padding: 6px; color: #f7f7f7; background: #15191d; border: 1px solid #74c6d4; border-radius: 6px; box-shadow: 0 12px 34px rgba(0, 0, 0, .72); text-align: left; }
+#netcontrol-ncs-helper .nch-net-connections { display: grid; gap: 2px; padding: 5px 7px; color: #b7c3c9; border-bottom: 1px solid rgba(116, 198, 212, .3); font-size: calc(10px + var(--nch-font-adjust, 0px)); overflow-wrap: anywhere; }
+#netcontrol-ncs-helper .nch-net-connections[hidden] { display: none; }
 #netcontrol-ncs-helper .nch-header-menu-popover > button,
 #netcontrol-ncs-helper .nch-header-menu-popover > a,
 #netcontrol-ncs-helper .nch-header-menu-popover > details > summary { display: flex; width: 100%; min-height: 25px; align-items: center; margin: 0; padding: 4px 7px; color: #eef7f8; background: #253139; border: 1px solid #4f7880; border-radius: 4px; cursor: pointer; font-family: system-ui, sans-serif; font-size: calc(10px + var(--nch-font-adjust, 0px)); line-height: 1.2; text-align: left; text-decoration: none; list-style: none; }

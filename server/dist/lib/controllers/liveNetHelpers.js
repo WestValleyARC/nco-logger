@@ -94,6 +94,7 @@ const buildResponseSkeleton = (netProfileDoc, liveNetDoc, sigReportTypeByMode) =
                 frequency: netProfileDoc.frequency,
                 mode: netProfileDoc.mode,
                 modeDetails: netProfileDoc.modeDetails,
+                connections: netProfileDoc.connections || [],
                 notes: sanitizeNotes(netProfileDoc.notes),
                 permanent: netProfileDoc.permanent,
                 invisible: netProfileDoc.invisible,

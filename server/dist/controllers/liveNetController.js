@@ -41,7 +41,7 @@ const queryPublicLiveNets = async (
 ) => {
     const queryResult = await LiveNetModel.find({ started: true, closing: { $ne: true } })
         .lean()
-        .populate('netProfile', 'title frequency mode modeDetails permanent invisible liveNet')
+        .populate('netProfile', 'title frequency mode modeDetails connections permanent invisible liveNet')
         .select('lookupTable started startedAt closing url createdAt netProfile');
     const eligible = queryResult.filter(item =>
         item.netProfile &&
@@ -57,6 +57,7 @@ const queryPublicLiveNets = async (
         mode: item.netProfile.mode,
         permanent: item.netProfile.permanent,
         modeDetails: item.netProfile.modeDetails,
+        connections: item.netProfile.connections || [],
         started: true,
         startedAt: item.startedAt,
         url: item.url,

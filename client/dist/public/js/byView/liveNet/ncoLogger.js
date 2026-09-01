@@ -1,5 +1,6 @@
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
 import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
+import { formatConnectionLines } from "../../lib/publicSchedule.js";
 (() => {
     "use strict";
     const POLL_MS = 3000;
@@ -80,6 +81,7 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
     let latestStations = [];
     let latestNetTitle = "";
     let latestNetFrequency = "";
+    let latestNetConnections = [];
     let currentUserRole = "netuser";
     let local = {
         order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
@@ -3754,6 +3756,9 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
           <details class="nch-header-menu" data-role="header-menu">
             <summary aria-label="Open helper menu">Menu</summary>
             <div class="nch-header-menu-popover">
+              <div class="nch-net-connections" data-role="net-connections"${latestNetConnections.length ? '' : ' hidden'}>
+                ${latestNetConnections.map(line => `<span>${escapeHtml(line)}</span>`).join('')}
+              </div>
               <details class="nch-modules-menu" data-role="menu-modules">
                 <summary>Modules</summary>
                 <div class="nch-modules-menu-panel" aria-label="Visible modules">
@@ -4666,6 +4671,7 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
             latestStations = nextStations;
             latestNetTitle = String(data.net?.title || "").trim();
             latestNetFrequency = String(data.net?.frequency || "").trim();
+            latestNetConnections = formatConnectionLines(data.net);
             if (closedAfterHandoff)
                 return;
             const me = latestStations.find(station => normalizeCall(station.callSign) === selfCall());
@@ -4712,8 +4718,21 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNc
             const panelWasMissing = !panel;
             addPanel();
             const netTitle = panel.querySelector("[data-role='net-title'] a");
-            if (netTitle)
+            if (netTitle) {
                 netTitle.textContent = latestNetTitle;
+                netTitle.title = latestNetConnections.length
+                    ? `${latestNetTitle}\n${latestNetConnections.join('\n')}`
+                    : latestNetTitle;
+            }
+            const netConnections = panel.querySelector("[data-role='net-connections']");
+            if (netConnections) {
+                netConnections.replaceChildren(...latestNetConnections.map(line => {
+                    const item = document.createElement("span");
+                    item.textContent = line;
+                    return item;
+                }));
+                netConnections.hidden = latestNetConnections.length === 0;
+            }
             applyRoleUi();
             applyModuleLayout();
             dockNativeChat();

@@ -1180,6 +1180,7 @@
     color: var(--app-text);
     font-size: clamp(1.45rem, 3vw, 1.9rem);
     font-weight: 650;
+    overflow-wrap: anywhere;
 }
 
 .waiting-favorite .favicon {
@@ -1212,17 +1213,13 @@
 
 .waiting-connection p {
     margin: 0;
-}
-
-#netConnectionPrimary {
     color: #d6dde0;
     font-size: 1rem;
 }
 
-#netModeDetails {
-    margin-top: 0.25rem;
-    color: var(--app-muted);
-    font-size: 0.88rem;
+#netConnectionLines {
+    display: grid;
+    gap: 0.25rem;
 }
 
 .waiting-message {
@@ -1873,11 +1870,15 @@
 }
 
 .owned-net-title {
+    display: -webkit-box;
     overflow: hidden;
     color: var(--app-text);
     font-size: 1rem;
     line-height: 1.35;
     text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .owned-net-status {
@@ -1941,6 +1942,8 @@
 }
 
 .owned-net-details {
+    display: grid;
+    gap: 0.2rem;
     margin-top: 0.55rem;
     color: var(--app-muted);
     font-size: 0.82rem;
@@ -3984,11 +3987,14 @@
 
 .public-live-card-info strong,
 .schedule-item-info strong {
+    display: -webkit-box;
     overflow: hidden;
     color: var(--app-text);
     font-size: 1.05rem;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .public-live-card-info span,
@@ -3996,6 +4002,17 @@
 .schedule-item-info span {
     color: var(--app-muted);
     font-size: 0.84rem;
+}
+
+.public-live-card-info [data-role="connection"],
+.schedule-item-info [data-role="connection"] {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.landing-live-net-frequency,
+.scheduled-net-connections dd {
+    white-space: pre-line;
 }
 
 .public-live-card-meta {
