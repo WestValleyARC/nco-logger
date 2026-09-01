@@ -342,7 +342,7 @@ const loadOccurrences = async profileId => {
                 cancelPreparation.className = 'owned-net-action is-danger';
                 cancelPreparation.textContent = 'Cancel Preparation';
                 cancelPreparation.addEventListener('click', async () => {
-                    if (!window.confirm('Cancel preparation and return this occurrence to its scheduled state?')) return;
+                    if (!window.confirm('Cancel preparation and cancel this scheduled occurrence?')) return;
                     setOccurrencesStatus('Cancelling preparation…');
                     try {
                         await axios.post(
@@ -587,7 +587,7 @@ function refreshNetList() {
                         ? `Preparation for ${netProfile.title} is not yet available`
                         : `${netProfile.title} has no upcoming occurrence`);
                     const opensAt = Date.parse(scheduling.preparationOpensAt);
-                    if (scheduling.nextOccurrence && Number.isFinite(opensAt) && opensAt > Date.now()) {
+                    if (scheduling.nextOccurrence && Number.isFinite(opensAt)) {
                         preparationWindowTargets.push({
                             opensAt, button: buttonStartElem, status: statusElem, netProfile, scheduling
                         });

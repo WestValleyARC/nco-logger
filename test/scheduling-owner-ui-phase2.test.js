@@ -48,7 +48,7 @@ test('Scheduling Owner UI Phase 2 manages occurrences without changing recurrenc
     await t.test('Preparing offers confirmed operational cancellation', () => {
         assert.match(client, /else if \(occurrence\.status === 'preparing'\)/);
         assert.match(client, /Cancel Preparation/);
-        assert.match(client, /window\.confirm\('Cancel preparation and return this occurrence to its scheduled state\?'\)/);
+        assert.match(client, /window\.confirm\('Cancel preparation and cancel this scheduled occurrence\?'\)/);
         assert.match(client, /\/occurrences\/\$\{occurrence\._id\}\/cancel-preparation/);
     });
 
@@ -74,6 +74,8 @@ test('Scheduling Owner UI Phase 2 manages occurrences without changing recurrenc
         assert.doesNotMatch(timer, /axios\./);
         assert.doesNotMatch(timer, /refreshNetList\(/);
         assert.match(timer, /enablePreparationAction\(target\)/);
+        assert.match(client, /scheduling\.nextOccurrence && Number\.isFinite\(opensAt\)/);
+        assert.doesNotMatch(client, /Number\.isFinite\(opensAt\) && opensAt > Date\.now\(\)/);
     });
 
     await t.test('Phase 1 create, edit, and disable schedule flows remain intact', () => {
