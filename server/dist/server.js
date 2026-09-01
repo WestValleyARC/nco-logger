@@ -38,6 +38,7 @@ const dailyDispatch = require('./lib/dailyProcessingDispatch');
 const UserProfile = require('./models/userProfile').getUserProfile(null);
 const NetSchedule = require('./models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('./models/scheduledOccurrence').getScheduledOccurrence(null);
+const LiveNetAutoClose = require('./models/liveNetAutoClose').getLiveNetAutoClose(null);
 const { startSchedulingWorker } = require('./lib/scheduling/worker');
 const PORT = process.env['PORT'] ?? 3000;
 const { verifyTransport } = require('./lib/userNotification');
@@ -96,7 +97,7 @@ mongoose
         maxPoolSize: conf.realtime_mongoose_poolsize
     })
     .then(async () => {
-        await Promise.all([NetSchedule.init(), ScheduledOccurrence.init()]);
+        await Promise.all([NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init()]);
         logger.info('Connected to db (realtime pool)');
         if (useHttps) {
             https.createServer(sslOptions, app).listen(PORT);

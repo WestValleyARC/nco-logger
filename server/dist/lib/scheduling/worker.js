@@ -7,6 +7,7 @@ const { getScheduledOccurrence } = require('../../models/scheduledOccurrence');
 const { getNetProfile } = require('../../models/netProfile');
 const { NetScheduledReminder } = require('../userNotification');
 const { processOccurrenceLifecycle } = require('./lifecycle');
+const { processLiveNetHardening } = require('./hardening');
 const { logger } = require('../logger');
 
 const WORKER_INTERVAL_MS = 60 * 1000;
@@ -188,8 +189,13 @@ const runSchedulingPass = async ({ now = new Date(), db = mongoose.connection, s
     const materialized = await materializeEnabledSchedules({ now, db });
     const notifications = await processDueNotifications({ now, db, sendNotification });
     const lifecycle = await processOccurrenceLifecycle({ now, db });
-    return { materialized, notifications, lifecycle };
+    const hardening = await processLiveNetHardening({ now, db });
+    return { materialized, notifications, lifecycle, hardening };
 };
+
+const containsActivity = value => typeof value === 'number'
+    ? value > 0
+    : value && typeof value === 'object' && Object.values(value).some(containsActivity);
 
 let passRunning = false;
 const startSchedulingWorker = ({ intervalMs = WORKER_INTERVAL_MS, runPass = runSchedulingPass } = {}) => {
@@ -198,8 +204,7 @@ const startSchedulingWorker = ({ intervalMs = WORKER_INTERVAL_MS, runPass = runS
         passRunning = true;
         try {
             const result = await runPass();
-            const activity = Object.values(result.materialized).some(Boolean) ||
-                Object.values(result.notifications).some(Boolean) || Object.values(result.lifecycle).some(Boolean);
+            const activity = containsActivity(result);
             if (activity) logger.info(`Scheduling worker pass: ${JSON.stringify(result)}`);
         } catch (error) {
             logger.error(`Scheduling worker pass failed: ${error.message}`);

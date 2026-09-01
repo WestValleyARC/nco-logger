@@ -840,14 +840,28 @@ async function unFollow({ upid, npid, unlink, db = mongoose.connection }) {
     return output;
 }
 
-async function closeNet({ netProfileDoc, liveNetDoc, quiet = false, db = mongoose.connection }) {
-    let { StationInteraction, UserProfile, ScheduledOccurrence } = getModels(db);
+async function closeNet({
+    netProfileDoc,
+    liveNetDoc,
+    quiet = false,
+    alreadyClosing = false,
+    closedAt = new Date(),
+    db = mongoose.connection
+}) {
+    let { NetProfile, LiveNet, StationInteraction, UserProfile, ScheduledOccurrence } = getModels(db);
+
+    if (!alreadyClosing) {
+        const claimed = await LiveNet.updateOne(
+            { _id: liveNetDoc._id, closing: { $ne: true } },
+            { $set: { closing: true } }
+        );
+        if (!claimed.modifiedCount) return false;
+    }
 
     //cleanup SSE connection info in realtimeClients:
     realtimeClients.close(netProfileDoc._id.toString());
 
     liveNetDoc.closing = true;
-    await liveNetDoc.save();
 
     if (!quiet) {
         try {
@@ -903,26 +917,25 @@ async function closeNet({ netProfileDoc, liveNetDoc, quiet = false, db = mongoos
             await ScheduledOccurrence.updateOne(
                 { _id: liveNetDoc.occurrence, liveNet: liveNetDoc._id, status: 'live' },
                 {
-                    $set: { status: 'completed', completedAt: new Date() },
+                    $set: { status: 'completed', completedAt: closedAt },
                     $unset: { liveNet: 1 }
                 }
             );
         }
         await StationInteraction.deleteMany({ netProfile: netProfileDoc._id });
-        await liveNetDoc.deleteOne();
-
-        netProfileDoc.liveNet = undefined;
-        const savedNetProfileDoc = await netProfileDoc.save({ validateBeforeSave: false });
-
-        if (!savedNetProfileDoc) {
-            throw new Error('could not remove ln ref from np');
-        }
+        await LiveNet.deleteOne({ _id: liveNetDoc._id });
+        await NetProfile.updateOne(
+            { _id: netProfileDoc._id, liveNet: liveNetDoc._id },
+            { $unset: { liveNet: 1 } }
+        );
 
         logger.info('Net Closed');
+        return true;
     } catch (error) {
-        console.error(
+        logger.error(
             `Error occurred in db cleanup while closing net ${netProfileDoc._id.toString()}: ${error.message}`
         );
+        return false;
     }
 }
 

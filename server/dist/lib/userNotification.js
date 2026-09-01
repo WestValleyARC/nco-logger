@@ -173,6 +173,25 @@ class AccountInactivityWarning extends EmailBase {
     }
 }
 
+class NetInactivityAutoClose extends EmailBase {
+    constructor({ title }) {
+        const subject = `NCO Logger automatically closed ${title}`;
+        const text = [
+            `${title} was automatically closed.`,
+            'NCO Logger did not detect an active Net Control Operator for approximately 2 hours.',
+            'The closure prevents an abandoned net from remaining ON AIR.',
+            'You can start the net again if needed.'
+        ].join('\n\n');
+        const html = [
+            `<p><strong>${ejs.escapeXML(title)}</strong> was automatically closed.</p>`,
+            '<p>NCO Logger did not detect an active Net Control Operator for approximately 2 hours.</p>',
+            '<p>The closure prevents an abandoned net from remaining ON AIR.</p>',
+            '<p>You can start the net again if needed.</p>'
+        ].join('');
+        super({ body: { from: EMAIL_FROM, subject, text, html } });
+    }
+}
+
 class NetCloseReport extends EmailBase {
     static async init({ netProfileDoc: { id: NPID, title }, liveNetDoc: { url, started, startedAt }, attendees }) {
         let chatLog = '';
@@ -212,6 +231,7 @@ class NetCloseReport extends EmailBase {
 module.exports = {
     EmailBase,
     AccountInactivityWarning,
+    NetInactivityAutoClose,
     NetAnnounceStart,
     NetScheduledReminder,
     NetCloseReport,
