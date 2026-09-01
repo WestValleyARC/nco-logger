@@ -1,19 +1,74 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 const { modelMaker } = require('../lib/modelMaker');
 const { Schema } = require('mongoose');
-const uniqueValidator = require('mongoose-unique-validator');
+
+const CONNECTION_TYPES = ['FM', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'Other', 'Legacy'];
+const optionalConnectionValue = maxlength => ({ type: String, trim: true, maxlength });
+
+const connectionSchema = new Schema(
+    {
+        type: { type: String, required: true, enum: CONNECTION_TYPES },
+        frequency: optionalConnectionValue(50),
+        tone: optionalConnectionValue(50),
+        node: optionalConnectionValue(100),
+        callsign: optionalConnectionValue(50),
+        talkgroup: optionalConnectionValue(100),
+        colorCode: optionalConnectionValue(50),
+        reflector: optionalConnectionValue(100),
+        module: optionalConnectionValue(50),
+        room: optionalConnectionValue(100),
+        label: optionalConnectionValue(100),
+        value: optionalConnectionValue(200)
+    },
+    { _id: true }
+);
+
+connectionSchema.pre('validate', function validateConnection(next) {
+    const requireField = (field, message) => {
+        if (!this[field]) this.invalidate(field, message);
+    };
+    switch (this.type) {
+        case 'FM':
+            requireField('frequency', 'FM connections require frequency');
+            break;
+        case 'AllStarLink':
+            requireField('node', 'AllStarLink connections require node');
+            break;
+        case 'EchoLink':
+            if (!this.callsign && !this.node) this.invalidate('callsign', 'EchoLink connections require callsign or node');
+            break;
+        case 'DMR':
+        case 'P25':
+            requireField('talkgroup', `${this.type} connections require talkgroup`);
+            break;
+        case 'D-STAR':
+            requireField('reflector', 'D-STAR connections require reflector');
+            break;
+        case 'YSF':
+            if (!this.room && !this.reflector) this.invalidate('room', 'YSF connections require room or reflector');
+            break;
+        case 'Other':
+            requireField('label', 'Other connections require label');
+            requireField('value', 'Other connections require value');
+            break;
+        case 'Legacy':
+            requireField('value', 'Legacy connections require value');
+            break;
+    }
+    next();
+});
 
 const netProfileSchema = new Schema(
     {
         title: {
             type: String,
             required: [true, 'Net Title Required'],
-            unique: true,
+            trim: true,
             minlength: 4,
-            maxlength: 25,
+            maxlength: 100,
             validate: {
                 validator: function (v) {
-                    return /^\w+(?:[&.'\- ]*\w+)*$/.test(v);
+                    return /^[\p{L}\p{N} @|_#*&/+\-().,':!]+$/u.test(v);
                 },
                 message: 'net title format did not pass validation'
             }
@@ -68,6 +123,7 @@ const netProfileSchema = new Schema(
                 message: 'mode details contains invalid characters'
             }
         },
+        connections: { type: [connectionSchema], default: undefined },
         notes: {
             type: String,
             required: false,
@@ -99,11 +155,29 @@ const netProfileSchema = new Schema(
     { timestamps: true }
 );
 
-netProfileSchema.plugin(uniqueValidator, {
-    message: 'A net already exists with this name'
-});
+const getNetProfileConnections = profile => {
+    if (Array.isArray(profile?.connections) && profile.connections.length) return profile.connections;
+    if (profile?.mode === 'Reflector' && typeof profile.modeDetails === 'string' && profile.modeDetails.trim()) {
+        return [{ type: 'Legacy', value: profile.modeDetails }];
+    }
+    return [];
+};
+
+const removeLegacyTitleUniqueIndex = async NetProfile => {
+    const indexes = await NetProfile.collection.indexes();
+    const legacy = indexes.find(index =>
+        index.unique === true && index.key?.title === 1 && Object.keys(index.key).length === 1
+    );
+    if (!legacy) return false;
+    await NetProfile.collection.dropIndex(legacy.name);
+    return true;
+};
 
 module.exports = {
     getNetProfile: db => modelMaker({ db, m: 'NetProfile', s: netProfileSchema }),
-    netProfileSchema
+    netProfileSchema,
+    connectionSchema,
+    CONNECTION_TYPES,
+    getNetProfileConnections,
+    removeLegacyTitleUniqueIndex
 };

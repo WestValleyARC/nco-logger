@@ -1,5 +1,22 @@
 import { Document, Schema, Connection, Model } from 'mongoose';
 
+export type NetConnectionType = 'FM' | 'AllStarLink' | 'EchoLink' | 'DMR' | 'D-STAR' | 'YSF' | 'P25' | 'Other' | 'Legacy';
+
+export interface NetConnection {
+    type: NetConnectionType;
+    frequency?: string;
+    tone?: string;
+    node?: string;
+    callsign?: string;
+    talkgroup?: string;
+    colorCode?: string;
+    reflector?: string;
+    module?: string;
+    room?: string;
+    label?: string;
+    value?: string;
+}
+
 export interface NetProfile extends Document {
     title: string;
     frequency?: string;
@@ -19,6 +36,7 @@ export interface NetProfile extends Document {
         | 'JS8Call'
         | 'CUSTOM';
     modeDetails?: string;
+    connections?: NetConnection[];
     notes?: string;
     owners: Schema.Types.ObjectId[];
     followers?: Schema.Types.ObjectId[];
@@ -32,5 +50,9 @@ export interface NetProfile extends Document {
 }
 
 export const netProfileSchema: Schema<NetProfile>;
+export const connectionSchema: Schema<NetConnection>;
+export const CONNECTION_TYPES: NetConnectionType[];
 
 export function getNetProfile(db?: Connection): Model<NetProfile>;
+export function getNetProfileConnections(profile: Partial<NetProfile>): NetConnection[];
+export function removeLegacyTitleUniqueIndex(model: Model<NetProfile>): Promise<boolean>;
