@@ -59,6 +59,14 @@ router.get('/dashboard', (req, res) => {
     res.render('dashboard', populate(req, res, { VIEW: 'dashboard' }));
 });
 
+router.get('/livenets', (req, res) => {
+    res.render('liveNets', populate(req, res, { VIEW: 'liveNets' }));
+});
+
+router.get('/schedule', (req, res) => {
+    res.render('netSchedule', populate(req, res, { VIEW: 'netSchedule' }));
+});
+
 router.get('/intro', (_req, res) => {
     res.redirect('/views/dashboard');
 });

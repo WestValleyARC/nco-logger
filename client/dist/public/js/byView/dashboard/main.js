@@ -4,6 +4,12 @@
 
 import { HttpClient, FavClient, Looper } from '#@client/lib/old__clientUtils.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
+import {
+    formatConnection,
+    formatViewerDate,
+    formatViewerTime,
+    loadScheduledOccurrences
+} from '#@client/lib/publicSchedule.js';
 
 (async function () {
     const liveNetApi = new HttpClient('livenet', '/api/data/livenets');
@@ -38,11 +44,9 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
         }
 
         if (liveNetsLastHash != liveNets.data.hash) {
-            console.log('NEW Data, data signature changed');
+            const activeNets = liveNets.data.netlist;
 
-            const activeNets = liveNets.data.netlist.filter(liveNet => !liveNet.closing);
-
-            activeNets.forEach(liveNet => {
+            activeNets.slice(0, 4).forEach(liveNet => {
                 const rowTemplateClone = rowTemplateElem.cloneNode(true);
                 rowTemplateClone.id = `row-${liveNet.id}`;
                 rowTemplateClone.classList.add('liveNetRow');
@@ -76,18 +80,9 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
                           : `${liveNet.frequency} ${liveNet.mode}`;
                 checkInCountElem.textContent = `${liveNet.checkInCount} Check-In${liveNet.checkInCount === 1 ? '' : 's'}`;
 
-                let startTime = new Date(liveNet.createdAt);
-
-                startTime.setMinutes(startTime.getMinutes() + liveNet.countdownTimer);
-
                 const startTimeElem = rowTemplateClone.querySelector('#startTime');
-
-                if (liveNet.started) {
-                    startTimeElem.textContent = '';
-                    onAirStatusElem.hidden = false;
-                } else {
-                    startTimeElem.innerText = '@' + startTime.toLocaleTimeString([], { timeStyle: 'short' });
-                }
+                startTimeElem.textContent = '';
+                onAirStatusElem.hidden = false;
 
                 rowCollectionElem.appendChild(rowTemplateClone);
             });
@@ -105,7 +100,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
                 netsStateElem.classList.toggle('d-none', activeNets.length > 0);
                 if (activeNets.length === 0) {
                     netsStateElem.innerHTML =
-                        '<i class="bi bi-moon-stars" aria-hidden="true"></i>No nets are live right now. Check back soon.';
+                        '<i class="bi bi-moon-stars" aria-hidden="true"></i>No nets are currently live.';
                 }
             }
             if (liveNetsCountElem) {
@@ -116,6 +111,63 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
             return (liveNetsLastHash = liveNets.data.hash);
         } else {
             return undefined;
+        }
+    }
+
+    const scheduledLists = {
+        today: document.querySelector('[data-scheduled-net-list="today"]'),
+        upcoming: document.querySelector('[data-scheduled-net-list="upcoming"]')
+    };
+    const scheduledTemplate = document.getElementById('scheduled-net-card-template');
+
+    const renderScheduledNets = (kind, occurrences) => {
+        const list = scheduledLists[kind];
+        const empty = list.querySelector('[data-scheduled-net-empty]');
+        list.querySelectorAll('.scheduledNetRow').forEach(row => row.remove());
+        occurrences.slice(0, 4).forEach(occurrence => {
+            const card = scheduledTemplate.content.firstElementChild.cloneNode(true);
+            card.classList.add('scheduledNetRow');
+            card.dataset.href = occurrence.url;
+            card.setAttribute('role', 'link');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-label', `Open ${occurrence.title}`);
+            card.querySelector('[data-role="title"]').textContent = occurrence.title;
+            card.querySelector('[data-role="date"]').textContent = kind === 'today'
+                ? 'Today'
+                : formatViewerDate(occurrence.startAt, { month: 'short', day: 'numeric' });
+            card.querySelector('[data-role="start-time"]').textContent = formatViewerTime(occurrence.startAt);
+            const description = card.querySelector('[data-role="description"]');
+            description.textContent = occurrence.description;
+            description.hidden = !occurrence.description;
+            const connection = formatConnection(occurrence);
+            const connections = card.querySelector('[data-role="connection-methods"]');
+            if (connection) {
+                const term = document.createElement('dt');
+                const details = document.createElement('dd');
+                term.textContent = 'Connection';
+                details.textContent = connection;
+                connections.append(term, details);
+                connections.hidden = false;
+            }
+            list.appendChild(card);
+        });
+        empty.classList.toggle('d-none', occurrences.length > 0);
+    };
+
+    async function updateScheduledNetsFromServer() {
+        try {
+            const [today, upcoming] = await Promise.all([
+                loadScheduledOccurrences({ window: 'today' }),
+                loadScheduledOccurrences({ window: 'upcoming' })
+            ]);
+            renderScheduledNets('today', today.occurrences);
+            renderScheduledNets('upcoming', upcoming.occurrences);
+        } catch (_error) {
+            Object.values(scheduledLists).forEach(list => {
+                const empty = list.querySelector('[data-scheduled-net-empty]');
+                empty.classList.remove('d-none');
+                empty.textContent = 'Scheduled nets could not be loaded.';
+            });
         }
     }
 
@@ -142,12 +194,26 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
         }
     });
 
+    Object.values(scheduledLists).forEach(list => {
+        list.addEventListener('click', event => {
+            const row = event.target.closest('.scheduledNetRow');
+            if (row?.dataset.href) window.location.assign(row.dataset.href);
+        });
+        list.addEventListener('keydown', event => {
+            const row = event.target.closest('.scheduledNetRow');
+            if (event.target === row && row?.dataset.href && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                window.location.assign(row.dataset.href);
+            }
+        });
+    });
+
     const loop = new Looper({
         label: 'Nets Update',
         refresh: 30000 / serverInfo.requestRateFactor,
         exec: async ({ i }) => {
-            let sig;
-            if (Boolean((sig = await updateLiveNetsFromServer()))) {
+            const [sig] = await Promise.all([updateLiveNetsFromServer(), updateScheduledNetsFromServer()]);
+            if (Boolean(sig)) {
                 console.debug(`updated dom for hash ${sig}`);
             }
 

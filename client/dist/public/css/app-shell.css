@@ -3651,3 +3651,361 @@
     font-weight: 700;
     white-space: nowrap;
 }
+
+/* Phase 5 public net visibility and schedule surfaces. */
+@media (min-width: 992px) {
+    .landing-page .landing-net-grid {
+        align-items: stretch;
+    }
+
+    .landing-page .landing-net-panel {
+        height: 26rem;
+        min-height: 0;
+    }
+
+    .landing-page :is(.nets-list, .scheduled-net-list) {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .landing-page .landing-net-panel .net-card {
+        min-height: 0;
+        height: 4.45rem;
+        padding: 0.45rem 0.25rem !important;
+    }
+
+    .landing-page .landing-live-net-logo {
+        width: 3.1rem;
+        height: 3.1rem;
+    }
+
+    .landing-page .landing-live-panel .net-card {
+        grid-template-columns: 3.1rem minmax(0, 1fr) auto;
+    }
+
+    .landing-page .scheduled-net-card {
+        cursor: pointer;
+    }
+
+    .landing-page .scheduled-net-card-content {
+        gap: 0.25rem;
+    }
+
+    .landing-page .scheduled-net-card-header {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .landing-page .scheduled-net-card-title {
+        overflow: hidden;
+        font-size: 0.9rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .landing-page .scheduled-net-card-when {
+        margin-top: 0.1rem;
+        font-size: 0.74rem;
+    }
+
+    .landing-page .scheduled-net-card-description {
+        display: none;
+    }
+
+    .landing-page .scheduled-net-connections {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.3rem;
+        font-size: 0.72rem;
+    }
+}
+
+.landing-page .scheduled-net-card:hover,
+.landing-page .scheduled-net-card:focus-visible {
+    background: rgba(0, 191, 232, 0.07) !important;
+    outline: 1px solid rgba(0, 191, 232, 0.48);
+    outline-offset: -1px;
+}
+
+.public-directory-page {
+    background:
+        radial-gradient(circle at 14% 8%, rgba(0, 200, 240, 0.1), transparent 32rem),
+        radial-gradient(circle at 88% 20%, rgba(255, 133, 0, 0.045), transparent 26rem),
+        linear-gradient(155deg, #071522 0%, #030a11 68%, #06111b 100%);
+}
+
+.public-directory-main {
+    min-height: calc(100vh - 12rem);
+    padding-bottom: 5rem;
+}
+
+.public-directory-hero {
+    padding: clamp(1.75rem, 3.6vw, 3rem) 0 clamp(1.4rem, 3vw, 2.25rem);
+    border-bottom: 1px solid rgba(0, 200, 240, 0.2);
+    background:
+        radial-gradient(circle at 20% 25%, rgba(0, 200, 240, 0.1), transparent 28rem),
+        linear-gradient(110deg, rgba(8, 31, 47, 0.82), rgba(4, 13, 21, 0.34) 62%, transparent);
+}
+
+.public-directory-hero .container {
+    position: relative;
+}
+
+.public-directory-tower {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    width: auto;
+    height: 9.25rem;
+    opacity: 0.64;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.public-directory-workspace {
+    padding-top: clamp(2rem, 5vw, 4rem);
+}
+
+.public-directory-heading,
+.schedule-toolbar {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.public-directory-heading h2,
+.schedule-toolbar h2 {
+    margin: 0;
+    color: var(--app-text);
+    font-size: clamp(1.6rem, 3vw, 2.15rem);
+}
+
+.public-live-total {
+    color: #43d17a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.public-live-list,
+.schedule-results {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.public-live-card,
+.schedule-day {
+    border: 1px solid rgba(155, 169, 178, 0.48);
+    border-radius: 0.75rem;
+    background: linear-gradient(150deg, rgba(11, 29, 41, 0.92), rgba(5, 15, 23, 0.98));
+    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.18);
+}
+
+.public-live-card {
+    display: grid;
+    grid-template-columns: 4rem minmax(0, 1fr) auto auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    color: var(--app-text);
+    text-decoration: none;
+    transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.public-live-card:hover,
+.public-live-card:focus-visible,
+.schedule-item:hover,
+.schedule-item:focus-visible {
+    color: var(--app-text);
+    border-color: rgba(0, 200, 240, 0.55);
+    background: rgba(0, 191, 232, 0.07);
+    outline: none;
+}
+
+.public-live-card:hover {
+    transform: translateY(-1px);
+}
+
+.public-live-card > img {
+    width: 4rem;
+    height: 4rem;
+    object-fit: contain;
+}
+
+.public-live-card-info,
+.public-live-card-meta,
+.schedule-item-info {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.public-live-card-info strong,
+.schedule-item-info strong {
+    overflow: hidden;
+    color: var(--app-text);
+    font-size: 1.05rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.public-live-card-info span,
+.public-live-card-meta > span:last-child,
+.schedule-item-info span {
+    color: var(--app-muted);
+    font-size: 0.84rem;
+}
+
+.public-live-card-meta {
+    align-items: flex-end;
+}
+
+.public-directory-empty {
+    min-height: 15rem;
+    display: grid;
+    gap: 0.75rem;
+    place-content: center;
+    color: var(--app-muted);
+    text-align: center;
+}
+
+.public-directory-empty i {
+    color: var(--app-cyan);
+    font-size: 2rem;
+}
+
+.public-directory-empty[hidden],
+.public-live-total[hidden],
+.schedule-period-controls[hidden] {
+    display: none !important;
+}
+
+.schedule-view-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(155, 169, 178, 0.2);
+}
+
+.schedule-view-tabs a,
+.schedule-period-controls button {
+    padding: 0.55rem 0.85rem;
+    color: var(--app-muted);
+    border: 1px solid rgba(155, 169, 178, 0.28);
+    border-radius: 0.45rem;
+    background: rgba(5, 15, 23, 0.65);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.schedule-view-tabs a:hover,
+.schedule-view-tabs a:focus-visible,
+.schedule-view-tabs a.is-current,
+.schedule-period-controls button:hover,
+.schedule-period-controls button:focus-visible {
+    color: var(--app-cyan);
+    border-color: rgba(0, 200, 240, 0.52);
+}
+
+.schedule-view-tabs a.is-current {
+    background: rgba(0, 200, 240, 0.09);
+}
+
+#schedule-timezone {
+    margin: 0.35rem 0 0;
+    color: var(--app-muted);
+    font-size: 0.8rem;
+}
+
+.schedule-period-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.schedule-day {
+    overflow: hidden;
+}
+
+.schedule-day > h3 {
+    margin: 0;
+    padding: 0.85rem 1.1rem;
+    color: var(--app-cyan);
+    border-bottom: 1px solid rgba(155, 169, 178, 0.25);
+    font-size: 0.84rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.schedule-item {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 1.1rem;
+    color: var(--app-text);
+    border-bottom: 1px solid rgba(155, 169, 178, 0.18);
+    text-decoration: none;
+}
+
+.schedule-item:last-child {
+    border-bottom: 0;
+}
+
+.schedule-item > time {
+    color: var(--app-orange);
+    font-weight: 700;
+}
+
+@media (max-width: 767.98px) {
+    .landing-page .landing-net-panel {
+        height: auto;
+    }
+
+    .public-directory-tower {
+        right: 0.5rem;
+        height: 6.5rem;
+        opacity: 0.35;
+    }
+
+    .public-directory-hero .workspace-copy {
+        max-width: calc(100% - 5rem);
+    }
+
+    .public-live-card {
+        grid-template-columns: 3rem minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        padding: 0.85rem;
+    }
+
+    .public-live-card > img {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .public-live-card-meta {
+        grid-column: 2;
+        align-items: flex-start;
+    }
+
+    .public-live-card > i {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+    }
+
+    .schedule-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .schedule-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .schedule-item > time {
+        grid-column: 1 / -1;
+    }
+}

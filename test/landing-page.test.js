@@ -50,10 +50,11 @@ test('net dashboard preserves live data hooks and honest schedule empty states',
     assert.match(dashboard, /Live Nets/);
     assert.match(dashboard, /Today's Nets/);
     assert.match(dashboard, /Upcoming Nets/);
-    assert.match(dashboard, /No scheduled nets to display yet\./);
-    assert.match(dashboard, /Upcoming net scheduling is coming soon\./);
+    assert.match(dashboard, /No scheduled nets today\./);
+    assert.match(dashboard, /No upcoming nets in the next 7 days\./);
     assert.match(dashboardClient, /new HttpClient\('livenet', '\/api\/data\/livenets'\)/);
-    assert.match(dashboardClient, /liveNet\.countdownTimer/);
+    assert.match(dashboardClient, /loadScheduledOccurrences/);
+    assert.match(dashboardClient, /activeNets\.slice\(0, 4\)/);
     assert.match(dashboardClient, /liveNet\.permanent/);
     assert.match(dashboardClient, /favorites\.handler/);
     assert.match(dashboardClient, /refresh:\s*30000 \/ serverInfo\.requestRateFactor/);
@@ -97,10 +98,9 @@ test('live net listings expose authoritative grouped check-in counts and render 
 test('landing-only navigation and footer expose approved destinations without fake WVARC links', () => {
     assert.match(dashboard, /include\('\.\/partials\/navbar', \{ user: user, landing: true \}\)/);
     assert.match(navbar, />\s*Live Nets\s*</);
-    assert.match(navbar, />\s*Schedule\s*</);
+    assert.match(navbar, />\s*Start a Net\s*</);
     assert.match(navbar, />\s*Guide\s*</);
-    assert.match(navbar, /'Log In'/);
-    assert.match(navbar, />Sign Up</);
+    assert.match(navbar, />\s*Sign in\s*</);
     assert.match(footer, /mailto:logger@westvalleyarc\.com/);
     assert.match(footer, /bi bi-envelope/);
     assert.match(footer, /\/views\/privacypolicy/);

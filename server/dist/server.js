@@ -24,6 +24,7 @@ const dataNetProfileRoutes = require('./routes/dataNetProfileRoutes');
 const dataUserProfileRoutes = require('./routes/dataUserProfileRoutes');
 const dataFollowRoutes = require('./routes/dataFollowRoutes');
 const dataLiveNetRoutes = require('./routes/dataLiveNetRoutes');
+const dataScheduledOccurrenceRoutes = require('./routes/dataScheduledOccurrenceRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const presenceLiveNetRoutes = require('./routes/presenceLiveNetRoutes');
 const sseLiveNetRoutes = require('./routes/sseLiveNetRoutes');
@@ -180,6 +181,7 @@ app.use('/api/data/netprofiles', dataNetProfileRoutes);
 app.use('/api/data/userprofiles', dataUserProfileRoutes);
 app.use('/api/data/follow', dataFollowRoutes);
 app.use('/api/data/livenets', dataLiveNetRoutes);
+app.use('/api/data/scheduled-occurrences', dataScheduledOccurrenceRoutes);
 //API:Interaction Routes:
 app.use('/api/admin/interactions', adminInteractionRoutes);
 app.use('/api/station/interactions', stationInteractionRoutes);
