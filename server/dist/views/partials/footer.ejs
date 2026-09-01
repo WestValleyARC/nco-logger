@@ -1,7 +1,49 @@
 <!--Begin: footer.ejs-->
+<% const landingFooter = typeof landing !== 'undefined' && landing; %>
+<% if (landingFooter) { %>
+<footer class="app-footer landing-footer">
+  <div class="container">
+    <div class="landing-footer-grid">
+      <div class="landing-footer-brand">
+        <a href="/views/dashboard" aria-label="NCO Logger by WVARC home">
+          <img src="/img/nco-logger-logo.svg" alt="NCO Logger" />
+          <small>BY WVARC</small>
+        </a>
+        <p>A modern home for amateur radio nets.</p>
+      </div>
+      <nav class="landing-footer-column" aria-labelledby="footer-nco-title">
+        <h2 id="footer-nco-title">NCO LOGGER</h2>
+        <a href="#live-nets">Live Nets</a>
+        <a href="#net-schedule">Schedule</a>
+        <a href="/views/guide">Guide</a>
+        <a href="<%= user.isLoggedIn ? '/views/mynets' : '/views/login' %>">Start a Net</a>
+      </nav>
+      <div class="landing-footer-column" aria-labelledby="footer-wvarc-title">
+        <h2 id="footer-wvarc-title">ABOUT WVARC</h2>
+        <span class="landing-footer-link is-unavailable" aria-disabled="true" title="Link coming soon">About WVARC</span>
+        <span class="landing-footer-link is-unavailable" aria-disabled="true" title="Link coming soon">Club Website</span>
+        <span class="landing-footer-link is-unavailable" aria-disabled="true" title="Link coming soon">Join WVARC</span>
+      </div>
+      <div class="landing-footer-column landing-footer-contact" aria-labelledby="footer-contact-title">
+        <h2 id="footer-contact-title">CONTACT</h2>
+        <a href="mailto:logger@westvalleyarc.com">logger@westvalleyarc.com</a>
+      </div>
+    </div>
+    <div class="landing-footer-bottom">
+      <small>&copy; <%= server.appName %> <%= (new Date( server.ts )).getFullYear() %></small>
+      <nav aria-label="Legal">
+        <a href="/views/privacypolicy">Privacy Policy</a>
+        <a href="/views/termsofuse">Terms of Use</a>
+        <a href="/views/cookiepolicy">Cookie Policy</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+<% } else { %>
 <footer class="app-footer">
   <small>
     &copy; <%= server.appName %> <%= (new Date( server.ts )).getFullYear() %>
   </small>
 </footer>
+<% } %>
 <!--End: footer.ejs-->

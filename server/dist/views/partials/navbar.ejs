@@ -1,6 +1,13 @@
 <!--Begin: navbar.ejs-->
-<nav class="navbar navbar-expand-lg navbar-dark app-navbar" aria-label="Main navigation">
+<% const landingNavigation = typeof landing !== 'undefined' && landing; %>
+<nav class="navbar navbar-expand-lg navbar-dark app-navbar<% if (landingNavigation) { %> landing-navbar<% } %>" aria-label="Main navigation">
   <div class="container">
+    <% if (landingNavigation) { %>
+    <a href="/views/dashboard" class="navbar-brand landing-navbar-brand" aria-label="NCO Logger by WVARC home">
+      <img src="/img/nco-logger-logo.svg" class="landing-brand-logo" alt="NCO Logger" />
+      <small>BY WVARC</small>
+    </a>
+    <% } else { %>
     <a href="/views/dashboard" class="navbar-brand" aria-label="<%= server.appName %> home — view active nets">
       <img src="/img/WVARC-65th-Jeweled-Heritage-Medallion-Transparent.png" class="app-brand-mark" alt="" />
       <span class="app-brand-copy" aria-hidden="true">
@@ -8,21 +15,30 @@
         <small>BY WVARC</small>
       </span>
     </a>
+    <% } %>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu" aria-controls="navmenu" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navmenu">
       <ul class="navbar-nav ms-auto" role="menubar">
         <li class="nav-item" role="none">
-          <a href="/views/dashboard" class="nav-link" role="menuitem" tabindex="0">
+          <a href="<%= landingNavigation ? '#live-nets' : '/views/dashboard' %>" class="nav-link" role="menuitem" tabindex="0">
             Live Nets
           </a>
         </li>
+        <% if (landingNavigation) { %>
+        <li class="nav-item" role="none">
+          <a href="#net-schedule" class="nav-link" role="menuitem" tabindex="0">
+            Schedule
+          </a>
+        </li>
+        <% } else { %>
         <li class="nav-item" role="none">
           <a href="/views/mynets" class="nav-link" role="menuitem" tabindex="0">
             Start Net
           </a>
         </li>
+        <% } %>
         <li class="nav-item" role="none">
           <a href="/views/guide" class="nav-link" role="menuitem" tabindex="0">
             Guide
@@ -41,10 +57,15 @@
         </li>
         <% } else { %>
         <li class="nav-item" role="none">
-          <a href="/views/login" class="nav-link app-nav-sign-in" role="menuitem" tabindex="0">
-            Sign in
+          <a href="/views/login" class="nav-link" role="menuitem" tabindex="0">
+            <%= landingNavigation ? 'Log In' : 'Sign in' %>
           </a>
         </li>
+        <% if (landingNavigation) { %>
+        <li class="nav-item" role="none">
+          <a href="/views/login" class="nav-link app-nav-sign-in" role="menuitem" tabindex="0">Sign Up</a>
+        </li>
+        <% } %>
         <% } %>
       </ul>
     </div>
