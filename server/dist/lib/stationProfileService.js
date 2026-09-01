@@ -25,7 +25,7 @@ function fieldState(saved, field, fallbackValue = '') {
         };
     }
     if (current && Number.isInteger(Number(current.revision))) {
-        const automaticFallback = current.origin !== 'manual' && normalizeValue(fallbackValue);
+        const automaticFallback = ['qrz', 'legacy'].includes(current.origin) && normalizeValue(fallbackValue);
         return {
             ...emptyField(), ...current,
             value: automaticFallback || normalizeValue(current.value),
@@ -71,8 +71,41 @@ async function getProfileState(callSign, fallback = {}, db = mongoose.connection
 async function getManualOverrides(callSign, db = mongoose.connection) {
     const state = await getProfileState(callSign, {}, db);
     return Object.fromEntries(PROFILE_FIELDS.flatMap(field =>
-        state.fields[field].origin === 'manual' ? [[field, state.fields[field].value]] : []
+        ['manual', 'participant'].includes(state.fields[field].origin) && state.fields[field].value
+            ? [[field, state.fields[field].value]] : []
     ));
+}
+
+async function syncParticipantProfile({ callSign, name, location, editorCallSign, editorUserId,
+    db = mongoose.connection }) {
+    const incoming = { name: normalizeName(name), location: normalizeLocation(location) };
+    const fields = {};
+    await ensureProfile(callSign, {}, db);
+    for (const field of PROFILE_FIELDS) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const current = (await getProfileState(callSign, {}, db)).fields[field];
+            if (current.origin === 'manual') {
+                fields[field] = { status: 'protected', field, ...current };
+                break;
+            }
+            const origin = incoming[field] ? 'participant' : 'legacy';
+            if (current.value === incoming[field] && current.origin === origin) {
+                fields[field] = { status: 'unchanged', field, ...current };
+                break;
+            }
+            const result = await compareAndSetField({
+                callSign, field, value: incoming[field], expectedRevision: current.revision,
+                editorCallSign, editorUserId, origin, db
+            });
+            if (result.status === 'accepted' || result.origin === 'manual' || attempt === 2) {
+                fields[field] = result.origin === 'manual' && result.status === 'conflict'
+                    ? { ...result, status: 'protected' }
+                    : result;
+                break;
+            }
+        }
+    }
+    return { callSign: normalizeCall(callSign), fields };
 }
 
 async function compareAndSetField({ callSign, field, value, expectedRevision, editorCallSign, editorUserId,
@@ -105,7 +138,7 @@ async function applyManualOverrides(callSign, lookup, db = mongoose.connection) 
         ? { ...(lookup?.result || {}), callSign: normalizeCall(callSign) }
         : null;
     for (const field of PROFILE_FIELDS) {
-        if (state.fields[field].origin !== 'manual') continue;
+        if (!['manual', 'participant'].includes(state.fields[field].origin) || !state.fields[field].value) continue;
         result[field === 'name' ? 'displayName' : 'location'] = state.fields[field].value;
     }
     return {
@@ -130,5 +163,6 @@ module.exports = {
     getProfileState,
     lookupStationProfile,
     normalizeLocation,
-    normalizeName
+    normalizeName,
+    syncParticipantProfile
 };

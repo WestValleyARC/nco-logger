@@ -2,6 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const stationProfiles = require('../server/dist/lib/stationProfileService');
 const { getStationProfile, updateStationProfile } = require('../server/dist/controllers/ncoLoggerController');
 
@@ -63,6 +65,10 @@ const update = (setup, role, callSign, fields, extra = {}) => updateStationProfi
 const read = setup => getStationProfile({
     liveNet: setup.liveNet, source: source('netcontrol'), target: 'K7NNT', db: setup.db,
     StationInteractionModel: setup.StationInteractionModel
+});
+const participant = (setup, values) => stationProfiles.syncParticipantProfile({
+    callSign: 'K7NNT', name: values.name, location: values.location,
+    editorCallSign: 'K7NNT', editorUserId: 'participant-id', db: setup.db
 });
 
 for (const [role, editor] of [['netcontrol', 'N0NCO'], ['netlogger', 'N0LOG']]) {
@@ -153,4 +159,130 @@ test('station profile permissions remain limited to checked-in NCO and Logger ro
         update(setup, 'netuser', 'N0USR', { name: { value: 'Nope', expectedRevision: 0 } }),
         /Only a checked-in NCO or Logger/
     );
+});
+
+for (const [field, participantValue, correctedValue] of [
+    ['name', 'Joke Name', 'Randy Taylor'],
+    ['location', 'The Moon', 'Mesa, AZ']
+]) {
+    for (const [role, editor] of [['netcontrol', 'N0NCO'], ['netlogger', 'N0LOG']]) {
+        test(`${role} can correct a participant-entered ${field}`, async () => {
+            const setup = harness();
+            const entered = await participant(setup, { [field]: participantValue });
+            assert.equal(entered.fields[field].origin, 'participant');
+            const corrected = await update(setup, role, editor, {
+                [field]: { value: correctedValue, expectedRevision: entered.fields[field].revision }
+            });
+            assert.equal(corrected.fields[field].status, 'accepted');
+            assert.equal(corrected.fields[field].origin, 'manual');
+            assert.equal(corrected.fields[field].value, correctedValue);
+        });
+    }
+}
+
+test('manager correction survives a fresh server profile load', async () => {
+    const setup = harness();
+    const entered = await participant(setup, { name: 'Joke Name' });
+    await update(setup, 'netcontrol', 'N0NCO', {
+        name: { value: 'Randy Taylor', expectedRevision: entered.fields.name.revision }
+    });
+    const reloaded = await read(setup);
+    assert.equal(reloaded.fields.name.value, 'Randy Taylor');
+    assert.equal(reloaded.fields.name.origin, 'manual');
+});
+
+for (const [field, oldValue, correctedValue] of [
+    ['name', 'Joke Name', 'Randy Taylor'],
+    ['location', 'The Moon', 'Mesa, AZ']
+]) {
+    test(`stale participant snapshot cannot restore an old ${field}`, async () => {
+        const setup = harness();
+        const entered = await participant(setup, { [field]: oldValue });
+        await update(setup, 'netlogger', 'N0LOG', {
+            [field]: { value: correctedValue, expectedRevision: entered.fields[field].revision }
+        });
+        const stale = await participant(setup, { [field]: oldValue });
+        assert.equal(stale.fields[field].status, 'protected');
+        assert.equal(stale.fields[field].value, correctedValue);
+    });
+}
+
+test('participant reconnect cannot overwrite a newer manager revision', async () => {
+    const setup = harness();
+    const entered = await participant(setup, { name: 'Old Name', location: 'Old Place' });
+    await update(setup, 'netcontrol', 'N0NCO', {
+        name: { value: 'Correct Name', expectedRevision: entered.fields.name.revision },
+        location: { value: 'Correct Place', expectedRevision: entered.fields.location.revision }
+    });
+    const reconnect = await participant(setup, { name: 'Old Name', location: 'Old Place' });
+    assert.equal(reconnect.fields.name.value, 'Correct Name');
+    assert.equal(reconnect.fields.location.value, 'Correct Place');
+    assert.equal(reconnect.fields.name.status, 'protected');
+    assert.equal(reconnect.fields.location.status, 'protected');
+});
+
+test('QRZ cannot overwrite a manager correction made over participant data', async () => {
+    const setup = harness();
+    const entered = await participant(setup, { name: 'Participant Name' });
+    await update(setup, 'netlogger', 'N0LOG', {
+        name: { value: 'Correct Name', expectedRevision: entered.fields.name.revision }
+    });
+    const lookup = await stationProfiles.lookupStationProfile('K7NNT', {}, setup.db, async () => ({
+        outcome: 'success', result: { displayName: 'QRZ Name', location: 'QRZ Place' }
+    }));
+    assert.equal(lookup.result.displayName, 'Correct Name');
+});
+
+test('QRZ cannot overwrite current participant-entered data', async () => {
+    const setup = harness();
+    await participant(setup, { name: 'Participant Name', location: 'Participant Place' });
+    const lookup = await stationProfiles.lookupStationProfile('K7NNT', {}, setup.db, async () => ({
+        outcome: 'success', result: { displayName: 'QRZ Name', location: 'QRZ Place' }
+    }));
+    assert.equal(lookup.result.displayName, 'Participant Name');
+    assert.equal(lookup.result.location, 'Participant Place');
+});
+
+test('participant name update cannot disturb a manager-corrected location revision', async () => {
+    const setup = harness();
+    const entered = await participant(setup, { name: 'First Name', location: 'Bad Place' });
+    const corrected = await update(setup, 'netcontrol', 'N0NCO', {
+        location: { value: 'Mesa, AZ', expectedRevision: entered.fields.location.revision }
+    });
+    const changed = await participant(setup, { name: 'Second Name', location: 'Bad Place' });
+    assert.equal(changed.fields.name.value, 'Second Name');
+    assert.equal(changed.fields.location.value, 'Mesa, AZ');
+    assert.equal(changed.fields.location.revision, corrected.fields.location.revision);
+});
+
+test('participant-origin values participate in Unit 4 revision conflicts', async () => {
+    const setup = harness();
+    await participant(setup, { name: 'Participant Name' });
+    const stale = await update(setup, 'netcontrol', 'N0NCO', {
+        name: { value: 'Manager Name', expectedRevision: 0 }
+    });
+    assert.equal(stale.fields.name.status, 'conflict');
+    assert.equal(stale.fields.name.origin, 'participant');
+    assert.equal(stale.fields.name.value, 'Participant Name');
+});
+
+test('legacy participant data acquires a deterministic participant revision', async () => {
+    const setup = harness();
+    const migrated = await participant(setup, { name: 'Legacy Participant', location: 'Legacy Place' });
+    assert.equal(migrated.fields.name.revision, 1);
+    assert.equal(migrated.fields.location.revision, 1);
+    assert.equal(migrated.fields.name.origin, 'participant');
+    assert.equal(migrated.fields.location.origin, 'participant');
+});
+
+test('live-net creation and reconnect route participant fields through server revisions', () => {
+    const helpers = fs.readFileSync(path.resolve(
+        __dirname, '../server/dist/lib/controllers/liveNetHelpers.js'
+    ), 'utf8');
+    const controller = fs.readFileSync(path.resolve(
+        __dirname, '../server/dist/controllers/liveNetController.js'
+    ), 'utf8');
+    assert.match(helpers, /const updateStationInteraction[\s\S]*syncParticipantProfile[\s\S]*displayName: profile\.fields\.name\.value/);
+    assert.match(helpers, /location: profile\.fields\.location\.value/);
+    assert.match(controller, /liveNetCreatePost[\s\S]*syncParticipantProfile/);
 });

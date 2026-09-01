@@ -9,7 +9,7 @@ const fieldRevisionSchema = new Schema({
     editorCallSign: { type: String, default: '' },
     editorUserId: { type: String, default: '' },
     serverUpdatedAt: { type: Date, default: null },
-    origin: { type: String, enum: ['manual', 'qrz', 'legacy'], default: 'legacy' }
+    origin: { type: String, enum: ['manual', 'participant', 'qrz', 'legacy'], default: 'legacy' }
 }, { _id: false });
 
 const stationNameOverrideSchema = new Schema(
