@@ -15,6 +15,24 @@ const helpers = require('../lib/controllers/liveNetHelpers');
 const stationProfiles = require('../lib/stationProfileService');
 const { isLiveNetDetailsResponse, NetNotFoundError } = require('../types/commonTypesupport');
 
+const getCheckInCounts = async (liveNets, StationInteractionModel = StationInteraction) => {
+    const stationInteractionIds = liveNets.flatMap(item => {
+        const lookupEntries = item.lookupTable instanceof Map
+            ? Array.from(item.lookupTable.values())
+            : Object.values(item.lookupTable || {});
+
+        return lookupEntries.map(entry => entry.stationInteraction).filter(Boolean);
+    });
+    const groupedCheckInCounts = stationInteractionIds.length
+        ? await StationInteractionModel.aggregate([
+              { $match: { _id: { $in: stationInteractionIds }, checkedState: true } },
+              { $group: { _id: '$liveNet', checkInCount: { $sum: 1 } } }
+          ])
+        : [];
+
+    return new Map(groupedCheckInCounts.map(item => [item._id.toString(), item.checkInCount]));
+};
+
 const liveNetDetails = async (req, res, presenceOnly = false) => {
     const {
         params: { id: npid },
@@ -125,7 +143,9 @@ const liveNetList = async (req, res) => {
             queryResult = await LiveNet.find({})
                 .lean()
                 .populate('netProfile', 'title frequency mode modeDetails permanent')
-                .select('checkIns started closing url countdownTimer createdAt netProfile -_id');
+                .select('lookupTable started closing url countdownTimer createdAt netProfile');
+
+            const checkInCountsByLiveNet = await getCheckInCounts(queryResult);
 
             const netlist = queryResult
                 .map(item => {
@@ -141,7 +161,8 @@ const liveNetList = async (req, res) => {
                             countdownTimer: item.countdownTimer,
                             started: item.started,
                             url: item.url,
-                            createdAt: item.createdAt
+                            createdAt: item.createdAt,
+                            checkInCount: checkInCountsByLiveNet.get(item._id.toString()) || 0
                         };
                     }
                 })
@@ -299,6 +320,7 @@ const liveNetCreatePost = async (req, res) => {
 };
 
 module.exports = {
+    getCheckInCounts,
     liveNetList,
     liveNetCreatePost,
     liveNetDetails,

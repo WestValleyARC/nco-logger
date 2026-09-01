@@ -12,8 +12,10 @@ const dashboard = read('server/dist/views/dashboard.ejs');
 const navbar = read('server/dist/views/partials/navbar.ejs');
 const footer = read('server/dist/views/partials/footer.ejs');
 const dashboardClient = read('client/dist/public/js/byView/dashboard/main.js');
+const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
 const heroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-night.png');
+const { getCheckInCounts } = require('../server/dist/controllers/liveNetController');
 
 test('landing hero uses the approved copy, actions, logo identity, and tower artwork', () => {
     assert.match(dashboard, /Run a net\./);
@@ -23,9 +25,9 @@ test('landing hero uses the approved copy, actions, logo identity, and tower art
     assert.match(dashboard, /START A NET/);
     assert.match(dashboard, /VIEW SCHEDULE/);
     assert.match(dashboard, /href="#net-schedule"/);
-    assert.match(landingCss, /background-image:\s*url\('\/img\/nco-logger-hero-night\.png'\)/);
-    assert.match(navbar, /src="\/img\/nco-logger-logo\.svg"/);
-    assert.match(navbar, /BY WVARC/);
+    assert.match(landingCss, /background-image:\s*url\('\/img\/nco-logger-hero-panorama\.png'\)/);
+    assert.match(navbar, /src="\/img\/NCO_Logger_Logo_navbar\.png"/);
+    assert.match(navbar, /alt="NCO Logger by WVARC"/);
     assert.ok(fs.statSync(heroPath).size > 100000);
     assert.ok(fs.statSync(heroPath).size < 2500000);
     assert.match(landingCss, /\.landing-page \.landing-title-find\s*\{\s*color:\s*var\(--app-text\)/s);
@@ -57,6 +59,41 @@ test('net dashboard preserves live data hooks and honest schedule empty states',
     assert.match(dashboardClient, /refresh:\s*30000 \/ serverInfo\.requestRateFactor/);
 });
 
+test('live net listings expose authoritative grouped check-in counts and render singular or plural labels', async () => {
+    let aggregationPipeline;
+    const checkInCounts = await getCheckInCounts(
+        [
+            {
+                _id: 'live-net-one',
+                lookupTable: { A: { stationInteraction: 'interaction-true' }, B: { stationInteraction: 'interaction-false' } }
+            },
+            { _id: 'live-net-two', lookupTable: { C: { stationInteraction: 'interaction-null' } } }
+        ],
+        {
+            aggregate: async pipeline => {
+                aggregationPipeline = pipeline;
+                return [{ _id: 'live-net-one', checkInCount: 1 }];
+            }
+        }
+    );
+
+    assert.deepEqual(aggregationPipeline[0], {
+        $match: {
+            _id: { $in: ['interaction-true', 'interaction-false', 'interaction-null'] },
+            checkedState: true
+        }
+    });
+    assert.deepEqual(aggregationPipeline[1], {
+        $group: { _id: '$liveNet', checkInCount: { $sum: 1 } }
+    });
+    assert.equal(checkInCounts.get('live-net-one'), 1);
+    assert.equal(checkInCounts.has('live-net-two'), false);
+    assert.match(liveNetController, /StationInteractionModel\.aggregate\(\[/);
+    assert.match(liveNetController, /checkInCountsByLiveNet\.get\(item\._id\.toString\(\)\)\s*\|\|\s*0/);
+    assert.match(dashboard, /id="checkInCount"/);
+    assert.match(dashboardClient, /`\$\{liveNet\.checkInCount\} Check-In\$\{liveNet\.checkInCount === 1 \? '' : 's'\}`/);
+});
+
 test('landing-only navigation and footer expose approved destinations without fake WVARC links', () => {
     assert.match(dashboard, /include\('\.\/partials\/navbar', \{ user: user, landing: true \}\)/);
     assert.match(navbar, />\s*Live Nets\s*</);
@@ -65,6 +102,7 @@ test('landing-only navigation and footer expose approved destinations without fa
     assert.match(navbar, /'Log In'/);
     assert.match(navbar, />Sign Up</);
     assert.match(footer, /mailto:logger@westvalleyarc\.com/);
+    assert.match(footer, /bi bi-envelope/);
     assert.match(footer, /\/views\/privacypolicy/);
     assert.match(footer, /\/views\/termsofuse/);
     assert.match(footer, /\/views\/cookiepolicy/);

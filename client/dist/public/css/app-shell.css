@@ -1911,7 +1911,7 @@
     border-radius: 2px;
     background: var(--app-orange);
     content: '';
-    transform: rotate(-48deg);
+    transform: rotate(48deg);
 }
 
 .landing-feature-card h2 {
@@ -2314,7 +2314,7 @@
     padding: 3.3rem 0 3.8rem;
     border-bottom: 0;
     background-color: #061321;
-    background-image: url('/img/nco-logger-hero-night.png');
+    background-image: url('/img/nco-logger-hero-panorama.png');
     background-position: center right;
     background-size: cover;
 }
@@ -2757,4 +2757,368 @@
     .landing-footer-column:last-child {
         border-bottom: 0;
     }
+}
+
+/* Compact desktop proportions for the approved dashboard composition. */
+@media (min-width: 992px) {
+    .landing-page .landing-navbar {
+        min-height: 4.75rem;
+        padding-block: 0.25rem;
+    }
+
+    .landing-navbar-brand {
+        width: clamp(16rem, 20vw, 17.5rem);
+    }
+
+    .landing-brand-logo {
+        height: 4.25rem;
+    }
+
+    .landing-page .landing-navbar .navbar-nav {
+        gap: clamp(0.75rem, 1.6vw, 1.3rem);
+    }
+
+    .landing-page .landing-navbar .nav-link {
+        color: #f8fafb !important;
+        font-size: 1.05rem;
+        font-weight: 600;
+    }
+
+    .landing-page .landing-hero {
+        min-height: 22.5rem;
+        padding: 1.65rem 0 1.85rem;
+        background-position: center 45%;
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+
+    .landing-page .landing-hero::before {
+        background:
+            linear-gradient(90deg, rgba(3, 11, 18, 0.9) 0%, rgba(3, 11, 18, 0.74) 29%, rgba(3, 11, 18, 0.34) 48%, rgba(3, 11, 18, 0.1) 68%, transparent 82%),
+            linear-gradient(0deg, rgba(3, 11, 18, 0.22), transparent 42%);
+    }
+
+    .landing-page .landing-hero-copy {
+        max-width: 30rem;
+    }
+
+    .landing-page .landing-title {
+        margin-bottom: 0.85rem;
+        font-size: 3.75rem;
+        font-weight: 700;
+        line-height: 0.98;
+    }
+
+    .landing-page .landing-copy {
+        max-width: 29rem;
+        margin-bottom: 1.15rem;
+        font-size: 1.08rem;
+        line-height: 1.6;
+    }
+
+    .landing-page .landing-actions {
+        gap: 0.7rem;
+    }
+
+    .landing-page .landing-actions .app-button {
+        min-width: 11.25rem;
+        min-height: 3.25rem;
+        padding-block: 0.6rem;
+        font-size: 0.92rem;
+    }
+
+    .landing-features {
+        padding: 1.25rem 0;
+    }
+
+    .landing-feature-card {
+        min-height: 7.5rem;
+        gap: 0.9rem;
+        padding: 1.1rem 1rem;
+    }
+
+    .landing-feature-icon {
+        width: 3.85rem;
+        height: 3.85rem;
+        font-size: 2.9rem;
+    }
+
+    .landing-feature-icon-no-cost {
+        font-size: 2.05rem;
+    }
+
+    .landing-feature-icon-no-cost::after {
+        width: 3.95rem;
+    }
+
+    .landing-feature-card h2 {
+        margin-bottom: 0.18rem;
+        font-size: 0.86rem;
+        font-weight: 700;
+    }
+
+    .landing-feature-card p {
+        font-size: 0.82rem;
+        line-height: 1.55;
+    }
+
+    .landing-net-board {
+        padding: 1.5rem 0 2.5rem;
+    }
+
+    .landing-net-panel {
+        min-height: 21rem;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem 1.05rem 0.9rem;
+    }
+
+    .landing-net-panel-heading {
+        min-height: 3rem;
+        margin-bottom: 0.45rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .landing-net-panel-heading h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .landing-page .nets-list,
+    .landing-page .scheduled-net-list {
+        flex: 1;
+    }
+
+    .landing-page .net-card {
+        min-height: 5.85rem;
+        padding: 0.8rem 0.25rem !important;
+    }
+
+    .landing-page .net-card-link {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .landing-page .net-card-meta {
+        color: #e0e4e6;
+        font-size: 0.86rem;
+    }
+
+    .landing-page .nets-state,
+    .landing-page .scheduled-nets-empty {
+        min-height: 0;
+        align-content: start;
+        padding: 1.4rem 1rem;
+        color: #d5dbde;
+        font-size: 0.9rem;
+    }
+
+    .landing-net-action {
+        display: inline-flex;
+        gap: 0.4rem;
+        align-items: center;
+        align-self: flex-start;
+        margin-top: auto;
+        padding: 0.7rem 0.1rem 0.15rem;
+        color: #ff8500;
+        font-size: 1rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .landing-net-action:hover,
+    .landing-net-action:focus-visible {
+        color: #ffa02f;
+    }
+
+    .landing-net-action.is-placeholder {
+        cursor: default;
+    }
+
+    .landing-page .landing-footer {
+        padding: 1.8rem 0 1.2rem !important;
+    }
+
+    .landing-footer-grid {
+        grid-template-columns: minmax(17rem, 1.3fr) repeat(3, minmax(9rem, 0.75fr));
+    }
+
+    .landing-footer-brand,
+    .landing-footer-column {
+        padding-inline: 1.7rem;
+    }
+
+    .landing-footer-brand {
+        padding-left: 0;
+    }
+
+    .landing-footer-brand > a,
+    .landing-footer-brand img {
+        width: 15.5rem;
+    }
+
+    .landing-footer-brand p {
+        max-width: 18.5rem;
+        margin-top: 0.85rem;
+        font-size: 0.94rem;
+        line-height: 1.55;
+    }
+
+    .landing-footer-column {
+        gap: 0.65rem;
+    }
+
+    .landing-footer-column h2 {
+        margin-bottom: 0.3rem;
+        color: #00c8f0;
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .landing-footer-column a,
+    .landing-footer-link,
+    .landing-footer-bottom a {
+        color: #f6f8f9;
+        font-size: 0.96rem;
+        font-weight: 600;
+    }
+
+    .landing-footer-link.is-unavailable {
+        opacity: 1;
+    }
+
+    .landing-footer-contact a {
+        display: inline-flex;
+        gap: 0.65rem;
+        align-items: center;
+    }
+
+    .landing-footer-contact a i {
+        color: #f6f8f9;
+        font-size: 1.5rem;
+        line-height: 1;
+    }
+
+    .landing-footer-bottom {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        color: #e1e5e7;
+        font-size: 0.9rem;
+    }
+}
+
+/* Landing Live Nets card internals. */
+.landing-live-panel .landing-live-count {
+    margin-left: auto;
+    color: #43d17a;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+}
+
+.landing-page .landing-live-panel .net-card {
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    gap: 0.8rem;
+    align-items: center;
+    cursor: pointer;
+}
+
+.landing-page .landing-live-panel .net-card:hover,
+.landing-page .landing-live-panel .net-card:focus-visible {
+    background: rgba(0, 191, 232, 0.07) !important;
+    outline: 1px solid rgba(0, 191, 232, 0.48);
+    outline-offset: -1px;
+}
+
+.landing-live-net-logo {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: contain;
+    border-radius: 50%;
+}
+
+.landing-live-net-info {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.landing-live-net-title {
+    overflow: hidden;
+    color: #f4f5f2;
+    font-size: 1rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.landing-live-net-frequency,
+.landing-live-net-time {
+    overflow: hidden;
+    color: #d6dde0;
+    font-size: 0.86rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.landing-live-net-time:empty {
+    display: none;
+}
+
+.landing-live-net-status {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 0.4rem;
+    align-items: center;
+    justify-items: end;
+}
+
+.landing-live-net-state {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-end;
+}
+
+.landing-check-in-count {
+    color: #bdc8cc;
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+.landing-net-favorite {
+    display: inline-grid;
+    width: 1.9rem;
+    height: 1.9rem;
+    place-items: center;
+    padding: 0;
+    color: #84949b;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 1.15rem;
+}
+
+.landing-net-favorite:hover,
+.landing-net-favorite:focus-visible {
+    color: #ff9a25;
+    background: rgba(255, 133, 0, 0.1);
+    outline: 1px solid rgba(255, 133, 0, 0.55);
+}
+
+.landing-net-favorite.bi-star-fill {
+    color: #ff8500;
+}
+
+.landing-on-air {
+    padding: 0.28rem 0.48rem;
+    color: #eaffef;
+    border: 1px solid rgba(67, 209, 122, 0.5);
+    border-radius: 0.35rem;
+    background: rgba(32, 128, 66, 0.72);
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
 }

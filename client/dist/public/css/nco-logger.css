@@ -619,3 +619,338 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
   #netcontrol-ncs-helper .nch-help-heading { align-items: flex-start; }
   #netcontrol-ncs-helper .nch-help-actions { gap: 3px; }
 }
+
+/* Phase 2 NCO Logger visual reskin. Geometry and operational dimensions remain unchanged. */
+html,
+body.nco-logger-page,
+#nco-logger-root,
+#netcontrol-ncs-helper {
+  background: #050b12;
+}
+
+#netcontrol-ncs-helper {
+  --nch-skin-bg: #050b12;
+  --nch-skin-surface: #08131d;
+  --nch-skin-surface-raised: #0d1a25;
+  --nch-skin-row: #101b25;
+  --nch-skin-row-hover: #152632;
+  --nch-skin-border-major: #13708b;
+  --nch-skin-border-subtle: #294653;
+  --nch-skin-cyan: #00c8f0;
+  --nch-skin-cyan-soft: #78d8e8;
+  --nch-skin-orange: #ff8500;
+  --nch-skin-text: #f6f8f9;
+  --nch-skin-muted: #b7c3c9;
+  color: var(--nch-skin-text);
+  border-color: var(--nch-skin-border-major);
+  box-shadow: none;
+}
+
+#netcontrol-ncs-helper header {
+  height: 35px;
+  background: #030911;
+  border-bottom: 1px solid rgba(0, 200, 240, .22);
+}
+
+#netcontrol-ncs-helper .nch-helper-brand {
+  height: 31px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+#netcontrol-ncs-helper .nch-helper-logo {
+  display: block;
+  width: 101px;
+  height: 31px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+#netcontrol-ncs-helper .nch-helper-brand:hover .nch-helper-logo,
+#netcontrol-ncs-helper .nch-helper-brand:focus-visible .nch-helper-logo {
+  filter: brightness(1.12);
+}
+
+#netcontrol-ncs-helper [data-role="helper-version"] {
+  position: static;
+  flex: 0 1 auto;
+  transform: translateY(8px);
+  color: #b7c3c9;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+#netcontrol-ncs-helper .nch-net-title {
+  color: var(--nch-skin-text);
+}
+
+#netcontrol-ncs-helper .nch-net-title a:hover,
+#netcontrol-ncs-helper .nch-net-title a:focus-visible {
+  color: var(--nch-skin-cyan-soft);
+}
+
+#netcontrol-ncs-helper .nch-header-menu > summary {
+  color: var(--nch-skin-text);
+  background: #0d202c;
+  border-color: var(--nch-skin-cyan);
+}
+
+#netcontrol-ncs-helper .nch-header-menu > summary:hover {
+  background: #123141;
+}
+
+#netcontrol-ncs-helper .nch-header-menu[open] > summary {
+  color: #031016;
+  background: var(--nch-skin-cyan);
+}
+
+#netcontrol-ncs-helper .nch-header-menu-popover,
+#netcontrol-ncs-helper .nch-help-card,
+#netcontrol-ncs-helper .nch-photo-card,
+#netcontrol-ncs-helper .nch-edit-card {
+  color: var(--nch-skin-text);
+  background: #07111a;
+  border-color: var(--nch-skin-border-major);
+}
+
+#netcontrol-ncs-helper .nch-header-menu-popover > button,
+#netcontrol-ncs-helper .nch-header-menu-popover > a,
+#netcontrol-ncs-helper .nch-header-menu-popover > details > summary,
+#netcontrol-ncs-helper .nch-font-buttons button {
+  color: var(--nch-skin-text);
+  background: #10202b;
+  border-color: var(--nch-skin-border-subtle);
+}
+
+#netcontrol-ncs-helper .nch-module {
+  background: var(--nch-skin-surface);
+  border-color: var(--nch-skin-border-major);
+  box-shadow: none;
+}
+
+#netcontrol-ncs-helper .nch-module-header {
+  color: var(--nch-skin-cyan);
+  background: #071019;
+  border-bottom-color: rgba(0, 200, 240, .3);
+  font-weight: 700;
+}
+
+#netcontrol-ncs-helper .nch-module-header small,
+#netcontrol-ncs-helper h3 small,
+#netcontrol-ncs-helper .nch-empty,
+#netcontrol-ncs-helper .nch-relay-menu-panel small,
+#netcontrol-ncs-helper .nch-help-heading small,
+#netcontrol-ncs-helper .nch-viewer-history p small {
+  color: var(--nch-skin-muted);
+}
+
+#netcontrol-ncs-helper input[type="text"],
+#netcontrol-ncs-helper input[type="password"],
+#netcontrol-ncs-helper input:not([type]),
+#netcontrol-ncs-helper .nch-viewer-navigator select {
+  color: var(--nch-skin-text);
+  background: #02070c;
+  border-color: #3b5360;
+}
+
+#netcontrol-ncs-helper :is(input, select):focus-visible,
+#netcontrol-ncs-helper :is(button, a, summary):focus-visible {
+  outline: 2px solid var(--nch-skin-cyan);
+  outline-offset: 1px;
+}
+
+#netcontrol-ncs-helper button {
+  color: var(--nch-skin-text);
+  background: #132631;
+  border-color: #43616d;
+}
+
+#netcontrol-ncs-helper button:hover {
+  background: #193440;
+  border-color: #5b8796;
+}
+
+#netcontrol-ncs-helper button:disabled {
+  color: #aeb9be;
+  opacity: .68;
+}
+
+#netcontrol-ncs-helper .nch-quick-checkin button {
+  background: #12212c;
+  border-color: #3a5663;
+}
+
+#netcontrol-ncs-helper .nch-quick-checkin button:hover {
+  background: #18313e;
+  border-color: #568493;
+}
+
+#netcontrol-ncs-helper .nch-quick-checkin button.is-active {
+  color: #062012;
+  background: #8de89a;
+  border-color: #c9ffd3;
+}
+
+#netcontrol-ncs-helper button.nch-undo-top {
+  min-height: 34px;
+  color: #dffaff;
+  background: #0b3444;
+  border-color: #3dbbd5;
+}
+
+#netcontrol-ncs-helper button.nch-close-net,
+#netcontrol-ncs-helper button.nch-confirm-close {
+  color: #fff;
+  background: #9f2634;
+  border-color: #f05c6b;
+}
+
+#netcontrol-ncs-helper button.nch-close-net {
+  min-height: 34px;
+}
+
+#netcontrol-ncs-helper button.nch-close-net:hover,
+#netcontrol-ncs-helper button.nch-confirm-close:hover {
+  background: #bd3241;
+}
+
+#netcontrol-ncs-helper .nch-row {
+  color: var(--nch-skin-text);
+  background: var(--nch-skin-row);
+  border-color: rgba(58, 91, 105, .28);
+}
+
+#netcontrol-ncs-helper .nch-row:hover,
+#netcontrol-ncs-helper .nch-row:focus-within,
+#netcontrol-ncs-helper .nch-row.nch-actions-pinned {
+  background: var(--nch-skin-row-hover);
+  border-color: #496f7d;
+}
+
+#netcontrol-ncs-helper .nch-station {
+  color: var(--nch-skin-text);
+  background: #0b1c27;
+  border-color: #385663;
+}
+
+#netcontrol-ncs-helper .nch-detail {
+  color: #eef3f5;
+}
+
+#netcontrol-ncs-helper .nch-row.nch-checked-out,
+#netcontrol-ncs-helper .nch-lurker-row {
+  color: #e4eaed;
+  background: #0d1821;
+}
+
+#netcontrol-ncs-helper .nch-row.nch-checked-out:hover,
+#netcontrol-ncs-helper .nch-row.nch-checked-out:focus-within,
+#netcontrol-ncs-helper .nch-row.nch-checked-out.nch-actions-pinned,
+#netcontrol-ncs-helper .nch-row.nch-lurker-row:hover,
+#netcontrol-ncs-helper .nch-row.nch-lurker-row:focus-within,
+#netcontrol-ncs-helper .nch-row.nch-lurker-row.nch-actions-pinned {
+  background: #142630;
+  border-color: #456d7b;
+}
+
+#netcontrol-ncs-helper .nch-row.nch-nco-row {
+  color: #fff;
+  background: linear-gradient(90deg, #075784, #08719b);
+  border-color: #21c8ef;
+  box-shadow: inset 3px 0 0 #60ddf5;
+}
+
+#netcontrol-ncs-helper .nch-row.nch-nco-row .nch-station {
+  color: #fff;
+  background: #07456a;
+  border-color: #76def0;
+}
+
+#netcontrol-ncs-helper .nch-row.nch-nco-row:hover,
+#netcontrol-ncs-helper .nch-row.nch-nco-row:focus-within,
+#netcontrol-ncs-helper .nch-row.nch-nco-row.nch-actions-pinned {
+  background: linear-gradient(90deg, #086493, #0780aa);
+}
+
+#netcontrol-ncs-helper .nch-row-actions {
+  color: var(--nch-skin-text);
+  background: #07131c;
+  border-color: #3b8193;
+  box-shadow: 0 9px 24px rgba(0, 0, 0, .72);
+}
+
+#netcontrol-ncs-helper .nch-chat-module-body,
+hl-chat.nch-chat-docked {
+  background: #050d15 !important;
+}
+
+hl-chat.nch-chat-docked {
+  --hl-primary: #00c8f0 !important;
+  --hl-primary-dark: #0b4255 !important;
+  --hl-tertiary: #a9c5cd !important;
+  --hl-background: #050d15 !important;
+  --hl-surface: #0b1721 !important;
+  --hl-text: #f6f8f9 !important;
+  color: #f6f8f9 !important;
+}
+
+hl-chat.nch-chat-docked :is(.chat-input, .chat-message-input, .chat-text-input, input[placeholder*="Message"]) {
+  color: #eaf7fa !important;
+  caret-color: #71e2f6 !important;
+  background: #081722 !important;
+  border-color: #355866 !important;
+}
+
+hl-chat.nch-chat-docked :is(.chat-input, .chat-message-input, .chat-text-input, input[placeholder*="Message"]):focus {
+  border-color: #00c8f0 !important;
+  box-shadow: 0 0 0 2px rgba(0, 200, 240, .2) !important;
+}
+
+hl-chat.nch-chat-docked :is(.chat-input, .chat-message-input, .chat-text-input)::placeholder {
+  color: #9eb1b8 !important;
+}
+
+hl-chat.nch-chat-docked .nch-pinned-chat-strip {
+  color: #f6f8f9 !important;
+  background: #211b12 !important;
+  border-color: #9b641d !important;
+}
+
+hl-chat.nch-chat-docked .nch-pinned-chat-open strong,
+hl-chat.nch-chat-docked :is(.chat-message-author, .chat-message-sender, .chat-sender, .chat-author, .chat-user-name, .chat-username, .chat-callsign, .chat-call-sign) {
+  color: var(--nch-skin-orange, #ff8500) !important;
+  font-weight: 750 !important;
+}
+
+hl-chat.nch-chat-docked :is(.chat-text, .chat-message-content) {
+  color: #edf2f4 !important;
+}
+
+hl-chat.nch-chat-docked :is(.chat-message-timestamp, .chat-timestamp, time, .chat-status, .chat-edited) {
+  color: #aebbc1 !important;
+}
+
+hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send {
+  background: #0b3444 !important;
+  border-color: #3dbbd5 !important;
+}
+
+#netcontrol-ncs-helper .nch-fixed-status-bar {
+  color: #f4fbfd;
+  background: linear-gradient(110deg, #062a3b, #073e52 52%, #063344);
+  border-color: #278ca5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+
+#netcontrol-ncs-helper .nch-status,
+#netcontrol-ncs-helper .nch-footer-mode,
+#netcontrol-ncs-helper .nch-count-card strong {
+  color: #f4fbfd;
+}
+
+#netcontrol-ncs-helper .nch-relay-status,
+#netcontrol-ncs-helper .nch-count-card small {
+  color: #c7dce2;
+}

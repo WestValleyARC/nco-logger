@@ -81,6 +81,7 @@
             <header class="landing-net-panel-heading">
               <span class="landing-live-dot" aria-hidden="true"></span>
               <h3 id="live-nets-title">Live Nets</h3>
+              <span class="landing-live-count" id="live-nets-count" hidden></span>
             </header>
 
             <div class="nets-list" id="dashItemsContainer" aria-live="polite" aria-busy="true">
@@ -91,25 +92,26 @@
 
               <!-- Template for dynamically generated net rows. IDs are scoped to each cloned row. -->
               <div id="netTemplate" class="net-card d-none">
-                <div class="net-card-main">
-                  <a id="title-link" href="#" class="net-card-link text-muted">
-                    <img src="/img/on-air-inactive2.png" id="onairimg" width="62" height="22" alt="Net status" />
-                    <span id="title"></span>
-                  </a>
-                  <span class="text-tertiary">
-                    <% if (user.isLoggedIn) { %>
-                    <i class="bi bi-star favicon" aria-label="Add to favorites" role="button"></i>
-                    <% } else { %>
-                    <i class="d-none bi bi-star favicon" aria-hidden="true"></i>
-                    <% } %>
-                  </span>
+                <img class="landing-live-net-logo" src="/img/NCO_Logger_Logo_Tower_Only.png" alt="" />
+                <div class="landing-live-net-info">
+                  <span id="title" class="landing-live-net-title"></span>
+                  <span id="frequency" class="landing-live-net-frequency"></span>
+                  <span id="startTime" class="landing-live-net-time"></span>
                 </div>
-                <div class="net-card-meta">
-                  <span id="startTime"></span>
-                  <span id="frequency"></span>
+                <div class="landing-live-net-status">
+                  <% if (user.isLoggedIn) { %>
+                  <button type="button" class="landing-net-favorite favicon bi bi-star" aria-label="Toggle favorite"></button>
+                  <% } else { %>
+                  <button type="button" class="d-none landing-net-favorite favicon bi bi-star" aria-hidden="true" tabindex="-1"></button>
+                  <% } %>
+                  <div class="landing-live-net-state">
+                    <span class="landing-on-air" id="onairStatus" hidden>ON AIR</span>
+                    <span class="landing-check-in-count" id="checkInCount"></span>
+                  </div>
                 </div>
               </div>
             </div>
+            <a class="landing-net-action" href="#live-nets">View all live nets <span aria-hidden="true">→</span></a>
           </section>
 
           <section class="landing-net-panel" aria-labelledby="todays-nets-title">
@@ -123,6 +125,7 @@
                 No scheduled nets to display yet.
               </div>
             </div>
+            <span class="landing-net-action is-placeholder" aria-disabled="true">View today's schedule <span aria-hidden="true">→</span></span>
           </section>
 
           <section class="landing-net-panel" aria-labelledby="upcoming-nets-title">
@@ -136,6 +139,7 @@
                 Upcoming net scheduling is coming soon.
               </div>
             </div>
+            <span class="landing-net-action is-placeholder" aria-disabled="true">View full schedule <span aria-hidden="true">→</span></span>
           </section>
         </div>
 
