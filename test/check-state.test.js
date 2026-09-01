@@ -70,7 +70,9 @@ function harness({ known = true, checkedState = false, localProfile = null, manu
         LiveNet: { findById: async () => liveNet },
         StationInteraction,
         UserProfile: { findOne: async () => localProfile },
-        StationNameOverride: { findOne: async () => manualNameOverride ? { displayName: manualNameOverride } : null }
+        StationNameOverride: { findOne: async () => manualNameOverride ? {
+            fields: { name: { value: manualNameOverride, revision: 1, origin: 'manual' } }
+        } : null }
     };
     const db = { model: name => models[name] || {} };
     const qrzLookupFn = async () => {
@@ -213,17 +215,15 @@ for (const [label, outcome, expectedStatus] of [
     });
 }
 
-test('deferred enrichment does not overwrite manual NCO or Logger profile fields', async () => {
+test('deferred QRZ enrichment does not overwrite newer manual NCO or Logger interaction fields', async () => {
     const setup = harness({ known: false, localProfile: null, qrzDelayMs: 20 });
     const deferredTasks = [];
     await runCheckState(setup, true, {}, { deferredTasks });
-    setup.liveNet.loggerState = { details: { W1ABC: { profile: {
-        nameOrigin: 'manual', nameOverride: true,
-        locationOrigin: 'manual', locationOverride: true
-    } } } };
+    setup.savedNewStations[0].displayName = 'Manual Name';
+    setup.savedNewStations[0].location = 'Manual Location';
     await Promise.all(deferredTasks);
-    assert.equal(setup.savedNewStations[0].displayName, null);
-    assert.equal(setup.savedNewStations[0].location, null);
+    assert.equal(setup.savedNewStations[0].displayName, 'Manual Name');
+    assert.equal(setup.savedNewStations[0].location, 'Manual Location');
 });
 
 test('deferred enrichment does not change a station check-out that happens while QRZ is pending', async () => {

@@ -4,13 +4,13 @@ const { realtimeClients } = require('./realtimeClients');
 const { logger } = require('./logger');
 const { NetCloseReport } = require('./userNotification');
 const { getFlexOptionsByUser, wellFormedCall } = require('./serverUtils');
-const { lookupStationProfile } = require('./stationProfileService');
+const stationProfiles = require('./stationProfileService');
+const { lookupStationProfile } = stationProfiles;
 const { getNetProfile } = require('../models/netProfile');
 const { getUserProfile } = require('../models/userProfile');
 const { getLiveNet } = require('../models/liveNet');
 const { getPendingUnfollow, getPendingAccountDelete } = require('../models/taskQueues');
 const { getStationInteraction } = require('../models/stationInteraction');
-const { getStationNameOverride } = require('../models/stationNameOverride');
 const mongoose = require('mongoose');
 const { cleanupNetChat } = require('./localChat');
 const { withKeyedOperations } = require('./keyedOperation');
@@ -25,8 +25,7 @@ function getModels(db = null) {
         LiveNet: getLiveNet(db),
         PendingUnfollow: getPendingUnfollow(db),
         PendingAccountDelete: getPendingAccountDelete(db),
-        StationInteraction: getStationInteraction(db),
-        StationNameOverride: getStationNameOverride(db)
+        StationInteraction: getStationInteraction(db)
     };
 }
 
@@ -58,13 +57,8 @@ const qrzStatus = (outcome, successful = false, deferred = false) => {
     })[outcome] || 'service-error';
 };
 
-const profileHasManualOverride = (liveNet, callSign, field) => {
-    const profile = liveNet?.loggerState?.details?.[callSign]?.profile;
-    return profile?.[`${field}Origin`] === 'manual';
-};
-
 async function applyDeferredQrzEnrichment({ dia, liveNetId, callSign, baseline, lookup, db }) {
-    const { LiveNet, StationInteraction } = getModels(db);
+    const { StationInteraction } = getModels(db);
     let response;
     try {
         response = await lookup;
@@ -74,13 +68,12 @@ async function applyDeferredQrzEnrichment({ dia, liveNetId, callSign, baseline, 
     const result = response?.result;
     const status = qrzStatus(response?.outcome, ['success', 'success-cache'].includes(response?.outcome), true);
     try {
-        const latestLiveNet = await LiveNet.findById(liveNetId);
         const updates = [
             ['name', 'displayName', result?.displayName],
             ['location', 'location', result?.location]
         ];
-        for (const [profileField, interactionField, value] of updates) {
-            if (!value || baseline[interactionField] || profileHasManualOverride(latestLiveNet, callSign, profileField)) continue;
+        for (const [, interactionField, value] of updates) {
+            if (!value || baseline[interactionField]) continue;
             await StationInteraction.updateOne(
                 { _id: dia._id, [interactionField]: baseline[interactionField] },
                 { $set: { [interactionField]: value } }
@@ -184,7 +177,7 @@ async function checkStateUnlocked({
     // Check role level
     if (myLevel > 1) throw new Error(`Only NCS or logger can alter checked state`);
 
-    let { StationInteraction, StationNameOverride, UserProfile } = getModels(db);
+    let { StationInteraction, UserProfile } = getModels(db);
 
     const knownStations = [];
     const newStations = [];
@@ -273,16 +266,16 @@ async function checkStateUnlocked({
     const newIaDocs = await Promise.all(
         newStations.map(async dstStation => {
             let userData;
-            let savedNameOverride;
+            let manualOverrides;
             let qrzData = null;
             const dstStationUpper = dstStation.toUpperCase();
             const timing = stationMetrics.get(dstStationUpper);
             const profileStartedAt = performance.now();
             let lookupStatus = 'deferred';
 
-            [userData, savedNameOverride] = await Promise.all([
+            [userData, manualOverrides] = await Promise.all([
                 UserProfile.findOne({ callSign: dstStationUpper }),
-                StationNameOverride.findOne({ callSign: dstStationUpper })
+                stationProfiles.getManualOverrides(dstStationUpper, db)
             ]);
             if (timing) timing.profileLookupMs = elapsedMs(profileStartedAt);
             // Ordinary account display names are not authoritative station-log names.
@@ -320,10 +313,10 @@ async function checkStateUnlocked({
                 callSign: dstStationUpper,
                 createdBy: 'admin',
                 userProfile: userData?._id || null,
-                displayName: savedNameOverride?.displayName || qrzData?.displayName || null,
+                displayName: manualOverrides.name || qrzData?.displayName || null,
                 photo: userData?.photo || qrzData?.photo || null,
                 email: userData?.email || null,
-                location: userData?.location || qrzData?.location || null,
+                location: manualOverrides.location || userData?.location || qrzData?.location || null,
                 qrzLookupStatus: lookupStatus,
                 qrzLookupAt: lookupStatus === 'deferred' ? null : new Date(),
                 chatEnabled: false,

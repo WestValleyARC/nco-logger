@@ -595,15 +595,6 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         qrzCheckedAt: Date.now(),
         qrzNameVersion: QRZ_NAME_VERSION
       };
-      if (canManageStations()) {
-        const lookupProfile = {};
-        if (location) Object.assign(lookupProfile, { location, locationOverride: true, locationOrigin: "lookup" });
-        if (Object.keys(lookupProfile).length) {
-          const authorityTime = Date.now();
-          const { accepted } = applyProfileCandidate(call, lookupProfile, currentUserRole, authorityTime, `local-lookup-${authorityTime}`);
-          publishSharedProfile(call, accepted);
-        }
-      }
       storageSet();
       if (normalizeCall(panel?.querySelector("[data-role='callsign']")?.value) === call) loadEditor(call);
       renderQueue();
@@ -621,17 +612,20 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     }
   }
 
-  async function saveStationName(callSign, displayName) {
+  async function stationProfileRequest(callSign, action, fields) {
     const response = await fetch(`/api/nco-logger/${npid}`, {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ action: "stationName", callSign: normalizeCall(callSign), displayName })
+      body: JSON.stringify({ action, callSign: normalizeCall(callSign), ...(fields ? { fields } : {}) })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.errorMessage || `Station name save failed (${response.status}).`);
+    if (!response.ok) throw new Error(data.errorMessage || `Station profile request failed (${response.status}).`);
     return data.message || {};
   }
+
+  const loadStationProfile = callSign => stationProfileRequest(callSign, "stationProfile");
+  const saveStationProfile = (callSign, fields) => stationProfileRequest(callSign, "stationProfileUpdate", fields);
 
   function queueMissingQrzPhotos() {
     const staleBefore = Date.now() - 24 * 60 * 60 * 1000;
@@ -1554,21 +1548,33 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     panel.querySelector("[data-role='callsign']").focus();
   }
 
-  function openEditModal(callSign) {
+  async function openEditModal(callSign) {
     if (!canManageStations()) return setStatus("Station editing is not available in this helper mode.", "warning");
     const call = normalizeCall(callSign);
-    const details = detailsFor(call);
     const modal = panel.querySelector("[data-role='edit-modal']");
-    modal.dataset.originalCall = call;
-    modal.querySelector("[data-modal='callsign']").value = call;
-    modal.querySelector("[data-modal='name']").value = details.name;
-    modal.querySelector("[data-modal='location']").value = details.location;
-    const station = latestStations.find(item => normalizeCall(item.callSign) === call);
-    const protectedForLogger = !isNcoUser() && ["netcontrol", "netlogger"].includes(station?.role || "");
-    modal.querySelector("[data-modal='callsign']").disabled = protectedForLogger;
-    modal.hidden = false;
-    syncNativeChatVisibility();
-    modal.querySelector("[data-modal='callsign']").focus();
+    setStatus(`Loading ${call}’s current server profile…`, "working");
+    try {
+      const profile = await loadStationProfile(call);
+      const name = profile.fields?.name || { value: detailsFor(call).name, revision: 0, origin: "legacy" };
+      const location = profile.fields?.location || { value: detailsFor(call).location, revision: 0, origin: "legacy" };
+      modal.dataset.originalCall = call;
+      modal.dataset.nameRevision = String(name.revision || 0);
+      modal.dataset.locationRevision = String(location.revision || 0);
+      modal.dataset.nameValue = formatName(name.value);
+      modal.dataset.locationValue = formatLocation(location.value);
+      modal.querySelector("[data-modal='callsign']").value = call;
+      modal.querySelector("[data-modal='name']").value = modal.dataset.nameValue;
+      modal.querySelector("[data-modal='location']").value = modal.dataset.locationValue;
+      const station = latestStations.find(item => normalizeCall(item.callSign) === call);
+      const protectedForLogger = !isNcoUser() && ["netcontrol", "netlogger"].includes(station?.role || "");
+      modal.querySelector("[data-modal='callsign']").disabled = protectedForLogger;
+      modal.hidden = false;
+      syncNativeChatVisibility();
+      modal.querySelector("[data-modal='callsign']").focus();
+      setStatus(`${call} profile ready.`, "success");
+    } catch (error) {
+      setStatus(`Couldn’t load ${call}’s server profile: ${error.message || String(error)}`, "error");
+    }
   }
 
   function closeEditModal() {
@@ -1641,19 +1647,31 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
       qrzNameVersion: QRZ_NAME_VERSION,
       note: String(editedDetails.note || oldRaw.note || "").slice(0, NOTE_MAX)
     };
-    const correctedManualProfile = {};
-    if (editedDetails.nameChanged) Object.assign(correctedManualProfile, {
-      name: local.details[newCall].nameOverride ? formatName(local.details[newCall].name) : "",
-      nameOverride: Boolean(local.details[newCall].nameOverride), nameOrigin: "manual"
-    });
-    if (editedDetails.locationChanged) Object.assign(correctedManualProfile, {
-      location: local.details[newCall].locationOverride ? formatLocation(local.details[newCall].location) : "",
-      locationOverride: Boolean(local.details[newCall].locationOverride), locationOrigin: "manual"
-    });
-    const correctedAuthorityTime = Date.now();
-    const correctedAuthority = Object.keys(correctedManualProfile).length
-      ? applyProfileCandidate(newCall, correctedManualProfile, currentUserRole, correctedAuthorityTime, `local-correction-${correctedAuthorityTime}`)
-      : { accepted: {} };
+    let profileSaved = true;
+    try {
+      const profile = await loadStationProfile(newCall);
+      const fields = {};
+      if (editedDetails.nameChanged || oldRaw.nameOverride) fields.name = {
+        value: local.details[newCall].nameOverride ? formatName(local.details[newCall].name) : "",
+        expectedRevision: Number(profile.fields?.name?.revision || 0)
+      };
+      if (editedDetails.locationChanged || oldRaw.locationOverride) fields.location = {
+        value: local.details[newCall].locationOverride ? formatLocation(local.details[newCall].location) : "",
+        expectedRevision: Number(profile.fields?.location?.revision || 0)
+      };
+      if (Object.keys(fields).length) {
+        const saved = await saveStationProfile(newCall, fields);
+        for (const field of Object.keys(fields)) {
+          const authoritative = saved.fields?.[field];
+          if (!authoritative) continue;
+          local.details[newCall][field] = field === "name" ? formatName(authoritative.value) : formatLocation(authoritative.value);
+          local.details[newCall][`${field}Override`] = authoritative.origin === "manual";
+          if (authoritative.status !== "accepted") profileSaved = false;
+        }
+      }
+    } catch {
+      profileSaved = false;
+    }
     delete sharedProfiles[oldCall];
     storeSharedProfiles();
     delete local.details[oldCall];
@@ -1661,14 +1679,13 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     markIo(newCall, station?.checkedState === false);
     storageSet();
     publishSharedTags(newCall);
-    publishSharedProfile(newCall, correctedAuthority.accepted);
     closeEditModal();
     renderQueue();
     setStatus(
-      roleRestored
+      roleRestored && profileSaved
         ? `Callsign corrected from ${oldCall} to ${newCall}.`
-        : `${newCall} was corrected, but its prior role could not be restored.`,
-      roleRestored ? "success" : "warning"
+        : `${newCall} was corrected, but its prior role or profile needs review.`,
+      roleRestored && profileSaved ? "success" : "warning"
     );
     return true;
   }
@@ -1686,8 +1703,8 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
       name: formatName(modal.querySelector("[data-modal='name']").value),
       qrzNameVersion: QRZ_NAME_VERSION,
       location: formatLocation(modal.querySelector("[data-modal='location']").value),
-      nameChanged: formatName(modal.querySelector("[data-modal='name']").value) !== current.name,
-      locationChanged: formatLocation(modal.querySelector("[data-modal='location']").value) !== current.location
+      nameChanged: formatName(modal.querySelector("[data-modal='name']").value) !== formatName(modal.dataset.nameValue),
+      locationChanged: formatLocation(modal.querySelector("[data-modal='location']").value) !== formatLocation(modal.dataset.locationValue)
     };
     editedDetails.nameOverride = editedDetails.nameChanged ? Boolean(editedDetails.name) : current.nameOverride;
     editedDetails.locationOverride = editedDetails.locationChanged ? Boolean(editedDetails.location) : current.locationOverride;
@@ -1696,44 +1713,39 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
       return;
     }
     const { nameChanged, locationChanged, ...savedDetails } = editedDetails;
-    const manualProfile = {};
-    if (nameChanged) {
-      try {
-        const savedName = await saveStationName(call, savedDetails.nameOverride ? savedDetails.name : "");
-        savedDetails.name = formatName(savedName.displayName);
-        savedDetails.nameOverride = Boolean(savedName.manualNameOverride);
-        savedDetails.qrzNameVersion = QRZ_NAME_VERSION;
-        Object.assign(manualProfile, {
-          name: savedDetails.nameOverride ? savedDetails.name : "",
-          nameOverride: savedDetails.nameOverride,
-          nameOrigin: "manual"
-        });
-      } catch (error) {
-        setStatus(`Couldn’t save ${call}’s name: ${error.message || String(error)}`, "error");
-        return;
-      }
+    const fields = {};
+    if (nameChanged) fields.name = { value: savedDetails.name, expectedRevision: Number(modal.dataset.nameRevision || 0) };
+    if (locationChanged) fields.location = { value: savedDetails.location, expectedRevision: Number(modal.dataset.locationRevision || 0) };
+    if (!Object.keys(fields).length) {
+      closeEditModal();
+      return setStatus(`${call} information unchanged.`, "success");
     }
-    if (locationChanged) Object.assign(manualProfile, {
-      location: savedDetails.locationOverride ? savedDetails.location : "", locationOverride: Boolean(savedDetails.locationOverride), locationOrigin: "manual"
-    });
-    const authorityTime = Date.now();
-    const authorityResult = Object.keys(manualProfile).length
-      ? applyProfileCandidate(call, manualProfile, currentUserRole, authorityTime, `local-manual-${authorityTime}`)
-      : { accepted: {}, rejected: [] };
-    for (const field of authorityResult.rejected) {
-      savedDetails[field] = current[field];
-      savedDetails[`${field}Override`] = current[`${field}Override`];
+    let result;
+    try {
+      result = await saveStationProfile(call, fields);
+    } catch (error) {
+      setStatus(`Couldn’t save ${call}’s profile: ${error.message || String(error)}`, "error");
+      return;
+    }
+    const conflicts = [];
+    for (const field of Object.keys(fields)) {
+      const authoritative = result.fields?.[field];
+      if (!authoritative) continue;
+      savedDetails[field] = field === "name" ? formatName(authoritative.value) : formatLocation(authoritative.value);
+      savedDetails[`${field}Override`] = authoritative.origin === "manual";
+      if (field === "name") savedDetails.qrzNameVersion = QRZ_NAME_VERSION;
+      if (authoritative.status !== "accepted") conflicts.push(field);
     }
     local.details[call] = { ...local.details[call], ...savedDetails };
     storageSet();
-    publishSharedProfile(call, authorityResult.accepted);
     closeEditModal();
     renderQueue();
+    scheduleRefresh(350);
     setStatus(
-      authorityResult.rejected.length
-        ? `${call} kept the NCO-authoritative ${authorityResult.rejected.join(" and ")}.`
+      conflicts.length
+        ? `${call} ${conflicts.join(" and ")} changed on another authorized client; the newer server value was kept.`
         : `${call} information saved.`,
-      authorityResult.rejected.length ? "warning" : "success"
+      conflicts.length ? "warning" : "success"
     );
   }
 
@@ -2738,7 +2750,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
   }
 
   const PROFILE_FIELDS = ["name", "location"];
-  const SHARED_PROFILE_FIELDS = ["location"];
+  const SHARED_PROFILE_FIELDS = [];
   const profileFieldPresent = (profile, field) => Object.prototype.hasOwnProperty.call(profile || {}, `${field}Override`);
   const profileAuthorityRank = (role, origin) => {
     if (role === "netcontrol") return origin === "manual" ? 40 : 30;

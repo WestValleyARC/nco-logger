@@ -71,37 +71,83 @@ async function lookupQrzProfile({ target, flexOpts, db = mongoose.connection, pr
         qrzStatus: lookup.outcome,
         qrzLookupMs: Math.round((performance.now() - startedAt) * 100) / 100,
         profile: lookup.result || null,
-        manualNameOverride: Boolean(lookup.manualNameOverride)
+        manualNameOverride: Boolean(lookup.manualNameOverride),
+        profileFields: lookup.profileFields || null
     };
 }
 
-async function setStationName({
+async function stationProfileFallback({ liveNet, target, StationInteractionModel = StationInteraction }) {
+    const interactionId = liveNet.lookupTable.get(target)?.stationInteraction;
+    const interaction = interactionId ? await StationInteractionModel.findById(interactionId) : null;
+    return { name: interaction?.displayName || '', location: interaction?.location || '' };
+}
+
+async function getStationProfile({ liveNet, source, target, db = mongoose.connection,
+    profileService = stationProfiles, StationInteractionModel = StationInteraction }) {
+    requireManager(source);
+    const fallback = await stationProfileFallback({ liveNet, target, StationInteractionModel });
+    const state = await profileService.getProfileState(target, fallback, db);
+    return { action: 'stationProfile', ...state };
+}
+
+async function updateStationProfile({
     req, liveNet, source, target, flexOpts, db = mongoose.connection,
     profileService = stationProfiles, qrzLookupFn = qrzLookup,
     StationInteractionModel = StationInteraction
 }) {
     requireManager(source);
-    const requestedName = profileService.normalizeName(req.body?.displayName);
-    let displayName;
-    let manualNameOverride;
-    if (requestedName) {
-        const saved = await profileService.saveNameOverride({
-            callSign: target, displayName: requestedName, updatedBy: req.user.callSign, db
+    const requested = req.body?.fields;
+    if (!requested || typeof requested !== 'object' || Array.isArray(requested)) {
+        throw new Error('Station profile fields are required');
+    }
+    const fields = profileService.PROFILE_FIELDS.filter(field => Object.prototype.hasOwnProperty.call(requested, field));
+    if (!fields.length) throw new Error('At least one station profile field is required');
+
+    const fallback = await stationProfileFallback({ liveNet, target, StationInteractionModel });
+    const current = await profileService.getProfileState(target, fallback, db);
+    const results = {};
+    for (const field of fields) {
+        const expected = Number(requested[field]?.expectedRevision);
+        if (!Number.isInteger(expected) || expected < 0) throw new Error(`Invalid expected ${field} revision`);
+        if (expected !== current.fields[field].revision) {
+            results[field] = { status: 'conflict', field, ...current.fields[field] };
+        }
+    }
+    const eligible = fields.filter(field => !results[field]);
+    const cleared = eligible.filter(field => !profileService.normalizeName(requested[field]?.value));
+    const lookup = cleared.length ? await qrzLookupFn(target, flexOpts, db) : null;
+    const automatic = { name: lookup?.result?.displayName || '', location: lookup?.result?.location || '' };
+    for (const field of eligible) {
+        const manualValue = profileService.normalizeName(requested[field]?.value);
+        const value = manualValue || profileService.normalizeName(automatic[field]);
+        if (!manualValue && !value) {
+            results[field] = { status: 'unavailable', field, ...current.fields[field] };
+            continue;
+        }
+        results[field] = await profileService.compareAndSetField({
+            callSign: target,
+            field,
+            value,
+            expectedRevision: requested[field]?.expectedRevision,
+            editorCallSign: req.user.callSign,
+            editorUserId: req.user._id || req.user.id,
+            origin: manualValue ? 'manual' : 'qrz',
+            fallback,
+            db
         });
-        displayName = saved.displayName;
-        manualNameOverride = true;
-    } else {
-        const lookup = await qrzLookupFn(target, flexOpts, db);
-        displayName = profileService.normalizeName(lookup?.result?.displayName);
-        if (!displayName) throw new Error(`QRZ name is unavailable for ${target}; the manual name was not cleared`);
-        await profileService.clearNameOverride(target, db);
-        manualNameOverride = false;
     }
+
     const interactionId = liveNet.lookupTable.get(target)?.stationInteraction;
-    if (interactionId) {
-        await StationInteractionModel.updateOne({ _id: interactionId }, { $set: { displayName } });
+    const acceptedUpdates = {};
+    if (results.name?.status === 'accepted') acceptedUpdates.displayName = results.name.value;
+    if (results.location?.status === 'accepted') acceptedUpdates.location = results.location.value;
+    if (interactionId && Object.keys(acceptedUpdates).length) {
+        await StationInteractionModel.updateOne({ _id: interactionId }, { $set: acceptedUpdates });
     }
-    return { action: 'stationName', callSign: target, displayName, manualNameOverride };
+    return {
+        action: 'stationProfileUpdate', callSign: target, fields: results,
+        conflicts: fields.filter(field => results[field].status !== 'accepted')
+    };
 }
 
 async function toggleRole({ req, liveNet, source, target, desiredRole }) {
@@ -179,20 +225,6 @@ function sanitizeLoggerState(value) {
                     .map(key => [key, Boolean(tags[key])])
             )
         };
-        const profile = rawValue.profile;
-        if (profile && typeof profile === 'object') {
-            clean.profile = {};
-            for (const field of ['location']) {
-                if (!Object.prototype.hasOwnProperty.call(profile, `${field}Override`)) continue;
-                clean.profile[field] = String(profile[field] || '').trim().slice(0, 80);
-                clean.profile[`${field}Override`] = Boolean(profile[`${field}Override`]);
-                clean.profile[`${field}Origin`] = profile[`${field}Origin`] === 'lookup' ? 'lookup' : 'manual';
-                clean.profile[`${field}ChangedAt`] = Number(profile[`${field}ChangedAt`]) || Date.now();
-                if (['netcontrol', 'netlogger'].includes(profile[`${field}OwnerRole`])) {
-                    clean.profile[`${field}OwnerRole`] = profile[`${field}OwnerRole`];
-                }
-            }
-        }
         details[call] = clean;
     }
 
@@ -246,8 +278,10 @@ async function runAction(req, res) {
         }
         case 'qrzProfile':
             return lookupQrzProfile({ target, flexOpts: res.locals.flexOpts });
-        case 'stationName': {
-            const result = await setStationName({ req, liveNet, source, target, flexOpts: res.locals.flexOpts });
+        case 'stationProfile':
+            return getStationProfile({ liveNet, source, target });
+        case 'stationProfileUpdate': {
+            const result = await updateStationProfile({ req, liveNet, source, target, flexOpts: res.locals.flexOpts });
             await realtimeClients.push(req.params.id);
             return result;
         }
@@ -279,4 +313,7 @@ async function ncoLoggerAction(req, res) {
     }
 }
 
-module.exports = { ncoLoggerAction, sanitizeLoggerState, setCheckedState, lookupQrzProfile, setStationName };
+module.exports = {
+    ncoLoggerAction, sanitizeLoggerState, setCheckedState, lookupQrzProfile,
+    getStationProfile, updateStationProfile
+};

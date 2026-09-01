@@ -22,6 +22,8 @@ test('NCO logger state keeps shared operational fields and excludes private note
                     nameOverride: true,
                     nameOrigin: 'manual',
                     nameOwnerRole: 'netcontrol',
+                    location: 'Stale Location',
+                    locationOverride: true,
                     injected: '<script>alert(1)</script>'
                 }
             }
@@ -36,10 +38,20 @@ test('NCO logger state keeps shared operational fields and excludes private note
     assert.equal(state.details.W1ABC.tags.neededNext, true);
     assert.equal(state.details.W1ABC.tags.mobile, true);
     assert.equal(state.details.W1ABC.tags.unexpected, undefined);
-    assert.equal(state.details.W1ABC.profile.name, undefined);
-    assert.equal(state.details.W1ABC.profile.nameOverride, undefined);
-    assert.equal(state.details.W1ABC.profile.injected, undefined);
+    assert.equal(state.details.W1ABC.profile, undefined);
 });
+
+for (const label of ['stale shared name', 'stale shared location', 'reconnect snapshot profile']) {
+    test(`${label} cannot enter server logger state`, () => {
+        const state = sanitizeLoggerState({
+            details: { W1ABC: { profile: {
+                name: 'Stale Name', nameOverride: true,
+                location: 'Stale Location', locationOverride: true
+            } } }
+        });
+        assert.equal(state.details.W1ABC.profile, undefined);
+    });
+}
 
 test('NCO logger state rejects oversized payloads', () => {
     assert.throws(() => sanitizeLoggerState({ details: { W1ABC: { junk: 'x'.repeat(100001) } } }), /too large/);

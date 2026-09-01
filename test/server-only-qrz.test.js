@@ -25,8 +25,9 @@ test('legacy personal QRZ credentials are removed from browser storage', () => {
 });
 
 test('manual station names are saved through the authenticated server action', () => {
-    assert.match(source, /action: "stationName", callSign: normalizeCall\(callSign\), displayName/);
-    assert.match(source, /const savedName = await saveStationName\(call, savedDetails\.nameOverride/);
+    assert.match(source, /stationProfileRequest\(callSign, "stationProfileUpdate", fields\)/);
+    assert.match(source, /expectedRevision: Number\(modal\.dataset\.nameRevision/);
+    assert.match(source, /expectedRevision: Number\(modal\.dataset\.locationRevision/);
 });
 
 test('legacy automatic QRZ names are migrated instead of treated as manual overrides', () => {
@@ -35,6 +36,5 @@ test('legacy automatic QRZ names are migrated instead of treated as manual overr
 });
 
 test('legacy logger-state names are not synchronized after server persistence is available', () => {
-    assert.match(source, /const SHARED_PROFILE_FIELDS = \["location"\]/);
-    assert.match(source, /if \(field === "name"\) continue/);
+    assert.match(source, /const SHARED_PROFILE_FIELDS = \[\]/);
 });
