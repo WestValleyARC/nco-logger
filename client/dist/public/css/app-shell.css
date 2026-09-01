@@ -29,7 +29,7 @@
 }
 
 .app-navbar {
-    padding: 0.7rem 0;
+    padding: 0.55rem 0;
     border-bottom: 1px solid var(--app-border);
     background: rgba(13, 18, 22, 0.94) !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -45,21 +45,25 @@
 
 .app-brand-mark {
     display: block;
-    width: 3.15rem;
-    height: 3.1rem;
+    width: 4.125rem;
+    height: 4.125rem;
+    border-radius: 50%;
+    background: rgba(4, 9, 13, 0.24);
     object-fit: contain;
+    filter: drop-shadow(0 0 0.4rem rgba(116, 198, 212, 0.18)) drop-shadow(0 0.2rem 0.4rem rgba(0, 0, 0, 0.48));
 }
 
 .app-brand-copy {
     display: grid;
-    margin-left: 0.7rem;
+    margin-left: 1rem;
     line-height: 1;
 }
 
 .app-brand-copy strong {
     color: var(--app-text);
-    font-size: 1rem;
-    letter-spacing: 0.08em;
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: 0.035em;
 }
 
 .app-brand-copy small {
@@ -67,7 +71,7 @@
     color: var(--app-cyan);
     font-size: 0.7rem;
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
 }
 
@@ -130,15 +134,19 @@
     display: inline-flex;
     gap: 0.55rem;
     align-items: center;
+    max-width: 100%;
     margin-bottom: 1.25rem;
     color: var(--app-cyan);
     font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.17em;
+    line-height: 1.5;
+    text-wrap: balance;
     text-transform: uppercase;
 }
 
 .landing-kicker::before {
+    flex: 0 0 1.8rem;
     width: 1.8rem;
     height: 1px;
     background: currentColor;
@@ -146,17 +154,30 @@
 }
 
 .landing-title {
-    max-width: 13ch;
+    max-width: 15ch;
     margin-bottom: 1.25rem;
     color: var(--app-text);
-    font-size: clamp(2.7rem, 7vw, 5.4rem);
+    font-size: clamp(2.45rem, 6vw, 4.75rem);
     font-weight: 600;
-    line-height: 0.98;
+    line-height: 1;
     letter-spacing: -0.045em;
+    text-wrap: balance;
 }
 
-.landing-title span {
+.landing-title-phrase {
+    white-space: nowrap;
+}
+
+.landing-title-run {
+    color: var(--app-text);
+}
+
+.landing-title-find {
     color: var(--app-cyan);
+}
+
+.landing-title-join {
+    color: var(--app-orange);
 }
 
 .landing-copy {
@@ -165,6 +186,7 @@
     color: var(--app-muted);
     font-size: clamp(1.05rem, 2vw, 1.25rem);
     line-height: 1.65;
+    text-wrap: pretty;
 }
 
 .landing-actions {
@@ -223,7 +245,7 @@
     min-height: 19rem;
     align-items: center;
     justify-content: center;
-    padding: 2.5rem;
+    padding: clamp(0.75rem, 2vw, 1.25rem);
     border: 1px solid var(--app-border);
     border-radius: 1.15rem;
     background: linear-gradient(145deg, rgba(32, 41, 48, 0.96), rgba(18, 25, 30, 0.88));
@@ -231,9 +253,158 @@
 }
 
 .landing-logo {
-    width: min(100%, 20rem);
+    width: 118%;
+    max-width: 46rem;
     max-height: 14rem;
     object-fit: contain;
+}
+
+.scheduled-nets-section {
+    scroll-margin-top: 5rem;
+    padding: clamp(3rem, 6vw, 5rem) 0;
+    border-bottom: 1px solid var(--app-border);
+}
+
+.scheduled-net-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.scheduled-net-group {
+    min-width: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--app-border);
+    border-radius: 0.85rem;
+    background: rgba(23, 30, 36, 0.68);
+}
+
+.scheduled-net-group-heading {
+    margin-bottom: 1rem;
+}
+
+.scheduled-net-group-heading h3 {
+    margin: 0 0 0.25rem;
+    color: var(--app-text);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.scheduled-net-group-heading p {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 0.88rem;
+}
+
+.scheduled-net-list {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.scheduled-nets-empty {
+    min-height: 10rem;
+    display: grid;
+    align-content: center;
+    padding: 2rem 1rem;
+}
+
+.scheduled-net-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.scheduled-net-card [hidden] {
+    display: none !important;
+}
+
+.scheduled-net-card-content {
+    display: grid;
+    min-width: 0;
+    gap: 0.85rem;
+}
+
+.scheduled-net-card-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: center;
+}
+
+.scheduled-net-card-image-slot {
+    width: 4rem;
+    height: 4rem;
+}
+
+.scheduled-net-card-image-slot img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 0.55rem;
+    object-fit: contain;
+}
+
+.scheduled-net-card-heading {
+    min-width: 0;
+}
+
+.scheduled-net-card-title {
+    margin: 0;
+    color: var(--app-text);
+    font-size: 1.08rem;
+}
+
+.scheduled-net-card-title,
+.scheduled-net-card-description,
+.scheduled-net-card-when,
+.scheduled-net-connections dt,
+.scheduled-net-connections dd {
+    overflow-wrap: anywhere;
+}
+
+.scheduled-net-card-title a {
+    color: var(--app-text);
+    text-decoration: none;
+}
+
+.scheduled-net-card-title a:hover {
+    color: var(--app-cyan);
+}
+
+.scheduled-net-card-when,
+.scheduled-net-connections {
+    color: var(--app-muted);
+    font-size: 0.88rem;
+}
+
+.scheduled-net-card-when {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.85rem;
+    margin-top: 0.25rem;
+}
+
+.scheduled-net-card-description,
+.scheduled-net-connections {
+    margin: 0;
+}
+
+.scheduled-net-connections {
+    display: grid;
+    grid-template-columns: minmax(6rem, 0.45fr) minmax(0, 1fr);
+    gap: 0.35rem 0.75rem;
+}
+
+.scheduled-net-connections dt {
+    color: var(--app-cyan);
+    font-weight: 600;
+}
+
+.scheduled-net-connections dd {
+    min-width: 0;
+    margin: 0;
+}
+
+.scheduled-net-card-actions {
+    align-self: start;
 }
 
 .nets-section {
@@ -516,6 +687,10 @@
         margin-top: 2.5rem;
     }
 
+    .scheduled-net-groups {
+        grid-template-columns: 1fr;
+    }
+
     .login-layout {
         grid-template-columns: 1fr;
         max-width: 36rem;
@@ -531,17 +706,28 @@
 }
 
 @media (max-width: 575.98px) {
+    .landing-kicker {
+        gap: 0.45rem;
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+    }
+
+    .landing-kicker::before {
+        flex-basis: 1.35rem;
+        width: 1.35rem;
+    }
+
     .app-brand-mark {
-        width: 2.65rem;
-        height: 2.6rem;
+        width: 3.25rem;
+        height: 3.25rem;
     }
 
     .app-brand-copy strong {
-        font-size: 0.9rem;
+        font-size: 0.92rem;
     }
 
     .app-brand-copy small {
-        font-size: 0.62rem;
+        font-size: 0.6rem;
     }
 
     .section-heading,
@@ -552,6 +738,24 @@
 
     .net-card {
         grid-template-columns: 1fr;
+    }
+
+    .scheduled-net-group {
+        padding: 1rem;
+    }
+
+    .scheduled-net-card-header {
+        align-items: start;
+    }
+
+    .scheduled-net-card-image-slot {
+        width: 3.5rem;
+        height: 3.5rem;
+    }
+
+    .scheduled-net-connections {
+        grid-template-columns: 1fr;
+        gap: 0.15rem;
     }
 
     .section-heading {
