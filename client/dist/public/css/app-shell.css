@@ -1853,6 +1853,10 @@
     background: linear-gradient(135deg, rgba(220, 131, 53, 0.08), #12191e 55%);
 }
 
+.owned-net-card.is-preparing {
+    border-color: rgba(0, 200, 240, 0.42);
+}
+
 .owned-net-heading {
     display: flex;
     gap: 0.8rem;
@@ -1892,6 +1896,11 @@
     background: rgba(220, 131, 53, 0.14);
 }
 
+.owned-net-status.is-preparing {
+    color: var(--app-cyan);
+    background: rgba(0, 200, 240, 0.11);
+}
+
 .owned-net-start {
     display: inline-grid;
     width: 2.35rem;
@@ -1921,10 +1930,51 @@
     background: var(--app-orange);
 }
 
+.owned-net-start.is-preparing {
+    color: var(--app-cyan);
+    border-color: rgba(0, 200, 240, 0.55);
+}
+
+.owned-net-start:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
 .owned-net-details {
     margin-top: 0.55rem;
     color: var(--app-muted);
     font-size: 0.82rem;
+}
+
+.owned-net-schedule {
+    display: grid;
+    gap: 0.28rem;
+    margin-top: 0.65rem;
+    padding: 0.55rem 0.65rem;
+    border-left: 2px solid rgba(0, 200, 240, 0.48);
+    border-radius: 0.3rem;
+    color: var(--app-muted);
+    background: rgba(0, 200, 240, 0.045);
+    font-size: 0.76rem;
+}
+
+.owned-net-schedule span {
+    display: flex;
+    gap: 0.45rem;
+    align-items: baseline;
+}
+
+.owned-net-schedule strong {
+    min-width: 4.2rem;
+    color: var(--app-text);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.owned-net-schedule small {
+    color: var(--app-muted);
+    font-size: 0.68rem;
 }
 
 .owned-net-actions {

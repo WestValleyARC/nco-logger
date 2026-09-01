@@ -6,6 +6,7 @@ import {
     Station,
     NetInfo,
     FollowListNetInfo,
+    ProfileSchedulingSummary,
     FollowListResponse,
     FollowListLimits,
     FollowListMessage,
@@ -202,10 +203,27 @@ export const isLiveNetDetailsResponse = createTypeGuard<LiveNetDetailsResponse>(
 );
 
 // FollowListNetInfo typeguard
+const isProfileSchedulingSummary = createTypeGuard<ProfileSchedulingSummary>({
+    enabled: value => typeof value === 'boolean',
+    summary: value => typeof value === 'string' || value === null,
+    timezone: value => typeof value === 'string' || value === null,
+    nextOccurrence: value => value === null || (
+        isObject(value) && typeof value['id'] === 'string' &&
+        (value['startAt'] instanceof Date || typeof value['startAt'] === 'string') &&
+        ['scheduled', 'preparing', 'live'].includes(String(value['status']))
+    ),
+    preparing: value => typeof value === 'boolean',
+    onAir: value => typeof value === 'boolean',
+    canPrepare: value => typeof value === 'boolean',
+    preparationOpensAt: value => value === null || value instanceof Date || typeof value === 'string',
+    actionUrl: value => typeof value === 'string' || value === null
+});
+
 export const isFollowListNetInfo = createTypeGuard<FollowListNetInfo>({
     ...netInfoCommonFields,
     id: value => isMongoId(value),
-    followCount: value => typeof value === 'number'
+    followCount: value => typeof value === 'number',
+    scheduling: value => value === undefined || isProfileSchedulingSummary(value)
 });
 
 // FollowListLimits typeguard

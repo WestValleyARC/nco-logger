@@ -5,6 +5,8 @@ const { unFollow } = require('../lib/sharedNetOps');
 const { prepareEndPointResponse, handleRequest } = require('../lib/responseUtils');
 const { isFollowListResponse } = require('../types/commonTypesupport');
 const helpers = require('../lib/controllers/followHelpers');
+const NetProfile = require('../models/netProfile').getNetProfile(null);
+const { loadProfileSchedulingSummaries } = require('../lib/scheduling/profileSummary');
 
 // Handles the REST endpoint for creating a follow request
 const followCreatePost = (req, res) => {
@@ -55,10 +57,12 @@ const followCreatePost = (req, res) => {
 const followList = (req, res) => {
     handleRequest(res, async () => {
         const { maxFollowersPerNet, maxFollowingPerUser, baseTtlMs: ttlMs } = res.locals.flexOpts;
-        // Retrieve all net profiles the user is following
-        const netProfiles = await Promise.all(req.user.following.map(helpers.findNetProfile));
-        // Filter out any null or undefined net profiles and transform the rest
-        const validNetProfiles = netProfiles.filter(Boolean).map(helpers.transformNetProfile);
+        const netProfiles = await NetProfile.find({ _id: { $in: req.user.following } });
+        const summaries = await loadProfileSchedulingSummaries({ profiles: netProfiles });
+        const validNetProfiles = netProfiles.map(net => helpers.transformNetProfile(
+            net,
+            summaries.get(String(net._id))
+        ));
 
         // Prepare the response with the list of nets and limits
         const response = prepareEndPointResponse(

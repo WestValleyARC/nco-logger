@@ -6,27 +6,28 @@ const NetProfile = require('../models/netProfile').getNetProfile(null);
 const UserProfile = require('../models/userProfile').getUserProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
+const { loadProfileSchedulingSummaries } = require('../lib/scheduling/profileSummary');
 const titleCase = require('ap-style-title-case');
 const { sanitizeNotes } = require('../lib/serverUtils');
 
 const netProfileList = async (req, res) => {
-    let result;
-
     try {
-        netlist = await Promise.all(
-            req.user.myNets.map(async npObj => {
-                return NetProfile.findById(npObj);
-            })
-        );
+        const foundProfiles = await NetProfile.find({ _id: { $in: req.user.myNets } });
+        const profilesById = new Map(foundProfiles.map(profile => [String(profile._id), profile]));
+        const profiles = req.user.myNets.map(id => profilesById.get(String(id))).filter(Boolean);
+        const summaries = await loadProfileSchedulingSummaries({ profiles });
+        const netlist = profiles.map(profile => ({
+            ...profile.toObject(),
+            scheduling: summaries.get(String(profile._id))
+        }));
+        return res.json({ endpointVersion: '1.0', netlist });
     } catch (err) {
-        res.status(500).json({
+        logger.error(err.stack);
+        return res.status(500).json({
             endpointVersion: '1.0',
             errorMessage: err.message
         });
-        logger.error(err.stack);
     }
-
-    res.json({ ...{ endpointVersion: '1.0' }, netlist });
 };
 
 const netProfileDetails = async (req, res) => {
