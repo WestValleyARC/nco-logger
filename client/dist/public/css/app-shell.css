@@ -2161,6 +2161,87 @@
     border: 0;
 }
 
+.connections-fieldset {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.connections-heading,
+.connection-card-header {
+    display: flex;
+    gap: 0.8rem;
+    align-items: start;
+    justify-content: space-between;
+}
+
+.connections-heading > div {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.connections-heading small,
+.connections-empty {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 0.78rem;
+}
+
+.app-button-compact {
+    min-height: 2.35rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.78rem;
+}
+
+.connections-list {
+    display: grid;
+    gap: 0.7rem;
+}
+
+.connection-card {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.85rem;
+    border: 1px solid rgba(92, 130, 145, 0.36);
+    border-radius: 0.6rem;
+    background: rgba(3, 11, 18, 0.72);
+}
+
+.connection-type-field {
+    width: min(100%, 15rem);
+}
+
+.connection-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.connection-remove {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    margin-top: 1.6rem;
+    padding: 0.25rem;
+    border: 0;
+    color: #e09a93;
+    font-size: 0.75rem;
+    background: transparent;
+}
+
+.connection-remove:hover,
+.connection-remove:focus-visible {
+    color: #ffb1a8;
+}
+
+.legacy-connection-notice {
+    padding: 0.75rem 0.85rem;
+    border-left: 2px solid var(--app-orange);
+    border-radius: 0.35rem;
+    color: var(--app-muted);
+    font-size: 0.82rem;
+    background: rgba(220, 131, 53, 0.08);
+}
+
 .app-option-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2298,8 +2379,18 @@
 
 @media (max-width: 575.98px) {
     .app-form-grid,
-    .app-option-grid {
+    .app-option-grid,
+    .connection-fields {
         grid-template-columns: 1fr;
+    }
+
+    .connections-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .connections-heading .app-button {
+        width: 100%;
     }
 
     .panel-heading {

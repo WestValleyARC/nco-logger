@@ -19,6 +19,112 @@ import { HttpClient, FormState } from '#@client/lib/old__clientUtils.js';
 const netProfileFormState = new FormState('netprofile', 'new');
 const netOwnerFormState = new FormState('netowner', 'new');
 const netProfileApi = new HttpClient('netprofile', '/api/data/netprofiles');
+const NET_TITLE_PATTERN = /^[\p{L}\p{N} @|_#*&/+\-().,':!]+$/u;
+const CONNECTION_FIELDS = {
+    FM: [
+        { key: 'frequency', label: 'Frequency', required: true, placeholder: '146.940' },
+        { key: 'tone', label: 'PL / CTCSS', placeholder: '162.2' }
+    ],
+    AllStarLink: [{ key: 'node', label: 'Node Number', required: true }],
+    EchoLink: [{ key: 'callsign', label: 'Callsign / Node', required: true }],
+    DMR: [
+        { key: 'talkgroup', label: 'Talkgroup', required: true },
+        { key: 'colorCode', label: 'Color Code' }
+    ],
+    'D-STAR': [
+        { key: 'reflector', label: 'Reflector', required: true },
+        { key: 'module', label: 'Module' }
+    ],
+    YSF: [{ key: 'room', label: 'Room / Reflector', required: true }],
+    P25: [{ key: 'talkgroup', label: 'Talkgroup', required: true }],
+    Other: [
+        { key: 'label', label: 'Label', required: true },
+        { key: 'value', label: 'Value', required: true }
+    ]
+};
+let connectionRows = [];
+let connectionsTouched = false;
+let editingHadStructuredConnections = false;
+
+const createConnectionField = (connection, field) => {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'app-field connection-field';
+    wrapper.textContent = field.label;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control app-input';
+    input.value = connection[field.key] || '';
+    input.placeholder = field.placeholder || '';
+    input.required = Boolean(field.required);
+    input.maxLength = field.key === 'value' ? 200 : 100;
+    input.addEventListener('input', () => {
+        connection[field.key] = input.value;
+        connectionsTouched = true;
+    });
+    wrapper.appendChild(input);
+    return wrapper;
+};
+
+const renderConnections = () => {
+    const container = document.getElementById('connections_container');
+    container.replaceChildren();
+    connectionRows.forEach((connection, index) => {
+        const card = document.createElement('div');
+        card.className = 'connection-card';
+        const header = document.createElement('div');
+        header.className = 'connection-card-header';
+        const typeField = document.createElement('label');
+        typeField.className = 'app-field connection-type-field';
+        typeField.textContent = 'Connection Type';
+        const select = document.createElement('select');
+        select.className = 'form-select app-input app-select';
+        Object.keys(CONNECTION_FIELDS).forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type;
+            select.appendChild(option);
+        });
+        select.value = connection.type;
+        select.addEventListener('change', () => {
+            connectionRows[index] = { type: select.value };
+            connectionsTouched = true;
+            renderConnections();
+        });
+        typeField.appendChild(select);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'connection-remove';
+        remove.setAttribute('aria-label', `Remove ${connection.type} connection`);
+        remove.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i><span>Remove</span>';
+        remove.addEventListener('click', () => {
+            connectionRows.splice(index, 1);
+            connectionsTouched = true;
+            renderConnections();
+        });
+        header.append(typeField, remove);
+        const fields = document.createElement('div');
+        fields.className = 'connection-fields';
+        CONNECTION_FIELDS[connection.type].forEach(field => fields.appendChild(createConnectionField(connection, field)));
+        card.append(header, fields);
+        container.appendChild(card);
+    });
+    if (!connectionRows.length) {
+        const empty = document.createElement('p');
+        empty.className = 'connections-empty';
+        empty.textContent = 'No structured connections added.';
+        container.appendChild(empty);
+    }
+};
+
+const resetConnections = () => {
+    connectionRows = [];
+    connectionsTouched = false;
+    editingHadStructuredConnections = false;
+    const legacyNotice = document.getElementById('legacy_connection_notice');
+    legacyNotice.hidden = true;
+    legacyNotice.textContent = '';
+    renderConnections();
+};
 
 const formatViewerDateTime = value => new Intl.DateTimeFormat([], {
     weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
@@ -59,22 +165,6 @@ window.formShow = function (id) {
         netProfileDivElem.classList.add('d-none');
     } else {
         console.error('formShow function received unknown form id');
-    }
-};
-
-window.modeHandler = function () {
-    const mode = document.getElementById('input_mode').value;
-    const modeDetailsInputElem = document.getElementById('input_modedetails');
-    const isNewMode = netProfileFormState.mode === 'new';
-
-    modeDetailsInputElem.required = mode === 'CUSTOM';
-
-    if (isNewMode && (mode === 'CUSTOM' || mode === 'Reflector')) {
-        const message =
-            mode === 'CUSTOM'
-                ? 'use mode details field to specify mode name'
-                : 'use mode details field to specify reflector name';
-        netProfileFormState.mesg('info', message);
     }
 };
 
@@ -340,15 +430,24 @@ window.netProfileEditByID = async function (id) {
     netProfileFormState.mode = 'edit';
 
     document.getElementById('input_title').value = res.data.title;
-    document.getElementById('input_frequency').value = res.data.frequency;
-    document.getElementById('input_mode').value = res.data.mode;
     document.getElementById('input_restricted_sigrep').checked = res.data?.restrictedSigReports ? true : false;
     document.getElementById('input_auto_in').checked = res.data?.autoIn ? true : false;
-    document.getElementById('input_modedetails').value = res.data.modeDetails;
     tinymce.get('input_notes').setContent(res.data.notes);
 
+    connectionRows = Array.isArray(res.data.connections)
+        ? res.data.connections.map(({ _id, ...connection }) => ({ ...connection }))
+        : [];
+    editingHadStructuredConnections = connectionRows.length > 0;
+    connectionsTouched = false;
+    const legacyNotice = document.getElementById('legacy_connection_notice');
+    const hasLegacyConnection = !editingHadStructuredConnections && res.data.mode === 'Reflector' && res.data.modeDetails;
+    legacyNotice.hidden = !hasLegacyConnection;
+    legacyNotice.textContent = hasLegacyConnection
+        ? `Existing legacy connection: ${res.data.modeDetails}. Add a structured connection to replace it.`
+        : '';
+    renderConnections();
+
     document.getElementById('input_npid_for_netprofile').value = res.data._id;
-    modeHandler();
 };
 
 //called by netlist "delete" link
@@ -365,16 +464,21 @@ function np_submitHandler(e) {
     const formDataToSend = new FormData(document.getElementById('netprofile_form'));
 
     const id = document.getElementById('input_npid_for_netprofile').value;
+    const title = String(formDataToSend.get('title') || '').trim();
+    if (!NET_TITLE_PATTERN.test(title)) {
+        netProfileFormState.mesg('error', 'Net name contains unsupported characters');
+        return;
+    }
 
     const dataPayload = {
-        title: formDataToSend.get('title'),
-        frequency: formDataToSend.get('frequency'),
-        mode: formDataToSend.get('mode'),
+        title,
         restrictedSigReports: formDataToSend.get('restricted_sigrep') ? true : false,
         autoIn: formDataToSend.get('auto_in') ? true : false,
-        notes: tinymce.get('input_notes').getContent(),
-        modeDetails: formDataToSend.get('modedetails')
+        notes: tinymce.get('input_notes').getContent()
     };
+    if (netProfileFormState.mode === 'new' || editingHadStructuredConnections || connectionsTouched) {
+        dataPayload.connections = connectionRows.map(connection => ({ ...connection }));
+    }
 
     if (netProfileFormState.mode === 'edit') {
         netProfileApi
@@ -457,12 +561,19 @@ function netowner_submitHandler(e) {
 
 document.getElementById('netprofile_form').addEventListener('submit', np_submitHandler);
 document.getElementById('netowner_form').addEventListener('submit', netowner_submitHandler);
+document.getElementById('add_connection').addEventListener('click', () => {
+    connectionRows.push({ type: 'FM' });
+    connectionsTouched = true;
+    renderConnections();
+});
+document.getElementById('netprofile_form').addEventListener('reset', () => setTimeout(resetConnections));
 
 //init
 formShow('formContainerNetProfile');
 refreshNetList();
 setNetProfileMode('new');
 netOwnerFormState.mode = 'new';
+resetConnections();
 
 setTimeout(() => {
     if (netProfileFormState.mode === 'new') {
