@@ -1,4 +1,5 @@
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
+import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
 (() => {
     "use strict";
     const POLL_MS = 3000;
@@ -92,11 +93,12 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     const noteDrafts = new Map();
     const avatarSourceCache = new Map();
     const resolvedAvatarDataUrls = new Map();
+    const avatarFailureRetryAt = new Map();
     let relayToken = "";
     let relayConnectionState = "unavailable";
     let qrzLookupRunning = false;
     const qrzLookupQueue = [];
-    const qrzAttemptedCalls = new Set();
+    const qrzAvatarRetryAt = new Map();
     const busyCalls = new Set();
     const rowPulses = new Map();
     const hiddenAwayCalls = new Set();
@@ -580,6 +582,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
             return setStatus("Enter a callsign first.", "error");
         if (!silent)
             setStatus(`Looking up ${call} on QRZ…`, "working");
+        let qrzStatus = "network-failure";
         try {
             const response = await fetch(`/api/nco-logger/${npid}`, {
                 method: "POST",
@@ -592,7 +595,7 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 throw new Error(data.errorMessage || `Server QRZ lookup failed (${response.status}).`);
             const result = data.message || {};
             const profile = result.profile;
-            const qrzStatus = String(result.qrzStatus || "service-error");
+            qrzStatus = String(result.qrzStatus || "service-error");
             if (!profile || typeof profile !== "object")
                 throw new Error(`Server QRZ outcome: ${qrzStatus}.`);
             const location = formatLocation(profile.location);
@@ -602,12 +605,14 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 throw new Error(`QRZ returned no profile information for ${call}.`);
             }
             const current = detailsFor(call);
+            const definitiveNoPhoto = isDefinitiveNoPhoto(qrzStatus, Boolean(photo));
+            const retainedPhoto = photo || (!definitiveNoPhoto ? current.qrzPhoto : "");
             local.details[call] = {
                 ...current,
                 location: current.locationOverride ? current.location : (location || current.location),
                 name: current.nameOverride ? current.name : (displayName || current.name),
-                qrzPhoto: photo,
-                qrzPhotoChecked: true,
+                qrzPhoto: retainedPhoto,
+                qrzPhotoChecked: Boolean(retainedPhoto || definitiveNoPhoto),
                 qrzCheckedAt: Date.now(),
                 qrzNameVersion: QRZ_NAME_VERSION
             };
@@ -622,12 +627,12 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 const summary = [displayName, location].filter(Boolean).join(" · ") || `${call} profile loaded.`;
                 setStatus(`QRZ found ${summary}${photo ? "" : " · no photo returned; default used."}`, photo ? "success" : "warning");
             }
-            return true;
+            return { success: true, outcome: qrzStatus, photo };
         }
         catch (error) {
             if (!silent)
                 setStatus(`QRZ lookup failed for ${call}: ${error.message || String(error)}`, "error");
-            return false;
+            return { success: false, outcome: qrzStatus, photo: "" };
         }
     }
     async function stationProfileRequest(callSign, action, fields) {
@@ -664,9 +669,12 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         [...latestStations].sort((left, right) => priority(left) - priority(right)).forEach(station => {
             const call = normalizeCall(station.callSign);
             const saved = local.details[call] || {};
-            const isFresh = saved.qrzNameVersion === QRZ_NAME_VERSION && saved.qrzPhotoChecked &&
+            const hasPhoto = Boolean(safeImageUrl(saved.qrzPhoto));
+            const definitive = hasPhoto || isDefinitiveNoPhoto(String(saved.qrzPhotoOutcome || ""), false);
+            const isFresh = saved.qrzNameVersion === QRZ_NAME_VERSION && saved.qrzPhotoChecked && definitive &&
                 Number(saved.qrzCheckedAt || 0) > staleBefore;
-            if (!call || isFresh || qrzAttemptedCalls.has(call) || qrzLookupQueue.includes(call))
+            const retryAt = Math.max(Number(saved.qrzPhotoRetryAt || 0), Number(qrzAvatarRetryAt.get(call) || 0));
+            if (!call || isFresh || retryAt > Date.now() || qrzLookupQueue.includes(call))
                 return;
             qrzLookupQueue.push(call);
         });
@@ -678,8 +686,20 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
         qrzLookupRunning = true;
         while (qrzLookupQueue.length) {
             const call = qrzLookupQueue.shift();
-            qrzAttemptedCalls.add(call);
-            await lookupQrz(call, { silent: true });
+            const result = await lookupQrz(call, { silent: true });
+            const retryAt = avatarRetryAt(result.outcome, Boolean(result.photo));
+            const definitiveNoPhoto = isDefinitiveNoPhoto(result.outcome, Boolean(result.photo));
+            setBoundedCache(qrzAvatarRetryAt, call, retryAt);
+            const saved = local.details[call] || {};
+            local.details[call] = {
+                ...saved,
+                qrzPhoto: definitiveNoPhoto && !result.photo ? "" : saved.qrzPhoto,
+                qrzPhotoChecked: Boolean(saved.qrzPhotoChecked || definitiveNoPhoto),
+                qrzCheckedAt: Number(saved.qrzCheckedAt || Date.now()),
+                qrzPhotoRetryAt: retryAt,
+                qrzPhotoOutcome: result.outcome
+            };
+            storageSet();
             await new Promise(resolve => window.setTimeout(resolve, 250));
         }
         qrzLookupRunning = false;
@@ -1477,9 +1497,11 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 : formatName((Number(saved.qrzNameVersion || 0) === QRZ_NAME_VERSION ? String(storedName || "").trim() : "") || station?.displayName || ""),
             nameOverride,
             locationOverride,
-            qrzPhoto: safeImageUrl(saved.qrzPhoto) || safeImageUrl(station?.photo),
+            qrzPhoto: safeImageUrl(saved.qrzPhoto),
             qrzPhotoChecked: Boolean(saved.qrzPhotoChecked),
             qrzCheckedAt: Number(saved.qrzCheckedAt || 0),
+            qrzPhotoRetryAt: Number(saved.qrzPhotoRetryAt || 0),
+            qrzPhotoOutcome: String(saved.qrzPhotoOutcome || ""),
             qrzNameVersion: Number(saved.qrzNameVersion || 0),
             mobile: Boolean(saved.mobile),
             portable: Boolean(saved.portable),
@@ -1496,58 +1518,63 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
     async function resolvedAvatarSource(candidate) {
         if (resolvedAvatarDataUrls.has(candidate))
             return resolvedAvatarDataUrls.get(candidate);
+        if (Number(avatarFailureRetryAt.get(candidate) || 0) > Date.now())
+            return "";
         if (avatarSourceCache.has(candidate))
             return avatarSourceCache.get(candidate);
-        const pending = (async () => {
-            return safeImageUrl(candidate);
-        })();
-        avatarSourceCache.set(candidate, pending);
+        const pending = new Promise(resolve => {
+            const preload = new Image();
+            preload.referrerPolicy = "no-referrer";
+            preload.onload = () => resolve(candidate);
+            preload.onerror = () => resolve("");
+            preload.src = candidate;
+        });
+        setBoundedCache(avatarSourceCache, candidate, pending);
         const source = await pending;
-        if (source)
-            resolvedAvatarDataUrls.set(candidate, source);
-        if (!source) {
-            window.setTimeout(() => {
-                if (avatarSourceCache.get(candidate) === pending)
-                    avatarSourceCache.delete(candidate);
-            }, 10000);
+        if (avatarSourceCache.get(candidate) === pending)
+            avatarSourceCache.delete(candidate);
+        if (source) {
+            avatarFailureRetryAt.delete(candidate);
+            setBoundedCache(resolvedAvatarDataUrls, candidate, source);
         }
+        else
+            setBoundedCache(avatarFailureRetryAt, candidate, Date.now() + AVATAR_TRANSIENT_RETRY_MS);
         return source;
     }
     function hydrateAvatars(root = panel) {
         root?.querySelectorAll("img.nch-avatar[data-qrz-photo]").forEach(image => {
             const candidate = safeImageUrl(image.dataset.qrzPhoto);
-            if (!candidate || image.dataset.loading === "true" || resolvedAvatarDataUrls.get(candidate) === image.src)
+            if (!candidate || image.dataset.loading === "true")
                 return;
+            image.onerror = () => {
+                image.onerror = null;
+                resolvedAvatarDataUrls.delete(candidate);
+                setBoundedCache(avatarFailureRetryAt, candidate, Date.now() + AVATAR_TRANSIENT_RETRY_MS);
+                image.classList.remove("nch-avatar-qrz");
+                image.src = DEFAULT_AVATAR;
+                image.dataset.loading = "false";
+            };
+            if (resolvedAvatarDataUrls.get(candidate) === image.src)
+                return;
+            if (Number(avatarFailureRetryAt.get(candidate) || 0) > Date.now()) {
+                image.onerror = null;
+                image.src = DEFAULT_AVATAR;
+                return;
+            }
             image.dataset.loading = "true";
-            image.addEventListener("error", () => {
-                if (image.src !== DEFAULT_AVATAR) {
-                    image.classList.remove("nch-avatar-qrz");
-                    image.src = DEFAULT_AVATAR;
-                }
-            });
             resolvedAvatarSource(candidate).then(source => {
                 if (!source) {
+                    image.onerror = null;
                     image.classList.remove("nch-avatar-qrz");
                     image.src = DEFAULT_AVATAR;
                     return;
                 }
-                const preload = new Image();
-                preload.onload = async () => {
-                    try {
-                        if (preload.decode)
-                            await preload.decode();
-                        if (image.isConnected && image.dataset.qrzPhoto === candidate) {
-                            image.src = source;
-                            image.classList.add("nch-avatar-qrz");
-                        }
-                    }
-                    catch {
-                        image.src = DEFAULT_AVATAR;
-                    }
-                };
-                preload.onerror = () => { if (image.isConnected)
-                    image.src = DEFAULT_AVATAR; };
-                preload.src = source;
+                if (image.isConnected && image.dataset.qrzPhoto === candidate) {
+                    image.src = source;
+                    image.classList.add("nch-avatar-qrz");
+                }
+            }).finally(() => {
+                image.dataset.loading = "false";
             });
         });
     }
@@ -2553,7 +2580,8 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                 ? `QRZ returned no photo for ${call}; using the default avatar`
                 : `Default avatar until QRZ lookup completes for ${call}`;
         const resolvedPhoto = details.qrzPhoto ? resolvedAvatarDataUrls.get(details.qrzPhoto) || "" : "";
-        const avatarImage = `<img class="nch-avatar${resolvedPhoto ? " nch-avatar-qrz" : ""}" src="${escapeHtml(resolvedPhoto || DEFAULT_AVATAR)}"${details.qrzPhoto ? ` data-qrz-photo="${escapeHtml(details.qrzPhoto)}"` : ""} alt="${escapeHtml(call)} profile" title="${escapeHtml(avatarTitle)}">`;
+        const avatarSource = selectNcoAvatarSource(details.qrzPhoto, resolvedPhoto, DEFAULT_AVATAR);
+        const avatarImage = `<img class="nch-avatar${resolvedPhoto ? " nch-avatar-qrz" : ""}" src="${escapeHtml(avatarSource)}" referrerpolicy="no-referrer"${details.qrzPhoto ? ` data-qrz-photo="${escapeHtml(details.qrzPhoto)}"` : ""} alt="${escapeHtml(call)} profile" title="${escapeHtml(avatarTitle)}">`;
         const avatar = `<button class="nch-avatar-button" data-view-photo="${escapeHtml(call)}" title="View larger photo for ${escapeHtml(call)}">${avatarImage}</button>`;
         const canChangeHand = manager || call === selfCall();
         const hand = canChangeHand
@@ -4617,9 +4645,10 @@ import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/reques
                     privateThreads: privateThreads.size,
                     privateMessages: [...privateThreads.values()].reduce((sum, thread) => sum + thread.length, 0),
                     pinnedChatMessages: pinnedChatMessages.size,
-                    qrzAttemptedCalls: qrzAttemptedCalls.size,
+                    qrzAvatarRetries: qrzAvatarRetryAt.size,
                     avatarSources: avatarSourceCache.size,
-                    resolvedAvatars: resolvedAvatarDataUrls.size
+                    resolvedAvatars: resolvedAvatarDataUrls.size,
+                    avatarFailures: avatarFailureRetryAt.size
                 }
             };
         }
