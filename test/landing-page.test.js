@@ -13,7 +13,7 @@ const navbar = read('server/dist/views/partials/navbar.ejs');
 const footer = read('server/dist/views/partials/footer.ejs');
 const dashboardClient = read('client/dist/public/js/byView/dashboard/main.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
-const tower = read('client/dist/public/img/nco-logger-tower.svg');
+const heroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-night.png');
 
 test('landing hero uses the approved copy, actions, logo identity, and tower artwork', () => {
     assert.match(dashboard, /Run a net\./);
@@ -23,11 +23,11 @@ test('landing hero uses the approved copy, actions, logo identity, and tower art
     assert.match(dashboard, /START A NET/);
     assert.match(dashboard, /VIEW SCHEDULE/);
     assert.match(dashboard, /href="#net-schedule"/);
-    assert.match(dashboard, /src="\/img\/nco-logger-tower\.svg" alt=""/);
+    assert.match(landingCss, /background-image:\s*url\('\/img\/nco-logger-hero-night\.png'\)/);
     assert.match(navbar, /src="\/img\/nco-logger-logo\.svg"/);
     assert.match(navbar, /BY WVARC/);
-    assert.match(tower, /^<svg/);
-    assert.doesNotMatch(tower, /<script|<image|animate/i);
+    assert.ok(fs.statSync(heroPath).size > 100000);
+    assert.ok(fs.statSync(heroPath).size < 2500000);
     assert.match(landingCss, /\.landing-page \.landing-title-find\s*\{\s*color:\s*var\(--app-text\)/s);
     assert.match(landingCss, /\.landing-page \.landing-title-join\s*\{\s*color:\s*var\(--app-cyan\)/s);
 });
@@ -82,4 +82,6 @@ test('landing layout includes responsive hero, feature, net, and footer grids', 
     assert.match(landingCss, /@media \(max-width: 991\.98px\)[\s\S]*\.landing-net-grid/);
     assert.match(landingCss, /@media \(max-width: 767\.98px\)[\s\S]*\.landing-hero-grid/);
     assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-footer-grid/);
+    assert.match(landingCss, /\.landing-feature-card\s*\{[\s\S]*border-right:/);
+    assert.match(landingCss, /\.landing-page \.landing-hero::before/);
 });

@@ -14,9 +14,7 @@
   <main class="app-main">
     <section class="landing-hero" aria-labelledby="landing-title">
       <div class="container">
-        <div class="landing-hero-grid">
-          <div class="landing-hero-copy">
-            <div class="landing-kicker">The digital home for amateur radio nets</div>
+        <div class="landing-hero-copy">
             <h1 class="landing-title" id="landing-title">
               <span class="landing-title-phrase landing-title-run">Run a net.</span>
               <span class="landing-title-phrase landing-title-find">Find a net.</span>
@@ -27,19 +25,14 @@
             </p>
             <div class="landing-actions">
               <a class="app-button app-button-primary" href="<%= user.isLoggedIn ? '/views/mynets' : '/views/login' %>">
-                <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
+                <i class="bi bi-play-fill" aria-hidden="true"></i>
                 START A NET
               </a>
               <a class="app-button app-button-secondary" href="#net-schedule">
+                <i class="bi bi-calendar3" aria-hidden="true"></i>
                 VIEW SCHEDULE
-                <i class="bi bi-arrow-down" aria-hidden="true"></i>
               </a>
             </div>
-          </div>
-          <div class="landing-tower-panel" aria-hidden="true">
-            <div class="landing-tower-glow"></div>
-            <img class="landing-tower" src="/img/nco-logger-tower.svg" alt="" />
-          </div>
         </div>
       </div>
     </section>
@@ -81,20 +74,13 @@
 
     <section class="landing-net-board" id="net-schedule" aria-labelledby="net-schedule-title">
       <div class="container">
-        <div class="landing-net-board-heading">
-          <div class="section-eyebrow">Find your net</div>
-          <h2 class="section-title" id="net-schedule-title">On the air and ahead</h2>
-          <p>Join an active net or see what is coming up.</p>
-        </div>
+        <h2 class="visually-hidden" id="net-schedule-title">Net schedule</h2>
 
         <div class="landing-net-grid">
           <section class="landing-net-panel landing-live-panel" id="live-nets" aria-labelledby="live-nets-title">
             <header class="landing-net-panel-heading">
-              <span class="landing-panel-icon is-live"><i class="bi bi-broadcast-pin" aria-hidden="true"></i></span>
-              <div>
-                <span class="landing-panel-label">Happening now</span>
-                <h3 id="live-nets-title">Live Nets</h3>
-              </div>
+              <span class="landing-live-dot" aria-hidden="true"></span>
+              <h3 id="live-nets-title">Live Nets</h3>
             </header>
 
             <div class="nets-list" id="dashItemsContainer" aria-live="polite" aria-busy="true">
@@ -129,10 +115,7 @@
           <section class="landing-net-panel" aria-labelledby="todays-nets-title">
             <header class="landing-net-panel-heading">
               <span class="landing-panel-icon"><i class="bi bi-calendar2-day" aria-hidden="true"></i></span>
-              <div>
-                <span class="landing-panel-label">Later today</span>
-                <h3 id="todays-nets-title">Today's Nets</h3>
-              </div>
+              <h3 id="todays-nets-title">Today's Nets</h3>
             </header>
             <div class="scheduled-net-list" data-scheduled-net-list="today" aria-live="polite">
               <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
@@ -145,10 +128,7 @@
           <section class="landing-net-panel" aria-labelledby="upcoming-nets-title">
             <header class="landing-net-panel-heading">
               <span class="landing-panel-icon"><i class="bi bi-calendar2-week" aria-hidden="true"></i></span>
-              <div>
-                <span class="landing-panel-label">Plan ahead</span>
-                <h3 id="upcoming-nets-title">Upcoming Nets</h3>
-              </div>
+              <h3 id="upcoming-nets-title">Upcoming Nets</h3>
             </header>
             <div class="scheduled-net-list" data-scheduled-net-list="upcoming" aria-live="polite">
               <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
