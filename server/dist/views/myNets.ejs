@@ -181,6 +181,105 @@
     </div>
   </div>
 
+  <div class="modal fade app-modal" id="schedule-editor-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="schedule-editor-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered schedule-editor-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <div class="section-eyebrow">Net schedule</div>
+            <h2 class="modal-title h5" id="schedule-editor-title">Manage Schedule</h2>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="schedule_editor_form" class="schedule-editor-form">
+          <fieldset id="schedule_editor_fields">
+            <div class="modal-body schedule-editor-body">
+              <p id="schedule_editor_status" class="schedule-editor-status" role="status" aria-live="polite"></p>
+              <input type="hidden" id="schedule_profile_id" />
+
+              <div class="app-form-grid schedule-primary-fields">
+                <div class="app-field">
+                  <label for="schedule_type">Recurrence</label>
+                  <select id="schedule_type" class="form-select app-input app-select" required>
+                    <option value="oneTime">One Time</option>
+                    <option value="weekly">Weekly / Multiple Weekdays</option>
+                    <option value="monthlyPosition">Monthly by Position</option>
+                    <option value="monthlyDate">Monthly by Date</option>
+                  </select>
+                </div>
+                <div class="app-field">
+                  <label for="schedule_timezone">Timezone</label>
+                  <input id="schedule_timezone" class="form-control app-input" type="text" list="schedule_timezones" autocomplete="off" required />
+                  <datalist id="schedule_timezones"></datalist>
+                </div>
+                <div class="app-field">
+                  <label for="schedule_start_date">Start Date</label>
+                  <input id="schedule_start_date" class="form-control app-input" type="date" required />
+                </div>
+                <div class="app-field">
+                  <label for="schedule_start_time">Start Time</label>
+                  <input id="schedule_start_time" class="form-control app-input" type="time" required />
+                </div>
+                <div class="app-field schedule-end-date-field" data-recurring-field>
+                  <label for="schedule_end_date">End Date <span>(optional)</span></label>
+                  <input id="schedule_end_date" class="form-control app-input" type="date" />
+                  <small>Leave blank to repeat indefinitely.</small>
+                </div>
+              </div>
+
+              <fieldset class="schedule-recurrence-fields" data-schedule-fields="weekly" hidden>
+                <legend>Repeat On</legend>
+                <div class="schedule-weekdays">
+                  <% ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach((day, index) => { %>
+                    <label><input type="checkbox" name="schedule_weekday" value="<%= index + 1 %>" /> <span><%= day.slice(0, 3) %></span></label>
+                  <% }) %>
+                </div>
+                <small>Select one or more weekdays.</small>
+              </fieldset>
+
+              <div class="app-form-grid schedule-recurrence-fields" data-schedule-fields="monthlyPosition" hidden>
+                <div class="app-field">
+                  <label for="schedule_monthly_ordinal">Position</label>
+                  <select id="schedule_monthly_ordinal" class="form-select app-input app-select">
+                    <option value="1">First</option>
+                    <option value="2">Second</option>
+                    <option value="3">Third</option>
+                    <option value="4">Fourth</option>
+                    <option value="5">Fifth</option>
+                    <option value="-1">Last</option>
+                  </select>
+                </div>
+                <div class="app-field">
+                  <label for="schedule_monthly_weekday">Weekday</label>
+                  <select id="schedule_monthly_weekday" class="form-select app-input app-select">
+                    <% ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach((day, index) => { %>
+                      <option value="<%= index + 1 %>"><%= day %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              </div>
+
+              <div class="schedule-recurrence-fields" data-schedule-fields="monthlyDate" hidden>
+                <div class="app-field">
+                  <label for="schedule_monthly_day">Day of Month</label>
+                  <input id="schedule_monthly_day" class="form-control app-input" type="number" min="1" max="31" value="1" />
+                  <small>For shorter months, only valid calendar dates produce occurrences.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer schedule-editor-actions">
+              <button type="button" id="schedule_disable" class="app-button app-button-danger" hidden>Disable Schedule</button>
+              <span class="schedule-action-spacer"></span>
+              <button type="button" class="app-button app-button-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="app-button app-button-primary">Save Schedule</button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <%- include('./partials/pageBottomFeatures') %>
   <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
   <%- include('./partials/footer') %>

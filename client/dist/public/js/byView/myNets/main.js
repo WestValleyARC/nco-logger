@@ -131,6 +131,123 @@ const formatViewerDateTime = value => new Intl.DateTimeFormat([], {
     weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
 }).format(new Date(value));
 
+const scheduleEditor = {
+    modal: document.getElementById('schedule-editor-modal'),
+    form: document.getElementById('schedule_editor_form'),
+    fields: document.getElementById('schedule_editor_fields'),
+    status: document.getElementById('schedule_editor_status'),
+    title: document.getElementById('schedule-editor-title'),
+    profileId: document.getElementById('schedule_profile_id'),
+    type: document.getElementById('schedule_type'),
+    timezone: document.getElementById('schedule_timezone'),
+    startDate: document.getElementById('schedule_start_date'),
+    startTime: document.getElementById('schedule_start_time'),
+    endDate: document.getElementById('schedule_end_date'),
+    disable: document.getElementById('schedule_disable')
+};
+let currentSchedule = null;
+
+const browserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const localDateValue = date => {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const setScheduleStatus = (message = '', error = false) => {
+    scheduleEditor.status.textContent = message;
+    scheduleEditor.status.classList.toggle('is-error', error);
+};
+
+const setScheduleBusy = busy => {
+    scheduleEditor.fields.disabled = busy;
+    scheduleEditor.modal.setAttribute('aria-busy', String(busy));
+};
+
+const updateScheduleFields = () => {
+    const type = scheduleEditor.type.value;
+    document.querySelectorAll('[data-schedule-fields]').forEach(section => {
+        section.hidden = section.dataset.scheduleFields !== type;
+    });
+    document.querySelectorAll('[data-recurring-field]').forEach(field => {
+        field.hidden = type === 'oneTime';
+    });
+};
+
+const populateScheduleForm = schedule => {
+    scheduleEditor.form.reset();
+    scheduleEditor.type.value = schedule?.type || 'oneTime';
+    scheduleEditor.timezone.value = schedule?.timezone || browserTimezone();
+    scheduleEditor.startDate.value = schedule?.startDate || localDateValue(new Date());
+    scheduleEditor.startTime.value = schedule?.localStartTime || '19:00';
+    scheduleEditor.endDate.value = schedule?.endDate || '';
+    document.querySelectorAll('input[name="schedule_weekday"]').forEach(input => {
+        input.checked = (schedule?.weekdays || []).includes(Number(input.value));
+    });
+    document.getElementById('schedule_monthly_ordinal').value = String(schedule?.monthlyOrdinal ?? 1);
+    document.getElementById('schedule_monthly_weekday').value = String(schedule?.monthlyWeekday ?? 1);
+    document.getElementById('schedule_monthly_day').value = String(schedule?.monthlyDay ?? 1);
+    scheduleEditor.disable.hidden = !schedule?.enabled;
+    updateScheduleFields();
+};
+
+const schedulePayload = () => {
+    const type = scheduleEditor.type.value;
+    const payload = {
+        type,
+        timezone: scheduleEditor.timezone.value.trim(),
+        localStartTime: scheduleEditor.startTime.value,
+        startDate: scheduleEditor.startDate.value,
+        endDate: type === 'oneTime' ? null : scheduleEditor.endDate.value || null,
+        enabled: true
+    };
+    if (type === 'weekly') {
+        payload.weekdays = [...document.querySelectorAll('input[name="schedule_weekday"]:checked')]
+            .map(input => Number(input.value));
+        if (!payload.weekdays.length) throw new Error('Select at least one weekday');
+    } else if (type === 'monthlyPosition') {
+        payload.monthlyOrdinal = Number(document.getElementById('schedule_monthly_ordinal').value);
+        payload.monthlyWeekday = Number(document.getElementById('schedule_monthly_weekday').value);
+    } else if (type === 'monthlyDate') {
+        payload.monthlyDay = Number(document.getElementById('schedule_monthly_day').value);
+    }
+    return payload;
+};
+
+const openScheduleEditor = async netProfile => {
+    let scheduleLoaded = false;
+    currentSchedule = null;
+    scheduleEditor.profileId.value = netProfile._id;
+    scheduleEditor.title.textContent = `Schedule ${netProfile.title}`;
+    populateScheduleForm(null);
+    setScheduleStatus('Loading schedule…');
+    setScheduleBusy(true);
+    bootstrap.Modal.getOrCreateInstance(scheduleEditor.modal).show();
+    try {
+        const response = await axios.get(`/api/data/netprofiles/${netProfile._id}/schedule`);
+        currentSchedule = response.data.schedule;
+        populateScheduleForm(currentSchedule);
+        scheduleLoaded = true;
+        setScheduleStatus(currentSchedule.enabled
+            ? 'Edit the active schedule.'
+            : 'This schedule is disabled. Saving will enable it.');
+    } catch (error) {
+        if (error.response?.status === 404) {
+            populateScheduleForm(null);
+            scheduleLoaded = true;
+            setScheduleStatus('Create a schedule for this net.');
+        } else {
+            setScheduleStatus(error.response?.data?.errorMessage || 'Could not load this schedule.', true);
+        }
+    } finally {
+        setScheduleBusy(!scheduleLoaded);
+    }
+};
+
+const closeScheduleEditor = () => {
+    bootstrap.Modal.getOrCreateInstance(scheduleEditor.modal).hide();
+    refreshNetList();
+};
+
 function setNetProfileMode(mode) {
     netProfileFormState.mode = mode;
     if (mode === 'new') netProfileFormState.mesg('info', 'Create new net profile');
@@ -328,6 +445,14 @@ function refreshNetList() {
                     buttonElem.addEventListener('click', action);
                     return buttonElem;
                 };
+
+                actionsElem.appendChild(
+                    makeActionButton({
+                        label: 'Schedule',
+                        icon: 'bi-calendar3',
+                        action: () => openScheduleEditor(netProfile)
+                    })
+                );
 
                 actionsElem.appendChild(
                     makeActionButton({
@@ -571,6 +696,48 @@ document.getElementById('add_connection').addEventListener('click', () => {
     renderConnections();
 });
 document.getElementById('netprofile_form').addEventListener('reset', () => setTimeout(resetConnections));
+scheduleEditor.type.addEventListener('change', updateScheduleFields);
+scheduleEditor.form.addEventListener('submit', async event => {
+    event.preventDefault();
+    setScheduleBusy(true);
+    setScheduleStatus('Saving schedule…');
+    const id = scheduleEditor.profileId.value;
+    try {
+        const payload = schedulePayload();
+        if (currentSchedule) {
+            await axios.patch(`/api/data/netprofiles/${id}/schedule`, payload);
+        } else {
+            await axios.post(`/api/data/netprofiles/${id}/schedule`, payload);
+        }
+        closeScheduleEditor();
+    } catch (error) {
+        setScheduleStatus(error.response?.data?.errorMessage || error.message || 'Could not save schedule.', true);
+    } finally {
+        setScheduleBusy(false);
+    }
+});
+scheduleEditor.disable.addEventListener('click', async () => {
+    if (!currentSchedule || !window.confirm('Disable this schedule and cancel its future scheduled occurrences?')) return;
+    setScheduleBusy(true);
+    setScheduleStatus('Disabling schedule…');
+    try {
+        await axios.delete(`/api/data/netprofiles/${scheduleEditor.profileId.value}/schedule`);
+        closeScheduleEditor();
+    } catch (error) {
+        setScheduleStatus(error.response?.data?.errorMessage || 'Could not disable schedule.', true);
+    } finally {
+        setScheduleBusy(false);
+    }
+});
+
+const timezoneList = document.getElementById('schedule_timezones');
+if (typeof Intl.supportedValuesOf === 'function') {
+    Intl.supportedValuesOf('timeZone').forEach(timezone => {
+        const option = document.createElement('option');
+        option.value = timezone;
+        timezoneList.appendChild(option);
+    });
+}
 
 //init
 formShow('formContainerNetProfile');
