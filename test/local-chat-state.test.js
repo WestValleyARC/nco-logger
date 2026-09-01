@@ -50,3 +50,31 @@ test('chat request failures use concise human-readable status messages', async (
     assert.equal(chatRequestErrorMessage(500, 'Service unavailable', 'Fallback'), 'Service unavailable');
     assert.equal(chatRequestErrorMessage(500, undefined, 'Fallback'), 'Fallback');
 });
+
+test('latest-message detection preserves deterministic ordering for incremental appends', async () => {
+    const { isLatestChatMessage } = await loadState();
+    const messages = new Map([
+        ['a', { id: 'a', createdAt: '2026-08-31T00:00:00.000Z' }],
+        ['c', { id: 'c', createdAt: '2026-08-31T00:00:02.000Z' }]
+    ]);
+    const latest = { id: 'd', createdAt: '2026-08-31T00:00:03.000Z' };
+    const lateArrival = { id: 'b', createdAt: '2026-08-31T00:00:01.000Z' };
+    messages.set(latest.id, latest);
+    assert.equal(isLatestChatMessage(messages.values(), latest), true);
+    messages.set(lateArrival.id, lateArrival);
+    assert.equal(isLatestChatMessage(messages.values(), lateArrival), false);
+});
+
+test('long-session chat collections discard oldest messages at their configured boundary', async () => {
+    const { trimOldestChatMessages } = await loadState();
+    const messages = new Map();
+    for (let index = 0; index < 1001; index += 1) {
+        const id = String(index).padStart(4, '0');
+        messages.set(id, { id, createdAt: `2026-08-31T00:${String(Math.floor(index / 60) % 60).padStart(2, '0')}:${String(index % 60).padStart(2, '0')}.000Z` });
+    }
+    const removed = trimOldestChatMessages(messages, 1000);
+    assert.deepEqual(removed, ['0000']);
+    assert.equal(messages.size, 1000);
+    assert.equal(messages.has('0000'), false);
+    assert.equal(messages.has('1000'), true);
+});

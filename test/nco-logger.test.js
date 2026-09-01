@@ -2,7 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { sanitizeLoggerState } = require('../server/dist/controllers/ncoLoggerController');
+const netOps = require('../server/dist/lib/sharedNetOps');
+const { sanitizeLoggerState, setCheckedState, lookupQrzProfile } = require('../server/dist/controllers/ncoLoggerController');
 
 test('NCO logger state keeps shared operational fields and excludes private notes', () => {
     const state = sanitizeLoggerState({
@@ -21,6 +22,8 @@ test('NCO logger state keeps shared operational fields and excludes private note
                     nameOverride: true,
                     nameOrigin: 'manual',
                     nameOwnerRole: 'netcontrol',
+                    location: 'Stale Location',
+                    locationOverride: true,
                     injected: '<script>alert(1)</script>'
                 }
             }
@@ -35,10 +38,63 @@ test('NCO logger state keeps shared operational fields and excludes private note
     assert.equal(state.details.W1ABC.tags.neededNext, true);
     assert.equal(state.details.W1ABC.tags.mobile, true);
     assert.equal(state.details.W1ABC.tags.unexpected, undefined);
-    assert.equal(state.details.W1ABC.profile.name, 'Test Operator');
-    assert.equal(state.details.W1ABC.profile.injected, undefined);
+    assert.equal(state.details.W1ABC.profile, undefined);
 });
+
+for (const label of ['stale shared name', 'stale shared location', 'reconnect snapshot profile']) {
+    test(`${label} cannot enter server logger state`, () => {
+        const state = sanitizeLoggerState({
+            details: { W1ABC: { profile: {
+                name: 'Stale Name', nameOverride: true,
+                location: 'Stale Location', locationOverride: true
+            } } }
+        });
+        assert.equal(state.details.W1ABC.profile, undefined);
+    });
+}
 
 test('NCO logger state rejects oversized payloads', () => {
     assert.throws(() => sanitizeLoggerState({ details: { W1ABC: { junk: 'x'.repeat(100001) } } }), /too large/);
+});
+
+test('check-state controller returns structured path timing from sharedNetOps', async t => {
+    t.mock.method(netOps, 'checkState', async options => {
+        options.metrics.totalMs = 12.5;
+        options.metrics.stations = [{ callSign: 'W1ABC', path: 'existing-station-check-in', persistenceMs: 4.2 }];
+        return [{ callSign: 'W1ABC', checkedState: true, dupe: false }];
+    });
+    const result = await setCheckedState({
+        req: { user: { callSign: 'N0NCO' } },
+        res: { locals: { flexOpts: {} } },
+        liveNet: { _id: 'live-net' },
+        source: { role: 'netcontrol', checkedState: true },
+        target: 'W1ABC',
+        state: true
+    });
+
+    assert.equal(result.stations[0].checkedState, true);
+    assert.equal(result.timing.totalMs, 12.5);
+    assert.equal(result.timing.stations[0].path, 'existing-station-check-in');
+});
+
+test('browser QRZ profile action returns only sanitized server lookup data and status', async () => {
+    const result = await lookupQrzProfile({
+        target: 'W1ABC',
+        flexOpts: { qrzDataReqTimeoutMs: 1000 },
+        profileLookupFn: async () => ({
+            outcome: 'success', atQuota: false,
+            result: {
+                callSign: 'W1ABC', displayName: 'Test Operator', location: 'Phoenix, AZ',
+                photo: 'https://files.qrz.com/q/w1abc/photo.jpg'
+            }
+        })
+    });
+
+    assert.equal(result.action, 'qrzProfile');
+    assert.equal(result.qrzStatus, 'success');
+    assert.equal(result.profile.displayName, 'Test Operator');
+    assert.equal(result.profile.photo, 'https://files.qrz.com/q/w1abc/photo.jpg');
+    assert.equal(result.manualNameOverride, false);
+    assert.equal(typeof result.qrzLookupMs, 'number');
+    assert.equal(JSON.stringify(result).includes('session'), false);
 });

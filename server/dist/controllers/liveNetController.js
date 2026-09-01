@@ -12,6 +12,7 @@ const netListCache = new NodeCache({ stdTTL: 3, checkperiod: 60 });
 const { NetAnnounceStart } = require('../lib/userNotification');
 const oHash = require('object-hash');
 const helpers = require('../lib/controllers/liveNetHelpers');
+const stationProfiles = require('../lib/stationProfileService');
 const { isLiveNetDetailsResponse, NetNotFoundError } = require('../types/commonTypesupport');
 
 const liveNetDetails = async (req, res, presenceOnly = false) => {
@@ -219,11 +220,18 @@ const liveNetCreatePost = async (req, res) => {
             if (npresult.liveNet) {
                 throw new Error('net already running or stale livenet reference in netprofile');
             } else {
+                const profile = await stationProfiles.syncParticipantProfile({
+                    callSign: req.user.callSign,
+                    name: req.user.displayName,
+                    location: req.user.location,
+                    editorCallSign: req.user.callSign,
+                    editorUserId: req.user._id
+                });
                 const interaction = new StationInteraction({
                     netProfile: npresult._id,
                     callSign: req.user.callSign,
-                    displayName: req.user.displayName,
-                    location: req.user.location,
+                    displayName: profile.fields.name.value,
+                    location: profile.fields.location.value,
                     photo: req.user.photo,
                     email: req.user.email,
                     createdBy: 'admin',

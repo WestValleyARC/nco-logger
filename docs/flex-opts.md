@@ -84,6 +84,11 @@ The following keys are defined in `server/dist/models/flexOptions.js` and are ac
     - Session/login timeout for QRZ service requests.
     - Used in `lib/serverUtils.js`.
 
+- **`qrzCheckInWaitMs`** — default: `0`
+    - Maximum time an unknown-station check-in waits for QRZ before completing enrichment in the background.
+    - `0` keeps QRZ entirely off the synchronous check-in path; accepted range: 0–5000 ms.
+    - Used in `lib/sharedNetOps.js`.
+
 - **`qrzReqQuota`** — default: `1000000`
     - Quota enforcement for external QRZ requests.
     - Used in `lib/serverUtils.js`.

@@ -57,6 +57,15 @@ const stationInteractionSchema = new Schema(
         displayName: String,
         photo: String,
         location: String,
+        qrzLookupStatus: {
+            type: String,
+            enum: [
+                'skipped-local-profile', 'immediate-success', 'deferred', 'later-success',
+                'timeout', 'quota', 'auth-session-failure', 'not-found', 'disabled',
+                'network-failure', 'malformed-response', 'service-error', 'no-data'
+            ]
+        },
+        qrzLookupAt: Date,
         createdBy: {
             type: String,
             enum: {
