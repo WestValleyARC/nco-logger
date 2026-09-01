@@ -1,6 +1,5 @@
 <!--Begin: footer.ejs-->
 <% const landingFooter = typeof landing !== 'undefined' && landing; %>
-<% if (landingFooter) { %>
 <footer class="app-footer landing-footer">
   <div class="container">
     <div class="landing-footer-grid">
@@ -12,8 +11,8 @@
       </div>
       <nav class="landing-footer-column" aria-labelledby="footer-nco-title">
         <h2 id="footer-nco-title">NCO LOGGER</h2>
-        <a href="#live-nets">Live Nets</a>
-        <a href="#net-schedule">Schedule</a>
+        <a href="<%= landingFooter ? '#live-nets' : '/views/dashboard#live-nets' %>">Live Nets</a>
+        <a href="<%= landingFooter ? '#net-schedule' : '/views/dashboard#net-schedule' %>">Schedule</a>
         <a href="/views/guide">Guide</a>
         <a href="<%= user.isLoggedIn ? '/views/mynets' : '/views/login' %>">Start a Net</a>
       </nav>
@@ -38,11 +37,4 @@
     </div>
   </div>
 </footer>
-<% } else { %>
-<footer class="app-footer">
-  <small>
-    &copy; <%= server.appName %> <%= (new Date( server.ts )).getFullYear() %>
-  </small>
-</footer>
-<% } %>
 <!--End: footer.ejs-->

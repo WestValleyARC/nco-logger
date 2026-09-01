@@ -1,32 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%-
-        include('./partials/pageTopFeatures') %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title>NCO Logger - Page Not Found <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
 
+<body class="app-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-  <title><%= server.appName %> - Not Found <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-        
-    </head>
-    <body class="bg-dark">
-        <%- include('./partials/navbar', {user: user}) %>
-
-    <section class="bg-dark text-light p-5 text-center">
-      <div class="container">
-        <div class="d-sm-flex">
-          <div class="m-4">
-            <span class="text-secondary h4"></span>
-            <em class="text-primary">Not Found</em>
-            </span>
-          </div>
+  <main class="app-main d-flex align-items-center py-5">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+          <section class="app-panel p-4 p-md-5 text-center" aria-labelledby="not-found-heading">
+            <div class="section-eyebrow">404</div>
+            <h1 class="section-title" id="not-found-heading">Page Not Found</h1>
+            <p class="workspace-copy mx-auto mt-3">The page you're looking for could not be found.</p>
+            <a class="app-button app-button-primary mt-4" href="/">Back to NCO Logger</a>
+          </section>
         </div>
       </div>
-    </section>
+    </div>
+  </main>
 
-    <%- include('./partials/pageBottomFeatures') %>
-    </body>
-    <%- include('./partials/footer') %>
+  <%- include('./partials/footer') %>
+  <%- include('./partials/pageBottomFeatures') %>
+</body>
 
 </html>

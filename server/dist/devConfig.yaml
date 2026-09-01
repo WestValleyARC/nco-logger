@@ -4,8 +4,7 @@
 nodeenv: 'development'
 # Run daily maintenance (close idle nets, flag/delete stale accounts, etc.) on
 # every server start. `true` in dev is handy for debugging the tasks — but note
-# that nodemon restarts often, so maintenance re-runs each restart and, given
-# the short dev TTLs below, may close/flag/delete your test data. Set to `false`
+# that nodemon restarts often, so maintenance re-runs each restart. Set to `false`
 # if you want test data to stick around (maintenance still runs once/day).
 run_background_tasks_on_startup: true
 realtime_mongoose_poolsize: 5
@@ -24,7 +23,8 @@ background_tasks:
     flagAccounts:
         enabled: true
         options:
-            ttl_days: 1
+            inactivity_years: 3
+            inactivity_warning_days: 30
             account_create_min: 2
     deleteFlaggedAccounts:
         enabled: true

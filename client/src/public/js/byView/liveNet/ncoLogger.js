@@ -3641,7 +3641,7 @@ import {
             ${moduleResizeZones("active")}
           </section>
           <section class="nch-module nch-lurkers-fixed" data-module="lurkers">
-            <h3 class="nch-module-header" data-module-drag="lurkers" tabindex="0" aria-label="Move Lurkers"><span>Lurkers <small>visible to NetControl.live</small></span></h3>
+            <h3 class="nch-module-header" data-module-drag="lurkers" tabindex="0" aria-label="Move Lurkers"><span>Lurkers <small>visible to NCO Logger</small></span></h3>
             <div class="nch-module-content" data-role="lurkers"></div>
             ${moduleResizeZones("lurkers")}
           </section>

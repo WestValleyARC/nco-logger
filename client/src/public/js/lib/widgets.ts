@@ -16,6 +16,7 @@ import {
     EndPointResponse,
     Station,
     NetInfo,
+    FollowListNetInfo,
     NPID,
     RstReportBase,
     StrengthTone,
@@ -605,45 +606,151 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
         return /*html*/ `
         <style>
             #${this.defaultElementId} {
+                color: #f4f5f2;
+            }
+            #${this.defaultElementId} .favorites-grid {
                 display: grid;
-                margin: 0 auto;
-                color: var(--hl-light);
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+                gap: 1rem;
             }
-            #${this.defaultElementId} .header {
-                font-weight: bold;
-                font-style: italic;
-                color: var(--hl-secondary);
+            #${this.defaultElementId} .favorite-card {
+                position: relative;
+                display: flex;
+                min-height: 7.25rem;
+                flex-direction: column;
+                padding: 0.9rem 1rem;
+                border: 1px solid rgba(155, 169, 178, 0.48);
+                border-radius: 0.75rem;
+                background: linear-gradient(150deg, rgba(11, 29, 41, 0.92), rgba(5, 15, 23, 0.98));
+                box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.18);
+                cursor: pointer;
+                transition: border-color 140ms ease, outline-color 140ms ease, transform 140ms ease;
             }
-            #${this.defaultElementId} .row {
-                padding-right: 20px;
+            #${this.defaultElementId} .favorite-card:hover,
+            #${this.defaultElementId} .favorite-card:focus-within {
+                border-color: rgba(0, 200, 240, 0.58);
+                outline: 1px solid rgba(0, 200, 240, 0.16);
+                transform: translateY(-1px);
+            }
+            #${this.defaultElementId} .favorite-card-heading {
+                display: flex;
+                gap: 0.8rem;
                 align-items: center;
-                border: 1px solid transparent;
-                border-bottom: 1px solid rgba(240, 238, 222, 0.15);
-                display: grid;
-                grid-template-columns: 1fr 1fr;
+                justify-content: space-between;
+                padding-bottom: 0.65rem;
+                border-bottom: 1px solid rgba(155, 169, 178, 0.32);
             }
-            #${this.defaultElementId} .cell {
-                display: grid;
+            #${this.defaultElementId} .favorite-title {
+                color: #f4f5f2;
+                font-size: 1.05rem;
+                font-weight: 700;
+                line-height: 1.25;
+                text-decoration: none;
+            }
+            #${this.defaultElementId} .favorite-title::after {
+                position: absolute;
+                z-index: 1;
+                inset: 0;
+                border-radius: 0.75rem;
+                content: '';
+            }
+            #${this.defaultElementId} .favorite-title:focus-visible {
+                outline: none;
+            }
+            #${this.defaultElementId} .favorite-actions {
+                position: relative;
+                z-index: 2;
+                display: inline-flex;
+                gap: 0.55rem;
                 align-items: center;
-                justify-items: start;
-                padding: 10px;
+                flex: 0 0 auto;
+            }
+            #${this.defaultElementId} hl-fav-insert {
+                --hl-tertiary: #ff8500;
+                display: inline-grid;
+                width: 1.9rem;
+                height: 1.9rem;
+                place-items: center;
+                border-radius: 50%;
+                cursor: pointer;
+            }
+            #${this.defaultElementId} hl-fav-insert:hover,
+            #${this.defaultElementId} hl-fav-insert:focus-visible {
+                background: rgba(255, 133, 0, 0.1);
+                outline: 1px solid rgba(255, 133, 0, 0.55);
+            }
+            #${this.defaultElementId} .favorite-status {
+                padding: 0.28rem 0.48rem;
+                color: #84949b;
+                border: 1px solid rgba(155, 169, 178, 0.18);
+                border-radius: 0.35rem;
+                background: rgba(26, 39, 48, 0.34);
+                font-size: 0.7rem;
+                font-weight: 700;
                 white-space: nowrap;
             }
-            #${this.defaultElementId} .cell.end {
-                justify-items: end;
+            #${this.defaultElementId} .favorite-status.is-live {
+                color: #eaffef;
+                border-color: rgba(67, 209, 122, 0.5);
+                background: rgba(32, 128, 66, 0.72);
             }
-            #${this.defaultElementId} hl-fav {
-                margin-right: 4px;
+            #${this.defaultElementId} .favorite-details {
+                display: grid;
+                gap: 0.25rem;
+                padding-top: 0.65rem;
             }
-            #${this.defaultElementId} .details {
-                color: var(--hl-secondary);
-                font-size: 0.8em;
-                font-style: italic;
+            #${this.defaultElementId} .favorite-connection {
+                margin: 0;
+                color: #e2e8ea;
+                font-size: 0.95rem;
             }
-            #${this.defaultElementId} .parens {
-                padding: 0 4px;
-                color: var(--hl-light);
-                font-size: 0.8em;
+            #${this.defaultElementId} .favorite-mode-details {
+                margin: 0;
+                color: #9ba9b2;
+                font-size: 0.83rem;
+            }
+            #${this.defaultElementId} .favorite-followers {
+                margin: 0.3rem 0 0;
+                color: #bdc8cc;
+                font-size: 0.78rem;
+            }
+            #${this.defaultElementId} .favorites-empty {
+                display: grid;
+                min-height: 18rem;
+                place-content: center;
+                justify-items: center;
+                padding: 2rem;
+                border: 1px solid rgba(155, 169, 178, 0.48);
+                border-radius: 0.75rem;
+                background: linear-gradient(150deg, rgba(11, 29, 41, 0.92), rgba(5, 15, 23, 0.98));
+                box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.18);
+                text-align: center;
+            }
+            #${this.defaultElementId} .favorites-empty h2 {
+                margin: 0 0 0.65rem;
+                color: #f4f5f2;
+                font-size: 1.35rem;
+            }
+            #${this.defaultElementId} .favorites-empty p {
+                max-width: 30rem;
+                margin: 0 0 1.25rem;
+                color: #9ba9b2;
+                line-height: 1.55;
+            }
+            #${this.defaultElementId} .favorites-empty a {
+                position: relative;
+                z-index: 1;
+                padding: 0.65rem 1rem;
+                color: #07111a;
+                border-radius: 0.45rem;
+                background: linear-gradient(135deg, #ff971d, #ed6e00);
+                font-weight: 700;
+                text-decoration: none;
+            }
+            @media (max-width: 575.98px) {
+                #${this.defaultElementId} .favorite-card-heading {
+                    align-items: flex-start;
+                }
             }
         </style>
         <div id="${this.defaultElementId}"></div>
@@ -668,78 +775,85 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
         const { netlist } = this.store?.mainCache?.message ?? { netlist: [] };
 
         if (netlist && netlist.length === 0) {
-            this.defaultElement.textContent = 'Follow/Favorite some nets to see them here.';
+            this.defaultElement.replaceChildren(this.createEmptyState());
             return;
         }
 
         const fragment = document.createDocumentFragment();
-        fragment.appendChild(this.createHeaderRow());
-
-        netlist.forEach(({ id, title, followCount, mode }) => {
-            const row = this.createRowElement();
-            row.appendChild(this.createCellElement(this.createTitleAndFavElement(id, title, mode)));
-            row.appendChild(this.createCellElement(followCount.toString(), true));
-            fragment.appendChild(row);
-        });
+        const grid = document.createElement('div');
+        grid.classList.add('favorites-grid');
+        netlist.forEach(net => grid.appendChild(this.createFavoriteCard(net)));
+        fragment.appendChild(grid);
 
         this.replaceAllDefaultElementChildrenWith(fragment);
     }
 
-    private createHeaderRow(): HTMLDivElement {
-        const row = this.createRowElement();
-        row.classList.add('header');
-        row.appendChild(this.createCellElement('Net'));
-        row.appendChild(this.createCellElement('Followers', true));
-        return row;
-    }
+    private createFavoriteCard(net: FollowListNetInfo): HTMLElement {
+        const { id, title, frequency, mode, modeDetails, followCount } = net;
+        const isLive = Boolean((net as FollowListNetInfo & { liveNet?: unknown }).liveNet);
+        const card = document.createElement('article');
+        card.classList.add('favorite-card');
 
-    private createRowElement(): HTMLDivElement {
-        const row = document.createElement('div');
-        row.classList.add('row');
-        return row;
-    }
+        const heading = document.createElement('header');
+        heading.classList.add('favorite-card-heading');
 
-    private createCellElement(content: string | HTMLElement, end: boolean = false): HTMLDivElement {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-        if (end) {
-            cell.classList.add('end');
-        }
-        if (typeof content === 'string') {
-            cell.textContent = content;
-        } else {
-            cell.appendChild(content);
-        }
-        return cell;
-    }
+        const titleLink = document.createElement('a');
+        titleLink.classList.add('favorite-title');
+        titleLink.href = `/views/livenet/${id}`;
+        titleLink.textContent = title;
 
-    private createTitleAndFavElement(id: NPID, title: string, mode: string): HTMLSpanElement {
-        const span = document.createElement('span');
-        span.textContent = title;
+        const actions = document.createElement('div');
+        actions.classList.add('favorite-actions');
+
+        const status = document.createElement('span');
+        status.classList.add('favorite-status');
+        if (isLive) status.classList.add('is-live');
+        status.textContent = isLive ? 'ON AIR' : 'OFF AIR';
 
         const fav = document.createElement('hl-fav-insert') as FavoriteInsert;
         fav.npid = id;
-        span.appendChild(fav);
+        fav.title = `Remove ${title} from favorites`;
+        fav.setAttribute('aria-label', `Remove ${title} from favorites`);
+        actions.append(status, fav);
+        heading.append(titleLink, actions);
 
-        span.appendChild(this.createParenElement('('));
-        span.appendChild(this.createDetailsElement(mode));
-        span.appendChild(this.createParenElement(')'));
+        const details = document.createElement('div');
+        details.classList.add('favorite-details');
+        const connection = [frequency, mode].filter(Boolean).join(' · ');
+        if (connection) {
+            const connectionElement = document.createElement('p');
+            connectionElement.classList.add('favorite-connection');
+            connectionElement.textContent = connection;
+            details.appendChild(connectionElement);
+        }
+        if (modeDetails) {
+            const modeDetailsElement = document.createElement('p');
+            modeDetailsElement.classList.add('favorite-mode-details');
+            modeDetailsElement.textContent = modeDetails;
+            details.appendChild(modeDetailsElement);
+        }
 
-        return span;
+        const followers = document.createElement('p');
+        followers.classList.add('favorite-followers');
+        followers.textContent = `${followCount} ${followCount === 1 ? 'Follower' : 'Followers'}`;
+
+        details.appendChild(followers);
+        card.append(heading, details);
+        return card;
     }
 
-    private createParenElement(content: string): HTMLSpanElement {
-        const span = document.createElement('span');
-        span.classList.add('parens');
-        span.textContent = content;
-        return span;
-    }
-
-    private createDetailsElement(content: string): HTMLSpanElement {
-        const span = document.createElement('span');
-        span.classList.add('details');
-        span.textContent = content;
-        return span;
+    private createEmptyState(): HTMLElement {
+        const empty = document.createElement('section');
+        empty.classList.add('favorites-empty');
+        const heading = document.createElement('h2');
+        heading.textContent = 'No Favorite Nets Yet';
+        const copy = document.createElement('p');
+        copy.textContent = 'Favorite nets from the Live Nets page to keep them handy here.';
+        const action = document.createElement('a');
+        action.href = '/views/dashboard#live-nets';
+        action.textContent = 'Browse Live Nets';
+        empty.append(heading, copy, action);
+        return empty;
     }
 
     protected onConnected(): void {}

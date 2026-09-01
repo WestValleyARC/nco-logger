@@ -10,7 +10,8 @@ export type BackgroundTasks = {
     flagAccounts: {
         enabled: boolean;
         options: {
-            ttl_days: number;
+            inactivity_years: number;
+            inactivity_warning_days: number;
             account_create_min: number;
         };
     };

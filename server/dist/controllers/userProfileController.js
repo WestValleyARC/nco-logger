@@ -189,7 +189,7 @@ const userProfileDelete = async (req, res) => {
                     throw new Error(`could not find account upid:${id} to flag for deletion`);
                 }
 
-                const flaggedAccount = await flagAccountForDeletion({ userProfileDoc });
+                const flaggedAccount = await flagAccountForDeletion({ userProfileDoc, deletionReason: 'manual' });
                 if (!flaggedAccount) {
                     throw new Error(`error flagging account upid:${id} for deletion`);
                 }
@@ -213,7 +213,11 @@ const userProfileUnDelete = async (req, res) => {
 
             const result = await UserProfile.findOneAndUpdate(
                 { _id: id },
-                { flaggedForDeletion: false },
+                {
+                    flaggedForDeletion: false,
+                    inactivityWarningSentAt: null,
+                    deletionReason: null
+                },
                 { new: true }
             );
 

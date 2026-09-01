@@ -3,37 +3,122 @@
 <!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title>NCO Logger - Cookie Policy <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
 
-  <title><%= server.appName %> - Cookie Policy <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-    </head>
+<body class="app-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-    <body class="bg-dark text-light">
-    <%- include('./partials/navbar', {user: user}) %>
+  <main class="app-main guide-main" id="cookie-policy-top">
+    <header class="guide-hero">
+      <div class="container">
+        <div class="landing-kicker">Cookies &amp; Sessions</div>
+        <h1 class="workspace-title">Cookie Policy</h1>
+        <p class="workspace-copy">How NCO Logger uses its essential session cookie and what that means for your browser.</p>
+        <p class="workspace-copy">
+          <strong>Effective Date:</strong> September 1, 2026<br />
+          <strong>Last Updated:</strong> September 1, 2026
+        </p>
+      </div>
+    </header>
 
-    <div class="container">
-      <div class="row">
-        <div class="col p-md-2 m-md-3">
-          <h1 class="h3 mt-3">Cookie Policy</h1>
+    <div class="container guide-workspace">
+      <div class="guide-grid">
+        <aside class="app-panel guide-contents" aria-labelledby="cookie-contents-heading">
+          <div class="section-eyebrow">On This Page</div>
+          <h2 id="cookie-contents-heading">Policy Contents</h2>
+          <nav aria-label="Cookie Policy contents">
+            <ol class="guide-contents-list">
+              <li><a href="#about"><span>1.</span>About This Cookie Policy</a></li>
+              <li><a href="#session-cookie"><span>2.</span>Essential Session Cookie</a></li>
+              <li><a href="#session-duration"><span>3.</span>How Long the Session Lasts</a></li>
+              <li><a href="#tracking"><span>4.</span>Analytics, Advertising, and Tracking</a></li>
+              <li><a href="#third-parties"><span>5.</span>Third-Party Services</a></li>
+              <li><a href="#managing"><span>6.</span>Managing Cookies</a></li>
+              <li><a href="#changes"><span>7.</span>Changes to This Policy</a></li>
+              <li><a href="#contact"><span>8.</span>Contact Us</a></li>
+            </ol>
+          </nav>
+        </aside>
 
-          <div class="alert alert-warning mt-3" role="alert">
-            <strong>Operator action required.</strong> This is a placeholder. Replace the contents of
-            <code>server/dist/views/cookiePolicy.ejs</code> with a cookie policy describing the
-            cookies <em>your</em> instance sets.
-          </div>
+        <article class="app-panel guide-content">
+          <section class="guide-section" id="about" aria-labelledby="about-heading">
+            <div class="guide-section-label">Section 01</div>
+            <h2 id="about-heading">1. About This Cookie Policy</h2>
+            <p>NCO Logger is operated by the <strong>West Valley Amateur Radio Club (WVARC)</strong>. This policy explains the cookie used directly by the current NCO Logger deployment and how browser cookie controls affect the service.</p>
+          </section>
 
-          <p class="mt-3">
-            For reference, this application uses a single signed, HTTP-only session cookie to keep
-            you logged in. It does not set third-party advertising cookies by default. Enabling
-            optional integrations (e.g. embedded chat) may introduce additional cookies governed by
-            those providers.
-          </p>
-        </div>
+          <section class="guide-section" id="session-cookie" aria-labelledby="session-cookie-heading">
+            <div class="guide-section-label">Section 02</div>
+            <h2 id="session-cookie-heading">2. Essential Session Cookie</h2>
+            <p>NCO Logger uses an essential signed session cookie to:</p>
+            <ul>
+              <li>Keep you signed in.</li>
+              <li>Associate your browser session with your authenticated account.</li>
+              <li>Maintain necessary session-renewal state.</li>
+              <li>Support authenticated areas and features of NCO Logger.</li>
+            </ul>
+            <p>The cookie contains the application's serialized user identifier and session-related state. It does not contain your Google password or email-account password.</p>
+            <p>The cookie is <strong>httpOnly</strong>, which means ordinary browser scripts cannot read it. It also uses <strong>SameSite=Lax</strong> to restrict when the browser sends it with cross-site navigation.</p>
+          </section>
+
+          <section class="guide-section" id="session-duration" aria-labelledby="session-duration-heading">
+            <div class="guide-section-label">Section 03</div>
+            <h2 id="session-duration-heading">3. How Long the Session Lasts</h2>
+            <p>The session cookie has a maximum age of approximately <strong>3.5 days</strong>. NCO Logger may renew the session during continued activity. Signing out or clearing the cookie ends its use for that browser session.</p>
+          </section>
+
+          <section class="guide-section" id="tracking" aria-labelledby="tracking-heading">
+            <div class="guide-section-label">Section 04</div>
+            <h2 id="tracking-heading">4. Analytics, Advertising, and Tracking</h2>
+            <p>The current NCO Logger deployment does not use:</p>
+            <ul>
+              <li>Advertising cookies.</li>
+              <li>Analytics cookies.</li>
+              <li>Behavioral-tracking cookies.</li>
+            </ul>
+            <p>The essential session cookie is used for authentication and session operation, not advertising, analytics, or behavioral tracking.</p>
+          </section>
+
+          <section class="guide-section" id="third-parties" aria-labelledby="third-parties-heading">
+            <div class="guide-section-label">Section 05</div>
+            <h2 id="third-parties-heading">5. Third-Party Services</h2>
+            <p>NCO Logger uses some third-party services, including Google authentication and externally provided resources or services. When you interact directly with a third-party service, that provider may use its own cookies according to its own practices.</p>
+            <p>Cookies controlled by those providers are separate from the NCO Logger session cookie described in this policy. NCO Logger does not control third-party cookies.</p>
+          </section>
+
+          <section class="guide-section" id="managing" aria-labelledby="managing-heading">
+            <div class="guide-section-label">Section 06</div>
+            <h2 id="managing-heading">6. Managing Cookies</h2>
+            <p>You can use your browser controls to clear or block cookies. Because the NCO Logger session cookie is necessary for authentication, blocking or deleting it can:</p>
+            <ul>
+              <li>Sign you out.</li>
+              <li>Prevent your sign-in from remaining active.</li>
+              <li>Prevent authenticated parts of NCO Logger from functioning normally.</li>
+            </ul>
+            <p>NCO Logger does not currently require you to accept advertising, analytics, or behavioral-tracking cookies because it does not use them.</p>
+          </section>
+
+          <section class="guide-section" id="changes" aria-labelledby="changes-heading">
+            <div class="guide-section-label">Section 07</div>
+            <h2 id="changes-heading">7. Changes to This Policy</h2>
+            <p>This policy may be updated if NCO Logger's cookie or session practices materially change. The current Effective Date and Last Updated date appear at the top of this page.</p>
+          </section>
+
+          <section class="guide-section" id="contact" aria-labelledby="contact-heading">
+            <div class="guide-section-label">Section 08</div>
+            <h2 id="contact-heading">8. Contact Us</h2>
+            <p>For questions about cookies or sessions, contact the West Valley Amateur Radio Club at <a href="mailto:logger@westvalleyarc.com">logger@westvalleyarc.com</a>.</p>
+          </section>
+        </article>
       </div>
     </div>
+  </main>
 
-    <%- include('./partials/pageBottomFeatures') %>
-    </body>
-    <%- include('./partials/footer') %>
+  <%- include('./partials/footer') %>
+  <%- include('./partials/pageBottomFeatures') %>
+</body>
 
 </html>

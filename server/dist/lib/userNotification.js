@@ -130,6 +130,25 @@ class NetAnnounceStart extends EmailBase {
     }
 }
 
+class AccountInactivityWarning extends EmailBase {
+    constructor() {
+        const subject = 'NCO Logger account inactivity warning';
+        const text = [
+            'Your NCO Logger account has not been used for 3 years.',
+            'It is scheduled for deletion in 30 days due to inactivity.',
+            'Sign in to NCO Logger within those 30 days to keep your account active.',
+            'Questions? Contact logger@westvalleyarc.com.'
+        ].join('\n\n');
+        const html = [
+            '<p>Your NCO Logger account has not been used for 3 years.</p>',
+            '<p>It is scheduled for deletion in 30 days due to inactivity.</p>',
+            '<p>Sign in to NCO Logger within those 30 days to keep your account active.</p>',
+            '<p>Questions? Contact <a href="mailto:logger@westvalleyarc.com">logger@westvalleyarc.com</a>.</p>'
+        ].join('');
+        super({ body: { from: EMAIL_FROM, subject, text, html } });
+    }
+}
+
 class NetCloseReport extends EmailBase {
     static async init({ netProfileDoc: { id: NPID, title }, liveNetDoc: { url, started, startedAt }, attendees }) {
         let chatLog = '';
@@ -166,4 +185,12 @@ class NetCloseReport extends EmailBase {
     }
 }
 
-module.exports = { EmailBase, NetAnnounceStart, NetCloseReport, emailEnabled, verifyTransport, getTransporter };
+module.exports = {
+    EmailBase,
+    AccountInactivityWarning,
+    NetAnnounceStart,
+    NetCloseReport,
+    emailEnabled,
+    verifyTransport,
+    getTransporter
+};

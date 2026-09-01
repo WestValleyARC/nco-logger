@@ -74,6 +74,12 @@ const userProfileSchema = new Schema(
         },
         policyConsent: { type: Boolean, default: false },
         flaggedForDeletion: { type: Boolean, default: false },
+        inactivityWarningSentAt: { type: Date, default: null },
+        deletionReason: {
+            type: String,
+            enum: ['manual', 'inactivity', 'missing-consent'],
+            default: null
+        },
         email: {
             type: SchemaTypes.Email,
             required: true,

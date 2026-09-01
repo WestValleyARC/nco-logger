@@ -3,37 +3,59 @@
 <!-- hamlive-oss — MIT License. See LICENSE. -->
 
 <head>
-  <%- include('./partials/head') %> <%- include('./partials/pageTopFeatures') %>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title><%= server.appName %> - Waiting for Net <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
 
-  <title><%= server.appName %> - Waiting... <%if (server.logLevel !== "info") {%> (<%= server.logLevel %>) <%}%></title>
-    </head>
-    <body class="bg-dark">
-    <%- include('./partials/navbar', {user: user}) %>
+<body class="app-page waiting-page">
+  <%- include('./partials/navbar', { user: user }) %>
 
-    <div class="container-fluid">
-      <div class="mt-20 pt-20 d-flex justify-content-center align-items-center netwait">
-        <div>
-          <span class="align-middle text-light" id="netTitle" style="font-size: 1.8em"></span>
-          <span class="text-tertiary align-bottom">
+  <main class="app-main waiting-main">
+    <header class="settings-hero">
+      <div class="container">
+        <div class="landing-kicker">Net Status</div>
+        <h1 class="workspace-title" id="netTitle"><%= TITLE %></h1>
+        <p class="workspace-copy">This net is currently off the air.</p>
+        <img class="settings-header-tower" src="/img/NCO_Logger_Logo_Tower_Only.png" alt="" aria-hidden="true" />
+      </div>
+    </header>
+
+    <div class="container waiting-workspace">
+      <section class="waiting-status-card" aria-labelledby="waiting-card-title">
+        <div class="waiting-card-heading">
+          <div>
+            <span class="waiting-off-air">OFF AIR</span>
+            <h2 id="waiting-card-title"><%= TITLE %></h2>
+          </div>
+          <span class="waiting-favorite">
             <% if (user && !PERM) { %>
-            <i class="bi bi-star favicon pt-2" style="font-size: 1.8em" id="fav-<%= NPID %>"></i>
-            <%} else { %>
-            <i class="d-none bi bi-star favicon pt-2" style="font-size: 1.8em" id="fav-<%= NPID %>"></i>
+            <button type="button" class="bi bi-star favicon" id="fav-<%= NPID %>" aria-label="Toggle favorite net"></button>
+            <% } else { %>
+            <button type="button" class="d-none bi bi-star favicon" id="fav-<%= NPID %>" aria-label="Toggle favorite net"></button>
             <% } %>
           </span>
-
-          <p class="text-secondary mt-md-3">
-            <em>Waiting For Net Start...</em>
-            <span class="spinner-grow spinner-grow-sm text-primary"></span>
-          </p>
         </div>
-      </div>
+
+        <div class="waiting-connection" id="netConnection" hidden>
+          <p id="netConnectionPrimary" hidden></p>
+          <p id="netModeDetails" hidden></p>
+        </div>
+
+        <div class="waiting-message">
+          <div class="waiting-activity" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div>
+            <h3>Waiting for Net to Start</h3>
+            <p>You can leave this page open. NCO Logger will automatically open the live net when it starts.</p>
+          </div>
+        </div>
+      </section>
     </div>
+  </main>
 
-    <%- include('./partials/pageBottomFeatures') %>
-
-    <script src="/js/byView/<%= VIEW %>/main.js" type="module"></script>
-    </body>
-    <%- include('./partials/footer') %>
+  <%- include('./partials/footer') %>
+  <%- include('./partials/pageBottomFeatures') %>
+  <script src="/js/byView/<%= VIEW %>/main.js?v=<%= server.appAssetVersion %>" type="module"></script>
+</body>
 
 </html>

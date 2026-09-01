@@ -10,17 +10,41 @@ import { HttpClient } from '#@client/lib/old__clientUtils.js';
     // Begin Account Deletion Logic:
 
     const deleteOutputElem = document.getElementById('delete_output');
-    const accountDelModal = new bootstrap.Modal(document.getElementById('account_delete_modal'));
+    const accountDelModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('account_delete_modal'));
+    const deleteConfirmationElem = document.getElementById('delete_confirmation');
+    const deleteModalTitleElem = document.getElementById('account_delete_modal_title');
+    const cancelDeleteBtn = document.getElementById('cancel_delete_account_btn');
+    const confirmDeleteBtn = document.getElementById('confirm_delete_my_account_btn');
+    const undeleteBtn = document.getElementById('undelete_my_account_btn');
     let userData;
 
     try {
         ({ status, data: userData } = await userProfileApi.index());
 
         if (status == 200) {
-            document.getElementById('delete_my_account_btn').addEventListener('click', async e => {
+            document.getElementById('delete_my_account_btn').addEventListener('click', () => {
+                deleteModalTitleElem.textContent = 'Delete Account';
+                deleteConfirmationElem.hidden = false;
+                deleteOutputElem.hidden = true;
+                deleteOutputElem.textContent = '';
+                cancelDeleteBtn.hidden = false;
+                cancelDeleteBtn.textContent = 'Cancel';
+                confirmDeleteBtn.hidden = false;
+                confirmDeleteBtn.disabled = false;
+                undeleteBtn.hidden = true;
+            });
+
+            confirmDeleteBtn.addEventListener('click', async () => {
+                confirmDeleteBtn.disabled = true;
                 await userProfileApi.delete(userData._id);
 
+                deleteModalTitleElem.textContent = 'Account Marked for Deletion';
+                deleteConfirmationElem.hidden = true;
+                deleteOutputElem.hidden = false;
                 deleteOutputElem.innerHTML = `Account: ${userData._id} <strong>marked for deletion</strong><br>If delete request was made in error, choose UNDELETE here:`;
+                cancelDeleteBtn.textContent = 'Close';
+                confirmDeleteBtn.hidden = true;
+                undeleteBtn.hidden = false;
 
                 setTimeout(() => {
                     accountDelModal.hide();
@@ -31,9 +55,10 @@ import { HttpClient } from '#@client/lib/old__clientUtils.js';
                 }, 20000);
             });
 
-            document.getElementById('undelete_my_account_btn').addEventListener('click', async e => {
-                let resp = await axios.get('/api/util/undeleteme');
+            undeleteBtn.addEventListener('click', async () => {
+                await axios.get('/api/util/undeleteme');
                 deleteOutputElem.innerHTML = `Account: ${userData._id} delete flag <strong>removed</strong>.`;
+                undeleteBtn.hidden = true;
 
                 setTimeout(() => {
                     accountDelModal.hide();
