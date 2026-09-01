@@ -16,10 +16,10 @@
       <div class="container">
         <div class="row align-items-center">
           <div class="col-lg-7 pe-lg-5">
-            <div class="landing-kicker">West Valley Amateur Radio Club</div>
-            <h1 class="landing-title" id="landing-title">Run the net. <span>Keep it clear.</span></h1>
+            <div class="landing-kicker">Built by West Valley ARC · For amateur radio</div>
+            <h1 class="landing-title" id="landing-title">Run a net. <span>Find a net. Join in.</span></h1>
             <p class="landing-copy">
-              A focused workspace for amateur radio net control, check-ins, relays, and live participation.
+              A modern home for amateur radio nets — schedule, discover, follow, check in, and participate from anywhere.
             </p>
             <div class="landing-actions">
               <% if (user.isLoggedIn) { %>
@@ -41,10 +41,73 @@
           </div>
           <div class="col-lg-5">
             <div class="landing-logo-panel" aria-hidden="true">
-              <img class="landing-logo" src="/img/wvarc-club-logo.png" alt="" />
+              <img class="landing-logo" src="/img/nco-logger-logo.svg" alt="" />
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="scheduled-nets-section" id="scheduled-nets" aria-labelledby="scheduled-nets-title">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <div class="section-eyebrow">Plan ahead</div>
+            <h2 class="section-title" id="scheduled-nets-title">Scheduled nets</h2>
+          </div>
+          <p class="section-note">Find a net that fits your schedule.</p>
+        </div>
+
+        <div class="scheduled-net-groups">
+          <section class="scheduled-net-group" aria-labelledby="todays-nets-title">
+            <header class="scheduled-net-group-heading">
+              <h3 id="todays-nets-title">Today's Nets</h3>
+              <p>Scheduled for today, ordered by start time.</p>
+            </header>
+            <div class="scheduled-net-list" data-scheduled-net-list="today" aria-live="polite">
+              <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
+                <i class="bi bi-calendar2-day" aria-hidden="true"></i>
+                No nets are scheduled for today.
+              </div>
+            </div>
+          </section>
+
+          <section class="scheduled-net-group" aria-labelledby="upcoming-nets-title">
+            <header class="scheduled-net-group-heading">
+              <h3 id="upcoming-nets-title">Upcoming Nets</h3>
+              <p>Future nets scheduled after today.</p>
+            </header>
+            <div class="scheduled-net-list" data-scheduled-net-list="upcoming" aria-live="polite">
+              <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
+                <i class="bi bi-calendar2-week" aria-hidden="true"></i>
+                No upcoming nets have been scheduled yet.
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Inert until scheduled-net data is available. Future rendering code can clone this template. -->
+        <template id="scheduled-net-card-template">
+          <article class="net-card scheduled-net-card">
+            <div class="scheduled-net-card-content">
+              <div class="scheduled-net-card-header">
+                <div class="scheduled-net-card-image-slot" data-role="image-slot" hidden></div>
+                <div class="scheduled-net-card-heading">
+                  <h4 class="scheduled-net-card-title">
+                    <span data-role="title"></span>
+                  </h4>
+                  <div class="scheduled-net-card-when">
+                    <time data-role="date"></time>
+                    <time data-role="start-time"></time>
+                  </div>
+                </div>
+              </div>
+              <p class="scheduled-net-card-description" data-role="description" hidden></p>
+              <dl class="scheduled-net-connections" data-role="connection-methods" hidden></dl>
+            </div>
+            <div class="scheduled-net-card-actions" data-role="follow-control" hidden></div>
+          </article>
+        </template>
       </div>
     </section>
 

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-labelledby="logo-title logo-description">
+  <title id="logo-title">NCO Logger</title>
+  <desc id="logo-description">Radio check-in rows and a chat message connect to a net-control antenna beside the words NCO Logger.</desc>
+
+  <g fill="none" stroke="#74c6d4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Check-in log rows -->
+    <path d="M82 111h206c18 0 32 14 32 32s-14 32-32 32H82c-18 0-32-14-32-32s14-32 32-32Z" stroke-width="12"/>
+    <path d="M82 175h206c18 0 32 14 32 32s-14 32-32 32H82c-18 0-32-14-32-32s14-32 32-32Z" stroke-width="12"/>
+    <!-- The final row doubles as a chat message. -->
+    <path d="M82 239h206c18 0 32 14 32 32s-14 32-32 32h-28l14 22-38-22H82c-18 0-32-14-32-32s14-32 32-32Z" stroke-width="12"/>
+
+    <path d="M126 143h72m28 0h52M126 207h72m28 0h52" stroke-width="10"/>
+
+    <!-- Net-control antenna and cursor -->
+    <path d="M320 69v266M294 335h52" stroke-width="12"/>
+    <path d="m320 69-17-34h34l-17 34Z" stroke-width="10"/>
+    <circle cx="320" cy="207" r="22" stroke-width="12"/>
+
+    <!-- Outgoing transmission -->
+    <path d="M369 167c22 22 22 58 0 80M397 139c38 38 38 99 0 137" stroke-width="12"/>
+  </g>
+
+  <!-- Check-in state indicators -->
+  <circle cx="89" cy="143" r="13" fill="#dc8335"/>
+  <circle cx="89" cy="207" r="13" fill="#74c6d4"/>
+  <circle cx="89" cy="271" r="13" fill="#74c6d4"/>
+  <circle cx="158" cy="271" r="8" fill="#74c6d4"/>
+  <circle cx="208" cy="271" r="8" fill="#74c6d4"/>
+  <circle cx="258" cy="271" r="8" fill="#74c6d4"/>
+
+  <!-- Product wordmark -->
+  <text x="470" y="246" fill="#f4f5f2"
+        font-family="Arial Narrow, Roboto Condensed, Inter, Arial, sans-serif"
+        font-size="82" font-weight="700" letter-spacing="5">NCO LOGGER</text>
+</svg>
