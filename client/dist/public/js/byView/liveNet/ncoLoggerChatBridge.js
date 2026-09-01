@@ -11,6 +11,7 @@
     let slashEnabled = false;
     let slashEnterHandled = false;
     let attachQueued = false;
+    const renderedMessageNodes = new Map();
     const slashComposer = chat => chat?.querySelector(".chat-text-input, .chat-message-input, .chat-input, textarea[placeholder^='Message'], input[placeholder^='Message'], [contenteditable='true'][role='textbox']");
     const composerText = input => {
         if (!input || (typeof input !== "object" && typeof input !== "function"))
@@ -131,7 +132,34 @@
         });
         suppressNativeSlashUi(chat);
     }
-    function deduplicateNativeChat() {
+    const messageNodes = root => {
+        if (!(root instanceof Element))
+            return [];
+        return [
+            ...(root.matches("[data-message-id]") ? [root] : []),
+            ...root.querySelectorAll("[data-message-id]")
+        ];
+    };
+    function removeMessageNodes(root) {
+        messageNodes(root).forEach(node => {
+            const id = String(node.dataset.messageId || "");
+            if (id && renderedMessageNodes.get(id) === node)
+                renderedMessageNodes.delete(id);
+        });
+    }
+    function addMessageNodes(root) {
+        messageNodes(root).forEach(node => {
+            const id = String(node.dataset.messageId || "");
+            if (!id)
+                return;
+            const existing = renderedMessageNodes.get(id);
+            if (existing?.isConnected && existing !== node)
+                node.remove();
+            else
+                renderedMessageNodes.set(id, node);
+        });
+    }
+    function deduplicateNativeChat(records = null) {
         if (!boundChat)
             return;
         if (Array.isArray(boundChat.messages)) {
@@ -146,21 +174,19 @@
                 return true;
             });
         }
-        const seenNodes = new Set();
-        boundChat.querySelectorAll("[data-message-id]").forEach(node => {
-            const id = String(node.dataset.messageId || "");
-            if (!id)
-                return;
-            if (seenNodes.has(id))
-                node.remove();
-            else
-                seenNodes.add(id);
-        });
+        if (!Array.isArray(records)) {
+            renderedMessageNodes.clear();
+            addMessageNodes(boundChat);
+            return;
+        }
+        records.forEach(record => record.removedNodes.forEach(removeMessageNodes));
+        records.forEach(record => record.addedNodes.forEach(addMessageNodes));
     }
     function detach() {
         if (boundConnection && messageHandler)
             boundConnection.off?.("message.new", messageHandler);
         observer?.disconnect();
+        renderedMessageNodes.clear();
         boundChat = null;
         boundConnection = null;
         messageHandler = null;

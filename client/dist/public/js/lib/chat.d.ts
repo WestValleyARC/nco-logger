@@ -83,6 +83,7 @@ export declare class ChatWidget extends HTMLElement {
     private banAuthor;
     private clearChat;
     private render;
+    private renderLatestAppend;
     private captureScrollSnapshot;
     private restoreScrollSnapshot;
     private syncScrollTracking;

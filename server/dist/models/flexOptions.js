@@ -17,6 +17,7 @@ const flexOptionsGlobalSchema = new Schema(
             requestRateFactor: { type: Number, default: 5 },
             qrzDataReqTimeoutMs: { type: Number, default: 1000 },
             qrzSessionReqTimeoutMs: { type: Number, default: 3000 },
+            qrzCheckInWaitMs: { type: Number, default: 0, min: 0, max: 5000 },
             qrzReqQuota: { type: Number, default: 1000000 },
             maxFollowersPerNet: { type: Number, default: 500 },
             maxFollowingPerUser: { type: Number, default: 100 },

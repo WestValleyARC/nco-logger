@@ -12,6 +12,7 @@ const { sanitizeNotes } = require('../../lib/serverUtils');
 const netDetailsCache = new NodeCache({ stdTTL: 3, checkperiod: 60 });
 const { prepareEndPointResponse } = require('../../lib/responseUtils');
 const { NetNotFoundError } = require('../../types/commonTypesupport');
+const stationProfiles = require('../../lib/stationProfileService');
 
 // liveNetDetails Helper Functions:
 
@@ -178,6 +179,9 @@ const createStationInteraction = async ({ req, res, netProfileDoc, liveNetDoc })
     const { _id: liveNetId } = liveNetDoc;
     const { chat } = res.locals.flexOpts;
     const now = Date.now();
+    const profile = await stationProfiles.syncParticipantProfile({
+        callSign, name: displayName, location, editorCallSign: callSign, editorUserId: userId
+    });
 
     const interaction = new StationInteraction({
         netProfile: netProfileId,
@@ -187,8 +191,8 @@ const createStationInteraction = async ({ req, res, netProfileDoc, liveNetDoc })
         userProfile: userId,
         photo,
         email,
-        displayName,
-        location,
+        displayName: profile.fields.name.value,
+        location: profile.fields.location.value,
         chatEnabled: chat,
         checkedState: autoIn ? true : null,
         checkedInAt: autoIn ? now : null,
@@ -229,13 +233,17 @@ const updateStationInteraction = async ({ req, res, netProfileDoc, liveNetDoc })
         throw new Error(`could not retrieve ia doc for ${callSign}, npid: ${netProfileDoc.id}`);
     }
 
+    const profile = await stationProfiles.syncParticipantProfile({
+        callSign, name: displayName, location, editorCallSign: callSign, editorUserId: userId
+    });
+
     const lastSeenDelta = Date.now() - interaction.lastSeen;
     const update = {
         lastSeen: Date.now(),
-        displayName,
+        displayName: profile.fields.name.value,
         photo,
         userProfile: userId,
-        location,
+        location: profile.fields.location.value,
         chatEnabled: chat
     };
 

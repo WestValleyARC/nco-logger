@@ -21,6 +21,9 @@ export declare class ExclusiveChatOperation<T extends string> {
 export declare const reconcileChatMessages: <T extends IdentifiedChatMessage>(messages: Map<string, T>, incoming: Iterable<T>) => number;
 export declare const reconcileChatSnapshot: <T extends IdentifiedChatMessage>(messages: Map<string, T>, incoming: Iterable<T>, knownBeforeRequest: ReadonlySet<string>) => number;
 export declare const sortChatMessages: <T extends IdentifiedChatMessage>(messages: Iterable<T>) => T[];
+export declare const compareChatMessages: <T extends IdentifiedChatMessage>(left: T, right: T) => number;
+export declare const isLatestChatMessage: <T extends IdentifiedChatMessage>(messages: Iterable<T>, candidate: T) => boolean;
+export declare const trimOldestChatMessages: <T extends IdentifiedChatMessage>(messages: Map<string, T>, limit: number) => string[];
 export declare const shouldScrollChatToLatest: (initialLoad: boolean, wasNearBottom: boolean) => boolean;
 export declare const preserveScrollTop: (scrollTop: number, anchorOffsetBefore: number, anchorOffsetAfter: number) => number;
 export declare const recordPrivateUnread: (counts: Map<string, number>, senderUserId: string, shouldCount: boolean) => void;

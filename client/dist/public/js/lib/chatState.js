@@ -51,7 +51,30 @@ export const reconcileChatSnapshot = (messages, incoming, knownBeforeRequest) =>
     });
     return reconcileChatMessages(messages, snapshot);
 };
-export const sortChatMessages = (messages) => [...messages].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+export const sortChatMessages = (messages) => [...messages].sort(compareChatMessages);
+export const compareChatMessages = (left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+export const isLatestChatMessage = (messages, candidate) => {
+    for (const message of messages) {
+        if (message.id !== candidate.id && compareChatMessages(message, candidate) > 0)
+            return false;
+    }
+    return true;
+};
+export const trimOldestChatMessages = (messages, limit) => {
+    const removed = [];
+    while (messages.size > limit) {
+        let oldest = null;
+        for (const message of messages.values()) {
+            if (!oldest || compareChatMessages(message, oldest) < 0)
+                oldest = message;
+        }
+        if (!oldest)
+            break;
+        messages.delete(oldest.id);
+        removed.push(oldest.id);
+    }
+    return removed;
+};
 export const shouldScrollChatToLatest = (initialLoad, wasNearBottom) => initialLoad || wasNearBottom;
 export const preserveScrollTop = (scrollTop, anchorOffsetBefore, anchorOffsetAfter) => Math.max(0, scrollTop + anchorOffsetAfter - anchorOffsetBefore);
 export const recordPrivateUnread = (counts, senderUserId, shouldCount) => {

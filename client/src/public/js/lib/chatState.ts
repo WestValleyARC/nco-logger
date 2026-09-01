@@ -74,7 +74,31 @@ export const reconcileChatSnapshot = <T extends IdentifiedChatMessage>(
 };
 
 export const sortChatMessages = <T extends IdentifiedChatMessage>(messages: Iterable<T>): T[] =>
-    [...messages].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    [...messages].sort(compareChatMessages);
+
+export const compareChatMessages = <T extends IdentifiedChatMessage>(left: T, right: T): number =>
+    left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+
+export const isLatestChatMessage = <T extends IdentifiedChatMessage>(messages: Iterable<T>, candidate: T): boolean => {
+    for (const message of messages) {
+        if (message.id !== candidate.id && compareChatMessages(message, candidate) > 0) return false;
+    }
+    return true;
+};
+
+export const trimOldestChatMessages = <T extends IdentifiedChatMessage>(messages: Map<string, T>, limit: number): string[] => {
+    const removed: string[] = [];
+    while (messages.size > limit) {
+        let oldest: T | null = null;
+        for (const message of messages.values()) {
+            if (!oldest || compareChatMessages(message, oldest) < 0) oldest = message;
+        }
+        if (!oldest) break;
+        messages.delete(oldest.id);
+        removed.push(oldest.id);
+    }
+    return removed;
+};
 
 export const shouldScrollChatToLatest = (initialLoad: boolean, wasNearBottom: boolean): boolean =>
     initialLoad || wasNearBottom;
