@@ -69,6 +69,8 @@ scheduledOccurrenceSchema.index({ status: 1, startAt: 1 });
 scheduledOccurrenceSchema.index({ netProfile: 1, startAt: 1 });
 scheduledOccurrenceSchema.index({ schedule: 1, startAt: 1 });
 scheduledOccurrenceSchema.index({ liveNet: 1 }, { sparse: true });
+scheduledOccurrenceSchema.index({ 'notification.state': 1, status: 1, startAt: 1 });
+scheduledOccurrenceSchema.index({ 'notification.state': 1, 'notification.claimedAt': 1 });
 
 module.exports = {
     getScheduledOccurrence: db => modelMaker({ db, m: 'ScheduledOccurrence', s: scheduledOccurrenceSchema }),

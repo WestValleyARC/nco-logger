@@ -37,6 +37,7 @@ const dailyDispatch = require('./lib/dailyProcessingDispatch');
 const UserProfile = require('./models/userProfile').getUserProfile(null);
 const NetSchedule = require('./models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('./models/scheduledOccurrence').getScheduledOccurrence(null);
+const { startSchedulingWorker } = require('./lib/scheduling/worker');
 const PORT = process.env['PORT'] ?? 3000;
 const { verifyTransport } = require('./lib/userNotification');
 
@@ -101,6 +102,7 @@ mongoose
         } else {
             app.listen(PORT);
         }
+        startSchedulingWorker();
         const scheme = useHttps ? 'https' : 'http';
         logger.info(`${conf.applogname} listening on ${scheme}://localhost:${PORT}`);
     })

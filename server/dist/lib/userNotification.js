@@ -98,7 +98,7 @@ class EmailBase {
             }
         }
     }
-    async sendMailToUPIDs({ upids, db = mongoose.connection }) {
+    async sendMailToUPIDs({ upids, db = mongoose.connection, throwOnError = false }) {
         try {
             if (!Array.isArray(upids) || !upids.length) throw new Error('UPIDs must be a non-empty array');
             const UserProfile = getUserProfile(db);
@@ -110,6 +110,7 @@ class EmailBase {
             return false;
         } catch (err) {
             logger.error(`User notification failed; application will continue: ${err.message}`);
+            if (throwOnError) throw err;
             return false;
         }
     }
@@ -126,6 +127,29 @@ class NetAnnounceStart extends EmailBase {
             from: EMAIL_FROM, subject,
             text: `${netControl} is starting ${title} ${humanTime}. Join at ${fullUrl}.`,
             html: `<p>${ejs.escapeXML(netControl)} is starting <a href="${ejs.escapeXML(fullUrl)}">${ejs.escapeXML(title)}</a> ${ejs.escapeXML(humanTime)}.</p>`
+        } });
+    }
+}
+
+class NetScheduledReminder extends EmailBase {
+    constructor({ netProfileDoc: { _id, title }, startAt, timezone }) {
+        const scheduledTime = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        }).format(startAt);
+        const fullUrl = `${conf.base_url}/views/livenet/${_id}`;
+        const subject = `${title} is scheduled to begin soon`;
+        super({ body: {
+            from: EMAIL_FROM,
+            subject,
+            text: `${title} is scheduled to begin at ${scheduledTime}. Join at ${fullUrl}.`,
+            html: `<p><a href="${ejs.escapeXML(fullUrl)}">${ejs.escapeXML(title)}</a> is scheduled to begin at ${ejs.escapeXML(scheduledTime)}.</p>`
         } });
     }
 }
@@ -189,6 +213,7 @@ module.exports = {
     EmailBase,
     AccountInactivityWarning,
     NetAnnounceStart,
+    NetScheduledReminder,
     NetCloseReport,
     emailEnabled,
     verifyTransport,
