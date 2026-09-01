@@ -17,7 +17,11 @@
         <div class="row align-items-center">
           <div class="col-lg-7 pe-lg-5">
             <div class="landing-kicker">Built by West Valley ARC · For amateur radio</div>
-            <h1 class="landing-title" id="landing-title">Run a net. <span>Find a net. Join in.</span></h1>
+            <h1 class="landing-title" id="landing-title">
+              <span class="landing-title-phrase landing-title-run">Run a net.</span>
+              <span class="landing-title-phrase landing-title-find">Find a net.</span>
+              <span class="landing-title-phrase landing-title-join">Join in.</span>
+            </h1>
             <p class="landing-copy">
               A modern home for amateur radio nets — schedule, discover, follow, check in, and participate from anywhere.
             </p>
@@ -33,8 +37,8 @@
                 Sign in to get started
               </a>
               <% } %>
-              <a class="app-button app-button-secondary" href="#live-nets">
-                View live nets
+              <a class="app-button app-button-secondary" href="#scheduled-nets">
+                View schedule
                 <i class="bi bi-arrow-down" aria-hidden="true"></i>
               </a>
             </div>
@@ -42,6 +46,46 @@
           <div class="col-lg-5">
             <div class="landing-logo-panel" aria-hidden="true">
               <img class="landing-logo" src="/img/nco-logger-logo.svg" alt="" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="nets-section" id="live-nets" aria-labelledby="live-nets-title">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <div class="section-eyebrow">On the air</div>
+            <h2 class="section-title" id="live-nets-title">Live nets</h2>
+          </div>
+          <p class="section-note">Select a net to join the live logger.</p>
+        </div>
+
+        <div class="nets-list" id="dashItemsContainer" aria-live="polite" aria-busy="true">
+          <div class="nets-state" id="nets-state">
+            <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
+            Checking for live nets…
+          </div>
+
+          <!-- Template for dynamically generated net rows. IDs are scoped to each cloned row. -->
+          <div id="netTemplate" class="net-card d-none">
+            <div class="net-card-main">
+              <a id="title-link" href="#" class="net-card-link text-muted">
+                <img src="/img/on-air-inactive2.png" id="onairimg" width="62" height="22" alt="Net status" />
+                <span id="title"></span>
+              </a>
+              <span class="text-tertiary">
+                <% if (user.isLoggedIn) { %>
+                <i class="bi bi-star favicon" aria-label="Add to favorites" role="button"></i>
+                <% } else { %>
+                <i class="d-none bi bi-star favicon" aria-hidden="true"></i>
+                <% } %>
+              </span>
+            </div>
+            <div class="net-card-meta">
+              <span id="startTime"></span>
+              <span id="frequency"></span>
             </div>
           </div>
         </div>
@@ -111,45 +155,6 @@
       </div>
     </section>
 
-    <section class="nets-section" id="live-nets" aria-labelledby="live-nets-title">
-      <div class="container">
-        <div class="section-heading">
-          <div>
-            <div class="section-eyebrow">On the air</div>
-            <h2 class="section-title" id="live-nets-title">Live nets</h2>
-          </div>
-          <p class="section-note">Select a net to join the live logger.</p>
-        </div>
-
-        <div class="nets-list" id="dashItemsContainer" aria-live="polite" aria-busy="true">
-          <div class="nets-state" id="nets-state">
-            <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
-            Checking for live nets…
-          </div>
-
-          <!-- Template for dynamically generated net rows. IDs are scoped to each cloned row. -->
-          <div id="netTemplate" class="net-card d-none">
-            <div class="net-card-main">
-              <a id="title-link" href="#" class="net-card-link text-muted">
-                <img src="/img/on-air-inactive2.png" id="onairimg" width="62" height="22" alt="Net status" />
-                <span id="title"></span>
-              </a>
-              <span class="text-tertiary">
-                <% if (user.isLoggedIn) { %>
-                <i class="bi bi-star favicon" aria-label="Add to favorites" role="button"></i>
-                <% } else { %>
-                <i class="d-none bi bi-star favicon" aria-hidden="true"></i>
-                <% } %>
-              </span>
-            </div>
-            <div class="net-card-meta">
-              <span id="startTime"></span>
-              <span id="frequency"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   </main>
 
   <%- include('./partials/pageBottomFeatures') %>

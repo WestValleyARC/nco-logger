@@ -29,7 +29,7 @@
 }
 
 .app-navbar {
-    padding: 0.7rem 0;
+    padding: 0.55rem 0;
     border-bottom: 1px solid var(--app-border);
     background: rgba(13, 18, 22, 0.94) !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -45,21 +45,25 @@
 
 .app-brand-mark {
     display: block;
-    width: 3.15rem;
-    height: 3.1rem;
+    width: 4.125rem;
+    height: 4.125rem;
+    border-radius: 50%;
+    background: rgba(4, 9, 13, 0.24);
     object-fit: contain;
+    filter: drop-shadow(0 0 0.4rem rgba(116, 198, 212, 0.18)) drop-shadow(0 0.2rem 0.4rem rgba(0, 0, 0, 0.48));
 }
 
 .app-brand-copy {
     display: grid;
-    margin-left: 0.7rem;
+    margin-left: 1rem;
     line-height: 1;
 }
 
 .app-brand-copy strong {
     color: var(--app-text);
-    font-size: 1rem;
-    letter-spacing: 0.08em;
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: 0.035em;
 }
 
 .app-brand-copy small {
@@ -67,7 +71,7 @@
     color: var(--app-cyan);
     font-size: 0.7rem;
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
 }
 
@@ -160,8 +164,20 @@
     text-wrap: balance;
 }
 
-.landing-title span {
+.landing-title-phrase {
+    white-space: nowrap;
+}
+
+.landing-title-run {
+    color: var(--app-text);
+}
+
+.landing-title-find {
     color: var(--app-cyan);
+}
+
+.landing-title-join {
+    color: var(--app-orange);
 }
 
 .landing-copy {
@@ -229,7 +245,7 @@
     min-height: 19rem;
     align-items: center;
     justify-content: center;
-    padding: 2.5rem;
+    padding: clamp(0.75rem, 2vw, 1.25rem);
     border: 1px solid var(--app-border);
     border-radius: 1.15rem;
     background: linear-gradient(145deg, rgba(32, 41, 48, 0.96), rgba(18, 25, 30, 0.88));
@@ -237,12 +253,14 @@
 }
 
 .landing-logo {
-    width: min(100%, 32rem);
-    max-height: 12rem;
+    width: 118%;
+    max-width: 46rem;
+    max-height: 14rem;
     object-fit: contain;
 }
 
 .scheduled-nets-section {
+    scroll-margin-top: 5rem;
     padding: clamp(3rem, 6vw, 5rem) 0;
     border-bottom: 1px solid var(--app-border);
 }
@@ -700,16 +718,16 @@
     }
 
     .app-brand-mark {
-        width: 2.65rem;
-        height: 2.6rem;
+        width: 3.25rem;
+        height: 3.25rem;
     }
 
     .app-brand-copy strong {
-        font-size: 0.9rem;
+        font-size: 0.92rem;
     }
 
     .app-brand-copy small {
-        font-size: 0.62rem;
+        font-size: 0.6rem;
     }
 
     .section-heading,
