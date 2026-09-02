@@ -612,8 +612,23 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
     protected getTemplate(): string {
         return /*html*/ `
         <style>
+            :host {
+                --favorite-text: var(--app-text, #f4f5f2);
+                --favorite-muted: var(--app-muted, #9ba9b2);
+                --favorite-subtle: var(--app-subtle-text, #bdc8cc);
+                --favorite-faint: var(--app-faint, #84949b);
+                --favorite-link: var(--app-status-accent, #00c8f0);
+                --favorite-card-border: var(--app-card-border, rgba(155, 169, 178, 0.48));
+                --favorite-divider: var(--app-divider, rgba(155, 169, 178, 0.32));
+                --favorite-divider-soft: var(--app-divider-soft, rgba(155, 169, 178, 0.16));
+                --favorite-card-bg: var(--app-panel-background, linear-gradient(150deg, rgba(11, 29, 41, 0.92), rgba(5, 15, 23, 0.98)));
+                --favorite-card-shadow: var(--app-panel-shadow, 0 1.5rem 3rem rgba(0, 0, 0, 0.18));
+                --favorite-status-bg: var(--app-status-bg, rgba(26, 39, 48, 0.34));
+                --favorite-hover-border: var(--app-interactive-border, rgba(0, 200, 240, 0.58));
+                --favorite-hover-outline: var(--app-interactive-outline, rgba(0, 200, 240, 0.16));
+            }
             #${this.defaultElementId} {
-                color: #f4f5f2;
+                color: var(--favorite-text);
             }
             #${this.defaultElementId} .favorites-grid {
                 display: grid;
@@ -626,17 +641,17 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 min-height: 7.25rem;
                 flex-direction: column;
                 padding: 0.9rem 1rem;
-                border: 1px solid rgba(155, 169, 178, 0.48);
+                border: 1px solid var(--favorite-card-border);
                 border-radius: 0.75rem;
-                background: linear-gradient(150deg, rgba(11, 29, 41, 0.92), rgba(5, 15, 23, 0.98));
-                box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.18);
+                background: var(--favorite-card-bg);
+                box-shadow: var(--favorite-card-shadow);
                 cursor: pointer;
                 transition: border-color 140ms ease, outline-color 140ms ease, transform 140ms ease;
             }
             #${this.defaultElementId} .favorite-card:hover,
             #${this.defaultElementId} .favorite-card:focus-within {
-                border-color: rgba(0, 200, 240, 0.58);
-                outline: 1px solid rgba(0, 200, 240, 0.16);
+                border-color: var(--favorite-hover-border);
+                outline: 1px solid var(--favorite-hover-outline);
                 transform: translateY(-1px);
             }
             #${this.defaultElementId} .favorite-card-heading {
@@ -645,10 +660,10 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 align-items: center;
                 justify-content: space-between;
                 padding-bottom: 0.65rem;
-                border-bottom: 1px solid rgba(155, 169, 178, 0.32);
+                border-bottom: 1px solid var(--favorite-divider);
             }
             #${this.defaultElementId} .favorite-title {
-                color: #f4f5f2;
+                color: var(--favorite-text);
                 font-size: 1.05rem;
                 font-weight: 700;
                 line-height: 1.25;
@@ -688,10 +703,10 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
             }
             #${this.defaultElementId} .favorite-status {
                 padding: 0.28rem 0.48rem;
-                color: #84949b;
+                color: var(--favorite-faint);
                 border: 1px solid rgba(155, 169, 178, 0.18);
                 border-radius: 0.35rem;
-                background: rgba(26, 39, 48, 0.34);
+                background: var(--favorite-status-bg);
                 font-size: 0.7rem;
                 font-weight: 700;
                 white-space: nowrap;
@@ -702,7 +717,7 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 background: rgba(32, 128, 66, 0.72);
             }
             #${this.defaultElementId} .favorite-status.is-preparing {
-                color: #00c8f0;
+                color: var(--favorite-link);
                 border-color: rgba(0, 200, 240, 0.35);
                 background: rgba(0, 200, 240, 0.1);
             }
@@ -713,17 +728,17 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
             }
             #${this.defaultElementId} .favorite-connection {
                 margin: 0;
-                color: #e2e8ea;
+                color: var(--favorite-text);
                 font-size: 0.95rem;
             }
             #${this.defaultElementId} .favorite-mode-details {
                 margin: 0;
-                color: #9ba9b2;
+                color: var(--favorite-muted);
                 font-size: 0.83rem;
             }
             #${this.defaultElementId} .favorite-followers {
                 margin: 0.3rem 0 0;
-                color: #bdc8cc;
+                color: var(--favorite-subtle);
                 font-size: 0.78rem;
             }
             #${this.defaultElementId} .favorite-schedule {
@@ -731,18 +746,18 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 gap: 0.18rem;
                 margin-top: 0.35rem;
                 padding-top: 0.45rem;
-                border-top: 1px solid rgba(155, 169, 178, 0.16);
-                color: #bdc8cc;
+                border-top: 1px solid var(--favorite-divider-soft);
+                color: var(--favorite-subtle);
                 font-size: 0.8rem;
             }
             #${this.defaultElementId} .favorite-schedule strong {
-                color: #00c8f0;
+                color: var(--favorite-link);
                 font-size: 0.67rem;
                 letter-spacing: 0.07em;
                 text-transform: uppercase;
             }
             #${this.defaultElementId} .favorite-schedule small {
-                color: #84949b;
+                color: var(--favorite-faint);
                 font-size: 0.7rem;
             }
             #${this.defaultElementId} .favorites-empty {
@@ -751,21 +766,21 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 place-content: center;
                 justify-items: center;
                 padding: 2rem;
-                border: 1px solid rgba(155, 169, 178, 0.48);
+                border: 1px solid var(--favorite-card-border);
                 border-radius: 0.75rem;
-                background: linear-gradient(150deg, rgba(11, 29, 41, 0.92), rgba(5, 15, 23, 0.98));
-                box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.18);
+                background: var(--favorite-card-bg);
+                box-shadow: var(--favorite-card-shadow);
                 text-align: center;
             }
             #${this.defaultElementId} .favorites-empty h2 {
                 margin: 0 0 0.65rem;
-                color: #f4f5f2;
+                color: var(--favorite-text);
                 font-size: 1.35rem;
             }
             #${this.defaultElementId} .favorites-empty p {
                 max-width: 30rem;
                 margin: 0 0 1.25rem;
-                color: #9ba9b2;
+                color: var(--favorite-muted);
                 line-height: 1.55;
             }
             #${this.defaultElementId} .favorites-empty a {

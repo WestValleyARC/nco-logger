@@ -9,6 +9,34 @@ const userProfileApi = new HttpClient('userprofile', '/api/data/userprofiles');
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
 const consent_modal = new bootstrap.Modal(document.getElementById('consent_modal'));
+const appearanceManager = window.ncoLoggerAppearance;
+const appearanceControls = document.querySelectorAll('input[name="appearance"]');
+const appearanceCurrent = document.getElementById('appearance-current');
+
+function syncAppearanceControl() {
+    if (!appearanceManager) return;
+
+    const appearance = appearanceManager.getAppearance();
+    appearanceControls.forEach(control => {
+        control.checked = control.value === appearance;
+    });
+
+    if (appearanceCurrent) {
+        const resolvedTheme = appearanceManager.getTheme();
+        appearanceCurrent.textContent =
+            appearance === 'system'
+                ? `Following this device (currently ${resolvedTheme}).`
+                : `Using ${resolvedTheme} appearance.`;
+    }
+}
+
+appearanceControls.forEach(control => {
+    control.addEventListener('change', () => {
+        if (control.checked && appearanceManager) appearanceManager.setAppearance(control.value);
+    });
+});
+window.addEventListener('ncoLogger:appearancechange', syncAppearanceControl);
+syncAppearanceControl();
 
 function getConsent(done) {
     consent_modal.show();

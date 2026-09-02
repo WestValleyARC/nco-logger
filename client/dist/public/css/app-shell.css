@@ -10,21 +10,70 @@
     --app-muted: #9ba9b2;
     --app-cyan: #74c6d4;
     --app-orange: #dc8335;
+    --app-heading: var(--app-text);
+    --app-link: var(--app-cyan);
+    --app-link-hover: #a0e1ea;
+    --app-focus-ring: rgba(116, 198, 212, 0.55);
+    --app-page-background:
+        radial-gradient(circle at 12% 8%, rgba(116, 198, 212, 0.1), transparent 28rem),
+        radial-gradient(circle at 88% 18%, rgba(220, 131, 53, 0.08), transparent 24rem),
+        var(--app-bg);
+    --app-panel-background: linear-gradient(150deg, rgba(11, 29, 41, 0.96), rgba(5, 15, 23, 0.99));
+    --app-panel-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.2);
+    --app-control-bg: #0d1317;
+    --app-control-border: rgba(155, 169, 178, 0.35);
+    --app-control-placeholder: #71808a;
+    --app-control-disabled-bg: #101a21;
+    --app-control-disabled-text: #8e9da4;
+    --app-faint: #84949b;
+    --app-subtle-text: #bdc8cc;
+    --app-card-border: rgba(155, 169, 178, 0.48);
+    --app-divider: rgba(155, 169, 178, 0.32);
+    --app-divider-soft: rgba(155, 169, 178, 0.16);
+    --app-status-bg: rgba(26, 39, 48, 0.34);
+    --app-status-accent: #00c8f0;
+    --app-interactive-border: rgba(0, 200, 240, 0.58);
+    --app-interactive-outline: rgba(0, 200, 240, 0.16);
+    --app-subtle-bg: rgba(116, 198, 212, 0.06);
+    --app-orange-text: var(--app-orange);
+    --app-danger-text: #ffaaa0;
+    --app-danger-bg: rgba(220, 84, 69, 0.08);
+    --app-danger-border: rgba(220, 84, 69, 0.46);
+    --app-live-text: #eaffef;
+    --app-live-bg: rgba(32, 128, 66, 0.72);
+    --app-live-border: rgba(67, 209, 122, 0.5);
+    --app-live-accent: #43d17a;
+    --app-card-hover: rgba(0, 191, 232, 0.07);
+    --app-dashboard-hero-overlay:
+        linear-gradient(90deg, rgba(3, 11, 18, 0.94) 0%, rgba(3, 11, 18, 0.82) 28%, rgba(3, 11, 18, 0.18) 58%, rgba(3, 11, 18, 0.05) 100%),
+        linear-gradient(0deg, rgba(3, 11, 18, 0.28), transparent 45%);
+    --app-dashboard-hero-overlay-mobile:
+        linear-gradient(90deg, rgba(3, 11, 18, 0.96), rgba(3, 11, 18, 0.72) 58%, rgba(3, 11, 18, 0.22)),
+        linear-gradient(0deg, rgba(3, 11, 18, 0.52), transparent 60%);
+    --app-dashboard-hero-copy: #f0f2f3;
+    --app-dashboard-hero-title-shadow: 0 0.2rem 1rem rgba(0, 0, 0, 0.5);
+    --app-dashboard-hero-copy-shadow: 0 0.1rem 0.6rem rgba(0, 0, 0, 0.7);
+    --app-dashboard-hero-secondary-bg: rgba(3, 13, 21, 0.78);
+    --app-dashboard-hero-secondary-border: #00bfe8;
+    --app-dashboard-hero-image: url('/img/nco-logger-hero-panorama.png');
+}
+
+/* Phase 1 theme slots intentionally retain the approved production hero. */
+:root[data-theme='dark'],
+:root[data-theme='light'] {
+    --app-dashboard-hero-image: url('/img/nco-logger-hero-panorama.png');
 }
 
 .app-page {
     min-height: 100vh;
     color: var(--app-text);
-    background:
-        radial-gradient(circle at 12% 8%, rgba(116, 198, 212, 0.1), transparent 28rem),
-        radial-gradient(circle at 88% 18%, rgba(220, 131, 53, 0.08), transparent 24rem),
-        var(--app-bg);
+    background: var(--app-page-background);
 }
 
 .app-page a:focus-visible,
 .app-page button:focus-visible,
 .app-page input:focus-visible {
-    outline: 3px solid rgba(116, 198, 212, 0.55);
+    outline: 3px solid var(--app-focus-ring);
     outline-offset: 3px;
 }
 
@@ -1734,6 +1783,79 @@
     color: var(--app-cyan);
 }
 
+.appearance-settings {
+    margin-top: 2rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--app-border);
+}
+
+.appearance-settings h2 {
+    margin: 0 0 0.45rem;
+    color: var(--app-text);
+    font-size: 1.35rem;
+}
+
+.appearance-settings > p {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 0.84rem;
+}
+
+.appearance-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    border: 0;
+}
+
+.appearance-option {
+    display: flex;
+    gap: 0.65rem;
+    align-items: start;
+    min-width: 0;
+    padding: 0.8rem;
+    border: 1px solid var(--app-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background: rgba(116, 198, 212, 0.04);
+}
+
+.appearance-option:hover,
+.appearance-option:focus-within {
+    border-color: var(--app-border-strong);
+    background: rgba(116, 198, 212, 0.08);
+}
+
+.appearance-option input {
+    flex: 0 0 auto;
+    margin-top: 0.2rem;
+    accent-color: var(--app-cyan);
+}
+
+.appearance-option span {
+    display: grid;
+    min-width: 0;
+    gap: 0.15rem;
+}
+
+.appearance-option strong {
+    color: var(--app-text);
+    font-size: 0.86rem;
+}
+
+.appearance-option small {
+    color: var(--app-muted);
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.appearance-current {
+    min-height: 1.25rem;
+    margin-top: 0.75rem !important;
+}
+
 .consent-content {
     color: var(--app-muted);
     line-height: 1.6;
@@ -1780,6 +1902,10 @@
 
     .settings-form-panel #userprofile_form_status {
         max-width: 9rem;
+    }
+
+    .appearance-options {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -3477,7 +3603,7 @@
     padding: 3.3rem 0 3.8rem;
     border-bottom: 0;
     background-color: #061321;
-    background-image: url('/img/nco-logger-hero-panorama.png');
+    background-image: var(--app-dashboard-hero-image);
     background-position: center right;
     background-size: cover;
 }
@@ -3486,9 +3612,7 @@
     position: absolute;
     z-index: 0;
     inset: 0;
-    background:
-        linear-gradient(90deg, rgba(3, 11, 18, 0.94) 0%, rgba(3, 11, 18, 0.82) 28%, rgba(3, 11, 18, 0.18) 58%, rgba(3, 11, 18, 0.05) 100%),
-        linear-gradient(0deg, rgba(3, 11, 18, 0.28), transparent 45%);
+    background: var(--app-dashboard-hero-overlay);
     content: '';
     pointer-events: none;
 }
@@ -3509,16 +3633,16 @@
     font-weight: 700;
     line-height: 0.98;
     letter-spacing: -0.045em;
-    text-shadow: 0 0.2rem 1rem rgba(0, 0, 0, 0.5);
+    text-shadow: var(--app-dashboard-hero-title-shadow);
 }
 
 .landing-page .landing-copy {
     max-width: 31rem;
     margin-bottom: 1.65rem;
-    color: #f0f2f3;
+    color: var(--app-dashboard-hero-copy);
     font-size: clamp(1rem, 1.65vw, 1.18rem);
     line-height: 1.7;
-    text-shadow: 0 0.1rem 0.6rem rgba(0, 0, 0, 0.7);
+    text-shadow: var(--app-dashboard-hero-copy-shadow);
 }
 
 .landing-page .landing-actions {
@@ -3551,8 +3675,8 @@
 
 .landing-page .landing-actions .app-button-secondary {
     color: #fff;
-    border-color: #00bfe8;
-    background: rgba(3, 13, 21, 0.78);
+    border-color: var(--app-dashboard-hero-secondary-border);
+    background: var(--app-dashboard-hero-secondary-bg);
 }
 
 .landing-features {
@@ -3836,9 +3960,7 @@
     }
 
     .landing-page .landing-hero::before {
-        background:
-            linear-gradient(90deg, rgba(3, 11, 18, 0.96), rgba(3, 11, 18, 0.72) 58%, rgba(3, 11, 18, 0.22)),
-            linear-gradient(0deg, rgba(3, 11, 18, 0.52), transparent 60%);
+        background: var(--app-dashboard-hero-overlay-mobile);
     }
 
     .landing-page .landing-hero-copy {
@@ -4685,4 +4807,707 @@
     .schedule-item > time {
         grid-column: 1 / -1;
     }
+}
+
+/* Appearance Phase 2: light shared shell and basic pages. */
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page) {
+    --app-bg: #edf2f4;
+    --app-surface: #f7fafb;
+    --app-surface-raised: #ffffff;
+    --app-border: rgba(27, 81, 96, 0.2);
+    --app-border-strong: rgba(13, 92, 113, 0.42);
+    --app-text: #14242d;
+    --app-heading: #0e202a;
+    --app-muted: #52636d;
+    --app-faint: #657680;
+    --app-cyan: #087590;
+    --app-link: #056b85;
+    --app-link-hover: #034e62;
+    --app-orange: #a34d00;
+    --app-orange-text: #934500;
+    --app-focus-ring: #087590;
+    --app-page-background:
+        radial-gradient(circle at 12% 8%, rgba(8, 117, 144, 0.09), transparent 28rem),
+        radial-gradient(circle at 88% 18%, rgba(163, 77, 0, 0.06), transparent 24rem),
+        var(--app-bg);
+    --app-panel-background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(242, 247, 248, 0.98));
+    --app-panel-shadow: 0 1rem 2.5rem rgba(18, 45, 57, 0.1);
+    --app-control-bg: #ffffff;
+    --app-control-border: #71838c;
+    --app-control-placeholder: #657680;
+    --app-control-disabled-bg: #e2e8eb;
+    --app-control-disabled-text: #657680;
+    --app-subtle-text: #52636d;
+    --app-card-border: rgba(27, 81, 96, 0.24);
+    --app-divider: rgba(27, 81, 96, 0.2);
+    --app-divider-soft: rgba(27, 81, 96, 0.14);
+    --app-status-bg: rgba(82, 99, 109, 0.08);
+    --app-status-accent: #056b85;
+    --app-interactive-border: rgba(5, 107, 133, 0.58);
+    --app-interactive-outline: rgba(5, 107, 133, 0.18);
+    --app-subtle-bg: rgba(8, 117, 144, 0.07);
+    --app-danger-text: #9d2936;
+    --app-danger-bg: #fff1f2;
+    --app-danger-border: #c55560;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    :is(.app-navbar, .app-footer) {
+    --app-bg: #0d1216;
+    --app-surface: #171e24;
+    --app-surface-raised: #202930;
+    --app-border: rgba(116, 198, 212, 0.22);
+    --app-border-strong: rgba(116, 198, 212, 0.48);
+    --app-text: #f4f5f2;
+    --app-muted: #9ba9b2;
+    --app-cyan: #74c6d4;
+    --app-link: #74c6d4;
+    --app-link-hover: #a0e1ea;
+    --app-orange: #dc8335;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page) .app-footer {
+    color: #b8c2c7;
+    border-top-color: rgba(116, 198, 212, 0.18);
+    background: #050d14 !important;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    :is(.app-panel, .contact-card, .waiting-status-card, .privacy-preferences-card, .privacy-danger-card) {
+    border-color: var(--app-border);
+    background: var(--app-panel-background);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    :is(.settings-sidebar, .settings-form-panel) {
+    border-color: var(--app-border);
+    background: var(--app-panel-background);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    :is(.settings-hero, .favorites-hero, .guide-hero) {
+    border-bottom-color: var(--app-border);
+    background:
+        radial-gradient(circle at 82% 20%, rgba(8, 117, 144, 0.1), transparent 24rem),
+        linear-gradient(110deg, rgba(255, 255, 255, 0.76), rgba(224, 236, 240, 0.58));
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    :is(.workspace-title, .section-title, .panel-heading h2, .contact-heading h1, .contact-card h2) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    main a:not(.app-button):not(.settings-nav-item) {
+    color: var(--app-link);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    main a:not(.app-button):not(.settings-nav-item):hover {
+    color: var(--app-link-hover);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-button-primary {
+    color: #ffffff;
+    background: #a94b00;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-button-primary:hover,
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-button-primary:focus-visible {
+    color: #ffffff;
+    background: #873c00;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-button-secondary {
+    color: var(--app-link);
+    border-color: var(--app-border-strong);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-button-secondary:hover,
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-button-secondary:focus-visible {
+    color: var(--app-link-hover);
+    border-color: var(--app-cyan);
+    background: rgba(8, 117, 144, 0.12);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    :is(.app-label, .app-field > label, .app-options-fieldset > legend) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-input {
+    color: var(--app-text) !important;
+    border-color: var(--app-control-border);
+    background-color: var(--app-control-bg) !important;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-input::placeholder {
+    color: var(--app-control-placeholder);
+    opacity: 1;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-input:focus {
+    border-color: var(--app-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(8, 117, 144, 0.18);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-input:disabled {
+    color: var(--app-control-disabled-text) !important;
+    border-color: var(--app-border);
+    background-color: var(--app-control-disabled-bg) !important;
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-modal .modal-content {
+    color: var(--app-text);
+    border-color: var(--app-border-strong);
+    background: var(--app-surface-raised);
+    box-shadow: 0 1.5rem 4rem rgba(18, 45, 57, 0.22);
+}
+
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
+    .app-modal .btn-close-white {
+    filter: none;
+}
+
+:root[data-theme='light'] .login-page {
+    background:
+        radial-gradient(circle at 16% 12%, rgba(8, 117, 144, 0.1), transparent 30rem),
+        radial-gradient(circle at 88% 28%, rgba(163, 77, 0, 0.06), transparent 25rem),
+        #edf2f4;
+}
+
+:root[data-theme='light'] .login-page .login-layout {
+    border-color: var(--app-border-strong);
+    background: var(--app-surface-raised);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] .login-page .login-intro {
+    --app-text: #f4f5f2;
+    --app-muted: #b7c3c9;
+}
+
+:root[data-theme='light'] .login-page .login-form-panel {
+    border-color: var(--app-border);
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .login-page :is(.login-form-panel h2, .login-page .app-label) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] .login-page .login-form-panel > p,
+:root[data-theme='light'] .login-page .login-divider {
+    color: var(--app-muted);
+}
+
+:root[data-theme='light'] .login-page .login-divider::before,
+:root[data-theme='light'] .login-page .login-divider::after {
+    background: var(--app-border);
+}
+
+:root[data-theme='light'] .login-page .app-auth-button {
+    color: var(--app-link);
+    border-color: var(--app-border-strong);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .login-page .app-auth-button:hover,
+:root[data-theme='light'] .login-page .app-auth-button:focus-visible {
+    color: var(--app-link-hover);
+    border-color: var(--app-cyan);
+    background: rgba(8, 117, 144, 0.12);
+}
+
+:root[data-theme='light'] .login-page .app-submit {
+    color: #ffffff;
+    background: #a94b00;
+    box-shadow: 0 0.65rem 1.5rem rgba(133, 60, 0, 0.16);
+}
+
+:root[data-theme='light'] .login-page .app-submit:hover,
+:root[data-theme='light'] .login-page .app-submit:focus-visible {
+    color: #ffffff;
+    background: #873c00;
+}
+
+:root[data-theme='light'] .login-page .app-submit:disabled {
+    color: var(--app-control-disabled-text);
+    background: var(--app-control-disabled-bg);
+}
+
+:root[data-theme='light'] .contact-main,
+:root[data-theme='light'] .guide-main,
+:root[data-theme='light'] .favorites-page {
+    background:
+        radial-gradient(circle at 14% 8%, rgba(8, 117, 144, 0.08), transparent 30rem),
+        radial-gradient(circle at 88% 20%, rgba(163, 77, 0, 0.045), transparent 25rem),
+        #edf2f4;
+}
+
+:root[data-theme='light'] .contact-field-error,
+:root[data-theme='light'] .contact-notice-error {
+    color: var(--app-danger-text);
+}
+
+:root[data-theme='light'] .contact-notice {
+    color: var(--app-muted);
+    border-color: var(--app-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .contact-notice-error {
+    border-color: var(--app-danger-border);
+    background: var(--app-danger-bg);
+}
+
+:root[data-theme='light'] .guide-main :is(.guide-contents, .guide-content) {
+    border-color: var(--app-border);
+    background: var(--app-panel-background);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] .guide-contents-list a:hover,
+:root[data-theme='light'] .guide-contents-list a:focus-visible {
+    color: var(--app-heading);
+    border-color: var(--app-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .guide-section-label {
+    color: var(--app-orange-text);
+}
+
+:root[data-theme='light'] .guide-section :is(p, li) {
+    color: var(--app-muted);
+}
+
+:root[data-theme='light'] .guide-section strong {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] .guide-section a {
+    color: var(--app-link);
+    text-decoration-color: rgba(5, 107, 133, 0.45);
+}
+
+:root[data-theme='light'] .guide-section a:hover {
+    color: var(--app-link-hover);
+}
+
+:root[data-theme='light'] .guide-section code {
+    color: #6c387c;
+    border-color: var(--app-border);
+    background: #edf2f4;
+}
+
+:root[data-theme='light'] .guide-table {
+    color: var(--app-muted);
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .guide-table :is(th, td) {
+    border-bottom-color: var(--app-border);
+}
+
+:root[data-theme='light'] .guide-table th,
+:root[data-theme='light'] .guide-table tbody tr:hover {
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .guide-code {
+    color: var(--app-text);
+    background: #e8eff1;
+}
+
+:root[data-theme='light'] .waiting-off-air {
+    color: var(--app-muted);
+    border-color: var(--app-border-strong);
+    background: rgba(82, 99, 109, 0.08);
+}
+
+:root[data-theme='light'] .waiting-favorite .favicon {
+    color: var(--app-faint);
+}
+
+:root[data-theme='light'] .waiting-favorite :is(.favicon:hover, .favicon:focus-visible, .bi-heart-fill) {
+    color: var(--app-orange-text);
+}
+
+:root[data-theme='light'] .waiting-connection p {
+    color: var(--app-text);
+}
+
+:root[data-theme='light'] .waiting-message,
+:root[data-theme='light'] .privacy-setting-row {
+    border-color: var(--app-border);
+}
+
+:root[data-theme='light'] .privacy-toggle {
+    border-color: var(--app-control-border);
+    background: #d7e0e4;
+}
+
+:root[data-theme='light'] .privacy-toggle::after {
+    background: #60737d;
+}
+
+:root[data-theme='light'] .privacy-toggle:checked {
+    border-color: var(--app-cyan);
+    background: var(--app-cyan);
+}
+
+:root[data-theme='light'] .privacy-toggle:checked::after {
+    background: #ffffff;
+}
+
+:root[data-theme='light'] .privacy-danger-card {
+    border-color: rgba(157, 41, 54, 0.38) !important;
+}
+
+:root[data-theme='light'] .privacy-danger-button {
+    color: #ffffff;
+    border-color: #9d2936;
+    background: #9d2936;
+}
+
+:root[data-theme='light'] .privacy-danger-button:hover,
+:root[data-theme='light'] .privacy-danger-button:focus-visible {
+    color: #ffffff;
+    border-color: #791d28;
+    background: #791d28;
+}
+
+:root[data-theme='light'] .settings-nav-item:hover {
+    color: var(--app-link);
+    border-color: var(--app-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .settings-nav-item.is-current {
+    color: var(--app-heading);
+    border-color: var(--app-border-strong);
+    background: rgba(8, 117, 144, 0.1);
+}
+
+:root[data-theme='light'] .settings-form-panel #userprofile_form_status {
+    color: var(--app-link) !important;
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .settings-form-note,
+:root[data-theme='light'] .appearance-option {
+    border-color: var(--app-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .appearance-option:hover,
+:root[data-theme='light'] .appearance-option:focus-within,
+:root[data-theme='light'] .appearance-option:has(input:checked) {
+    border-color: var(--app-border-strong);
+    background: rgba(8, 117, 144, 0.12);
+}
+
+:root[data-theme='light'] .consent-warning {
+    color: #78400f;
+    background: rgba(163, 77, 0, 0.08);
+}
+
+/* Appearance Phase 3: Dashboard and public net discovery. */
+:root[data-theme='light'] :is(body.landing-page, body.public-directory-page) {
+    --app-bg: #edf2f4;
+    --app-surface: #f7fafb;
+    --app-surface-raised: #ffffff;
+    --app-border: rgba(27, 81, 96, 0.2);
+    --app-border-strong: rgba(13, 92, 113, 0.42);
+    --app-text: #14242d;
+    --app-heading: #0e202a;
+    --app-muted: #52636d;
+    --app-faint: #657680;
+    --app-subtle-text: #52636d;
+    --app-cyan: #087590;
+    --app-link: #056b85;
+    --app-link-hover: #034e62;
+    --app-orange: #a34d00;
+    --app-orange-text: #934500;
+    --app-focus-ring: #087590;
+    --app-page-background:
+        radial-gradient(circle at 12% 8%, rgba(8, 117, 144, 0.09), transparent 28rem),
+        radial-gradient(circle at 88% 18%, rgba(163, 77, 0, 0.06), transparent 24rem),
+        var(--app-bg);
+    --app-panel-background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(242, 247, 248, 0.98));
+    --app-panel-shadow: 0 1rem 2.5rem rgba(18, 45, 57, 0.1);
+    --app-card-border: rgba(27, 81, 96, 0.24);
+    --app-divider: rgba(27, 81, 96, 0.2);
+    --app-divider-soft: rgba(27, 81, 96, 0.14);
+    --app-subtle-bg: rgba(8, 117, 144, 0.07);
+    --app-status-bg: rgba(82, 99, 109, 0.08);
+    --app-status-accent: #056b85;
+    --app-interactive-border: rgba(5, 107, 133, 0.58);
+    --app-interactive-outline: rgba(5, 107, 133, 0.18);
+    --app-live-text: #ffffff;
+    --app-live-bg: #247143;
+    --app-live-border: #1c5d37;
+    --app-live-accent: #176b38;
+    --app-card-hover: rgba(8, 117, 144, 0.09);
+}
+
+:root[data-theme='light'] :is(.landing-page, .public-directory-page) :is(.app-navbar, .app-footer) {
+    --app-bg: #0d1216;
+    --app-surface: #171e24;
+    --app-surface-raised: #202930;
+    --app-border: rgba(116, 198, 212, 0.22);
+    --app-border-strong: rgba(116, 198, 212, 0.48);
+    --app-text: #f4f5f2;
+    --app-muted: #9ba9b2;
+    --app-cyan: #74c6d4;
+    --app-link: #74c6d4;
+    --app-link-hover: #a0e1ea;
+    --app-orange: #dc8335;
+}
+
+:root[data-theme='light'] .landing-page {
+    background:
+        radial-gradient(circle at 78% 10%, rgba(8, 117, 144, 0.08), transparent 30rem),
+        radial-gradient(circle at 18% 3%, rgba(163, 77, 0, 0.045), transparent 24rem),
+        var(--app-bg);
+}
+
+/* The current production image remains a deliberately dark, branded hero in both themes. */
+:root[data-theme='light'] .landing-page .landing-hero {
+    --app-text: #f4f5f2;
+    --app-cyan: #74c6d4;
+    color: var(--app-dashboard-hero-copy);
+}
+
+:root[data-theme='light'] .landing-features {
+    border-bottom-color: var(--app-border);
+    background: #e5edef;
+}
+
+:root[data-theme='light'] .landing-feature-grid {
+    border-color: var(--app-divider);
+}
+
+:root[data-theme='light'] .landing-feature-card {
+    border-color: var(--app-divider);
+    background: transparent;
+}
+
+:root[data-theme='light'] .landing-feature-icon,
+:root[data-theme='light'] .landing-feature-card h2 {
+    color: var(--app-cyan);
+}
+
+:root[data-theme='light'] .landing-feature-card:nth-child(even) :is(.landing-feature-icon, h2) {
+    color: var(--app-orange-text);
+}
+
+:root[data-theme='light'] .landing-feature-card p {
+    color: var(--app-muted);
+}
+
+:root[data-theme='light'] .landing-net-board {
+    background:
+        radial-gradient(circle at 50% 0%, rgba(8, 117, 144, 0.07), transparent 36rem),
+        var(--app-bg);
+}
+
+:root[data-theme='light'] .landing-net-panel {
+    border-color: var(--app-card-border);
+    background: var(--app-panel-background);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] .landing-net-panel-heading {
+    border-bottom-color: var(--app-divider);
+}
+
+:root[data-theme='light'] .landing-net-panel-heading h3,
+:root[data-theme='light'] .landing-panel-icon {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] .landing-live-dot {
+    background: var(--app-live-accent);
+    box-shadow: 0 0 0.7rem rgba(23, 107, 56, 0.24);
+}
+
+:root[data-theme='light'] .landing-page .net-card {
+    color: var(--app-muted);
+    border-bottom-color: var(--app-divider) !important;
+}
+
+:root[data-theme='light'] .landing-page .net-card:hover,
+:root[data-theme='light'] .landing-page .net-card:focus-visible,
+:root[data-theme='light'] .landing-page .scheduled-net-card:hover,
+:root[data-theme='light'] .landing-page .scheduled-net-card:focus-visible {
+    background: var(--app-card-hover) !important;
+}
+
+:root[data-theme='light'] .landing-page .net-card:focus-visible,
+:root[data-theme='light'] .landing-page .scheduled-net-card:focus-visible {
+    outline: 2px solid var(--app-focus-ring);
+    outline-offset: 2px;
+}
+
+:root[data-theme='light'] :is(.landing-live-net-title, .scheduled-net-card-title, .scheduled-net-card-title a) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] :is(.landing-live-net-frequency, .landing-live-net-time, .landing-check-in-count) {
+    color: var(--app-muted);
+}
+
+:root[data-theme='light'] .scheduled-net-card-title a:hover,
+:root[data-theme='light'] .scheduled-net-card-title a:focus-visible,
+:root[data-theme='light'] .landing-net-action,
+:root[data-theme='light'] .landing-net-action:hover,
+:root[data-theme='light'] .landing-net-action:focus-visible {
+    color: var(--app-link);
+}
+
+:root[data-theme='light'] .landing-net-action:hover,
+:root[data-theme='light'] .landing-net-action:focus-visible {
+    color: var(--app-link-hover);
+}
+
+:root[data-theme='light'] .landing-net-favorite {
+    color: var(--app-faint);
+}
+
+:root[data-theme='light'] .landing-net-favorite:hover,
+:root[data-theme='light'] .landing-net-favorite:focus-visible,
+:root[data-theme='light'] .landing-net-favorite.bi-heart-fill {
+    color: var(--app-orange-text);
+}
+
+:root[data-theme='light'] :is(.landing-live-panel .landing-live-count, .public-live-total) {
+    color: var(--app-live-accent);
+}
+
+:root[data-theme='light'] .landing-on-air {
+    color: var(--app-live-text);
+    border-color: var(--app-live-border);
+    background: var(--app-live-bg);
+}
+
+:root[data-theme='light'] .landing-page :is(.nets-state, .scheduled-nets-empty) {
+    color: var(--app-muted);
+    background: transparent;
+}
+
+:root[data-theme='light'] .public-directory-page {
+    background:
+        radial-gradient(circle at 14% 8%, rgba(8, 117, 144, 0.08), transparent 32rem),
+        radial-gradient(circle at 88% 20%, rgba(163, 77, 0, 0.045), transparent 26rem),
+        var(--app-bg);
+}
+
+:root[data-theme='light'] .public-directory-hero {
+    border-bottom-color: var(--app-border);
+    background:
+        radial-gradient(circle at 82% 20%, rgba(8, 117, 144, 0.1), transparent 24rem),
+        linear-gradient(110deg, rgba(255, 255, 255, 0.76), rgba(224, 236, 240, 0.58));
+}
+
+:root[data-theme='light'] :is(.public-directory-heading h2, .schedule-toolbar h2) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] :is(.public-live-card, .schedule-day) {
+    border-color: var(--app-card-border);
+    background: var(--app-panel-background);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] .public-live-card {
+    color: var(--app-text);
+}
+
+:root[data-theme='light'] :is(.public-live-card:hover, .schedule-item:hover) {
+    color: var(--app-text);
+    border-color: var(--app-interactive-border);
+    background: var(--app-card-hover);
+}
+
+:root[data-theme='light'] :is(.public-live-card:focus-visible, .schedule-item:focus-visible) {
+    color: var(--app-text);
+    border-color: var(--app-interactive-border);
+    background: var(--app-card-hover);
+    outline: 2px solid var(--app-focus-ring);
+    outline-offset: 2px;
+}
+
+:root[data-theme='light'] :is(.public-live-card-info strong, .schedule-item-info strong) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] :is(.public-live-card-info span, .public-live-card-meta > span:last-child, .schedule-item-info span) {
+    color: var(--app-muted);
+}
+
+:root[data-theme='light'] .public-directory-empty {
+    color: var(--app-muted);
+}
+
+:root[data-theme='light'] .schedule-view-tabs {
+    border-bottom-color: var(--app-divider);
+}
+
+:root[data-theme='light'] :is(.schedule-view-tabs a, .schedule-period-controls button) {
+    color: var(--app-muted);
+    border-color: var(--app-border);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme='light']
+    :is(
+        .schedule-view-tabs a:hover,
+        .schedule-view-tabs a:focus-visible,
+        .schedule-view-tabs a.is-current,
+        .schedule-period-controls button:hover,
+        .schedule-period-controls button:focus-visible
+    ) {
+    color: var(--app-link);
+    border-color: var(--app-border-strong);
+}
+
+:root[data-theme='light'] .schedule-view-tabs a.is-current {
+    color: var(--app-link-hover);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .schedule-day > h3 {
+    color: var(--app-link);
+    border-bottom-color: var(--app-divider);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .schedule-item {
+    color: var(--app-text);
+    border-bottom-color: var(--app-divider-soft);
+}
+
+:root[data-theme='light'] .schedule-item > time {
+    color: var(--app-orange-text);
+}
+
+:root[data-theme='light'] :is(.landing-page, .public-directory-page) .landing-footer {
+    color: #d3d8da;
+    background: #050d14 !important;
 }

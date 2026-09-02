@@ -98,6 +98,38 @@
               </button>
             </div>
           </form>
+
+          <section class="appearance-settings" id="appearance-settings" aria-labelledby="appearance-heading">
+            <div class="section-eyebrow">Display preference</div>
+            <h2 id="appearance-heading">Appearance</h2>
+            <p>Choose how NCO Logger looks on this browser. Changes apply immediately.</p>
+
+            <fieldset class="appearance-options">
+              <legend class="visually-hidden">Choose an appearance</legend>
+              <label class="appearance-option">
+                <input type="radio" name="appearance" value="system" />
+                <span>
+                  <strong>System</strong>
+                  <small>Match this device</small>
+                </span>
+              </label>
+              <label class="appearance-option">
+                <input type="radio" name="appearance" value="light" />
+                <span>
+                  <strong>Light</strong>
+                  <small>Always use light appearance</small>
+                </span>
+              </label>
+              <label class="appearance-option">
+                <input type="radio" name="appearance" value="dark" />
+                <span>
+                  <strong>Dark</strong>
+                  <small>Always use dark appearance</small>
+                </span>
+              </label>
+            </fieldset>
+            <p class="appearance-current" id="appearance-current" role="status" aria-live="polite"></p>
+          </section>
         </section>
       </div>
     </div>
