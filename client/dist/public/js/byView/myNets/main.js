@@ -131,6 +131,327 @@ const formatViewerDateTime = value => new Intl.DateTimeFormat([], {
     weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
 }).format(new Date(value));
 
+const scheduleEditor = {
+    modal: document.getElementById('schedule-editor-modal'),
+    form: document.getElementById('schedule_editor_form'),
+    fields: document.getElementById('schedule_editor_fields'),
+    status: document.getElementById('schedule_editor_status'),
+    title: document.getElementById('schedule-editor-title'),
+    profileId: document.getElementById('schedule_profile_id'),
+    type: document.getElementById('schedule_type'),
+    timezone: document.getElementById('schedule_timezone'),
+    startDate: document.getElementById('schedule_start_date'),
+    startTime: document.getElementById('schedule_start_time'),
+    endDate: document.getElementById('schedule_end_date'),
+    disable: document.getElementById('schedule_disable'),
+    occurrencesStatus: document.getElementById('schedule_occurrences_status'),
+    occurrencesList: document.getElementById('schedule_occurrences_list')
+};
+let currentSchedule = null;
+let preparationWindowTimer = null;
+let preparationWindowTargets = [];
+
+const browserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const localDateValue = date => {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const setScheduleStatus = (message = '', error = false) => {
+    scheduleEditor.status.textContent = message;
+    scheduleEditor.status.classList.toggle('is-error', error);
+};
+
+const setScheduleBusy = busy => {
+    scheduleEditor.fields.disabled = busy;
+    scheduleEditor.modal.setAttribute('aria-busy', String(busy));
+};
+
+const updateScheduleFields = () => {
+    const type = scheduleEditor.type.value;
+    document.querySelectorAll('[data-schedule-fields]').forEach(section => {
+        section.hidden = section.dataset.scheduleFields !== type;
+    });
+    document.querySelectorAll('[data-recurring-field]').forEach(field => {
+        field.hidden = type === 'oneTime';
+    });
+};
+
+const populateScheduleForm = schedule => {
+    scheduleEditor.form.reset();
+    scheduleEditor.type.value = schedule?.type || 'oneTime';
+    scheduleEditor.timezone.value = schedule?.timezone || browserTimezone();
+    scheduleEditor.startDate.value = schedule?.startDate || localDateValue(new Date());
+    scheduleEditor.startTime.value = schedule?.localStartTime || '19:00';
+    scheduleEditor.endDate.value = schedule?.endDate || '';
+    document.querySelectorAll('input[name="schedule_weekday"]').forEach(input => {
+        input.checked = (schedule?.weekdays || []).includes(Number(input.value));
+    });
+    document.getElementById('schedule_monthly_ordinal').value = String(schedule?.monthlyOrdinal ?? 1);
+    document.getElementById('schedule_monthly_weekday').value = String(schedule?.monthlyWeekday ?? 1);
+    document.getElementById('schedule_monthly_day').value = String(schedule?.monthlyDay ?? 1);
+    scheduleEditor.disable.hidden = !schedule?.enabled;
+    updateScheduleFields();
+};
+
+const schedulePayload = () => {
+    const type = scheduleEditor.type.value;
+    const payload = {
+        type,
+        timezone: scheduleEditor.timezone.value.trim(),
+        localStartTime: scheduleEditor.startTime.value,
+        startDate: scheduleEditor.startDate.value,
+        endDate: type === 'oneTime' ? null : scheduleEditor.endDate.value || null,
+        enabled: true
+    };
+    if (type === 'weekly') {
+        payload.weekdays = [...document.querySelectorAll('input[name="schedule_weekday"]:checked')]
+            .map(input => Number(input.value));
+        if (!payload.weekdays.length) throw new Error('Select at least one weekday');
+    } else if (type === 'monthlyPosition') {
+        payload.monthlyOrdinal = Number(document.getElementById('schedule_monthly_ordinal').value);
+        payload.monthlyWeekday = Number(document.getElementById('schedule_monthly_weekday').value);
+    } else if (type === 'monthlyDate') {
+        payload.monthlyDay = Number(document.getElementById('schedule_monthly_day').value);
+    }
+    return payload;
+};
+
+const occurrenceLocalValues = startAt => {
+    const parts = Object.fromEntries(
+        new Intl.DateTimeFormat('en-CA', {
+            timeZone: currentSchedule.timezone,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).formatToParts(new Date(startAt)).map(part => [part.type, part.value])
+    );
+    return { localDate: `${parts.year}-${parts.month}-${parts.day}`, localStartTime: `${parts.hour}:${parts.minute}` };
+};
+
+const setOccurrencesStatus = (message = '', error = false) => {
+    scheduleEditor.occurrencesStatus.textContent = message;
+    scheduleEditor.occurrencesStatus.classList.toggle('is-error', error);
+};
+
+const occurrenceStatusLabel = occurrence => ({
+    scheduled: occurrence.isOverride ? 'Rescheduled' : 'Scheduled',
+    preparing: 'Preparing',
+    live: 'ON AIR',
+    cancelled: 'Cancelled'
+})[occurrence.status] || occurrence.status;
+
+const loadOccurrences = async profileId => {
+    scheduleEditor.occurrencesList.replaceChildren();
+    setOccurrencesStatus('Loading…');
+    const now = new Date();
+    const query = new URLSearchParams({
+        from: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        to: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        limit: '20'
+    });
+    try {
+        const response = await axios.get(`/api/data/netprofiles/${profileId}/occurrences?${query}`);
+        const occurrences = response.data.occurrences.filter(
+            occurrence => ['scheduled', 'preparing', 'live', 'cancelled'].includes(occurrence.status)
+        );
+        setOccurrencesStatus(occurrences.length ? `${occurrences.length} shown` : '');
+        if (!occurrences.length) {
+            const empty = document.createElement('p');
+            empty.className = 'schedule-occurrences-empty';
+            empty.textContent = 'No upcoming occurrences are available yet.';
+            scheduleEditor.occurrencesList.appendChild(empty);
+            return;
+        }
+
+        occurrences.forEach(occurrence => {
+            const item = document.createElement('article');
+            item.className = `schedule-occurrence is-${occurrence.status}${occurrence.isOverride ? ' is-override' : ''}`;
+            const summary = document.createElement('div');
+            summary.className = 'schedule-occurrence-summary';
+            const when = document.createElement('time');
+            when.dateTime = occurrence.startAt;
+            when.textContent = formatViewerDateTime(occurrence.startAt);
+            const badge = document.createElement('span');
+            badge.className = 'schedule-occurrence-status';
+            badge.textContent = occurrenceStatusLabel(occurrence);
+            summary.append(when, badge);
+            item.appendChild(summary);
+
+            const actions = document.createElement('div');
+            actions.className = 'schedule-occurrence-actions';
+            if (occurrence.status === 'scheduled') {
+                const reschedule = document.createElement('button');
+                reschedule.type = 'button';
+                reschedule.className = 'owned-net-action';
+                reschedule.textContent = 'Reschedule';
+                const cancel = document.createElement('button');
+                cancel.type = 'button';
+                cancel.className = 'owned-net-action is-danger';
+                cancel.textContent = 'Cancel';
+                actions.append(reschedule, cancel);
+
+                const editor = document.createElement('div');
+                editor.className = 'schedule-occurrence-editor';
+                editor.hidden = true;
+                const values = occurrenceLocalValues(occurrence.startAt);
+                const date = document.createElement('input');
+                date.type = 'date';
+                date.className = 'form-control app-input';
+                date.value = values.localDate;
+                date.setAttribute('aria-label', 'Occurrence date');
+                const time = document.createElement('input');
+                time.type = 'time';
+                time.className = 'form-control app-input';
+                time.value = values.localStartTime;
+                time.setAttribute('aria-label', 'Occurrence time');
+                const save = document.createElement('button');
+                save.type = 'button';
+                save.className = 'app-button app-button-secondary app-button-compact';
+                save.textContent = 'Save';
+                editor.append(date, time, save);
+                item.appendChild(editor);
+
+                reschedule.addEventListener('click', () => { editor.hidden = !editor.hidden; });
+                save.addEventListener('click', async () => {
+                    setOccurrencesStatus('Rescheduling…');
+                    try {
+                        await axios.patch(
+                            `/api/data/netprofiles/${profileId}/occurrences/${occurrence._id}`,
+                            { localDate: date.value, localStartTime: time.value }
+                        );
+                        await loadOccurrences(profileId);
+                        refreshNetList();
+                    } catch (error) {
+                        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not reschedule occurrence.', true);
+                    }
+                });
+                cancel.addEventListener('click', async () => {
+                    if (!window.confirm('Cancel only this scheduled occurrence?')) return;
+                    setOccurrencesStatus('Cancelling occurrence…');
+                    try {
+                        await axios.delete(`/api/data/netprofiles/${profileId}/occurrences/${occurrence._id}`);
+                        await loadOccurrences(profileId);
+                        refreshNetList();
+                    } catch (error) {
+                        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not cancel occurrence.', true);
+                    }
+                });
+            } else if (occurrence.status === 'preparing') {
+                const cancelPreparation = document.createElement('button');
+                cancelPreparation.type = 'button';
+                cancelPreparation.className = 'owned-net-action is-danger';
+                cancelPreparation.textContent = 'Cancel Preparation';
+                cancelPreparation.addEventListener('click', async () => {
+                    if (!window.confirm('Cancel preparation and cancel this scheduled occurrence?')) return;
+                    setOccurrencesStatus('Cancelling preparation…');
+                    try {
+                        await axios.post(
+                            `/api/data/netprofiles/${profileId}/occurrences/${occurrence._id}/cancel-preparation`
+                        );
+                        await loadOccurrences(profileId);
+                        refreshNetList();
+                    } catch (error) {
+                        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not cancel preparation.', true);
+                    }
+                });
+                actions.appendChild(cancelPreparation);
+            }
+            if (actions.childElementCount) item.appendChild(actions);
+            scheduleEditor.occurrencesList.appendChild(item);
+        });
+    } catch (error) {
+        setOccurrencesStatus(error.response?.data?.errorMessage || 'Could not load upcoming occurrences.', true);
+    }
+};
+
+const showNoOccurrences = message => {
+    scheduleEditor.occurrencesList.replaceChildren();
+    const empty = document.createElement('p');
+    empty.className = 'schedule-occurrences-empty';
+    empty.textContent = message;
+    scheduleEditor.occurrencesList.appendChild(empty);
+    setOccurrencesStatus('');
+};
+
+const openScheduleEditor = async netProfile => {
+    let scheduleLoaded = false;
+    currentSchedule = null;
+    scheduleEditor.profileId.value = netProfile._id;
+    scheduleEditor.title.textContent = `Schedule ${netProfile.title}`;
+    populateScheduleForm(null);
+    showNoOccurrences('Save a schedule to manage its upcoming occurrences.');
+    setScheduleStatus('Loading schedule…');
+    setScheduleBusy(true);
+    bootstrap.Modal.getOrCreateInstance(scheduleEditor.modal).show();
+    try {
+        const response = await axios.get(`/api/data/netprofiles/${netProfile._id}/schedule`);
+        currentSchedule = response.data.schedule;
+        populateScheduleForm(currentSchedule);
+        await loadOccurrences(netProfile._id);
+        scheduleLoaded = true;
+        setScheduleStatus(currentSchedule.enabled
+            ? 'Edit the active schedule.'
+            : 'This schedule is disabled. Saving will enable it.');
+    } catch (error) {
+        if (error.response?.status === 404) {
+            populateScheduleForm(null);
+            scheduleLoaded = true;
+            setScheduleStatus('Create a schedule for this net.');
+        } else {
+            setScheduleStatus(error.response?.data?.errorMessage || 'Could not load this schedule.', true);
+        }
+    } finally {
+        setScheduleBusy(!scheduleLoaded);
+    }
+};
+
+const closeScheduleEditor = () => {
+    bootstrap.Modal.getOrCreateInstance(scheduleEditor.modal).hide();
+    refreshNetList();
+};
+
+const enablePreparationAction = ({ button, status, netProfile, scheduling }) => {
+    scheduling.canPrepare = true;
+    status.textContent = 'Ready to Prepare';
+    button.disabled = false;
+    button.title = 'Prepare scheduled net';
+    button.setAttribute('aria-label', `Prepare ${netProfile.title}`);
+    button.onclick = async () => {
+        button.disabled = true;
+        try {
+            const response = await axios.post(
+                `/api/data/netprofiles/${netProfile._id}/occurrences/${scheduling.nextOccurrence.id}/prepare`
+            );
+            window.location.href = response.data.liveNet.url;
+        } catch (error) {
+            button.disabled = false;
+            console.error(error.response?.data?.errorMessage || String(error));
+        }
+    };
+};
+
+const schedulePreparationWindowUpdate = () => {
+    clearTimeout(preparationWindowTimer);
+    preparationWindowTimer = null;
+    const now = Date.now();
+    const pending = [];
+    preparationWindowTargets.forEach(target => {
+        if (now >= target.opensAt) {
+            const graceEndsAt = Date.parse(target.scheduling.nextOccurrence.startAt) + 30 * 60 * 1000;
+            if (now < graceEndsAt) enablePreparationAction(target);
+        } else {
+            pending.push(target);
+        }
+    });
+    preparationWindowTargets = pending;
+    if (!pending.length) return;
+    const nextOpensAt = Math.min(...pending.map(target => target.opensAt));
+    preparationWindowTimer = window.setTimeout(
+        schedulePreparationWindowUpdate,
+        Math.min(Math.max(nextOpensAt - now + 25, 25), 2147483647)
+    );
+};
+
 function setNetProfileMode(mode) {
     netProfileFormState.mode = mode;
     if (mode === 'new') netProfileFormState.mesg('info', 'Create new net profile');
@@ -174,6 +495,10 @@ function refreshNetList() {
     const netCountElem = document.getElementById('net-count');
     const modalCollectionElem = document.getElementById('modal-collection');
     const modalTemplateElem = document.getElementById('modal-template');
+
+    clearTimeout(preparationWindowTimer);
+    preparationWindowTimer = null;
+    preparationWindowTargets = [];
 
     netListContainerElem.setAttribute('aria-busy', 'true');
     netListContainerElem.replaceChildren();
@@ -252,19 +577,8 @@ function refreshNetList() {
                         window.location.href = scheduling.actionUrl || `/views/livenet/${netProfile._id}`;
                     });
                 } else if (hasSchedule && scheduling.canPrepare && scheduling.nextOccurrence) {
-                    buttonStartElem.setAttribute('aria-label', `Prepare ${netProfile.title}`);
-                    buttonStartElem.title = 'Prepare scheduled net';
-                    buttonStartElem.addEventListener('click', async () => {
-                        buttonStartElem.disabled = true;
-                        try {
-                            const response = await axios.post(
-                                `/api/data/netprofiles/${netProfile._id}/occurrences/${scheduling.nextOccurrence.id}/prepare`
-                            );
-                            window.location.href = response.data.liveNet.url;
-                        } catch (error) {
-                            buttonStartElem.disabled = false;
-                            console.error(error.response?.data?.errorMessage || String(error));
-                        }
+                    enablePreparationAction({
+                        button: buttonStartElem, status: statusElem, netProfile, scheduling
                     });
                 } else if (hasSchedule) {
                     buttonStartElem.disabled = true;
@@ -272,6 +586,12 @@ function refreshNetList() {
                     buttonStartElem.setAttribute('aria-label', scheduling.nextOccurrence
                         ? `Preparation for ${netProfile.title} is not yet available`
                         : `${netProfile.title} has no upcoming occurrence`);
+                    const opensAt = Date.parse(scheduling.preparationOpensAt);
+                    if (scheduling.nextOccurrence && Number.isFinite(opensAt)) {
+                        preparationWindowTargets.push({
+                            opensAt, button: buttonStartElem, status: statusElem, netProfile, scheduling
+                        });
+                    }
                 } else {
                     buttonStartElem.setAttribute('data-bs-toggle', 'modal');
                     buttonStartElem.setAttribute('data-bs-target', `#modal-${netProfile._id}`);
@@ -328,6 +648,14 @@ function refreshNetList() {
                     buttonElem.addEventListener('click', action);
                     return buttonElem;
                 };
+
+                actionsElem.appendChild(
+                    makeActionButton({
+                        label: 'Schedule',
+                        icon: 'bi-calendar3',
+                        action: () => openScheduleEditor(netProfile)
+                    })
+                );
 
                 actionsElem.appendChild(
                     makeActionButton({
@@ -414,6 +742,7 @@ function refreshNetList() {
             });
 
             netListContainerElem.appendChild(netListUlElem);
+            schedulePreparationWindowUpdate();
         })
         .catch(err => {
             netListContainerElem.setAttribute('aria-busy', 'false');
@@ -571,6 +900,48 @@ document.getElementById('add_connection').addEventListener('click', () => {
     renderConnections();
 });
 document.getElementById('netprofile_form').addEventListener('reset', () => setTimeout(resetConnections));
+scheduleEditor.type.addEventListener('change', updateScheduleFields);
+scheduleEditor.form.addEventListener('submit', async event => {
+    event.preventDefault();
+    setScheduleBusy(true);
+    setScheduleStatus('Saving schedule…');
+    const id = scheduleEditor.profileId.value;
+    try {
+        const payload = schedulePayload();
+        if (currentSchedule) {
+            await axios.patch(`/api/data/netprofiles/${id}/schedule`, payload);
+        } else {
+            await axios.post(`/api/data/netprofiles/${id}/schedule`, payload);
+        }
+        closeScheduleEditor();
+    } catch (error) {
+        setScheduleStatus(error.response?.data?.errorMessage || error.message || 'Could not save schedule.', true);
+    } finally {
+        setScheduleBusy(false);
+    }
+});
+scheduleEditor.disable.addEventListener('click', async () => {
+    if (!currentSchedule || !window.confirm('Disable this schedule and cancel its future scheduled occurrences?')) return;
+    setScheduleBusy(true);
+    setScheduleStatus('Disabling schedule…');
+    try {
+        await axios.delete(`/api/data/netprofiles/${scheduleEditor.profileId.value}/schedule`);
+        closeScheduleEditor();
+    } catch (error) {
+        setScheduleStatus(error.response?.data?.errorMessage || 'Could not disable schedule.', true);
+    } finally {
+        setScheduleBusy(false);
+    }
+});
+
+const timezoneList = document.getElementById('schedule_timezones');
+if (typeof Intl.supportedValuesOf === 'function') {
+    Intl.supportedValuesOf('timeZone').forEach(timezone => {
+        const option = document.createElement('option');
+        option.value = timezone;
+        timezoneList.appendChild(option);
+    });
+}
 
 //init
 formShow('formContainerNetProfile');
