@@ -3,6 +3,8 @@
 'use strict';
 
 const { DateTime, IANAZone } = require('luxon');
+const he = require('he');
+const sanitizeHtml = require('sanitize-html');
 const { modelMaker } = require('../modelMaker');
 const { scheduledOccurrenceSchema } = require('../../models/scheduledOccurrence');
 
@@ -12,6 +14,8 @@ const MAX_LIMIT = 200;
 const VALID_WINDOWS = new Set(['today', 'upcoming', 'seven-day']);
 const PUBLIC_STATUSES = ['scheduled', 'preparing'];
 const LOCAL_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const BLOCK_END_TAG_PATTERN = /<\s*\/\s*(?:address|article|aside|blockquote|div|dl|fieldset|figcaption|figure|footer|form|h[1-6]|header|li|main|nav|ol|p|pre|section|table|tr|ul)\s*>/gi;
+const BREAK_TAG_PATTERN = /<\s*br\b[^>]*>/gi;
 
 class PublicScheduleError extends Error {
     constructor(status, message) {
@@ -66,11 +70,22 @@ const resolvePublicWindow = ({ window: requestedWindow = 'today', timezone, star
     };
 };
 
+const plainTextDescription = value => {
+    if (typeof value !== 'string' || !value) return '';
+    const decoded = he.decode(value)
+        .replace(BREAK_TAG_PATTERN, '\n')
+        .replace(BLOCK_END_TAG_PATTERN, '\n');
+    return he.decode(sanitizeHtml(decoded, { allowedTags: [], allowedAttributes: {} }))
+        .replace(/\r\n?|\n[ \t]+|[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+};
+
 const publicOccurrenceResponse = occurrence => ({
     id: occurrence._id,
     netProfileId: occurrence.netProfile._id,
     title: occurrence.netProfile.title,
-    description: occurrence.netProfile.notes || '',
+    description: plainTextDescription(occurrence.netProfile.notes),
     frequency: occurrence.netProfile.frequency || '',
     mode: occurrence.netProfile.mode || '',
     modeDetails: occurrence.netProfile.modeDetails || '',
@@ -107,5 +122,6 @@ module.exports = {
     PublicScheduleError,
     resolvePublicWindow,
     listPublicOccurrences,
-    publicOccurrenceResponse
+    publicOccurrenceResponse,
+    plainTextDescription
 };
