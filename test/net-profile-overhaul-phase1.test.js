@@ -46,6 +46,7 @@ test('Net Profile Overhaul Phase 1 model compatibility', async t => {
         const connections = [
             { type: 'FM', frequency: '146.940', tone: '162.2' },
             { type: 'FM', frequency: '448.200' },
+            { type: 'HF', frequency: '7.268', mode: 'LSB' },
             { type: 'AllStarLink', node: '12345' },
             { type: 'EchoLink', callsign: 'W1ABC-L' },
             { type: 'DMR', talkgroup: '3100', colorCode: '1' },
@@ -56,13 +57,13 @@ test('Net Profile Overhaul Phase 1 model compatibility', async t => {
             { type: 'Legacy', value: 'Legacy reflector value' }
         ];
         const saved = await profile({ title: 'Connection Test', connections }).save();
-        assert.equal(saved.connections.length, 10);
+        assert.equal(saved.connections.length, 11);
         assert.equal(saved.connections.filter(item => item.type === 'FM').length, 2);
     });
 
     await t.test('enforces required data by connection type without restrictive identifier formats', async () => {
         const invalid = [
-            { type: 'FM' }, { type: 'AllStarLink' }, { type: 'EchoLink' }, { type: 'DMR' },
+            { type: 'FM' }, { type: 'HF' }, { type: 'AllStarLink' }, { type: 'EchoLink' }, { type: 'DMR' },
             { type: 'D-STAR' }, { type: 'YSF' }, { type: 'P25' }, { type: 'Other', label: 'Only' },
             { type: 'Legacy' }
         ];
@@ -71,6 +72,28 @@ test('Net Profile Overhaul Phase 1 model compatibility', async t => {
         }
         await profile({ title: 'Echo Node', connections: [{ type: 'EchoLink', node: 'node/custom-1' }] }).validate();
         await profile({ title: 'YSF Reflector', connections: [{ type: 'YSF', reflector: 'US-room/42' }] }).validate();
+        await assert.rejects(profile({
+            title: 'Invalid FM Operation', connections: [{ type: 'FM', frequency: '146.940', operation: 'Duplex' }]
+        }).validate());
+        await assert.rejects(profile({
+            title: 'Invalid HF Mode', connections: [{ type: 'HF', frequency: '7.268', mode: 'FT9000' }]
+        }).validate());
+    });
+
+    await t.test('supports FM repeater/simplex details while retaining legacy structured FM records', async () => {
+        const saved = await profile({
+            title: 'FM Operation Test',
+            connections: [
+                { type: 'FM', frequency: '146.940', operation: 'Repeater', offset: '-0.600', tone: '100.0' },
+                { type: 'FM', frequency: '146.520', operation: 'Simplex', offset: '+0.600', tone: '100.0' },
+                { type: 'FM', frequency: '448.200', tone: '162.2' }
+            ]
+        }).save();
+        assert.equal(saved.connections[0].offset, '-0.600');
+        assert.equal(saved.connections[1].operation, 'Simplex');
+        assert.equal(saved.connections[1].offset, undefined);
+        assert.equal(saved.connections[2].operation, undefined);
+        assert.equal(saved.connections[2].tone, '162.2');
     });
 
     await t.test('preserves legacy Reflector data and accepts existing profiles without connections', async () => {

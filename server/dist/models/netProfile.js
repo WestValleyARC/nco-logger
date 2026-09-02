@@ -2,7 +2,8 @@
 const { modelMaker } = require('../lib/modelMaker');
 const { Schema } = require('mongoose');
 
-const CONNECTION_TYPES = ['FM', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'Other', 'Legacy'];
+const CONNECTION_TYPES = ['FM', 'HF', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'Other', 'Legacy'];
+const HF_MODES = ['SSB', 'USB', 'LSB', 'CW', 'AM', 'Digital', 'Other'];
 const optionalConnectionValue = maxlength => ({ type: String, trim: true, maxlength });
 
 const connectionSchema = new Schema(
@@ -10,6 +11,9 @@ const connectionSchema = new Schema(
         type: { type: String, required: true, enum: CONNECTION_TYPES },
         frequency: optionalConnectionValue(50),
         tone: optionalConnectionValue(50),
+        operation: { type: String, trim: true, enum: ['Repeater', 'Simplex'] },
+        offset: optionalConnectionValue(50),
+        mode: { type: String, trim: true, enum: HF_MODES },
         node: optionalConnectionValue(100),
         callsign: optionalConnectionValue(50),
         talkgroup: optionalConnectionValue(100),
@@ -30,6 +34,10 @@ connectionSchema.pre('validate', function validateConnection(next) {
     switch (this.type) {
         case 'FM':
             requireField('frequency', 'FM connections require frequency');
+            if (this.operation === 'Simplex') this.offset = undefined;
+            break;
+        case 'HF':
+            requireField('frequency', 'HF connections require frequency');
             break;
         case 'AllStarLink':
             requireField('node', 'AllStarLink connections require node');

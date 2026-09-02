@@ -1,11 +1,14 @@
 import { Document, Schema, Connection, Model } from 'mongoose';
 
-export type NetConnectionType = 'FM' | 'AllStarLink' | 'EchoLink' | 'DMR' | 'D-STAR' | 'YSF' | 'P25' | 'Other' | 'Legacy';
+export type NetConnectionType = 'FM' | 'HF' | 'AllStarLink' | 'EchoLink' | 'DMR' | 'D-STAR' | 'YSF' | 'P25' | 'Other' | 'Legacy';
 
 export interface NetConnection {
     type: NetConnectionType;
     frequency?: string;
     tone?: string;
+    operation?: 'Repeater' | 'Simplex';
+    offset?: string;
+    mode?: 'SSB' | 'USB' | 'LSB' | 'CW' | 'AM' | 'Digital' | 'Other';
     node?: string;
     callsign?: string;
     talkgroup?: string;

@@ -30,7 +30,14 @@ const withMHz = value => {
 const formatStructuredConnection = connection => {
     switch (connection?.type) {
         case 'FM':
-            return `FM: ${[withMHz(connection.frequency), clean(connection.tone) && `PL ${clean(connection.tone)}`].filter(Boolean).join(' · ')}`;
+            return `FM: ${[
+                withMHz(connection.frequency),
+                connection.operation === 'Repeater' && withMHz(connection.offset),
+                connection.operation === 'Simplex' && 'Simplex',
+                clean(connection.tone) && `PL ${clean(connection.tone)}`
+            ].filter(Boolean).join(' · ')}`;
+        case 'HF':
+            return `HF: ${[withMHz(connection.frequency), clean(connection.mode)].filter(Boolean).join(' · ')}`;
         case 'AllStarLink':
             return `AllStarLink: ${clean(connection.node)}`;
         case 'EchoLink':
