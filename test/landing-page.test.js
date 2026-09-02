@@ -118,10 +118,9 @@ test('landing-only navigation and footer expose approved destinations without fa
     assert.match(footer, /\/views\/privacypolicy/);
     assert.match(footer, /\/views\/termsofuse/);
     assert.match(footer, /\/views\/cookiepolicy/);
-    for (const label of ['About WVARC', 'Club Website', 'Join WVARC']) {
-        assert.match(footer, new RegExp(`<span[^>]+aria-disabled="true"[^>]*>${label}<\\/span>`));
-    }
-    assert.doesNotMatch(footer, /href="#">(?:About WVARC|Club Website|Join WVARC)/);
+    assert.match(footer, /href="https:\/\/westvalleyarc\.com\/about-wvarc\/">About WVARC<\/a>/);
+    assert.match(footer, /href="https:\/\/westvalleyarc\.com\/">Club Website<\/a>/);
+    assert.match(footer, /href="https:\/\/westvalleyarc\.com\/membership\/">Join WVARC<\/a>/);
 });
 
 test('landing layout includes responsive hero, feature, net, and footer grids', () => {
