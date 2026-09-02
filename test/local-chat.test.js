@@ -5,15 +5,40 @@ const {
     toggleReaction, setMessagePin, banMessageAuthor, clearPublicChat, authorizeChatAction,
     summarizeReactions, toggleReactionValue, toChatMessage, canViewMessage, shouldDeliverMessage,
     directConversationQuery, listDirectMessages, setPrivateIgnore, serveImage, chatEventForViewer,
-    messageScope, attachmentPath, PUBLIC_SCOPE_QUERY, DIRECT_SCOPE_QUERY, banUserHelper,
+    messageScope, attachmentPath, PUBLIC_SCOPE_QUERY, DIRECT_SCOPE_QUERY, banUserHelper, chatDisplayName,
     rateLimitAllows, RATE_LIMIT_COUNT, RATE_LIMIT_WINDOW_MS
 } = require('../server/dist/lib/localChat');
 const { requireSameOriginMutation, chatRouteErrorHandler } = require('../server/dist/routes/chatRoutes');
 const { chatMessageSchema } = require('../server/dist/models/chatMessage');
 const { userProfileSchema } = require('../server/dist/models/userProfile');
 
-test('chat content is reduced to safe plain text', () => {
-    assert.equal(cleanMessage(' <script>alert(1)</script><b>Hello</b> '), 'Hello');
+test('chat display names follow manual, QRZ, account, then callsign precedence', () => {
+    assert.equal(chatDisplayName({
+        manualName: 'Paula Operator', qrzFirstName: 'Patricia', accountFirstName: 'Alice', callSign: 'ns2e'
+    }), 'Paula');
+    assert.equal(chatDisplayName({
+        manualName: '', qrzFirstName: 'Paula', qrzName: 'Full-Duplex', accountFirstName: 'Alice', callSign: 'ns2e'
+    }), 'Paula');
+    assert.equal(chatDisplayName({
+        manualName: '', qrzFirstName: '', qrzName: 'Full-Duplex', accountFirstName: 'Alice', callSign: 'ns2e'
+    }), 'Alice');
+    assert.equal(chatDisplayName({
+        manualName: '', qrzFirstName: '', qrzName: 'Full-Duplex', accountFirstName: '', callSign: 'ns2e'
+    }), 'NS2E');
+});
+
+test('text and image chat creation share the genuine-first-name resolver', () => {
+    const source = require('node:fs').readFileSync(require.resolve('../server/dist/lib/localChat'), 'utf8');
+    assert.equal((source.match(/resolveChatDisplayName\(\{ callSign \}\)/g) || []).length, 2);
+    assert.doesNotMatch(source, /qrz\?\.displayName|accountName: req\.user\.displayName/);
+});
+
+test('chat content preserves literal symbols, Unicode, and inert HTML-looking text', () => {
+    const lines = [
+        '<--', '-->', '<3', '< > &', '© ® ™ °', '± × ÷ ≤ ≥', '→ ← ↑ ↓', 'µ Ω',
+        'José García — Zażółć gęślą jaźń — 東京 📻', '<b>literal</b>', '<script>alert("inert")</script>'
+    ];
+    assert.equal(cleanMessage(`  ${lines.join('\r\n')}  `), lines.join('\n'));
 });
 
 test('deleted chat never exposes its original content', () => {

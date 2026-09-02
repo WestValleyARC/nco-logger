@@ -10,6 +10,7 @@ import {
     shouldScrollChatToLatest, SingleChatStream, sortChatMessages, trimOldestChatMessages
 } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
+import { appendChatText } from '#@client/lib/chatText.js';
 
 const logger = createLogger('lib/chat.ts');
 const PUBLIC_MESSAGE_LIMIT = 1000;
@@ -1363,7 +1364,8 @@ export class ChatWidget extends HTMLElement {
         else {
             const body = document.createElement('div');
             body.className = `chat-message-content chat-text${message.deleted ? ' text-muted fst-italic' : ''}`;
-            body.textContent = message.deleted ? '[message deleted]' : message.text;
+            if (message.deleted) body.textContent = '[message deleted]';
+            else appendChatText(body, message.text);
             row.append(body);
             if (!message.deleted && message.attachment && this.safeAttachmentUrl(message)) {
                 const imageButton = document.createElement('button');

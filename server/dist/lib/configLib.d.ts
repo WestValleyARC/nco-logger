@@ -3,9 +3,7 @@
 export type BackgroundTasks = {
     closeIdleNets: {
         enabled: boolean;
-        options: {
-            ttl_hours: number;
-        };
+        options: Record<string, never>;
     };
     flagAccounts: {
         enabled: boolean;
@@ -63,6 +61,7 @@ export type Config = {
     chat_rate_limit_window_ms: number;
     chat_upload_dir: string;
     chat_max_upload_mb: number;
+    nco_abandonment_minutes: number;
     nodeenv: string;
     port: number;
     run_background_tasks_on_startup: boolean;

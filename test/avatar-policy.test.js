@@ -34,6 +34,65 @@ test('transient QRZ avatar failures retry sooner than definitive no-photo result
     assert.doesNotMatch(source, /qrzAttemptedCalls/);
 });
 
+test('retained QRZ photo does not make a transiently failed name lookup fresh', async () => {
+    const { avatarRetryAt, isQrzNameFresh, selectNcoAvatarSource, AVATAR_TRANSIENT_RETRY_MS } = await loadPolicy();
+    const now = 1_000_000;
+    assert.equal(isQrzNameFresh('network-failure', 3, 3, now, now), false);
+    assert.equal(avatarRetryAt('network-failure', false, now), now + AVATAR_TRANSIENT_RETRY_MS);
+    assert.equal(selectNcoAvatarSource(
+        'https://cdn-xml.qrz.com/l/ke7wil/photo.jpg',
+        'data:image/jpeg;base64,retained',
+        '/default.svg'
+    ), 'data:image/jpeg;base64,retained');
+});
+
+test('QRZ name freshness requires a recent successful external or cache lookup', async () => {
+    const { avatarRetryAt, isQrzNameFresh, AVATAR_DEFINITIVE_TTL_MS } = await loadPolicy();
+    const now = 100_000_000;
+    const recent = now - 1000;
+    assert.equal(isQrzNameFresh('success', 3, 3, recent, now), true);
+    assert.equal(isQrzNameFresh('success-cache', 3, 3, recent, now), true);
+    for (const outcome of ['timeout', 'service-error', 'quota', 'auth-session-failure', 'not-found']) {
+        assert.equal(isQrzNameFresh(outcome, 3, 3, recent, now), false);
+    }
+    assert.equal(isQrzNameFresh('success', 3, 3, now - AVATAR_DEFINITIVE_TTL_MS - 1, now), false);
+    assert.equal(avatarRetryAt('not-found', false, now), now + AVATAR_DEFINITIVE_TTL_MS);
+    assert.equal(avatarRetryAt('no-data', false, now), now + AVATAR_DEFINITIVE_TTL_MS);
+});
+
+test('NCO Logger queue uses name outcome freshness independently of retained photos', () => {
+    const queueBlock = source.slice(source.indexOf('function queueMissingQrzPhotos'),
+        source.indexOf('async function processQrzLookupQueue'));
+    const lookupBlock = source.slice(source.indexOf('async function lookupQrz'),
+        source.indexOf('async function stationProfileRequest'));
+    assert.match(queueBlock, /isQrzNameFresh/);
+    assert.doesNotMatch(queueBlock, /hasPhoto|definitive|qrzPhotoChecked/);
+    assert.match(queueBlock, /retryAt > Date\.now\(\)/);
+    assert.match(lookupBlock, /qrzPhotoOutcome: qrzStatus/);
+});
+
+test('QRZ queue diagnostics are bounded and preserve every existing queue guard', () => {
+    const queueBlock = source.slice(source.indexOf('function queueMissingQrzPhotos'),
+        source.indexOf('async function processQrzLookupQueue'));
+    assert.match(queueBlock, /setBoundedCache\(qrzQueueDecisions,[\s\S]*?, 32\)/);
+    assert.match(queueBlock, /if \(!call \|\| isFresh \|\| retryBlocked \|\| alreadyQueued\) return/);
+    assert.match(source, /queueInvocations: 0, processorInvocations: 0, dequeued: 0, lookupEntries: 0/);
+    assert.match(source, /running: qrzLookupRunning/);
+    assert.match(source, /queuedCalls: \[\.\.\.qrzLookupQueue\]/);
+    assert.match(source, /decisions: Object\.fromEntries\(qrzQueueDecisions\)/);
+});
+
+test('QRZ diagnostics observe fetch results without adding a pre-fetch behavior guard', () => {
+    const lookupBlock = source.slice(source.indexOf('async function lookupQrz'),
+        source.indexOf('async function stationProfileRequest'));
+    assert.match(lookupBlock, /qrzQueueStats\.fetchAttempts \+= 1;\s*const response = await fetch/);
+    assert.match(lookupBlock, /qrzQueueStats\.lastResponseStatus = response\.status/);
+    assert.match(lookupBlock, /qrzQueueStats\.lastQrzStatus = qrzStatus/);
+    assert.match(lookupBlock, /lastFirstNamePresent = Boolean\(String\(profile\?\.firstName/);
+    assert.match(lookupBlock, /lastLookupError = error instanceof Error/);
+    assert.equal((lookupBlock.match(/if \(!call\) return/g) || []).length, 1);
+});
+
 test('avatar caches evict oldest entries at their configured bound', async () => {
     const { setBoundedCache } = await loadPolicy();
     const cache = new Map();

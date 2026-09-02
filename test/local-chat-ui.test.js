@@ -7,6 +7,57 @@ const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const loadEmoji = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/chatEmoji.js')).href);
+const loadChatText = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/chatText.js')).href);
+
+test('chat text safely identifies explicit and plausible protocol-less web URLs', async () => {
+    const { chatLinkHref, chatTextParts } = await loadChatText();
+    assert.deepEqual(chatTextParts('Visit https://westvalleyarc.com/node-status/'), [
+        { kind: 'text', value: 'Visit ' },
+        { kind: 'link', value: 'https://westvalleyarc.com/node-status/' }
+    ]);
+    assert.deepEqual(chatTextParts('Try http://example.com now'), [
+        { kind: 'text', value: 'Try ' },
+        { kind: 'link', value: 'http://example.com' },
+        { kind: 'text', value: ' now' }
+    ]);
+    for (const value of ['westvalleyarc.com', 'www.westvalleyarc.com', 'logger.westvalleyarc.com/views/contact']) {
+        assert.deepEqual(chatTextParts(value), [{ kind: 'link', value }]);
+        assert.equal(chatLinkHref(value), `https://${value}`);
+    }
+    assert.deepEqual(chatTextParts('Visit westvalleyarc.com.'), [
+        { kind: 'text', value: 'Visit ' },
+        { kind: 'link', value: 'westvalleyarc.com' },
+        { kind: 'text', value: '.' }
+    ]);
+    assert.deepEqual(chatTextParts('person@example.com'), [{ kind: 'text', value: 'person@example.com' }]);
+    for (const value of ['KE7WIL', '3.14159', '192.168.1.1', 'bad_domain.com', '-bad.com', 'bad..com']) {
+        assert.deepEqual(chatTextParts(value), [{ kind: 'text', value }]);
+    }
+});
+
+test('chat URL rendering uses inert text nodes and preserves Unicode around links', async () => {
+    const source = read('client/src/public/js/lib/chatText.ts');
+    assert.match(source, /document\.createTextNode\(part\.value\)/);
+    assert.match(source, /link\.textContent = part\.value/);
+    assert.match(source, /link\.target = '_blank'/);
+    assert.match(source, /link\.rel = 'noopener noreferrer'/);
+    assert.doesNotMatch(source, /innerHTML/);
+    const { chatTextParts } = await loadChatText();
+    assert.deepEqual(chatTextParts('© Ω <-- https://example.com/path?q=µ, → <3'), [
+        { kind: 'text', value: '© Ω <-- ' },
+        { kind: 'link', value: 'https://example.com/path?q=µ' },
+        { kind: 'text', value: ', → <3' }
+    ]);
+});
+
+test('Viewer defaults to Chat left and Active Log right while saved layouts take precedence', () => {
+    for (const file of ['client/src/public/js/byView/liveNet/ncoLogger.js', 'client/dist/public/js/byView/liveNet/ncoLogger.js']) {
+        const source = read(file);
+        assert.match(source, /VIEWER_DEFAULT_MODULE_LAYOUT[\s\S]*chat:\s*\{ x: 0, y: 0, w: 12, h: 20 \}[\s\S]*active:\s*\{ x: 12, y: 0, w: 12, h: 20 \}[\s\S]*collapsed:\s*\{ lurkers: true, checkedOut: true \}/);
+        assert.match(source, /currentUserRole === "netuser" \? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT/g);
+        assert.match(source, /defaultModuleLayoutPending = Object\.keys\(savedModuleLayout\)\.length === 0[\s\S]*Object\.keys\(savedCollapsedSections\)\.length === 0/);
+    }
+});
 
 test('emoji picker provides all requested categories and a substantial searchable set', async () => {
     const { CHAT_EMOJI_CATEGORIES, filterChatEmoji } = await loadEmoji();
