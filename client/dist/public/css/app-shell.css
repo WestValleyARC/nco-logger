@@ -851,6 +851,10 @@
 /* User guide */
 .guide-main {
     padding-bottom: 5rem;
+    background:
+        radial-gradient(circle at 14% 8%, rgba(0, 200, 240, 0.065), transparent 32rem),
+        radial-gradient(circle at 88% 20%, rgba(255, 133, 0, 0.035), transparent 26rem),
+        linear-gradient(155deg, #071522 0%, #030a11 68%, #06111b 100%);
 }
 
 .guide-hero {
@@ -876,6 +880,12 @@
     position: sticky;
     top: 1.25rem;
     padding: 1.5rem;
+}
+
+.guide-main :is(.guide-contents, .guide-content) {
+    border-color: rgba(155, 169, 178, 0.38);
+    background: linear-gradient(150deg, rgba(11, 29, 41, 0.96), rgba(5, 15, 23, 0.99));
+    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.26);
 }
 
 .guide-contents h2 {
@@ -1023,7 +1033,7 @@
     margin: 0;
     border-collapse: collapse;
     color: #b5c0c6;
-    background: #12191e;
+    background: #08141e;
 }
 
 .guide-table th,
@@ -1063,7 +1073,7 @@
     border-left: 3px solid var(--app-orange);
     border-radius: 0.45rem;
     color: var(--app-text);
-    background: #0b1014;
+    background: #06111a;
 }
 
 .guide-code code {
