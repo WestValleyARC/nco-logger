@@ -694,6 +694,11 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 border-color: rgba(67, 209, 122, 0.5);
                 background: rgba(32, 128, 66, 0.72);
             }
+            #${this.defaultElementId} .favorite-status.is-preparing {
+                color: #00c8f0;
+                border-color: rgba(0, 200, 240, 0.35);
+                background: rgba(0, 200, 240, 0.1);
+            }
             #${this.defaultElementId} .favorite-details {
                 display: grid;
                 gap: 0.25rem;
@@ -713,6 +718,25 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 margin: 0.3rem 0 0;
                 color: #bdc8cc;
                 font-size: 0.78rem;
+            }
+            #${this.defaultElementId} .favorite-schedule {
+                display: grid;
+                gap: 0.18rem;
+                margin-top: 0.35rem;
+                padding-top: 0.45rem;
+                border-top: 1px solid rgba(155, 169, 178, 0.16);
+                color: #bdc8cc;
+                font-size: 0.8rem;
+            }
+            #${this.defaultElementId} .favorite-schedule strong {
+                color: #00c8f0;
+                font-size: 0.67rem;
+                letter-spacing: 0.07em;
+                text-transform: uppercase;
+            }
+            #${this.defaultElementId} .favorite-schedule small {
+                color: #84949b;
+                font-size: 0.7rem;
             }
             #${this.defaultElementId} .favorites-empty {
                 display: grid;
@@ -790,7 +814,8 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
 
     private createFavoriteCard(net: FollowListNetInfo): HTMLElement {
         const { id, title, frequency, mode, modeDetails, followCount } = net;
-        const isLive = Boolean((net as FollowListNetInfo & { liveNet?: unknown }).liveNet);
+        const isLive = net.scheduling?.onAir === true;
+        const isPreparing = net.scheduling?.preparing === true;
         const card = document.createElement('article');
         card.classList.add('favorite-card');
 
@@ -808,7 +833,8 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
         const status = document.createElement('span');
         status.classList.add('favorite-status');
         if (isLive) status.classList.add('is-live');
-        status.textContent = isLive ? 'ON AIR' : 'OFF AIR';
+        if (isPreparing) status.classList.add('is-preparing');
+        status.textContent = isLive ? 'ON AIR' : isPreparing ? 'Preparing' : 'OFF AIR';
 
         const fav = document.createElement('hl-fav-insert') as FavoriteInsert;
         fav.npid = id;
@@ -838,6 +864,23 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
         followers.textContent = `${followCount} ${followCount === 1 ? 'Follower' : 'Followers'}`;
 
         details.appendChild(followers);
+        if (!isLive && net.scheduling?.nextOccurrence) {
+            const schedule = document.createElement('div');
+            schedule.classList.add('favorite-schedule');
+            const label = document.createElement('strong');
+            label.textContent = isPreparing ? 'Starts Soon' : 'Next Net';
+            const next = document.createElement('span');
+            next.textContent = new Intl.DateTimeFormat([], {
+                weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+            }).format(new Date(net.scheduling.nextOccurrence.startAt));
+            schedule.append(label, next);
+            if (net.scheduling.timezone) {
+                const timezone = document.createElement('small');
+                timezone.textContent = `Schedule: ${net.scheduling.timezone}`;
+                schedule.appendChild(timezone);
+            }
+            details.appendChild(schedule);
+        }
         card.append(heading, details);
         return card;
     }

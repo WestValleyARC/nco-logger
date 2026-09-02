@@ -6,6 +6,8 @@ const { conf } = require('../lib/configLib');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
 const StationInteraction = require('../models/stationInteraction').getStationInteraction(null);
+const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
+const { canAccessScheduledPreparation } = require('../lib/scheduling/lifecycle');
 const { netOwnerCheck } = require('../lib/sharedNetOps');
 const NodeCache = require('node-cache');
 const netListCache = new NodeCache({ stdTTL: 3, checkperiod: 60 });
@@ -31,6 +33,36 @@ const getCheckInCounts = async (liveNets, StationInteractionModel = StationInter
         : [];
 
     return new Map(groupedCheckInCounts.map(item => [item._id.toString(), item.checkInCount]));
+};
+
+const queryPublicLiveNets = async (
+    LiveNetModel = LiveNet,
+    StationInteractionModel = StationInteraction
+) => {
+    const queryResult = await LiveNetModel.find({ started: true, closing: { $ne: true } })
+        .lean()
+        .populate('netProfile', 'title frequency mode modeDetails permanent invisible liveNet')
+        .select('lookupTable started startedAt closing url createdAt netProfile');
+    const eligible = queryResult.filter(item =>
+        item.netProfile &&
+        item.netProfile.invisible !== true &&
+        String(item.netProfile.liveNet || '') === String(item._id)
+    );
+    const checkInCountsByLiveNet = await getCheckInCounts(eligible, StationInteractionModel);
+
+    return eligible.map(item => ({
+        id: item.netProfile._id,
+        title: item.netProfile.title,
+        frequency: item.netProfile.frequency,
+        mode: item.netProfile.mode,
+        permanent: item.netProfile.permanent,
+        modeDetails: item.netProfile.modeDetails,
+        started: true,
+        startedAt: item.startedAt,
+        url: item.url,
+        createdAt: item.createdAt,
+        checkInCount: checkInCountsByLiveNet.get(item._id.toString()) || 0
+    }));
 };
 
 const liveNetDetails = async (req, res, presenceOnly = false) => {
@@ -88,6 +120,19 @@ const liveNetDetails = async (req, res, presenceOnly = false) => {
         // fetchNetProfileAndLiveNet will throw NetNotFoundError if the netprofile or livenet is not found
         const { liveNetDoc, netProfileDoc } = await helpers.fetchNetProfileAndLiveNet(npid);
 
+        if (liveNetDoc.occurrence && !liveNetDoc.started) {
+            const occurrence = await ScheduledOccurrence.findById(liveNetDoc.occurrence);
+            if (!canAccessScheduledPreparation({
+                netProfile: netProfileDoc,
+                liveNet: liveNetDoc,
+                occurrence,
+                user: req.user
+            })) {
+                handleResponse.sendError(res, 'FORBIDDEN', 'Scheduled net is not on the air');
+                return;
+            }
+        }
+
         if (liveNetDoc.closing) {
             helpers.handleClosing(handleResponse, res, npid);
             return;
@@ -122,7 +167,6 @@ const liveNetDetails = async (req, res, presenceOnly = false) => {
 const liveNetPresence = (req, res) => liveNetDetails(req, res, true);
 
 const liveNetList = async (req, res) => {
-    let queryResult;
     let cachedObj;
 
     try {
@@ -140,57 +184,8 @@ const liveNetList = async (req, res) => {
         } else {
             logger.debug('LIVENET_Controller: Cache MISS for liveNet LIST');
 
-            queryResult = await LiveNet.find({})
-                .lean()
-                .populate('netProfile', 'title frequency mode modeDetails permanent')
-                .select('lookupTable started closing url countdownTimer createdAt netProfile');
-
-            const checkInCountsByLiveNet = await getCheckInCounts(queryResult);
-
-            const netlist = queryResult
-                .map(item => {
-                    if (item.netProfile) {
-                        return {
-                            id: item.netProfile._id,
-                            title: item.netProfile.title,
-                            frequency: item.netProfile.frequency,
-                            mode: item.netProfile.mode,
-                            permanent: item.netProfile.permanent,
-                            closing: item.closing,
-                            modeDetails: item.netProfile.modeDetails,
-                            countdownTimer: item.countdownTimer,
-                            started: item.started,
-                            url: item.url,
-                            createdAt: item.createdAt,
-                            checkInCount: checkInCountsByLiveNet.get(item._id.toString()) || 0
-                        };
-                    }
-                })
-                .filter(Boolean); // This will remove any undefined items from the array
-
-            netlist.sort((a, b) => {
-                if (a.permanent === true) {
-                    return -1;
-                } else if (b.permanent === true) {
-                    return 1;
-                }
-                if (a.started === true) {
-                    return -1;
-                } else if (b.started === true) {
-                    return 1;
-                }
-
-                const aStartTime = new Date(a.createdAt);
-                aStartTime.setMinutes(aStartTime.getMinutes() + a.countdownTimer);
-                const bStartTime = new Date(b.createdAt);
-                bStartTime.setMinutes(bStartTime.getMinutes() + b.countdownTimer);
-
-                if (aStartTime < bStartTime) {
-                    return -1;
-                } else if (bStartTime < aStartTime) {
-                    return 1;
-                } else return 0;
-            });
+            const netlist = await queryPublicLiveNets();
+            netlist.sort((a, b) => new Date(a.startedAt || a.createdAt) - new Date(b.startedAt || b.createdAt));
 
             if (res.locals.flexOpts.requestRateFactor) {
                 logger.debug(
@@ -321,6 +316,7 @@ const liveNetCreatePost = async (req, res) => {
 
 module.exports = {
     getCheckInCounts,
+    queryPublicLiveNets,
     liveNetList,
     liveNetCreatePost,
     liveNetDetails,

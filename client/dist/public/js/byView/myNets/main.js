@@ -20,6 +20,10 @@ const netProfileFormState = new FormState('netprofile', 'new');
 const netOwnerFormState = new FormState('netowner', 'new');
 const netProfileApi = new HttpClient('netprofile', '/api/data/netprofiles');
 
+const formatViewerDateTime = value => new Intl.DateTimeFormat([], {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+}).format(new Date(value));
+
 function setNetProfileMode(mode) {
     netProfileFormState.mode = mode;
     if (mode === 'new') netProfileFormState.mesg('info', 'Create new net profile');
@@ -110,8 +114,13 @@ function refreshNetList() {
             netListUlElem.setAttribute('class', 'owned-net-list');
 
             ownedNets.forEach(netProfile => {
+                const scheduling = netProfile.scheduling || {};
+                const isLive = scheduling.onAir === true;
+                const isPreparing = scheduling.preparing === true;
+                const hasOperationalSession = isLive || isPreparing;
+                const hasSchedule = scheduling.enabled === true;
                 const liElem = document.createElement('li');
-                liElem.setAttribute('class', `owned-net-card${netProfile.liveNet ? ' is-live' : ''}`);
+                liElem.setAttribute('class', `owned-net-card${isLive ? ' is-live' : ''}${isPreparing ? ' is-preparing' : ''}`);
 
                 const cardHeadingElem = document.createElement('div');
                 cardHeadingElem.setAttribute('class', 'owned-net-heading');
@@ -124,8 +133,16 @@ function refreshNetList() {
                 titleElem.textContent = netProfile.title;
 
                 const statusElem = document.createElement('span');
-                statusElem.setAttribute('class', `owned-net-status${netProfile.liveNet ? ' is-live' : ''}`);
-                statusElem.textContent = netProfile.liveNet ? 'Live now' : 'Ready';
+                statusElem.setAttribute('class', `owned-net-status${isLive ? ' is-live' : ''}${isPreparing ? ' is-preparing' : ''}`);
+                statusElem.textContent = isLive
+                    ? 'ON AIR'
+                    : isPreparing
+                      ? 'Preparing'
+                      : scheduling.canPrepare
+                        ? 'Ready to Prepare'
+                        : hasSchedule
+                          ? 'Scheduled'
+                          : 'Ready';
 
                 titleGroupElem.append(titleElem, statusElem);
                 cardHeadingElem.appendChild(titleGroupElem);
@@ -134,22 +151,44 @@ function refreshNetList() {
                 buttonStartElem.type = 'button';
                 buttonStartElem.setAttribute(
                     'class',
-                    `owned-net-start${netProfile.liveNet ? ' is-live' : ''}`
+                    `owned-net-start${isLive ? ' is-live' : ''}${isPreparing ? ' is-preparing' : ''}`
                 );
 
-                if (!netProfile.liveNet) {
+                if (hasOperationalSession) {
+                    buttonStartElem.setAttribute('aria-label', `${isLive ? 'Open live net' : 'Open prepared net'} ${netProfile.title}`);
+                    buttonStartElem.title = isLive ? 'Open live net' : 'Open prepared net';
+                    buttonStartElem.addEventListener('click', () => {
+                        window.location.href = scheduling.actionUrl || `/views/livenet/${netProfile._id}`;
+                    });
+                } else if (hasSchedule && scheduling.canPrepare && scheduling.nextOccurrence) {
+                    buttonStartElem.setAttribute('aria-label', `Prepare ${netProfile.title}`);
+                    buttonStartElem.title = 'Prepare scheduled net';
+                    buttonStartElem.addEventListener('click', async () => {
+                        buttonStartElem.disabled = true;
+                        try {
+                            const response = await axios.post(
+                                `/api/data/netprofiles/${netProfile._id}/occurrences/${scheduling.nextOccurrence.id}/prepare`
+                            );
+                            window.location.href = response.data.liveNet.url;
+                        } catch (error) {
+                            buttonStartElem.disabled = false;
+                            console.error(error.response?.data?.errorMessage || String(error));
+                        }
+                    });
+                } else if (hasSchedule) {
+                    buttonStartElem.disabled = true;
+                    buttonStartElem.title = scheduling.nextOccurrence ? 'Preparation window has not opened' : 'No upcoming occurrence';
+                    buttonStartElem.setAttribute('aria-label', scheduling.nextOccurrence
+                        ? `Preparation for ${netProfile.title} is not yet available`
+                        : `${netProfile.title} has no upcoming occurrence`);
+                } else {
                     buttonStartElem.setAttribute('data-bs-toggle', 'modal');
                     buttonStartElem.setAttribute('data-bs-target', `#modal-${netProfile._id}`);
                     buttonStartElem.setAttribute('aria-label', `Start ${netProfile.title}`);
-                } else {
-                    buttonStartElem.setAttribute('aria-label', `Open live net ${netProfile.title}`);
-                    buttonStartElem.addEventListener('click', () => {
-                        window.location.href = `/views/livenet/${netProfile._id}`;
-                    });
                 }
 
                 const iconElem = document.createElement('i');
-                iconElem.setAttribute('class', `bi ${netProfile.liveNet ? 'bi-box-arrow-up-right' : 'bi-broadcast'}`);
+                iconElem.setAttribute('class', `bi ${hasOperationalSession ? 'bi-box-arrow-up-right' : hasSchedule ? 'bi-calendar-event' : 'bi-broadcast'}`);
                 iconElem.setAttribute('aria-hidden', 'true');
                 buttonStartElem.appendChild(iconElem);
                 cardHeadingElem.appendChild(buttonStartElem);
@@ -161,6 +200,26 @@ function refreshNetList() {
                     ? netProfile.modeDetails
                     : netProfile.mode;
                 operatingDetailsElem.textContent = [frequency, mode].filter(Boolean).join(' · ') || 'Operating details not set';
+
+                const scheduleDetailsElem = document.createElement('div');
+                scheduleDetailsElem.setAttribute('class', 'owned-net-schedule');
+                if (hasSchedule) {
+                    const recurrenceElem = document.createElement('span');
+                    recurrenceElem.innerHTML = `<strong>Schedule</strong>${scheduling.summary}`;
+                    scheduleDetailsElem.appendChild(recurrenceElem);
+                    if (scheduling.nextOccurrence) {
+                        const nextElem = document.createElement('span');
+                        nextElem.innerHTML = `<strong>Next Net</strong>${formatViewerDateTime(scheduling.nextOccurrence.startAt)}`;
+                        scheduleDetailsElem.appendChild(nextElem);
+                    } else {
+                        const nextElem = document.createElement('span');
+                        nextElem.innerHTML = '<strong>Next Net</strong>No upcoming occurrence';
+                        scheduleDetailsElem.appendChild(nextElem);
+                    }
+                    const timezoneElem = document.createElement('small');
+                    timezoneElem.textContent = scheduling.timezone;
+                    scheduleDetailsElem.appendChild(timezoneElem);
+                }
 
                 const actionsElem = document.createElement('div');
                 actionsElem.setAttribute('class', 'owned-net-actions');
@@ -185,7 +244,7 @@ function refreshNetList() {
                     })
                 );
 
-                if (!netProfile.liveNet) {
+                if (!hasOperationalSession) {
                     actionsElem.appendChild(
                         makeActionButton({
                             label: 'Delete',
@@ -210,10 +269,12 @@ function refreshNetList() {
                     })
                 );
 
-                liElem.append(cardHeadingElem, operatingDetailsElem, actionsElem);
+                liElem.append(cardHeadingElem, operatingDetailsElem);
+                if (hasSchedule) liElem.appendChild(scheduleDetailsElem);
+                liElem.appendChild(actionsElem);
                 netListUlElem.appendChild(liElem);
 
-                if (!netProfile.liveNet) {
+                if (!hasSchedule && !hasOperationalSession) {
                     const modalClone = modalTemplateElem.cloneNode(true);
                     modalClone.id = `modal-${netProfile._id}`;
                     modalClone.classList.add('net-start-modal');

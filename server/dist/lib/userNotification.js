@@ -98,7 +98,7 @@ class EmailBase {
             }
         }
     }
-    async sendMailToUPIDs({ upids, db = mongoose.connection }) {
+    async sendMailToUPIDs({ upids, db = mongoose.connection, throwOnError = false }) {
         try {
             if (!Array.isArray(upids) || !upids.length) throw new Error('UPIDs must be a non-empty array');
             const UserProfile = getUserProfile(db);
@@ -110,6 +110,7 @@ class EmailBase {
             return false;
         } catch (err) {
             logger.error(`User notification failed; application will continue: ${err.message}`);
+            if (throwOnError) throw err;
             return false;
         }
     }
@@ -130,6 +131,29 @@ class NetAnnounceStart extends EmailBase {
     }
 }
 
+class NetScheduledReminder extends EmailBase {
+    constructor({ netProfileDoc: { _id, title }, startAt, timezone }) {
+        const scheduledTime = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        }).format(startAt);
+        const fullUrl = `${conf.base_url}/views/livenet/${_id}`;
+        const subject = `${title} is scheduled to begin soon`;
+        super({ body: {
+            from: EMAIL_FROM,
+            subject,
+            text: `${title} is scheduled to begin at ${scheduledTime}. Join at ${fullUrl}.`,
+            html: `<p><a href="${ejs.escapeXML(fullUrl)}">${ejs.escapeXML(title)}</a> is scheduled to begin at ${ejs.escapeXML(scheduledTime)}.</p>`
+        } });
+    }
+}
+
 class AccountInactivityWarning extends EmailBase {
     constructor() {
         const subject = 'NCO Logger account inactivity warning';
@@ -144,6 +168,25 @@ class AccountInactivityWarning extends EmailBase {
             '<p>It is scheduled for deletion in 30 days due to inactivity.</p>',
             '<p>Sign in to NCO Logger within those 30 days to keep your account active.</p>',
             '<p>Questions? Contact <a href="mailto:logger@westvalleyarc.com">logger@westvalleyarc.com</a>.</p>'
+        ].join('');
+        super({ body: { from: EMAIL_FROM, subject, text, html } });
+    }
+}
+
+class NetInactivityAutoClose extends EmailBase {
+    constructor({ title }) {
+        const subject = `NCO Logger automatically closed ${title}`;
+        const text = [
+            `${title} was automatically closed.`,
+            'NCO Logger did not detect an active Net Control Operator for approximately 2 hours.',
+            'The closure prevents an abandoned net from remaining ON AIR.',
+            'You can start the net again if needed.'
+        ].join('\n\n');
+        const html = [
+            `<p><strong>${ejs.escapeXML(title)}</strong> was automatically closed.</p>`,
+            '<p>NCO Logger did not detect an active Net Control Operator for approximately 2 hours.</p>',
+            '<p>The closure prevents an abandoned net from remaining ON AIR.</p>',
+            '<p>You can start the net again if needed.</p>'
         ].join('');
         super({ body: { from: EMAIL_FROM, subject, text, html } });
     }
@@ -188,7 +231,9 @@ class NetCloseReport extends EmailBase {
 module.exports = {
     EmailBase,
     AccountInactivityWarning,
+    NetInactivityAutoClose,
     NetAnnounceStart,
+    NetScheduledReminder,
     NetCloseReport,
     emailEnabled,
     verifyTransport,

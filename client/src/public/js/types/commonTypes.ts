@@ -157,6 +157,23 @@ export interface NetInfo extends NetInfoCommon {
 export interface FollowListNetInfo extends NetInfoCommon {
     id: NPID;
     followCount: number;
+    scheduling?: ProfileSchedulingSummary;
+}
+
+export interface ProfileSchedulingSummary {
+    enabled: boolean;
+    summary: string | null;
+    timezone: string | null;
+    nextOccurrence: {
+        id: string;
+        startAt: Date | string;
+        status: 'scheduled' | 'preparing' | 'live';
+    } | null;
+    preparing: boolean;
+    onAir: boolean;
+    canPrepare: boolean;
+    preparationOpensAt: Date | string | null;
+    actionUrl: string | null;
 }
 
 // FollowListLimits type

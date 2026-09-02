@@ -111,7 +111,7 @@
                 </div>
               </div>
             </div>
-            <a class="landing-net-action" href="#live-nets">View all live nets <span aria-hidden="true">→</span></a>
+            <a class="landing-net-action" href="/views/livenets">View all live nets <span aria-hidden="true">→</span></a>
           </section>
 
           <section class="landing-net-panel" aria-labelledby="todays-nets-title">
@@ -122,10 +122,10 @@
             <div class="scheduled-net-list" data-scheduled-net-list="today" aria-live="polite">
               <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
                 <i class="bi bi-calendar2-day" aria-hidden="true"></i>
-                No scheduled nets to display yet.
+                No scheduled nets today.
               </div>
             </div>
-            <span class="landing-net-action is-placeholder" aria-disabled="true">View today's schedule <span aria-hidden="true">→</span></span>
+            <a class="landing-net-action" href="/views/schedule?view=today">View today's schedule <span aria-hidden="true">→</span></a>
           </section>
 
           <section class="landing-net-panel" aria-labelledby="upcoming-nets-title">
@@ -136,14 +136,13 @@
             <div class="scheduled-net-list" data-scheduled-net-list="upcoming" aria-live="polite">
               <div class="nets-state scheduled-nets-empty" data-scheduled-net-empty>
                 <i class="bi bi-calendar2-week" aria-hidden="true"></i>
-                Upcoming net scheduling is coming soon.
+                No upcoming nets in the next 7 days.
               </div>
             </div>
-            <span class="landing-net-action is-placeholder" aria-disabled="true">View full schedule <span aria-hidden="true">→</span></span>
+            <a class="landing-net-action" href="/views/schedule?view=upcoming">View full schedule <span aria-hidden="true">→</span></a>
           </section>
         </div>
 
-        <!-- Inert until scheduled-net data is available. Future rendering code can clone this template. -->
         <template id="scheduled-net-card-template">
           <article class="net-card scheduled-net-card">
             <div class="scheduled-net-card-content">

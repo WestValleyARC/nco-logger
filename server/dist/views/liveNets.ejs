@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- hamlive-oss — MIT License. See LICENSE. -->
+
+<head>
+  <%- include('./partials/head') %>
+  <%- include('./partials/pageTopFeatures') %>
+  <title><%= server.appName %> - Live Nets <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
+</head>
+
+<body class="app-page public-directory-page">
+  <%- include('./partials/navbar', { user: user }) %>
+
+  <main class="app-main public-directory-main">
+    <header class="public-directory-hero">
+      <div class="container">
+        <div class="landing-kicker">On the Air</div>
+        <h1 class="workspace-title">Live Nets</h1>
+        <p class="workspace-copy">Join amateur radio nets that are currently live on NCO Logger.</p>
+        <img class="public-directory-tower" src="/img/NCO_Logger_Logo_Tower_Only.png" alt="" aria-hidden="true" />
+      </div>
+    </header>
+
+    <section class="container public-directory-workspace" aria-labelledby="live-directory-title">
+      <div class="public-directory-heading">
+        <div>
+          <div class="landing-kicker">Current Activity</div>
+          <h2 id="live-directory-title">Nets on the Air</h2>
+        </div>
+        <span class="public-live-total" id="public-live-total" hidden></span>
+      </div>
+      <div class="public-live-list" id="public-live-list" aria-live="polite" aria-busy="true">
+        <div class="public-directory-empty" id="public-live-state">
+          <i class="bi bi-broadcast-pin" aria-hidden="true"></i>
+          Checking for live nets…
+        </div>
+      </div>
+      <template id="public-live-template">
+        <a class="public-live-card" href="#">
+          <img src="/img/NCO_Logger_Logo_Tower_Only.png" alt="" aria-hidden="true" />
+          <span class="public-live-card-info">
+            <strong data-role="title"></strong>
+            <span data-role="connection"></span>
+          </span>
+          <span class="public-live-card-meta">
+            <span class="landing-on-air">ON AIR</span>
+            <span data-role="check-ins"></span>
+          </span>
+          <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
+      </template>
+    </section>
+  </main>
+
+  <%- include('./partials/footer') %>
+  <%- include('./partials/pageBottomFeatures') %>
+  <script src="/js/byView/<%= VIEW %>/main.js?v=<%= server.appAssetVersion %>" type="module"></script>
+</body>
+
+</html>

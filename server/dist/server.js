@@ -24,6 +24,7 @@ const dataNetProfileRoutes = require('./routes/dataNetProfileRoutes');
 const dataUserProfileRoutes = require('./routes/dataUserProfileRoutes');
 const dataFollowRoutes = require('./routes/dataFollowRoutes');
 const dataLiveNetRoutes = require('./routes/dataLiveNetRoutes');
+const dataScheduledOccurrenceRoutes = require('./routes/dataScheduledOccurrenceRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const presenceLiveNetRoutes = require('./routes/presenceLiveNetRoutes');
 const sseLiveNetRoutes = require('./routes/sseLiveNetRoutes');
@@ -35,6 +36,10 @@ const viewRoutes = require('./routes/viewRoutes');
 const cookieSession = require('cookie-session');
 const dailyDispatch = require('./lib/dailyProcessingDispatch');
 const UserProfile = require('./models/userProfile').getUserProfile(null);
+const NetSchedule = require('./models/netSchedule').getNetSchedule(null);
+const ScheduledOccurrence = require('./models/scheduledOccurrence').getScheduledOccurrence(null);
+const LiveNetAutoClose = require('./models/liveNetAutoClose').getLiveNetAutoClose(null);
+const { startSchedulingWorker } = require('./lib/scheduling/worker');
 const PORT = process.env['PORT'] ?? 3000;
 const { verifyTransport } = require('./lib/userNotification');
 
@@ -91,13 +96,15 @@ mongoose
     .connect(conf.dburi, {
         maxPoolSize: conf.realtime_mongoose_poolsize
     })
-    .then(() => {
+    .then(async () => {
+        await Promise.all([NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init()]);
         logger.info('Connected to db (realtime pool)');
         if (useHttps) {
             https.createServer(sslOptions, app).listen(PORT);
         } else {
             app.listen(PORT);
         }
+        startSchedulingWorker();
         const scheme = useHttps ? 'https' : 'http';
         logger.info(`${conf.applogname} listening on ${scheme}://localhost:${PORT}`);
     })
@@ -175,6 +182,7 @@ app.use('/api/data/netprofiles', dataNetProfileRoutes);
 app.use('/api/data/userprofiles', dataUserProfileRoutes);
 app.use('/api/data/follow', dataFollowRoutes);
 app.use('/api/data/livenets', dataLiveNetRoutes);
+app.use('/api/data/scheduled-occurrences', dataScheduledOccurrenceRoutes);
 //API:Interaction Routes:
 app.use('/api/admin/interactions', adminInteractionRoutes);
 app.use('/api/station/interactions', stationInteractionRoutes);
