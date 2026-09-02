@@ -4198,11 +4198,37 @@
     }
 }
 
-.landing-page .scheduled-net-card:hover,
+.landing-page .scheduled-net-connections {
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+
+.landing-page .scheduled-net-connections dt,
+.landing-page .scheduled-net-connections dd {
+    overflow-wrap: normal;
+    white-space: nowrap;
+}
+
+.landing-page .scheduled-net-connections dd {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.landing-page .scheduled-net-card:last-of-type {
+    border-bottom: 0 !important;
+}
+
+.landing-page .scheduled-net-card:hover {
+    background: rgba(0, 191, 232, 0.045) !important;
+    outline: 0;
+}
+
 .landing-page .scheduled-net-card:focus-visible {
-    background: rgba(0, 191, 232, 0.07) !important;
-    outline: 1px solid rgba(0, 191, 232, 0.48);
-    outline-offset: -1px;
+    background: rgba(0, 191, 232, 0.06) !important;
+    outline: 2px solid rgba(0, 200, 240, 0.72);
+    outline-offset: 2px;
 }
 
 .public-directory-page {

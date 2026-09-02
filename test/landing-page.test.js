@@ -58,6 +58,9 @@ test('net dashboard preserves live data hooks and honest schedule empty states',
     assert.match(dashboardClient, /new HttpClient\('livenet', '\/api\/data\/livenets'\)/);
     assert.match(dashboardClient, /loadScheduledOccurrences/);
     assert.match(dashboardClient, /activeNets\.slice\(0, 4\)/);
+    assert.match(dashboardClient, /kind === 'upcoming' \? 3 : 4/);
+    assert.match(dashboardClient, /formatConnectionLines\(occurrence\)\.join\(' · '\)/);
+    assert.match(dashboardClient, /details\.title = connection/);
     assert.match(dashboardClient, /liveNet\.permanent/);
     assert.match(dashboardClient, /favorites\.handler/);
     assert.match(dashboardClient, /refresh:\s*30000 \/ serverInfo\.requestRateFactor/);
@@ -133,4 +136,8 @@ test('landing layout includes responsive hero, feature, net, and footer grids', 
     assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-footer-grid/);
     assert.match(landingCss, /\.landing-feature-card\s*\{[\s\S]*border-right:/);
     assert.match(landingCss, /\.landing-page \.landing-hero::before/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-connections dd\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*text-overflow:\s*ellipsis;/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-connections[\s\S]*white-space:\s*nowrap;/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-card:hover\s*\{[\s\S]*outline:\s*0;/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-card:focus-visible\s*\{[\s\S]*outline:\s*2px solid/);
 });

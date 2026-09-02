@@ -5,7 +5,6 @@
 import { HttpClient, FavClient, Looper } from '#@client/lib/old__clientUtils.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import {
-    formatConnection,
     formatConnectionLines,
     formatViewerDate,
     formatViewerTime,
@@ -116,7 +115,8 @@ import {
         const list = scheduledLists[kind];
         const empty = list.querySelector('[data-scheduled-net-empty]');
         list.querySelectorAll('.scheduledNetRow').forEach(row => row.remove());
-        occurrences.slice(0, 4).forEach(occurrence => {
+        const previewLimit = kind === 'upcoming' ? 3 : 4;
+        occurrences.slice(0, previewLimit).forEach(occurrence => {
             const card = scheduledTemplate.content.firstElementChild.cloneNode(true);
             card.classList.add('scheduledNetRow');
             card.dataset.href = occurrence.url;
@@ -131,13 +131,14 @@ import {
             const description = card.querySelector('[data-role="description"]');
             description.textContent = occurrence.description;
             description.hidden = !occurrence.description;
-            const connection = formatConnection(occurrence);
+            const connection = formatConnectionLines(occurrence).join(' · ');
             const connections = card.querySelector('[data-role="connection-methods"]');
             if (connection) {
                 const term = document.createElement('dt');
                 const details = document.createElement('dd');
                 term.textContent = 'Connection';
                 details.textContent = connection;
+                details.title = connection;
                 connections.append(term, details);
                 connections.hidden = false;
             }
