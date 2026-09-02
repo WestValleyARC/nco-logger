@@ -1,4 +1,4 @@
-# Installing Ham.Live (Open-Source Edition)
+# Installing NCO Logger
 
 This guide covers two paths:
 
@@ -151,7 +151,7 @@ Each integration is independent — enable only what you want.
 | Integration | Account / where to sign up | Variables | Free tier? |
 | --- | --- | --- | --- |
 | **MongoDB Atlas** (database hosting) | <https://www.mongodb.com/atlas> | `MONGODB_URI` | Yes (M0) |
-| **Email delivery** (SMTP) | Google Workspace SMTP relay | `MAIL_TRANSPORT`, `SMTP_*`, `EMAIL_FROM` | Workspace service |
+| **Email delivery** (SMTP) | Google Workspace SMTP relay | `MAIL_TRANSPORT`, `SMTP_*`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | Workspace service |
 | **Google sign-in** (OAuth) | <https://console.cloud.google.com/apis/credentials> | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Yes |
 | **Callsign lookup** (QRZ.com) | <https://www.qrz.com/page/xml_data.html> | `QRZ_USERNAME`, `QRZ_PASSWORD` | Paid XML subscription |
 | **Reverse geocoding** (Azure Maps) | <https://azure.microsoft.com/products/azure-maps> | `GEO_KEY` | Yes (limited) |
@@ -183,8 +183,8 @@ Notes:
    SMTP_REQUIRE_TLS=true
    SMTP_USER=
    SMTP_PASS=
-   EMAIL_FROM=WVARC Net Logger <logger@westvalleyarc.com>
-   EMAIL_REPLY_TO=
+   EMAIL_FROM=NCO Logger <logger@westvalleyarc.com>
+   EMAIL_REPLY_TO=logger@westvalleyarc.com
    ```
 
    `SMTP_USER` and `SMTP_PASS` are intentionally optional for IP-authenticated relay. Google OAuth
@@ -192,9 +192,14 @@ Notes:
 
 6. Verify the domain's SPF record authorizes Google Workspace, enable Google DKIM signing, and
    maintain an appropriate DMARC record.
-7. Send a test message to an external account. Confirm the visible From address is
-   `logger@westvalleyarc.com` or `nets@westvalleyarc.com`. If delivery fails, use Google Admin
+7. Send a test message to an external account. Confirm the visible sender is
+   `NCO Logger <logger@westvalleyarc.com>`. If delivery fails, use Google Admin
    Console's Email Log Search.
+
+`EMAIL_FROM` is required whenever SMTP delivery is enabled and must use the canonical
+`NCO Logger <address@example.com>` format. Normal messages use `EMAIL_REPLY_TO` (defaulting to
+`logger@westvalleyarc.com`). Contact-form delivery is the intentional exception: it retains the
+configured From identity and uses the validated visitor address as Reply-To.
 
 If the server does not have a fixed public IP, use the Gmail API with OAuth2 as the preferred
 production fallback. A Google app password can be used temporarily for development, with

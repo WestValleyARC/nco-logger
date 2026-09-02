@@ -2,7 +2,7 @@
 
 const { realtimeClients } = require('./realtimeClients');
 const { logger } = require('./logger');
-const { NetCloseReport } = require('./userNotification');
+const { NetCloseReport, netCloseReportRecipientIds } = require('./userNotification');
 const { getFlexOptionsByUser, wellFormedCall } = require('./serverUtils');
 const stationProfiles = require('./stationProfileService');
 const { lookupStationProfile } = stationProfiles;
@@ -935,7 +935,10 @@ async function closeNet({
                 //CC SuperUsers On Reports
                 const suIds = (await UserProfile.find({ superUser: true })).map(su => su._id);
 
-                await ncr.sendMailToUPIDs({ upids: [...netProfileDoc.owners, ...suIds], db });
+                await ncr.sendMailToUPIDs({
+                    upids: netCloseReportRecipientIds({ ownerIds: netProfileDoc.owners, superUserIds: suIds }),
+                    db
+                });
             } else {
                 logger.warn('NetCloseReport creation failed. Skipping email notification.');
             }

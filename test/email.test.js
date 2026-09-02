@@ -35,5 +35,7 @@ test('net-close report still renders when chat history retrieval fails', async (
         liveNetDoc: { url: '/views/livenet/test', started: true, startedAt: new Date('2026-08-28T12:00:00Z') },
         attendees: [{ callSign: 'W1ABC', role: 'netcontrol', checkedInAt: new Date('2026-08-28T12:00:00Z'), sigReports: { calculated: '59' } }]
     });
+    assert.match(report.body.html, /NCO LOGGER/);
+    assert.match(report.body.text, /Close report for|net-close report/i);
     assert.match(report.body.attachments[1].content.toString(), /Empty Chat Log/);
 });

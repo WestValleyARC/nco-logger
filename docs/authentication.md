@@ -1,10 +1,10 @@
 # Authentication Architecture
 
-This document describes Ham.Live's authentication system, including strategy configuration, session management, and authorization patterns.
+This document describes NCO Logger's authentication system, including strategy configuration, session management, and authorization patterns.
 
 ## Overview
 
-Ham.Live uses **magic-link email sign-in as the primary and always-present authentication method**. Google OAuth2 is an optional second method that is only activated when its credentials are configured. There is no local/password authentication.
+NCO Logger uses **magic-link email sign-in as the primary and always-present authentication method**. Google OAuth2 is an optional second method that is only activated when its credentials are configured. There is no local/password authentication.
 
 The implementation uses Passport.js and lives in `server/dist/routes/authRoutes.js`; session middleware is configured in `server/dist/server.js`.
 
@@ -174,7 +174,7 @@ There is no `level` or `callSign` set at creation time. The `validateBeforeSave:
 
 ### Permission levels
 
-Ham.Live uses a numeric level stored on `UserProfile`:
+NCO Logger uses a numeric level stored on `UserProfile`:
 
 | Level | Role |
 |---|---|

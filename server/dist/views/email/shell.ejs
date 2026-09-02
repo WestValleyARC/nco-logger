@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="color-scheme" content="light">
+        <title><%= subject %></title>
+    </head>
+    <body style="Margin:0;padding:0;background-color:#e8eef2;color:#253247;font-family:Arial,Helvetica,sans-serif;">
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;"><%= preheader %></div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#e8eef2" style="width:100%;border-collapse:collapse;background-color:#e8eef2;">
+            <tr>
+                <td align="center" style="padding:24px 12px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;border-collapse:collapse;background-color:#ffffff;">
+                        <tr>
+                            <td bgcolor="#071827" style="padding:24px;background-color:#071827;border-bottom:4px solid #74c6d4;">
+                                <div style="color:#f4f5f2;font-size:24px;font-weight:700;letter-spacing:3px;line-height:1.2;">NCO LOGGER</div>
+                                <img src="<%= logoUrl %>" width="240" height="74" alt="NCO Logger" style="display:block;width:240px;height:74px;max-width:100%;Margin-top:14px;border:0;color:#f4f5f2;font-size:16px;">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:32px 28px 24px;background-color:#ffffff;">
+                                <h1 style="Margin:0 0 20px;color:#071827;font-size:26px;line-height:1.25;font-weight:700;"><%= heading %></h1>
+                                <%- contentHtml %>
+                                <% if (cta) { %>
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="Margin:24px 0;">
+                                    <tr><td bgcolor="#dc8335" style="background-color:#dc8335;border-radius:4px;"><a href="<%= cta.url %>" style="display:inline-block;padding:13px 20px;color:#071827;font-size:16px;font-weight:700;line-height:1.2;text-decoration:none;"><%= cta.label %></a></td></tr>
+                                </table>
+                                <p style="Margin:0 0 18px;color:#526174;font-size:13px;line-height:1.5;word-break:break-word;">If the button does not work, open this link:<br><a href="<%= cta.url %>" style="color:#126579;text-decoration:underline;"><%= cta.url %></a></p>
+                                <% } %>
+                                <% if (secondaryLinks.length) { %><p style="Margin:18px 0 0;color:#526174;font-size:13px;line-height:1.6;"><% secondaryLinks.forEach((link, index) => { %><% if (index) { %><br><% } %><a href="<%= link.url %>" style="color:#126579;text-decoration:underline;"><%= link.label %></a><% }) %></p><% } %>
+                                <% if (automatedNotice) { %><p style="Margin:20px 0 0;padding:14px;border-left:4px solid #74c6d4;background-color:#f2f7f9;color:#405166;font-size:14px;line-height:1.5;"><%= automatedNotice %></p><% } %>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td bgcolor="#102638" style="padding:22px 28px;background-color:#102638;color:#dce8ed;font-size:13px;line-height:1.6;">
+                                <p style="Margin:0 0 8px;">NCO Logger is operated by West Valley Amateur Radio Club (WVARC).</p>
+                                <p style="Margin:0 0 8px;"><a href="<%= contactUrl %>" style="color:#74c6d4;text-decoration:underline;">Contact NCO Logger</a></p>
+                                <p style="Margin:0;color:#dce8ed;"><%= copyright %></p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>

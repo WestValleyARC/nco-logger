@@ -9,7 +9,7 @@ const { getLiveNetAutoClose } = require('../../models/liveNetAutoClose');
 const { closeNet } = require('../sharedNetOps');
 const { cleanupNetChat } = require('../localChat');
 const { realtimeClients } = require('../realtimeClients');
-const { NetInactivityAutoClose } = require('../userNotification');
+const { NetInactivityAutoClose, formatInactivityDuration } = require('../userNotification');
 const { logger } = require('../logger');
 
 const NCO_ABANDONMENT_MS = 60 * 60 * 1000;
@@ -217,8 +217,11 @@ const reconcileLiveNetPersistence = async ({ now = new Date(), db = mongoose.con
 };
 
 const defaultSendInactivityEmail = async ({ event, db }) => {
-    const email = new NetInactivityAutoClose({ title: event.netTitle });
-    return email.sendMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
+    const email = new NetInactivityAutoClose({
+        title: event.netTitle,
+        inactivityDurationMs: NCO_ABANDONMENT_MS
+    });
+    return email.sendOperationalMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
 };
 
 const processAutoCloseEmails = async ({
@@ -376,7 +379,7 @@ const processAbandonedLiveNets = async ({
             { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
             { $set: { closeState: 'completed', closeCompletedAt: now } }
         )).modifiedCount;
-        logger.warn(`Automatically closed LiveNet ${liveNet._id} after one hour without NCO presence`);
+        logger.warn(`Automatically closed LiveNet ${liveNet._id} after ${formatInactivityDuration(NCO_ABANDONMENT_MS)} without NCO presence`);
     }
 
     const emails = await processAutoCloseEmails({ now, db, sendInactivityEmail });
@@ -397,6 +400,7 @@ const processLiveNetHardening = async ({
 module.exports = {
     NCO_ABANDONMENT_MS,
     CLAIM_STALE_MS,
+    defaultSendInactivityEmail,
     recoverAutoCloseClaims,
     reconcileLiveNetPersistence,
     processAutoCloseEmails,
