@@ -6,6 +6,7 @@ const { resolveLocalDateTime } = require('../lib/scheduling/recurrence');
 const NetSchedule = require('../models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const { prepareOccurrence, cancelPreparation } = require('../lib/scheduling/lifecycle');
+const { materializeSchedule } = require('../lib/scheduling/worker');
 
 const ENDPOINT_VERSION = '1.0';
 const SCHEDULE_FIELDS = [
@@ -147,6 +148,7 @@ const updateSchedule = async (req, res) => {
         schedule.set(selectFields(req.body, SCHEDULE_FIELDS));
         normalizeRecurrenceFields(schedule);
         await schedule.save();
+        await materializeSchedule({ schedule });
         return res.json({ endpointVersion: ENDPOINT_VERSION, schedule: scheduleResponse(schedule) });
     } catch (error) {
         return sendError(res, error);
