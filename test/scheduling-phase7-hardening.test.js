@@ -97,7 +97,7 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
             await reset();
             const recentProfile = await createProfile();
             const recentLive = await createLive(recentProfile);
-            await addInteraction({ profile: recentProfile, liveNet: recentLive, lastSeen: new Date(NOW - 60 * 60000) });
+            await addInteraction({ profile: recentProfile, liveNet: recentLive, lastSeen: new Date(NOW - NCO_ABANDONMENT_MS + 1) });
             const multipleProfile = await createProfile();
             const multipleLive = await createLive(multipleProfile);
             await addInteraction({ profile: multipleProfile, liveNet: multipleLive, lastSeen: new Date(NOW - 3 * 60 * 60000) });
@@ -108,7 +108,7 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
 
             const abandonedProfile = await createProfile();
             const abandonedLive = await createLive(abandonedProfile);
-            await addInteraction({ profile: abandonedProfile, liveNet: abandonedLive, lastSeen: new Date(NOW - NCO_ABANDONMENT_MS - 1) });
+            await addInteraction({ profile: abandonedProfile, liveNet: abandonedLive, lastSeen: new Date(NOW - NCO_ABANDONMENT_MS) });
             await addInteraction({ profile: abandonedProfile, liveNet: abandonedLive, role: 'netuser', lastSeen: NOW });
             const email = captureEmails();
             const closed = await processAbandonedLiveNets({ now: NOW, db, sendInactivityEmail: email.send });

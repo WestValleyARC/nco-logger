@@ -18,6 +18,14 @@ export declare class ExclusiveChatOperation<T extends string> {
     end(operation: T): void;
     isActive(operation?: T): boolean;
 }
+export declare class InitialChatScrollGate {
+    private historyReady;
+    private layoutReady;
+    private complete;
+    markHistoryReady(): boolean;
+    markLayoutReady(): boolean;
+    private consumeIfReady;
+}
 export declare const reconcileChatMessages: <T extends IdentifiedChatMessage>(messages: Map<string, T>, incoming: Iterable<T>) => number;
 export declare const reconcileChatSnapshot: <T extends IdentifiedChatMessage>(messages: Map<string, T>, incoming: Iterable<T>, knownBeforeRequest: ReadonlySet<string>) => number;
 export declare const sortChatMessages: <T extends IdentifiedChatMessage>(messages: Iterable<T>) => T[];

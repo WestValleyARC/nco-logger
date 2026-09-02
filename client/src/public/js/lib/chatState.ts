@@ -51,6 +51,28 @@ export class ExclusiveChatOperation<T extends string> {
     }
 }
 
+export class InitialChatScrollGate {
+    private historyReady = false;
+    private layoutReady = false;
+    private complete = false;
+
+    markHistoryReady(): boolean {
+        this.historyReady = true;
+        return this.consumeIfReady();
+    }
+
+    markLayoutReady(): boolean {
+        this.layoutReady = true;
+        return this.consumeIfReady();
+    }
+
+    private consumeIfReady(): boolean {
+        if (this.complete || !this.historyReady || !this.layoutReady) return false;
+        this.complete = true;
+        return true;
+    }
+}
+
 export const reconcileChatMessages = <T extends IdentifiedChatMessage>(
     messages: Map<string, T>, incoming: Iterable<T>
 ): number => {

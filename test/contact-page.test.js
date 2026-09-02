@@ -67,7 +67,8 @@ test('public contact page validates and delivers through the existing email serv
             assert.match(html, /name="email"[^>]*maxlength="254"[^>]*required/);
             assert.match(html, /name="subject"[^>]*maxlength="150"[^>]*required/);
             assert.match(html, /name="message"[^>]*maxlength="5000"[^>]*required/);
-            assert.match(html, /href="\/views\/contact"[^>]*>[\s\S]*logger@westvalleyarc\.com/);
+            assert.match(html, /href="\/views\/contact"[^>]*>[\s\S]*Contact NCO Logger/);
+            assert.doesNotMatch(html, /logger@westvalleyarc\.com/);
             assert.match(html, /Sign in/);
         });
 

@@ -96,7 +96,7 @@ import {
             }
             if (liveNetsCountElem) {
                 liveNetsCountElem.hidden = activeNets.length === 0;
-                liveNetsCountElem.textContent = activeNets.length > 0 ? `${activeNets.length} LIVE NOW` : '';
+                liveNetsCountElem.textContent = activeNets.length > 0 ? `${activeNets.length}\u00A0LIVE NOW` : '';
             }
 
             return (liveNetsLastHash = liveNets.data.hash);

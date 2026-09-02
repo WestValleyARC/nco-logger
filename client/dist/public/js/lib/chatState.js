@@ -33,6 +33,25 @@ export class ExclusiveChatOperation {
         return operation === undefined ? this.current !== null : this.current === operation;
     }
 }
+export class InitialChatScrollGate {
+    historyReady = false;
+    layoutReady = false;
+    complete = false;
+    markHistoryReady() {
+        this.historyReady = true;
+        return this.consumeIfReady();
+    }
+    markLayoutReady() {
+        this.layoutReady = true;
+        return this.consumeIfReady();
+    }
+    consumeIfReady() {
+        if (this.complete || !this.historyReady || !this.layoutReady)
+            return false;
+        this.complete = true;
+        return true;
+    }
+}
 export const reconcileChatMessages = (messages, incoming) => {
     let added = 0;
     for (const message of incoming) {

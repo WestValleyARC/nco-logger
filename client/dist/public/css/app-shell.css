@@ -1931,6 +1931,41 @@
     line-height: 1.55;
 }
 
+.coowner-list {
+    display: grid;
+    gap: 0.6rem;
+    margin: 1rem 0 1.25rem;
+}
+
+.coowner-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: 0.55rem;
+    background: rgba(3, 11, 18, 0.72);
+}
+
+.coowner-row > span {
+    display: grid;
+    min-width: 0;
+}
+
+.coowner-row strong {
+    color: var(--app-text);
+}
+
+.coowner-row small,
+.coowner-empty {
+    color: var(--app-muted);
+}
+
+.coowner-empty {
+    margin: 0;
+}
+
 .panel-loading {
     display: flex;
     gap: 0.65rem;

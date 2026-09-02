@@ -148,8 +148,8 @@ class NetScheduledReminder extends EmailBase {
         super({ body: {
             from: EMAIL_FROM,
             subject,
-            text: `${title} is scheduled to begin at ${scheduledTime}. Join at ${fullUrl}.`,
-            html: `<p><a href="${ejs.escapeXML(fullUrl)}">${ejs.escapeXML(title)}</a> is scheduled to begin at ${ejs.escapeXML(scheduledTime)}.</p>`
+            text: `${title} is scheduled to begin in approximately 10 minutes, at ${scheduledTime}. Join at ${fullUrl}.`,
+            html: `<p><a href="${ejs.escapeXML(fullUrl)}">${ejs.escapeXML(title)}</a> is scheduled to begin in approximately 10 minutes, at ${ejs.escapeXML(scheduledTime)}.</p>`
         } });
     }
 }
@@ -205,13 +205,13 @@ class NetInactivityAutoClose extends EmailBase {
         const subject = `NCO Logger automatically closed ${title}`;
         const text = [
             `${title} was automatically closed.`,
-            'NCO Logger did not detect an active Net Control Operator for approximately 2 hours.',
+            'NCO Logger did not detect an active Net Control Operator for approximately 1 hour.',
             'The closure prevents an abandoned net from remaining ON AIR.',
             'You can start the net again if needed.'
         ].join('\n\n');
         const html = [
             `<p><strong>${ejs.escapeXML(title)}</strong> was automatically closed.</p>`,
-            '<p>NCO Logger did not detect an active Net Control Operator for approximately 2 hours.</p>',
+            '<p>NCO Logger did not detect an active Net Control Operator for approximately 1 hour.</p>',
             '<p>The closure prevents an abandoned net from remaining ON AIR.</p>',
             '<p>You can start the net again if needed.</p>'
         ].join('');

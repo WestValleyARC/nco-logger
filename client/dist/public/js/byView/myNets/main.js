@@ -44,6 +44,12 @@ const CONNECTION_FIELDS = {
     ],
     YSF: [{ key: 'room', label: 'Room / Reflector', required: true }],
     P25: [{ key: 'talkgroup', label: 'Talkgroup', required: true }],
+    M17: [
+        { key: 'reflector', label: 'Reflector', required: true },
+        { key: 'module', label: 'Module' }
+    ],
+    NXDN: [{ key: 'talkgroup', label: 'Talkgroup', required: true }],
+    Zello: [{ key: 'channel', label: 'Channel', required: true }],
     Other: [
         { key: 'label', label: 'Label', required: true },
         { key: 'value', label: 'Value', required: true }
@@ -53,6 +59,7 @@ let connectionRows = [];
 let connectionsTouched = false;
 let editingHadStructuredConnections = false;
 let draggedConnectionCard = null;
+let currentCoOwnerProfileId = null;
 
 const moveConnection = (index, direction) => {
     const destination = index + direction;
@@ -789,16 +796,18 @@ function refreshNetList() {
                     );
                 }
 
-                actionsElem.appendChild(
-                    makeActionButton({
-                        label: 'Co-owner',
-                        icon: 'bi-person-plus',
-                        action: () => {
-                            netOwnerFormPrep(netProfile._id, netProfile.title);
-                            formShow('formContainerNetOwner');
-                        }
-                    })
-                );
+                if (netProfile.isPrimaryOwner) {
+                    actionsElem.appendChild(
+                        makeActionButton({
+                            label: 'Co-Owners',
+                            icon: 'bi-people',
+                            action: () => {
+                                netOwnerFormPrep(netProfile._id, netProfile.title);
+                                formShow('formContainerNetOwner');
+                            }
+                        })
+                    );
+                }
 
                 liElem.append(cardHeadingElem, operatingDetailsElem);
                 if (hasSchedule) liElem.appendChild(scheduleDetailsElem);
@@ -859,10 +868,59 @@ function refreshNetList() {
         });
 }
 
-window.netOwnerFormPrep = function (id, name) {
-    document.getElementById('netowner_form_title').innerText = `Additional Owner for ${name}`;
+const renderCoOwners = coOwners => {
+    const list = document.getElementById('coowner_list');
+    list.replaceChildren();
+    if (!coOwners.length) {
+        const empty = document.createElement('p');
+        empty.className = 'coowner-empty';
+        empty.textContent = 'No co-owners have been added.';
+        list.appendChild(empty);
+        return;
+    }
+    coOwners.forEach(coOwner => {
+        const row = document.createElement('div');
+        row.className = 'coowner-row';
+        const identity = document.createElement('span');
+        const callsign = document.createElement('strong');
+        callsign.textContent = coOwner.callSign;
+        const name = document.createElement('small');
+        name.textContent = coOwner.displayName || '';
+        identity.append(callsign, name);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'owned-net-action is-danger';
+        remove.innerHTML = '<i class="bi bi-person-dash" aria-hidden="true"></i><span>Remove Co-Owner</span>';
+        remove.addEventListener('click', async () => {
+            if (!window.confirm(`Remove ${coOwner.callSign} as a co-owner?`)) return;
+            try {
+                await axios.delete(`/api/data/netprofiles/${currentCoOwnerProfileId}/coowners/${coOwner.id}`);
+                await loadCoOwners();
+                refreshNetList();
+            } catch (error) {
+                netOwnerFormState.mesg('error', error.response?.data?.errorMessage || error.message);
+            }
+        });
+        row.append(identity, remove);
+        list.appendChild(row);
+    });
+};
+
+const loadCoOwners = async () => {
+    const response = await axios.get(`/api/data/netprofiles/${currentCoOwnerProfileId}/coowners`);
+    renderCoOwners(response.data.coOwners || []);
+};
+
+window.netOwnerFormPrep = async function (id, name) {
+    currentCoOwnerProfileId = id;
+    document.getElementById('netowner_form_title').innerText = `Co-Owners for ${name}`;
     document.getElementById('input_npid_for_netowner').value = id;
-    netOwnerFormState.mesg('info', 'enter email address');
+    netOwnerFormState.mesg('info', 'Add a registered operator');
+    try {
+        await loadCoOwners();
+    } catch (error) {
+        netOwnerFormState.mesg('error', error.response?.data?.errorMessage || error.message);
+    }
 };
 
 //called by netlist "edit" link
@@ -976,17 +1034,17 @@ function netowner_submitHandler(e) {
     const id = formDataToSend.get('npid_for_netowner');
 
     const dataPayload = {
-        email: formDataToSend.get('email')
+        identifier: formDataToSend.get('identifier')
     };
 
     axios
-        .post(`/api/data/netprofiles/addnetowner/${id}`, dataPayload)
-        .then(req => {
+        .post(`/api/data/netprofiles/${id}/coowners`, dataPayload)
+        .then(async req => {
             console.debug('Adding Net Owner: ', req);
-            netOwnerFormState.mesg('info', 'Success: User will see ownership of this net in their account also');
-            setTimeout(() => {
-                location.reload();
-            }, 6500);
+            document.getElementById('input_coowner_identifier').value = '';
+            netOwnerFormState.mesg('info', 'Co-owner added');
+            await loadCoOwners();
+            refreshNetList();
         })
         .catch(error => {
             if (error.response.data.errorMessage) {

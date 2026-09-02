@@ -64,6 +64,7 @@ test('net dashboard preserves live data hooks and honest schedule empty states',
     assert.match(dashboardClient, /liveNet\.permanent/);
     assert.match(dashboardClient, /favorites\.handler/);
     assert.match(dashboardClient, /refresh:\s*30000 \/ serverInfo\.requestRateFactor/);
+    assert.match(dashboardClient, /`\$\{activeNets\.length\}\\u00A0LIVE NOW`/);
 });
 
 test('live net listings expose authoritative grouped check-in counts and render singular or plural labels', async () => {
@@ -116,7 +117,8 @@ test('landing-only navigation and footer expose approved destinations without fa
     assert.match(favoriteWidgets, /Remove from Favorites.*Add to Favorites/);
     assert.match(legacyFavoriteClient, /bi-heart-fill/);
     assert.doesNotMatch(legacyFavoriteClient, /bi-star-fill/);
-    assert.match(footer, /mailto:logger@westvalleyarc\.com/);
+    assert.match(footer, /href="\/views\/contact"[^>]*>[\s\S]*Contact NCO Logger/);
+    assert.doesNotMatch(footer, /logger@westvalleyarc\.com/);
     assert.match(footer, /bi bi-envelope/);
     assert.match(footer, /\/views\/privacypolicy/);
     assert.match(footer, /\/views\/termsofuse/);

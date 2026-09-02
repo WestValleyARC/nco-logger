@@ -6,10 +6,20 @@ const { pathToFileURL } = require('node:url');
 const loadState = () => import(pathToFileURL(path.resolve(__dirname, '../client/dist/public/js/lib/chatState.js')).href);
 
 test('chat opens at latest while preserving a reader who manually scrolled up', async () => {
-    const { shouldScrollChatToLatest } = await loadState();
+    const { InitialChatScrollGate, shouldScrollChatToLatest } = await loadState();
     assert.equal(shouldScrollChatToLatest(true, false), true);
     assert.equal(shouldScrollChatToLatest(false, true), true);
     assert.equal(shouldScrollChatToLatest(false, false), false);
+
+    const historyBeforeLayout = new InitialChatScrollGate();
+    assert.equal(historyBeforeLayout.markHistoryReady(), false);
+    assert.equal(historyBeforeLayout.markLayoutReady(), true);
+    assert.equal(historyBeforeLayout.markLayoutReady(), false, 'later layout work must not force a reader down again');
+
+    const layoutBeforeHistory = new InitialChatScrollGate();
+    assert.equal(layoutBeforeHistory.markLayoutReady(), false);
+    assert.equal(layoutBeforeHistory.markHistoryReady(), true);
+    assert.equal(layoutBeforeHistory.markHistoryReady(), false, 'history refreshes must not repeat initialization scrolling');
 });
 
 test('history and SSE races reconcile by stable message id', async () => {

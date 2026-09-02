@@ -12,7 +12,7 @@ const { realtimeClients } = require('../realtimeClients');
 const { NetInactivityAutoClose } = require('../userNotification');
 const { logger } = require('../logger');
 
-const NCO_ABANDONMENT_MS = 2 * 60 * 60 * 1000;
+const NCO_ABANDONMENT_MS = 60 * 60 * 1000;
 const CLAIM_STALE_MS = 15 * 60 * 1000;
 const PREPARATION_GRACE_MS = 30 * 60 * 1000;
 const MAX_AUTO_CLOSE_EMAILS_PER_PASS = 50;
@@ -376,7 +376,7 @@ const processAbandonedLiveNets = async ({
             { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
             { $set: { closeState: 'completed', closeCompletedAt: now } }
         )).modifiedCount;
-        logger.warn(`Automatically closed LiveNet ${liveNet._id} after two hours without NCO presence`);
+        logger.warn(`Automatically closed LiveNet ${liveNet._id} after one hour without NCO presence`);
     }
 
     const emails = await processAutoCloseEmails({ now, db, sendInactivityEmail });

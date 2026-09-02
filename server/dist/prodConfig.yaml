@@ -13,7 +13,7 @@ background_tasks:
     closeIdleNets:
         enabled: true
         options:
-            abandoned_after_hours: 2
+            abandoned_after_hours: 1
     flagAccounts:
         enabled: true
         options:

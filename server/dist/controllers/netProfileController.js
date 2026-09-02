@@ -1,7 +1,8 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 
 const { logger } = require('../lib/logger');
-const { netOwnerCheck, addNetOwner, delNet } = require('../lib/sharedNetOps');
+const { netOwnerCheck, delNet } = require('../lib/sharedNetOps');
+const mongoose = require('mongoose');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
 const UserProfile = require('../models/userProfile').getUserProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
@@ -10,6 +11,22 @@ const { loadProfileSchedulingSummaries } = require('../lib/scheduling/profileSum
 const { sanitizeNotes } = require('../lib/serverUtils');
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const apiError = (status, message) => Object.assign(new Error(message), { status });
+
+const requirePrimaryOwner = async (req, session = null) => {
+    const profile = await NetProfile.findById(req.params.id).session(session);
+    if (!profile) throw apiError(404, 'Net profile not found');
+    if (String(profile.owners[0]) !== String(req.user._id || req.user.id)) {
+        throw apiError(403, 'Only the primary owner may manage co-owners');
+    }
+    return profile;
+};
+
+const coOwnerResponse = user => ({ id: user._id, callSign: user.callSign, displayName: user.displayName });
+const sendCoOwnerError = (res, error) => res.status(error.status || 500).json({
+    endpointVersion: '1.0', errorMessage: error.message
+});
 const legacyFieldsForConnections = connections => {
     if (!Array.isArray(connections)) throw new Error('connections must be an array');
     if (!connections.length) return { frequency: '', mode: 'CUSTOM', modeDetails: '' };
@@ -41,6 +58,7 @@ const netProfileList = async (req, res) => {
         const summaries = await loadProfileSchedulingSummaries({ profiles });
         const netlist = profiles.map(profile => ({
             ...profile.toObject(),
+            isPrimaryOwner: String(profile.owners[0]) === String(req.user._id || req.user.id),
             scheduling: summaries.get(String(profile._id))
         }));
         return res.json({ endpointVersion: '1.0', netlist });
@@ -156,32 +174,83 @@ const netProfileDelete = async (req, res) => {
 };
 
 const netProfileAddNetOwner = async (req, res) => {
-    const newOwnerEmail = req.body.email && req.body.email.trim();
-    let result;
-    let netProfileDoc;
-
+    const identifier = String(req.body.identifier || req.body.email || '').trim();
+    const session = await mongoose.connection.startSession();
     try {
-        if (({ npresult: netProfileDoc } = await netOwnerCheck({ req }))) {
-            result = await addNetOwner({
-                newOwnerEmail,
-                netProfiles: netProfileDoc,
-                flexOpts: res.locals.flexOpts
-            });
+        if (!identifier || identifier.length > 254) throw apiError(400, 'Enter a valid callsign or email address');
+        let added;
+        await session.withTransaction(async () => {
+            const profile = await requirePrimaryOwner(req, session);
+            if (profile.owners.length >= res.locals.flexOpts.maxOwnersPerNet) {
+                throw apiError(409, 'This net already has the maximum number of owners');
+            }
+            const exact = new RegExp(`^${escapeRegExp(identifier)}$`, 'i');
+            const target = await UserProfile.findOne({ $or: [{ callSign: exact }, { email: exact }] }).session(session);
+            if (!target || !target.callSign) throw apiError(404, 'No registered operator found for that callsign or email');
+            if (profile.owners.some(owner => String(owner) === String(target._id))) {
+                throw apiError(409, 'That operator is already an owner of this net');
+            }
+            const maxNets = target.flexOptions?.maxNetsPerUser || res.locals.flexOpts.maxNetsPerUser;
+            if (target.myNets.length >= maxNets) throw apiError(409, 'That operator is already at their net-profile limit');
 
-            res.status(200).json({
-                endpointVersion: '1.0',
-                message: result
-            });
-            logger.info('NETPROFILE_Controller: ' + result);
-        } else {
-            throw new Error('requestor must have net owner privileges');
-        }
+            profile.owners.push(target._id);
+            await profile.save({ session });
+            await UserProfile.updateOne(
+                { _id: target._id },
+                { $addToSet: { myNets: profile._id } },
+                { session }
+            );
+            added = coOwnerResponse(target);
+        });
+        return res.status(200).json({ endpointVersion: '1.0', coOwner: added });
     } catch (err) {
         logger.error(err.stack);
-        res.status(500).json({
-            endpointVersion: '1.0',
-            errorMessage: err.message
+        return sendCoOwnerError(res, err);
+    } finally {
+        await session.endSession();
+    }
+};
+
+const netProfileCoOwners = async (req, res) => {
+    try {
+        const profile = await requirePrimaryOwner(req);
+        await profile.populate({ path: 'owners', select: 'callSign displayName' });
+        return res.json({ endpointVersion: '1.0', coOwners: profile.owners.slice(1).map(coOwnerResponse) });
+    } catch (err) {
+        logger.error(err.stack);
+        return sendCoOwnerError(res, err);
+    }
+};
+
+const netProfileRemoveCoOwner = async (req, res) => {
+    const session = await mongoose.connection.startSession();
+    try {
+        let removed;
+        await session.withTransaction(async () => {
+            const profile = await requirePrimaryOwner(req, session);
+            const targetId = String(req.params.userId || '');
+            if (String(profile.owners[0]) === targetId) throw apiError(400, 'The primary owner cannot be removed');
+            if (!profile.owners.some(owner => String(owner) === targetId)) {
+                throw apiError(404, 'Co-owner not found on this net');
+            }
+            const target = await UserProfile.findById(targetId).session(session);
+            if (!target) throw apiError(404, 'Co-owner account not found');
+
+            profile.owners.pull(target._id);
+            await profile.save({ session });
+            await UserProfile.updateOne(
+                { _id: target._id },
+                { $pull: { myNets: profile._id } },
+                { session }
+            );
+            removed = coOwnerResponse(target);
         });
+        return res.json({ endpointVersion: '1.0', coOwner: removed });
+    } catch (err) {
+        logger.error(err.stack);
+        return sendCoOwnerError(res, err);
+    } finally {
+        await session.endSession();
     }
 };
 
@@ -249,6 +318,8 @@ const netProfileCreatePost = async (req, res) => {
 
 module.exports = {
     netProfileAddNetOwner,
+    netProfileCoOwners,
+    netProfileRemoveCoOwner,
     netProfileList,
     netProfileDetails,
     netProfileCreatePost,

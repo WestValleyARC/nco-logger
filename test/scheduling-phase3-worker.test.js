@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 
 const {
     HORIZON_DAYS,
+    NOTIFICATION_LEAD_MS,
     STALE_CLAIM_MS,
     materializeSchedule,
     materializeEnabledSchedules,
@@ -11,7 +12,8 @@ const {
     runSchedulingPass,
     startSchedulingWorker
 } = require('../server/dist/lib/scheduling/worker');
-const { NetAnnounceStart } = require('../server/dist/lib/userNotification');
+const { NetAnnounceStart, NetScheduledReminder } = require('../server/dist/lib/userNotification');
+const { PREPARATION_WINDOW_MS, GRACE_PERIOD_MS } = require('../server/dist/lib/scheduling/lifecycle');
 
 const NOW = new Date('2030-01-01T12:00:00.000Z');
 
@@ -168,10 +170,10 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
             return { ...data, occurrence };
         };
 
-        await t.test('notification selection honors 30-minute, early, late, and past-due rules', async () => {
-            const due = await notificationData({ minutesFromNow: 30 });
-            const early = await notificationData({ minutesFromNow: 31 });
-            const late = await notificationData({ minutesFromNow: 10 });
+        await t.test('notification selection honors 10-minute, early, late, and past-due rules', async () => {
+            const due = await notificationData({ minutesFromNow: 10 });
+            const early = await notificationData({ minutesFromNow: 11 });
+            const late = await notificationData({ minutesFromNow: 1 });
             const past = await notificationData({ minutesFromNow: -1 });
             const sentIds = [];
             await processDueNotifications({
@@ -186,11 +188,18 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
             assert.equal((await ScheduledOccurrence.findById(due.occurrence._id)).notification.state, 'sent');
             assert.equal((await ScheduledOccurrence.findById(early.occurrence._id)).notification.state, 'pending');
             assert.equal((await ScheduledOccurrence.findById(past.occurrence._id)).notification.state, 'failed');
+            const sentCount = sentIds.length;
+            await processDueNotifications({
+                now: NOW,
+                db,
+                sendNotification: async ({ occurrence }) => sentIds.push(occurrence._id.toString())
+            });
+            assert.equal(sentIds.length, sentCount, 'a later worker process must not resend persisted notifications');
         });
 
         await t.test('sent notifications cannot resend and failed sends record terminal failure', async () => {
-            const alreadySent = await notificationData({ minutesFromNow: 20, state: 'sent' });
-            const failure = await notificationData({ minutesFromNow: 20 });
+            const alreadySent = await notificationData({ minutesFromNow: 5, state: 'sent' });
+            const failure = await notificationData({ minutesFromNow: 5 });
             let calls = 0;
             await processDueNotifications({
                 now: NOW,
@@ -209,7 +218,7 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
         });
 
         await t.test('atomic claims prevent duplicate concurrent sends', async () => {
-            const data = await notificationData({ minutesFromNow: 20 });
+            const data = await notificationData({ minutesFromNow: 5 });
             let sends = 0;
             const sendNotification = async () => {
                 sends++;
@@ -238,7 +247,7 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
         });
 
         await t.test('an override effective startAt controls notification timing', async () => {
-            const data = await notificationData({ minutesFromNow: 20, isOverride: true });
+            const data = await notificationData({ minutesFromNow: 5, isOverride: true });
             let sends = 0;
             await processDueNotifications({ now: NOW, db, sendNotification: async () => sends++ });
             assert.equal(sends, 1);
@@ -253,6 +262,25 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
             await runSchedulingPass({ now: NOW, db, sendNotification });
             assert.equal(await ScheduledOccurrence.countDocuments({ schedule: data.schedule._id }), count);
             assert.equal(typeof NetAnnounceStart, 'function');
+        });
+
+        await t.test('reminder wording and independent lifecycle windows remain accurate', () => {
+            const reminder = new NetScheduledReminder({
+                netProfileDoc: { _id: new mongoose.Types.ObjectId(), title: 'Timing Test Net' },
+                startAt: new Date(NOW.getTime() + NOTIFICATION_LEAD_MS),
+                timezone: 'UTC'
+            });
+            assert.match(reminder.body.text, /approximately 10 minutes/);
+            assert.doesNotMatch(reminder.body.text, /approximately 30 minutes/);
+            assert.equal(NOTIFICATION_LEAD_MS, 10 * 60 * 1000);
+            assert.equal(PREPARATION_WINDOW_MS, 30 * 60 * 1000);
+            assert.equal(GRACE_PERIOD_MS, 30 * 60 * 1000);
+            const manual = new NetAnnounceStart({
+                netControl: 'N0CALL',
+                netProfileDoc: { title: 'Manual Test Net' },
+                liveNetDoc: { countdownTimer: 0, url: '/views/livenet/manual' }
+            });
+            assert.match(manual.body.text, /N0CALL is starting Manual Test Net now/);
         });
 
         await t.test('a worker pass failure is contained and does not crash startup', async () => {

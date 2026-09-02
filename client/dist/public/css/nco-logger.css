@@ -220,16 +220,16 @@ body.nch-moving-module { cursor: grabbing !important; user-select: none !importa
 #netcontrol-ncs-helper .nch-row.nch-lurker-row:hover,
 #netcontrol-ncs-helper .nch-row.nch-lurker-row:focus-within,
 #netcontrol-ncs-helper .nch-row.nch-lurker-row.nch-actions-pinned { background: #303941; border-color: #638a92; }
-#netcontrol-ncs-helper .nch-row.nch-highlighted:hover,
+#netcontrol-ncs-helper .nch-row.nch-highlighted:hover { color: #fff8de; background: #5a4d22; border-color: #d1ae48; }
 #netcontrol-ncs-helper .nch-row.nch-highlighted:focus-within,
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned { color: #231a05; background: #eac552; border-color: #fff0a2; }
-#netcontrol-ncs-helper .nch-row.nch-highlighted:hover .nch-station,
+#netcontrol-ncs-helper .nch-row.nch-highlighted:hover .nch-station { color: #fff8de; background: #463f20; border-color: #e4c25b; }
 #netcontrol-ncs-helper .nch-row.nch-highlighted:focus-within .nch-station,
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned .nch-station { color: #231a05; background: #fff1a2; border-color: #7b631b; }
 #netcontrol-ncs-helper .nch-row.nch-highlighted:hover .nch-detail,
+#netcontrol-ncs-helper .nch-row.nch-highlighted:hover button.nch-note-preview { color: #fff3c4; }
 #netcontrol-ncs-helper .nch-row.nch-highlighted:focus-within .nch-detail,
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned .nch-detail,
-#netcontrol-ncs-helper .nch-row.nch-highlighted:hover button.nch-note-preview,
 #netcontrol-ncs-helper .nch-row.nch-highlighted:focus-within button.nch-note-preview,
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned button.nch-note-preview { color: #211805; }
 #netcontrol-ncs-helper .nch-row.nch-selected-next { border-color: #ff3fbf; box-shadow: 0 0 0 2px rgba(255, 63, 191, .82), 0 0 14px rgba(255, 63, 191, .32); }

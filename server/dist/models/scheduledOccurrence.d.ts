@@ -2,6 +2,7 @@ import { Connection, Document, Model, Schema } from 'mongoose';
 
 export type OccurrenceStatus = 'scheduled' | 'preparing' | 'live' | 'completed' | 'cancelled' | 'missed';
 export type NotificationState = 'pending' | 'claimed' | 'sent' | 'failed';
+export type CancellationOrigin = 'individual' | 'schedule-disabled' | 'preparation';
 
 export interface ScheduledOccurrence extends Document {
     schedule: Schema.Types.ObjectId;
@@ -18,6 +19,7 @@ export interface ScheduledOccurrence extends Document {
     cancelledAt?: Date | null;
     missedAt?: Date | null;
     cancelledBy?: Schema.Types.ObjectId;
+    cancellationOrigin?: CancellationOrigin;
     notification: {
         state: NotificationState;
         claimedAt?: Date | null;

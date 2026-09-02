@@ -249,6 +249,7 @@ test('Phase 4 scheduled LiveNet lifecycle', async t => {
                 db: mongoose.connection
             });
             assert.equal(cancelled.status, 'cancelled');
+            assert.equal(cancelled.cancellationOrigin, 'preparation');
             assert.equal(cancelled.cancelledAt.toISOString(), cancelledAt.toISOString());
             assert.equal(String(cancelled.cancelledBy), OWNER_ID.toString());
             assert.equal(await LiveNet.findById(prepared.liveNet._id), null);
