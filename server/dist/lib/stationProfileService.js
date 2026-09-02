@@ -1,7 +1,6 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 
 const mongoose = require('mongoose');
-const { qrzLookup } = require('./serverUtils');
 const { getStationNameOverride } = require('../models/stationNameOverride');
 
 const PROFILE_FIELDS = ['name', 'location'];
@@ -148,8 +147,9 @@ async function applyManualOverrides(callSign, lookup, db = mongoose.connection) 
     };
 }
 
-async function lookupStationProfile(callSign, flexOpts, db = mongoose.connection, qrzLookupFn = qrzLookup) {
-    const lookup = await qrzLookupFn(normalizeCall(callSign), flexOpts, db);
+async function lookupStationProfile(callSign, flexOpts, db = mongoose.connection, qrzLookupFn) {
+    const lookupFn = qrzLookupFn || require('./serverUtils').qrzLookup;
+    const lookup = await lookupFn(normalizeCall(callSign), flexOpts, db);
     return applyManualOverrides(callSign, lookup, db);
 }
 

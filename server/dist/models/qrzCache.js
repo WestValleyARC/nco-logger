@@ -6,6 +6,7 @@ const uniqueValidator = require('mongoose-unique-validator');
 
 const qrzCacheSchema = new Schema(
     {
+        firstName: String,
         displayName: String,
         localNickname: {
             type: String,

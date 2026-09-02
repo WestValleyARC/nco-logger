@@ -54,9 +54,10 @@ test('successful authentication and lookup safely encode special characters', as
 
 test('cache hit avoids QRZ network calls', async t => {
     const get = t.mock.method(axios, 'get', async () => { throw new Error('should not run'); });
-    const records = new Map([['W1ABC', { callSign: 'W1ABC', displayName: 'Alex Smith', location: 'Phoenix, AZ', nameFormatVersion: 2, updatedAt: new Date(), geo: { coordinates: [-112.1, 33.4] } }]]);
+    const records = new Map([['W1ABC', { callSign: 'W1ABC', firstName: 'Alex', displayName: 'Alex Smith', location: 'Phoenix, AZ', nameFormatVersion: 3, updatedAt: new Date(), geo: { coordinates: [-112.1, 33.4] } }]]);
     const result = await qrzLookup('W1ABC', options, fakeDb(records));
     assert.equal(result.result.displayName, 'Alex Smith');
+    assert.equal(result.result.firstName, 'Alex');
     assert.equal(result.outcome, 'success-cache');
     assert.equal(get.mock.callCount(), 0);
 });
@@ -160,6 +161,23 @@ test('QRZ preferred first name and last name exclude middle initials', async t =
     }));
     const result = await qrzLookup('K7NNT', options, fakeDb(new Map()));
     assert.equal(result.result.displayName, 'Randy Taylor');
+    assert.equal(result.result.firstName, 'Randall');
+});
+
+test('QRZ nickname remains separate from the genuine first-name field', async t => {
+    let call = 0;
+    const records = new Map();
+    t.mock.method(axios, 'get', async () => ({
+        data: call++ === 0 ? authXml() : lookupXml(
+            '<Callsign><fname>Paula</fname><name>Smith</name><nickname>Full-Duplex</nickname>' +
+            '<country>United States</country></Callsign><Session><Key>SESSION</Key><Count>2</Count></Session>'
+        )
+    }));
+    const result = await qrzLookup('NS2E', options, fakeDb(records));
+    assert.equal(result.result.displayName, 'Full-Duplex Smith');
+    assert.equal(result.result.firstName, 'Paula');
+    assert.equal(records.get('NS2E').firstName, 'Paula');
+    assert.equal(records.get('NS2E').displayName, 'Full-Duplex Smith');
 });
 
 test('rejected credentials enter a bounded cooldown instead of repeatedly authenticating', async t => {
