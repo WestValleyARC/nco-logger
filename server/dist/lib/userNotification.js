@@ -201,17 +201,18 @@ class ContactFormMessage extends EmailBase {
 }
 
 class NetInactivityAutoClose extends EmailBase {
-    constructor({ title }) {
+    constructor({ title, abandonmentMinutes = 30 }) {
+        const duration = `${abandonmentMinutes} ${Number(abandonmentMinutes) === 1 ? 'minute' : 'minutes'}`;
         const subject = `NCO Logger automatically closed ${title}`;
         const text = [
             `${title} was automatically closed.`,
-            'NCO Logger did not detect an active Net Control Operator for approximately 1 hour.',
+            `NCO Logger did not detect an active Net Control Operator or present profile owner/co-owner for approximately ${duration}.`,
             'The closure prevents an abandoned net from remaining ON AIR.',
             'You can start the net again if needed.'
         ].join('\n\n');
         const html = [
             `<p><strong>${ejs.escapeXML(title)}</strong> was automatically closed.</p>`,
-            '<p>NCO Logger did not detect an active Net Control Operator for approximately 1 hour.</p>',
+            `<p>NCO Logger did not detect an active Net Control Operator or present profile owner/co-owner for approximately ${ejs.escapeXML(duration)}.</p>`,
             '<p>The closure prevents an abandoned net from remaining ON AIR.</p>',
             '<p>You can start the net again if needed.</p>'
         ].join('');

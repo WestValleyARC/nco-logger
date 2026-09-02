@@ -231,6 +231,10 @@ credentials and generated secrets continue to come from `.env`.
 Health endpoints are available at `/healthz` (Node process) and `/readyz`
 (Node plus MongoDB connectivity).
 
+Set `NCO_ABANDONMENT_MINUTES` to a positive number of minutes to control how
+long a non-permanent live net may remain without an active NCO or present
+profile owner/co-owner before automatic closure (default: 30).
+
 To run without Docker:
 
 ```bash

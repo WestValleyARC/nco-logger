@@ -42,6 +42,7 @@ const NetSchedule = require('./models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('./models/scheduledOccurrence').getScheduledOccurrence(null);
 const LiveNetAutoClose = require('./models/liveNetAutoClose').getLiveNetAutoClose(null);
 const { startSchedulingWorker } = require('./lib/scheduling/worker');
+const { apiNotFound } = require('./lib/apiNotFound');
 const PORT = process.env['PORT'] ?? 3000;
 const { verifyTransport } = require('./lib/userNotification');
 
@@ -214,9 +215,7 @@ app.get('/logout', (_req, res) => {
     res.redirect('/auth/logout');
 });
 
-app.use('/api', (_req, res) => {
-    res.status(404).json({ error: 'Not Found' });
-});
+app.use('/api', apiNotFound);
 
 app.use((req, res) => {
     if (!res.headersSent) return res.status(404).render('404', populate(req, res, { VIEW: '404' }));

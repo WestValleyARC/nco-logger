@@ -37,6 +37,9 @@ chat_rate_limit_window_ms: 10000
 chat_upload_dir: '/app/data/chat-uploads'
 chat_max_upload_mb: 5
 
+# Continuous absence allowed before a non-permanent live net is automatically closed.
+nco_abandonment_minutes: 30
+
 # --- Secrets below are intentionally NOT stored here. ---
 # Supplied via environment variables (see .env.example):
 #   MONGODB_URI, COOKIE_SESSION_KEY, MAGIC_LINK_SECRET, BASE_URL

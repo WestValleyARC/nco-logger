@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const sanitizeHtml = require('sanitize-html');
 const { conf } = require('./configLib');
 const { logger } = require('./logger');
 const { getLiveNet } = require('../models/liveNet');
@@ -12,6 +11,8 @@ const { getStationInteraction } = require('../models/stationInteraction');
 const { getChatMessage } = require('../models/chatMessage');
 const { getChatBan } = require('../models/chatBan');
 const { getUserProfile } = require('../models/userProfile');
+const { getQrzCache } = require('../models/qrzCache');
+const stationProfiles = require('./stationProfileService');
 
 const MAX_MESSAGE_CHARS = Math.min(Number(conf.chat_max_message_chars) || 2000, 2000);
 const RATE_LIMIT_COUNT = Number(conf.chat_rate_limit_count) || 12;
@@ -46,6 +47,19 @@ const DIRECT_SCOPE_QUERY = Object.freeze({
 const isObjectId = value => mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === value;
 
 const participantId = value => (value?._id || value)?.toString?.() || '';
+const chatFirstName = value => String(value || '').trim().split(/\s+/)[0] || '';
+const chatDisplayName = ({ manualName, qrzFirstName, accountFirstName, callSign }) =>
+    chatFirstName(manualName) || chatFirstName(qrzFirstName) || chatFirstName(accountFirstName)
+    || String(callSign || '').trim().toUpperCase();
+const resolveChatDisplayName = async ({ callSign, accountFirstName, db = mongoose.connection }) => {
+    const normalizedCall = String(callSign || '').trim().toUpperCase();
+    const [profile, qrz] = await Promise.all([
+        stationProfiles.getProfileState(normalizedCall, {}, db),
+        getQrzCache(db).findOne({ callSign: normalizedCall }).select('firstName').lean()
+    ]);
+    const manualName = profile.fields.name.origin === 'manual' ? profile.fields.name.value : '';
+    return chatDisplayName({ manualName, qrzFirstName: qrz?.firstName, accountFirstName, callSign: normalizedCall });
+};
 // A recipient always makes a message private, including legacy or malformed
 // records whose explicit scope is missing. Fail closed rather than exposing a
 // private record through public history, SSE, moderation, or exports.
@@ -256,7 +270,7 @@ const listRecipientsForAccess = async ({ access, currentUserId, ignoredUserIds, 
 
 const cleanMessage = value => {
     if (typeof value !== 'string') return '';
-    return sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} }).replace(/\r\n?/g, '\n').trim();
+    return value.replace(/\r\n?/g, '\n').trim();
 };
 
 const rateLimitAllows = (userId, now = Date.now()) => {
@@ -446,12 +460,14 @@ const createMessage = async (req, res) => {
             senderUserId: userId, recipientUserId: participantId(peer?.userProfile)
         });
         if (!rateLimitAllows(userId)) return sendRateLimit(res);
+        const callSign = req.user.callSign.trim().toUpperCase();
+        const displayName = await resolveChatDisplayName({ callSign });
         const message = await ChatMessage.create({
             liveNet: access.liveNet._id,
             netProfile: req.params.id,
             userProfile: req.user._id,
-            callSign: req.user.callSign,
-            displayName: req.user.displayName || req.user.callSign,
+            callSign,
+            displayName,
             scope,
             recipientUserProfile: peer?.userProfile || null,
             text,
@@ -535,6 +551,8 @@ const uploadImage = async (req, res) => {
             recipientUserId: participantId(peer?.userProfile)
         });
         if (!rateLimitAllows(userId)) return sendRateLimit(res);
+        const callSign = req.user.callSign.trim().toUpperCase();
+        const displayName = await resolveChatDisplayName({ callSign });
 
         await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
         storageName = `${crypto.randomUUID()}.${detected.extension}`;
@@ -544,8 +562,8 @@ const uploadImage = async (req, res) => {
             liveNet: access.liveNet._id,
             netProfile: req.params.id,
             userProfile: req.user._id,
-            callSign: req.user.callSign,
-            displayName: req.user.displayName || req.user.callSign,
+            callSign,
+            displayName,
             scope,
             recipientUserProfile: peer?.userProfile || null,
             text: '',
@@ -1007,6 +1025,9 @@ module.exports = {
     PUBLIC_SCOPE_QUERY,
     DIRECT_SCOPE_QUERY,
     rateLimitAllows,
+    chatFirstName,
+    chatDisplayName,
+    resolveChatDisplayName,
     RATE_LIMIT_COUNT,
     RATE_LIMIT_WINDOW_MS
 };

@@ -262,7 +262,8 @@ const resolveLocation = async ({ lat, lon }) => {
 };
 
 const qrzResponse = (result, outcome, atQuota = false) => ({ result, atQuota, outcome });
-const QRZ_NAME_FORMAT_VERSION = 2;
+const QRZ_NAME_FORMAT_VERSION = 3;
+const qrzFirstName = station => nameCase(String(station?.fname || '').trim().split(/\s+/)[0] || '');
 const qrzDisplayName = station => {
     const preferredFirst = String(station?.nickname || station?.fname || '').trim().split(/\s+/)[0] || '';
     const lastName = String(station?.name || '').trim();
@@ -301,7 +302,8 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
             Date.now() - new Date(cached.updatedAt).getTime() < ttlMs) {
             logger.info(`qrzLookup(${callSign}): cache hit`);
             const result = cached.toObject();
-            return qrzResponse({ callSign: result.callSign, displayName: result.displayName, location: result.location,
+            return qrzResponse({ callSign: result.callSign, firstName: result.firstName,
+                displayName: result.displayName, location: result.location,
                 photo: qrzImageUrl(result.photo), lat: result.geo?.coordinates?.[1], lon: result.geo?.coordinates?.[0] }, 'success-cache');
         }
         if (cached) await cached.deleteOne();
@@ -405,6 +407,7 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
                 logger.warn(`qrzLookup(${callSign}): QRZ returned an error`);
                 return qrzResponse(null, 'service-error');
             }
+            const firstName = qrzFirstName(station);
             const displayName = qrzDisplayName(station);
             const country = String(station.country || '');
             const city = String(station.addr2 || '');
@@ -417,10 +420,11 @@ const qrzLookupInternal = async (callSign, flexOpts, db) => {
             const lat = Number(station.lat);
             const lon = Number(station.lon);
             const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);
-            const cacheRecord = { callSign, displayName, location, photo, nameFormatVersion: QRZ_NAME_FORMAT_VERSION };
+            const cacheRecord = { callSign, firstName, displayName, location, photo,
+                nameFormatVersion: QRZ_NAME_FORMAT_VERSION };
             if (hasCoordinates) cacheRecord.geo = { type: 'Point', coordinates: [lon, lat] };
             await QrzCache.findOneAndUpdate({ callSign }, cacheRecord, { upsert: true, new: true, setDefaultsOnInsert: true });
-            return qrzResponse({ callSign, displayName, location, photo,
+            return qrzResponse({ callSign, firstName, displayName, location, photo,
                 lat: hasCoordinates ? lat : undefined, lon: hasCoordinates ? lon : undefined }, 'success');
         } catch (err) {
             lastOutcome = qrzFailureOutcome(err);
@@ -483,6 +487,7 @@ module.exports = {
     resolveLocation,
     qrzLookup,
     qrzDisplayName,
+    qrzFirstName,
     sanitizeNotes,
     publicEndpoints,
     hoursToMilliseconds,

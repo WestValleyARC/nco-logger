@@ -4437,6 +4437,8 @@
 
     .landing-page .landing-live-panel .net-card {
         grid-template-columns: 3.1rem minmax(0, 1fr) auto;
+        min-height: 4.45rem;
+        height: auto;
     }
 
     .landing-page .scheduled-net-card {
