@@ -75,6 +75,7 @@ export declare class FavoriteInsert extends BaseInsert<FavoritesReactiveStore> i
     private _npid;
     private fc;
     protected getIcon(): ReturnType<typeof getIconSvg>;
+    protected renderIcon(): void;
     protected toggleState: () => void;
     set npid(npid: NPID);
     get npid(): Readonly<NPID> | null;

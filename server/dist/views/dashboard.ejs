@@ -100,9 +100,9 @@
                 </div>
                 <div class="landing-live-net-status">
                   <% if (user.isLoggedIn) { %>
-                  <button type="button" class="landing-net-favorite favicon bi bi-star" aria-label="Toggle favorite"></button>
+                  <button type="button" class="landing-net-favorite favicon bi bi-heart" aria-label="Add to Favorites" title="Add to Favorites"></button>
                   <% } else { %>
-                  <button type="button" class="d-none landing-net-favorite favicon bi bi-star" aria-hidden="true" tabindex="-1"></button>
+                  <button type="button" class="d-none landing-net-favorite favicon bi bi-heart" aria-hidden="true" tabindex="-1"></button>
                   <% } %>
                   <div class="landing-live-net-state">
                     <span class="landing-on-air" id="onairStatus" hidden>ON AIR</span>

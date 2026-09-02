@@ -12,6 +12,9 @@ const dashboard = read('server/dist/views/dashboard.ejs');
 const navbar = read('server/dist/views/partials/navbar.ejs');
 const footer = read('server/dist/views/partials/footer.ejs');
 const dashboardClient = read('client/dist/public/js/byView/dashboard/main.js');
+const favoriteWidgets = read('client/src/public/js/lib/widgets.ts');
+const legacyFavoriteClient = read('client/dist/public/js/lib/old__clientUtils.js');
+const waitingPage = read('server/dist/views/netNotRunning.ejs');
 const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
 const heroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-night.png');
@@ -98,9 +101,18 @@ test('live net listings expose authoritative grouped check-in counts and render 
 test('landing-only navigation and footer expose approved destinations without fake WVARC links', () => {
     assert.match(dashboard, /include\('\.\/partials\/navbar', \{ user: user, landing: true \}\)/);
     assert.match(navbar, />\s*Live Nets\s*</);
+    assert.match(navbar, /href="\/views\/livenets"[^>]*>[\s\S]*?Live Nets/);
+    assert.match(navbar, /if \(user\.isLoggedIn\)[\s\S]*?href="\/views\/favorites"/);
     assert.match(navbar, />\s*Start a Net\s*</);
     assert.match(navbar, />\s*Guide\s*</);
     assert.match(navbar, />\s*Sign in\s*</);
+    assert.match(dashboard, /favicon bi bi-heart/);
+    assert.doesNotMatch(dashboard, /favicon bi bi-star/);
+    assert.match(waitingPage, /favicon[^>]*bi-heart|bi-heart[^>]*favicon/);
+    assert.match(favoriteWidgets, /bi-heart-fill.*bi-heart/);
+    assert.match(favoriteWidgets, /Remove from Favorites.*Add to Favorites/);
+    assert.match(legacyFavoriteClient, /bi-heart-fill/);
+    assert.doesNotMatch(legacyFavoriteClient, /bi-star-fill/);
     assert.match(footer, /mailto:logger@westvalleyarc\.com/);
     assert.match(footer, /bi bi-envelope/);
     assert.match(footer, /\/views\/privacypolicy/);

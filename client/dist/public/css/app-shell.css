@@ -1198,7 +1198,7 @@
 
 .waiting-favorite .favicon:hover,
 .waiting-favorite .favicon:focus-visible,
-.waiting-favorite .bi-star-fill {
+.waiting-favorite .bi-heart-fill {
     color: #ff8500;
 }
 
@@ -4047,7 +4047,7 @@
     outline: 1px solid rgba(255, 133, 0, 0.55);
 }
 
-.landing-net-favorite.bi-star-fill {
+.landing-net-favorite.bi-heart-fill {
     color: #ff8500;
 }
 

@@ -369,7 +369,13 @@ export class FavoriteInsert extends BaseInsert {
     _npid = null;
     fc = new FavoriteClient();
     getIcon() {
-        return getIconSvg(this.state ? 'bi-star-fill' : 'bi-star');
+        return getIconSvg(this.state ? 'bi-heart-fill' : 'bi-heart');
+    }
+    renderIcon() {
+        super.renderIcon();
+        const label = this.state ? 'Remove from Favorites' : 'Add to Favorites';
+        this.setAttribute('aria-label', label);
+        this.title = label;
     }
     toggleState = () => {
         this.store?.delayServerDataIngest();

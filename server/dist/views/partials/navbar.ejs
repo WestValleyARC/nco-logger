@@ -17,7 +17,7 @@
     <div class="collapse navbar-collapse" id="navmenu">
       <ul class="navbar-nav ms-auto" role="menubar">
         <li class="nav-item" role="none">
-          <a href="<%= landingNavigation ? '#live-nets' : '/views/dashboard' %>" class="nav-link" role="menuitem" tabindex="0">
+          <a href="/views/livenets" class="nav-link" role="menuitem" tabindex="0">
             Live Nets
           </a>
         </li>
@@ -34,7 +34,7 @@
           </a>
         </li>
         <% } %>
-        <% if (user.isLoggedIn && !landingNavigation) { %>
+        <% if (user.isLoggedIn) { %>
         <li class="nav-item" role="none">
           <a href="/views/favorites" class="nav-link" role="menuitem" tabindex="0">
             Favorites

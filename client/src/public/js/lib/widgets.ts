@@ -499,7 +499,14 @@ export class FavoriteInsert extends BaseInsert<FavoritesReactiveStore> implement
     private fc = new FavoriteClient();
 
     protected getIcon(): ReturnType<typeof getIconSvg> {
-        return getIconSvg(this.state ? 'bi-star-fill' : 'bi-star');
+        return getIconSvg(this.state ? 'bi-heart-fill' : 'bi-heart');
+    }
+
+    protected override renderIcon(): void {
+        super.renderIcon();
+        const label = this.state ? 'Remove from Favorites' : 'Add to Favorites';
+        this.setAttribute('aria-label', label);
+        this.title = label;
     }
 
     protected toggleState = (): void => {
