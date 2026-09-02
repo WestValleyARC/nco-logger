@@ -8,6 +8,9 @@ const path = require('node:path');
 const source = fs.readFileSync(path.resolve(
     __dirname, '../client/src/public/js/byView/liveNet/ncoLogger.js'
 ), 'utf8');
+const liveNetMain = fs.readFileSync(path.resolve(
+    __dirname, '../client/src/public/js/byView/liveNet/main.ts'
+), 'utf8');
 
 test('browser QRZ profile and photo lookup always uses the authenticated application server', () => {
     assert.match(source, /body: JSON\.stringify\(\{ action: "qrzProfile", callSign: call \}\)/);
@@ -15,6 +18,11 @@ test('browser QRZ profile and photo lookup always uses the authenticated applica
     assert.doesNotMatch(source, /fetch\("https:\/\/xmldata\.qrz\.com/);
     assert.doesNotMatch(source, /new DOMParser\(\)/);
     assert.doesNotMatch(source, /async function qrzLogin/);
+});
+
+test('live-net logger imports inherit the deployed application asset version', () => {
+    assert.match(liveNetMain, /new URL\(import\.meta\.url\)\.searchParams\.get\('v'\)/);
+    assert.match(liveNetMain, /import\(`\.\/ncoLogger\.js\?v=\$\{LOGGER_ASSET_VERSION\}`\)/);
 });
 
 test('legacy personal QRZ credentials are removed from browser storage', () => {

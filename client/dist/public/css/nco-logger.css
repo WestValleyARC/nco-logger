@@ -956,3 +956,13 @@ hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send {
 #netcontrol-ncs-helper .nch-count-card small {
   color: #c7dce2;
 }
+
+/* Live Logger header brand logo */
+#netcontrol-ncs-helper .nch-helper-logo {
+  display: block;
+  width: auto;
+  height: 34px;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
+}

@@ -1,5 +1,5 @@
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
-import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
+import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, isQrzNameFresh, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
 import { formatConnectionLines } from "../../lib/publicSchedule.js";
 (() => {
     "use strict";
@@ -66,6 +66,17 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         },
         collapsed: {}
     });
+    const VIEWER_DEFAULT_MODULE_LAYOUT = Object.freeze({
+        gridVersion: LAYOUT_GRID_VERSION,
+        items: {
+            lurkers: { x: 0, y: 0, w: 12, h: 4 },
+            controls: { x: 10, y: 0, w: 4, h: 4 },
+            checkedOut: { x: 12, y: 0, w: 12, h: 4 },
+            chat: { x: 0, y: 0, w: 12, h: 20 },
+            active: { x: 12, y: 0, w: 12, h: 20 }
+        },
+        collapsed: { lurkers: true, checkedOut: true }
+    });
     const DEFAULT_AVATAR = "/img/nco-logger-default-avatar.svg";
     const npid = location.pathname.split("/")[3] || "";
     if (!/^[0-9a-f]{24}$/i.test(npid))
@@ -83,6 +94,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     let latestNetFrequency = "";
     let latestNetConnections = [];
     let currentUserRole = "netuser";
+    let defaultModuleLayoutPending = false;
     let local = {
         order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
         hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {},
@@ -101,6 +113,12 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     let qrzLookupRunning = false;
     const qrzLookupQueue = [];
     const qrzAvatarRetryAt = new Map();
+    const qrzQueueDecisions = new Map();
+    const qrzQueueStats = {
+        queueInvocations: 0, processorInvocations: 0, dequeued: 0, lookupEntries: 0,
+        fetchAttempts: 0, lastDequeuedCall: "", lastLookupCall: "", lastResponseStatus: 0,
+        lastQrzStatus: "", lastFirstNamePresent: false, lastLookupError: "", lastProcessorError: ""
+    };
     const busyCalls = new Set();
     const rowPulses = new Map();
     const hiddenAwayCalls = new Set();
@@ -580,24 +598,34 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     async function lookupQrz(callSign, options = {}) {
         const { silent = false } = options;
         const call = normalizeCall(callSign || panel?.querySelector("[data-role='callsign']")?.value);
+        qrzQueueStats.lookupEntries += 1;
+        qrzQueueStats.lastLookupCall = call;
+        qrzQueueStats.lastResponseStatus = 0;
+        qrzQueueStats.lastQrzStatus = "";
+        qrzQueueStats.lastFirstNamePresent = false;
+        qrzQueueStats.lastLookupError = "";
         if (!call)
             return setStatus("Enter a callsign first.", "error");
         if (!silent)
             setStatus(`Looking up ${call} on QRZ…`, "working");
         let qrzStatus = "network-failure";
         try {
+            qrzQueueStats.fetchAttempts += 1;
             const response = await fetch(`/api/nco-logger/${npid}`, {
                 method: "POST",
                 credentials: "same-origin",
                 headers: { "Content-Type": "application/json", Accept: "application/json" },
                 body: JSON.stringify({ action: "qrzProfile", callSign: call })
             });
+            qrzQueueStats.lastResponseStatus = response.status;
             const data = await response.json().catch(() => ({}));
             if (!response.ok)
                 throw new Error(data.errorMessage || `Server QRZ lookup failed (${response.status}).`);
             const result = data.message || {};
             const profile = result.profile;
             qrzStatus = String(result.qrzStatus || "service-error");
+            qrzQueueStats.lastQrzStatus = qrzStatus;
+            qrzQueueStats.lastFirstNamePresent = Boolean(String(profile?.firstName || "").trim());
             if (!profile || typeof profile !== "object")
                 throw new Error(`Server QRZ outcome: ${qrzStatus}.`);
             const location = formatLocation(profile.location);
@@ -616,6 +644,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                 qrzPhoto: retainedPhoto,
                 qrzPhotoChecked: Boolean(retainedPhoto || definitiveNoPhoto),
                 qrzCheckedAt: Date.now(),
+                qrzPhotoOutcome: qrzStatus,
                 qrzNameVersion: QRZ_NAME_VERSION
             };
             storageSet();
@@ -632,6 +661,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             return { success: true, outcome: qrzStatus, photo };
         }
         catch (error) {
+            qrzQueueStats.lastLookupError = error instanceof Error ? error.message : String(error);
             if (!silent)
                 setStatus(`QRZ lookup failed for ${call}: ${error.message || String(error)}`, "error");
             return { success: false, outcome: qrzStatus, photo: "" };
@@ -652,7 +682,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const loadStationProfile = callSign => stationProfileRequest(callSign, "stationProfile");
     const saveStationProfile = (callSign, fields) => stationProfileRequest(callSign, "stationProfileUpdate", fields);
     function queueMissingQrzPhotos() {
-        const staleBefore = Date.now() - 24 * 60 * 60 * 1000;
+        qrzQueueStats.queueInvocations += 1;
         const priority = station => {
             if (normalizeCall(station.callSign) === selfCall())
                 return 0;
@@ -671,38 +701,52 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         [...latestStations].sort((left, right) => priority(left) - priority(right)).forEach(station => {
             const call = normalizeCall(station.callSign);
             const saved = local.details[call] || {};
-            const hasPhoto = Boolean(safeImageUrl(saved.qrzPhoto));
-            const definitive = hasPhoto || isDefinitiveNoPhoto(String(saved.qrzPhotoOutcome || ""), false);
-            const isFresh = saved.qrzNameVersion === QRZ_NAME_VERSION && saved.qrzPhotoChecked && definitive &&
-                Number(saved.qrzCheckedAt || 0) > staleBefore;
+            const isFresh = isQrzNameFresh(String(saved.qrzPhotoOutcome || ""), saved.qrzNameVersion, QRZ_NAME_VERSION, saved.qrzCheckedAt, Date.now());
             const retryAt = Math.max(Number(saved.qrzPhotoRetryAt || 0), Number(qrzAvatarRetryAt.get(call) || 0));
-            if (!call || isFresh || retryAt > Date.now() || qrzLookupQueue.includes(call))
+            const retryBlocked = retryAt > Date.now();
+            const alreadyQueued = qrzLookupQueue.includes(call);
+            const rejectionReason = !call ? "invalid-callsign" : isFresh ? "name-fresh"
+                : retryBlocked ? "retry-blocked" : alreadyQueued ? "already-queued" : "queued";
+            setBoundedCache(qrzQueueDecisions, call || "(invalid)", {
+                rejectionReason, isFresh, retryAt, retryBlocked, checkedAt: Number(saved.qrzCheckedAt || 0),
+                nameVersion: saved.qrzNameVersion, outcome: String(saved.qrzPhotoOutcome || ""), observedAt: Date.now()
+            }, 32);
+            if (!call || isFresh || retryBlocked || alreadyQueued)
                 return;
             qrzLookupQueue.push(call);
         });
         processQrzLookupQueue();
     }
     async function processQrzLookupQueue() {
+        qrzQueueStats.processorInvocations += 1;
         if (qrzLookupRunning || !qrzLookupQueue.length)
             return;
         qrzLookupRunning = true;
-        while (qrzLookupQueue.length) {
-            const call = qrzLookupQueue.shift();
-            const result = await lookupQrz(call, { silent: true });
-            const retryAt = avatarRetryAt(result.outcome, Boolean(result.photo));
-            const definitiveNoPhoto = isDefinitiveNoPhoto(result.outcome, Boolean(result.photo));
-            setBoundedCache(qrzAvatarRetryAt, call, retryAt);
-            const saved = local.details[call] || {};
-            local.details[call] = {
-                ...saved,
-                qrzPhoto: definitiveNoPhoto && !result.photo ? "" : saved.qrzPhoto,
-                qrzPhotoChecked: Boolean(saved.qrzPhotoChecked || definitiveNoPhoto),
-                qrzCheckedAt: Number(saved.qrzCheckedAt || Date.now()),
-                qrzPhotoRetryAt: retryAt,
-                qrzPhotoOutcome: result.outcome
-            };
-            storageSet();
-            await new Promise(resolve => window.setTimeout(resolve, 250));
+        try {
+            while (qrzLookupQueue.length) {
+                const call = qrzLookupQueue.shift();
+                qrzQueueStats.dequeued += 1;
+                qrzQueueStats.lastDequeuedCall = call;
+                const result = await lookupQrz(call, { silent: true });
+                const retryAt = avatarRetryAt(result.outcome, Boolean(result.photo));
+                const definitiveNoPhoto = isDefinitiveNoPhoto(result.outcome, Boolean(result.photo));
+                setBoundedCache(qrzAvatarRetryAt, call, retryAt);
+                const saved = local.details[call] || {};
+                local.details[call] = {
+                    ...saved,
+                    qrzPhoto: definitiveNoPhoto && !result.photo ? "" : saved.qrzPhoto,
+                    qrzPhotoChecked: Boolean(saved.qrzPhotoChecked || definitiveNoPhoto),
+                    qrzCheckedAt: Number(saved.qrzCheckedAt || Date.now()),
+                    qrzPhotoRetryAt: retryAt,
+                    qrzPhotoOutcome: result.outcome
+                };
+                storageSet();
+                await new Promise(resolve => window.setTimeout(resolve, 250));
+            }
+        }
+        catch (error) {
+            qrzQueueStats.lastProcessorError = error instanceof Error ? error.message : String(error);
+            throw error;
         }
         qrzLookupRunning = false;
     }
@@ -1359,11 +1403,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         registerSlashBridgeHandler();
         document.dispatchEvent(new Event("nch-helper-slash-enable"));
         positionNativeChat();
-    customizeNativeChat();
-    applyDisplayPreferences();
-    renderHelperChatUi();
-    chat.dispatchEvent(new Event("nch-chat-layout-ready"));
-  }
+        customizeNativeChat();
+        applyDisplayPreferences();
+        renderHelperChatUi();
+        chat.dispatchEvent(new Event("nch-chat-layout-ready"));
+    }
     function dockNativeChat() {
         try {
             dockNativeChatUnsafe();
@@ -2757,6 +2801,16 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     function clearActionOrientationRows() {
         panel?.querySelectorAll(".nch-actions-above").forEach(row => row.classList.remove("nch-actions-above"));
     }
+    function clearPinnedStationAction(call) {
+        const normalizedCall = normalizeCall(call);
+        if (!pinnedActionCall || pinnedActionCall !== normalizedCall)
+            return false;
+        pinnedActionCall = "";
+        clearActionOrientationRows();
+        panel?.classList.remove("nch-has-pinned-actions");
+        panel?.querySelector(`[data-call='${CSS.escape(normalizedCall)}']`)?.classList.remove("nch-actions-pinned");
+        return true;
+    }
     function clearDropIndicators() {
         panel?.querySelectorAll(".nch-drop-before, .nch-drop-after").forEach(row => row.classList.remove("nch-drop-before", "nch-drop-after"));
     }
@@ -3311,12 +3365,16 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     }
     function normalizeModuleLayout(source = local.moduleLayout) {
         const candidate = source && typeof source === "object" ? source : {};
+        const fallbackLayout = currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT;
         const migratedCollapsed = {
             controls: Boolean(local.collapsedSections?.entry), chat: Boolean(local.collapsedSections?.chat),
             checkedOut: Boolean(local.collapsedSections?.checkedOut), active: Boolean(local.collapsedSections?.active),
             lurkers: Boolean(local.collapsedSections?.lurkers)
         };
-        const suppliedCollapsed = candidate.collapsed && typeof candidate.collapsed === "object" ? candidate.collapsed : migratedCollapsed;
+        const hasMigratedCollapsed = local.collapsedSections && Object.keys(local.collapsedSections).length > 0;
+        const suppliedCollapsed = candidate.collapsed && typeof candidate.collapsed === "object"
+            ? candidate.collapsed
+            : hasMigratedCollapsed ? migratedCollapsed : fallbackLayout.collapsed;
         const hasCurrentGrid = candidate.gridVersion === LAYOUT_GRID_VERSION && candidate.items && typeof candidate.items === "object";
         const hasV3Grid = candidate.gridVersion === 3 && candidate.items && typeof candidate.items === "object";
         const hasV2Grid = candidate.gridVersion === 2 && candidate.items && typeof candidate.items === "object";
@@ -3329,7 +3387,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             let y = 0;
             let rowHeight = 0;
             legacyOrder.forEach(id => {
-                const fallback = DEFAULT_MODULE_LAYOUT.items[id];
+                const fallback = fallbackLayout.items[id];
                 const legacySpan = Number(candidate.spans?.[id]);
                 const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, legacySpan ? Math.round(legacySpan * GRID_COLUMNS / LEGACY_GRID_COLUMNS) : fallback.w));
                 const h = Math.min(60, Math.max(MIN_MODULE_ROWS[id], Math.round(((Number(candidate.heights?.[id]) || (fallback.h * GRID_ROW_HEIGHT)) + GRID_GAP) / (GRID_ROW_HEIGHT + GRID_GAP))));
@@ -3346,7 +3404,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const items = {};
         const collapsed = {};
         MODULE_IDS.forEach(id => {
-            const fallback = DEFAULT_MODULE_LAYOUT.items[id];
+            const fallback = fallbackLayout.items[id];
             let supplied = migratedItems[id] || fallback;
             if (hasCurrentGrid && candidate.items[id] && typeof candidate.items[id] === "object")
                 supplied = candidate.items[id];
@@ -3468,7 +3526,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         return normalized;
     }
     function defaultModuleLayoutForMode() {
-        return canonicalizeReadOnlyTop(DEFAULT_MODULE_LAYOUT, true);
+        const defaults = currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT;
+        return canonicalizeReadOnlyTop(defaults, true);
     }
     function hasCanonicalReadOnlyTop(layout) {
         const normalized = normalizeModuleLayout(layout);
@@ -4022,6 +4081,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             if (stationAdminAction && !canManageStations()) {
                 setStatus("That station-management action is not available in this helper mode.", "warning");
                 return;
+            }
+            const stationActionRow = target.closest(".nch-row-actions, .nch-inline-actions")?.closest(".nch-row[data-call]");
+            if (stationActionRow && target.dataset.role !== "commands-help") {
+                clearPinnedStationAction(stationActionRow.dataset.call);
             }
             if (target.dataset.viewPhoto) {
                 const call = normalizeCall(target.dataset.viewPhoto);
@@ -4655,6 +4718,12 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                     avatarSources: avatarSourceCache.size,
                     resolvedAvatars: resolvedAvatarDataUrls.size,
                     avatarFailures: avatarFailureRetryAt.size
+                },
+                qrzQueue: {
+                    ...qrzQueueStats,
+                    running: qrzLookupRunning,
+                    queuedCalls: [...qrzLookupQueue],
+                    decisions: Object.fromEntries(qrzQueueDecisions)
                 }
             };
         }
@@ -4695,6 +4764,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                 noteDrafts.set(focusedNote.call, focusedNote.value);
             const previousRole = currentUserRole;
             currentUserRole = me.role || "netuser";
+            if (defaultModuleLayoutPending) {
+                local.moduleLayout = resolveGridLayout(defaultModuleLayoutForMode());
+                defaultModuleLayoutPending = false;
+                storageSet();
+            }
             const serverLoggerState = data.loggerState;
             if (serverLoggerState && Number(serverLoggerState.updated_at) > lastServerLoggerRevision) {
                 lastServerLoggerRevision = Number(serverLoggerState.updated_at);
@@ -4788,6 +4862,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             }
             return [[call, migrated]];
         }));
+        const savedModuleLayout = saved.moduleLayout && typeof saved.moduleLayout === "object" ? saved.moduleLayout : {};
+        const savedCollapsedSections = saved.collapsedSections && typeof saved.collapsedSections === "object"
+            ? saved.collapsedSections : {};
+        defaultModuleLayoutPending = Object.keys(savedModuleLayout).length === 0
+            && Object.keys(savedCollapsedSections).length === 0;
         local = {
             order: Array.isArray(saved.order) ? saved.order : [],
             checkedOutOrder: Array.isArray(saved.checkedOutOrder) ? saved.checkedOutOrder : [],
@@ -4812,7 +4891,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         }
         local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
         storeSharedProfiles();
-        storageSet();
+        if (!defaultModuleLayoutPending)
+            storageSet();
         local.hiddenCalls.forEach(call => hiddenCalls.add(call));
         await refresh();
         pollTimer = window.setInterval(() => scheduleRefresh(), POLL_MS);

@@ -18,8 +18,7 @@ base_url: 'http://localhost:3000'
 background_tasks:
     closeIdleNets:
         enabled: true
-        options:
-            abandoned_after_hours: 0.01
+        options: {}
     flagAccounts:
         enabled: true
         options:
