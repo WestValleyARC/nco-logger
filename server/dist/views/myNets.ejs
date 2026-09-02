@@ -60,58 +60,33 @@
           <form id="netprofile_form" class="app-form">
             <div class="app-field">
               <label for="input_title">Net name</label>
-              <input placeholder="Example: WVARC Weekly Net" type="text" class="form-control app-input" id="input_title" name="title" maxlength="25" minlength="4" required />
-              <small>4–25 characters</small>
+              <input placeholder="Example: WVARC Weekly Net" type="text" class="form-control app-input" id="input_title" name="title" maxlength="100" minlength="4" required />
+              <small>4–100 characters. Letters, numbers, spaces, and common symbols are supported.</small>
             </div>
 
-            <div class="app-form-grid">
-              <div class="app-field">
-                <label for="input_frequency">Frequency</label>
-                <input placeholder="MHz" type="text" class="form-control app-input" id="input_frequency" name="frequency" maxlength="20" />
-                <small>Leave blank for reflector-based nets.</small>
+            <fieldset class="app-options-fieldset connections-fieldset">
+              <div class="connections-heading">
+                <div>
+                  <legend>Connections</legend>
+                  <small>Add every frequency, node, reflector, or other method operators can use.</small>
+                </div>
+                <button type="button" class="app-button app-button-secondary app-button-compact" id="add_connection">
+                  <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                  Add Connection
+                </button>
               </div>
-
-              <div class="app-field">
-                <label for="input_mode">Mode</label>
-                <select onchange="modeHandler()" class="form-select app-input app-select" id="input_mode" name="mode">
-                  <option value="LSB">LSB</option>
-                  <option value="USB">USB</option>
-                  <option value="Reflector">Digital Reflector</option>
-                  <option value="AM">AM</option>
-                  <option value="CW">CW</option>
-                  <option value="FM">FM</option>
-                  <option value="RTTY">RTTY</option>
-                  <option value="FSQ">FSQ</option>
-                  <option value="PSK-31">PSK-31</option>
-                  <option value="FreeDV">FreeDV</option>
-                  <option value="Olivia">Olivia</option>
-                  <option value="Hell">Hellschreiber</option>
-                  <option value="JS8Call">JS8Call</option>
-                  <option value="CUSTOM">Custom</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="app-field">
-              <label for="input_modedetails">Mode details</label>
-              <input placeholder='Example: REF030C or a custom mode name' type="text" class="form-control app-input" id="input_modedetails" name="modedetails" maxlength="15" />
-            </div>
+              <div id="legacy_connection_notice" class="legacy-connection-notice" hidden></div>
+              <div id="connections_container" class="connections-list" aria-live="polite"></div>
+            </fieldset>
 
             <fieldset class="app-options-fieldset">
               <legend>Check-in behavior</legend>
               <div class="app-option-grid">
-                <label class="app-option-card" for="input_restricted_sigrep">
-                  <input class="form-check-input" type="checkbox" id="input_restricted_sigrep" name="restricted_sigrep" />
-                  <span>
-                    <strong>Restrict signal reports</strong>
-                    <small>Only Net Control can issue signal reports.</small>
-                  </span>
-                </label>
                 <label class="app-option-card" for="input_auto_in">
                   <input class="form-check-input" type="checkbox" id="input_auto_in" name="auto_in" />
                   <span>
-                    <strong>Automatic check-in</strong>
-                    <small>Monitoring stations are checked in when they arrive.</small>
+                    <strong>Automatically Check In Lurkers</strong>
+                    <small>Lurkers are checked in automatically when they arrive.</small>
                   </span>
                 </label>
               </div>
@@ -127,7 +102,7 @@
             <input type="hidden" name="npid_for_netprofile" id="input_npid_for_netprofile" />
 
             <div class="app-form-actions">
-              <button type="reset" class="app-button app-button-secondary" onclick='setNetProfileMode("new"); modeHandler()'>
+              <button type="reset" class="app-button app-button-secondary" onclick='setNetProfileMode("new")'>
                 Clear / new profile
               </button>
               <button type="submit" class="app-button app-button-primary">

@@ -7,8 +7,31 @@ const UserProfile = require('../models/userProfile').getUserProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const { loadProfileSchedulingSummaries } = require('../lib/scheduling/profileSummary');
-const titleCase = require('ap-style-title-case');
 const { sanitizeNotes } = require('../lib/serverUtils');
+
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
+const legacyFieldsForConnections = connections => {
+    if (!Array.isArray(connections)) throw new Error('connections must be an array');
+    if (!connections.length) return { frequency: '', mode: 'CUSTOM', modeDetails: '' };
+    const primary = connections[0] || {};
+    if (primary.type === 'FM') {
+        return { frequency: primary.frequency || '', mode: 'FM', modeDetails: primary.tone || '' };
+    }
+    if (primary.type === 'Other') {
+        return { frequency: '', mode: 'CUSTOM', modeDetails: String(primary.label || '').slice(0, 15) };
+    }
+    return { frequency: '', mode: 'Reflector', modeDetails: String(primary.type || '').slice(0, 15) };
+};
+
+const validateLegacyOperatingFields = ({ frequency, mode, modeDetails }) => {
+    const customOrReflector = mode === 'CUSTOM' || mode === 'Reflector';
+    if (!frequency && !customOrReflector) {
+        throw new Error('empty frequency only permitted for CUSTOM or Digital Reflector modes');
+    }
+    if (customOrReflector && !modeDetails) {
+        throw new Error('mode details required for CUSTOM or Digital Reflector modes');
+    }
+};
 
 const netProfileList = async (req, res) => {
     try {
@@ -50,6 +73,7 @@ const netProfileDetails = async (req, res) => {
             restrictedSigReports: npresult?.restrictedSigReports ? true : false,
             autoIn: npresult?.autoIn ? true : false,
             modeDetails: npresult.modeDetails,
+            connections: npresult.connections || [],
             notes: sanitizeNotes(npresult.notes),
             live: Boolean(liveNet && (!liveNet.occurrence || liveNet.started)),
             scheduledStartAt: occurrence?.startAt || null
@@ -74,36 +98,30 @@ const netProfileUpdate = async (req, res) => {
         if (confirmed) {
             logger.info('NETPROFILE_Controller: editing: ' + npresult.toObject().title);
 
-            const isCustomOrReflector = req.body.mode === 'CUSTOM' || req.body.mode === 'Reflector';
-
-            if (!req.body.frequency && !isCustomOrReflector) {
-                throw new Error('empty frequency only permitted for CUSTOM or Digital Reflector modes');
-            }
-
-            if (isCustomOrReflector && !req.body.modeDetails) {
-                throw new Error('mode details required for CUSTOM or Digital Reflector modes');
-            }
-
-            let updateResult;
-
-            if (
-                (updateResult = await npresult.updateOne(
-                    {
-                        title: titleCase(req.body.title.trim()),
+            const hasConnections = hasOwn(req.body, 'connections');
+            const hasLegacyFields = ['frequency', 'mode', 'modeDetails'].some(field => hasOwn(req.body, field));
+            const operatingFields = hasConnections
+                ? { ...legacyFieldsForConnections(req.body.connections), connections: req.body.connections }
+                : hasLegacyFields
+                  ? {
                         frequency: req.body.frequency && req.body.frequency.trim(),
                         mode: req.body.mode && req.body.mode.trim(),
-                        restrictedSigReports: req.body.restrictedSigReports ? true : false,
-                        autoIn: req.body.autoIn ? true : false,
-                        modeDetails: req.body.modeDetails && req.body.modeDetails.trim(),
-                        notes: sanitizeNotes(req.body.notes)
-                    },
-                    { runValidators: true }
-                ))
-            ) {
-                res.json({ ...updateResult, ...{ endpointVersion: '1.0' } });
-            } else {
-                throw new Error('netprofile find and update failed');
-            }
+                        modeDetails: req.body.modeDetails && req.body.modeDetails.trim()
+                    }
+                  : {};
+            if (!hasConnections && hasLegacyFields) validateLegacyOperatingFields(operatingFields);
+
+            npresult.set({
+                title: req.body.title.trim(),
+                ...(hasOwn(req.body, 'restrictedSigReports')
+                    ? { restrictedSigReports: req.body.restrictedSigReports ? true : false }
+                    : {}),
+                autoIn: req.body.autoIn ? true : false,
+                notes: sanitizeNotes(req.body.notes),
+                ...operatingFields
+            });
+            const updateResult = await npresult.save();
+            res.json({ endpointVersion: '1.0', ...updateResult.toObject() });
         } else {
             throw new Error('user is not owner for this net');
         }
@@ -170,29 +188,25 @@ const netProfileAddNetOwner = async (req, res) => {
 const netProfileCreatePost = async (req, res) => {
     console.debug(req.body);
 
-    const { title, frequency, mode, restrictedSigReports, autoIn, modeDetails, notes } = req.body;
-
-    const netprofile = new NetProfile({
-        title: typeof title === 'string' ? titleCase(title.trim()) : undefined,
-        frequency: typeof frequency === 'string' ? frequency.trim() : undefined,
-        mode: typeof mode === 'string' ? mode.trim() : undefined,
-        restrictedSigReports: restrictedSigReports ? true : false,
-        autoIn: autoIn ? true : false,
-        modeDetails: typeof modeDetails === 'string' ? modeDetails.trim() : undefined,
-        notes: sanitizeNotes(notes),
-        owners: req.user._id
-    });
-
     try {
-        const isCustomOrReflectorMode = mode => ['CUSTOM', 'Reflector'].includes(mode);
-
-        if (!frequency && !isCustomOrReflectorMode(mode)) {
-            throw new Error('empty frequency only permitted for CUSTOM or Reflector modes');
-        }
-
-        if (isCustomOrReflectorMode(mode) && !modeDetails) {
-            throw new Error('mode details required for CUSTOM or Reflector modes');
-        }
+        const { title, frequency, mode, restrictedSigReports, autoIn, modeDetails, notes } = req.body;
+        const hasConnections = hasOwn(req.body, 'connections');
+        const operatingFields = hasConnections
+            ? { ...legacyFieldsForConnections(req.body.connections), connections: req.body.connections }
+            : {
+                  frequency: typeof frequency === 'string' ? frequency.trim() : undefined,
+                  mode: typeof mode === 'string' ? mode.trim() : undefined,
+                  modeDetails: typeof modeDetails === 'string' ? modeDetails.trim() : undefined
+              };
+        const netprofile = new NetProfile({
+            title: typeof title === 'string' ? title.trim() : undefined,
+            restrictedSigReports: restrictedSigReports ? true : false,
+            autoIn: autoIn ? true : false,
+            notes: sanitizeNotes(notes),
+            owners: req.user._id,
+            ...operatingFields
+        });
+        if (!hasConnections) validateLegacyOperatingFields(operatingFields);
 
         if (req.user.myNets.length < res.locals.flexOpts['maxNetsPerUser']) {
             const npresult = await netprofile.save();

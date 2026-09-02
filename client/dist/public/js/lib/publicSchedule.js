@@ -21,12 +21,48 @@ export const loadScheduledOccurrences = async ({ window, start, limit = 100 }) =
     return data;
 };
 
-export const formatConnection = net => {
-    const frequency = net.frequency && Number.parseFloat(net.frequency) !== 0 ? net.frequency : '';
-    if (net.mode === 'Reflector') return net.modeDetails || 'Reflector';
-    if (net.mode === 'CUSTOM') return [frequency, net.modeDetails].filter(Boolean).join(' · ');
-    return [frequency, net.mode].filter(Boolean).join(' · ');
+const clean = value => typeof value === 'string' ? value.trim() : '';
+const withMHz = value => {
+    const frequency = clean(value);
+    return frequency && !/\bMHz\b/i.test(frequency) ? `${frequency} MHz` : frequency;
 };
+
+const formatStructuredConnection = connection => {
+    switch (connection?.type) {
+        case 'FM':
+            return `FM: ${[withMHz(connection.frequency), clean(connection.tone) && `PL ${clean(connection.tone)}`].filter(Boolean).join(' · ')}`;
+        case 'AllStarLink':
+            return `AllStarLink: ${clean(connection.node)}`;
+        case 'EchoLink':
+            return `EchoLink: ${clean(connection.callsign) || clean(connection.node)}`;
+        case 'DMR':
+            return `DMR: ${[clean(connection.talkgroup) && `TG ${clean(connection.talkgroup)}`, clean(connection.colorCode) && `CC ${clean(connection.colorCode)}`].filter(Boolean).join(' · ')}`;
+        case 'D-STAR':
+            return `D-STAR: ${[clean(connection.reflector), clean(connection.module)].filter(Boolean).join(' ')}`;
+        case 'YSF':
+            return `YSF: ${clean(connection.room) || clean(connection.reflector)}`;
+        case 'P25':
+            return `P25: ${clean(connection.talkgroup) && `TG ${clean(connection.talkgroup)}`}`;
+        case 'Other':
+            return `Other: ${[clean(connection.label), clean(connection.value)].filter(Boolean).join(': ')}`;
+        case 'Legacy':
+            return `Connection: ${clean(connection.value)}`;
+        default:
+            return '';
+    }
+};
+
+export const formatConnectionLines = net => {
+    if (Array.isArray(net?.connections) && net.connections.length) {
+        return net.connections.map(formatStructuredConnection).filter(line => line && !line.endsWith(': '));
+    }
+    const frequency = net.frequency && Number.parseFloat(net.frequency) !== 0 ? net.frequency : '';
+    if (net.mode === 'Reflector') return net.modeDetails ? [`Connection: ${net.modeDetails}`] : [];
+    if (net.mode === 'CUSTOM') return [[frequency, net.modeDetails].filter(Boolean).join(' · ')].filter(Boolean);
+    return [[frequency, net.mode].filter(Boolean).join(' · ')].filter(Boolean);
+};
+
+export const formatConnection = net => formatConnectionLines(net).join('\n');
 
 export const formatViewerTime = value =>
     new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' }).format(new Date(value));

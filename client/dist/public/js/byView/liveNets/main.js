@@ -2,7 +2,7 @@
 
 'use strict';
 
-import { formatConnection } from '#@client/lib/publicSchedule.js';
+import { formatConnectionLines } from '#@client/lib/publicSchedule.js';
 
 const list = document.getElementById('public-live-list');
 const state = document.getElementById('public-live-state');
@@ -19,7 +19,13 @@ const refresh = async () => {
             const card = template.content.firstElementChild.cloneNode(true);
             card.href = net.url;
             card.querySelector('[data-role="title"]').textContent = net.title;
-            card.querySelector('[data-role="connection"]').textContent = formatConnection(net) || 'Connection details not listed';
+            const connection = card.querySelector('[data-role="connection"]');
+            const connectionLines = formatConnectionLines(net);
+            connection.replaceChildren(...(connectionLines.length ? connectionLines : ['Connection details not listed']).map(line => {
+                const item = document.createElement('span');
+                item.textContent = line;
+                return item;
+            }));
             card.querySelector('[data-role="check-ins"]').textContent =
                 `${net.checkInCount} Check-In${net.checkInCount === 1 ? '' : 's'}`;
             list.appendChild(card);

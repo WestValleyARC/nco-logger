@@ -6,6 +6,7 @@ import { HttpClient, FavClient, Looper } from '#@client/lib/old__clientUtils.js'
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import {
     formatConnection,
+    formatConnectionLines,
     formatViewerDate,
     formatViewerTime,
     loadScheduledOccurrences
@@ -68,16 +69,7 @@ import {
                     iconElem.classList.add('d-none');
                 }
 
-                if (!liveNet.frequency || parseInt(liveNet.frequency) == 0) {
-                    liveNet.frequency = '';
-                }
-
-                netFreqElem.innerText =
-                    liveNet.mode === 'CUSTOM'
-                        ? `${liveNet.frequency} ${liveNet.modeDetails}`
-                        : liveNet.mode === 'Reflector'
-                          ? `${liveNet.modeDetails}`
-                          : `${liveNet.frequency} ${liveNet.mode}`;
+                netFreqElem.innerText = formatConnectionLines(liveNet).join('\n');
                 checkInCountElem.textContent = `${liveNet.checkInCount} Check-In${liveNet.checkInCount === 1 ? '' : 's'}`;
 
                 const startTimeElem = rowTemplateClone.querySelector('#startTime');

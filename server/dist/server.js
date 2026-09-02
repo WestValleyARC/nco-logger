@@ -36,6 +36,8 @@ const viewRoutes = require('./routes/viewRoutes');
 const cookieSession = require('cookie-session');
 const dailyDispatch = require('./lib/dailyProcessingDispatch');
 const UserProfile = require('./models/userProfile').getUserProfile(null);
+const { getNetProfile, removeLegacyTitleUniqueIndex } = require('./models/netProfile');
+const NetProfile = getNetProfile(null);
 const NetSchedule = require('./models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('./models/scheduledOccurrence').getScheduledOccurrence(null);
 const LiveNetAutoClose = require('./models/liveNetAutoClose').getLiveNetAutoClose(null);
@@ -97,7 +99,8 @@ mongoose
         maxPoolSize: conf.realtime_mongoose_poolsize
     })
     .then(async () => {
-        await Promise.all([NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init()]);
+        await Promise.all([NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init()]);
+        await removeLegacyTitleUniqueIndex(NetProfile);
         logger.info('Connected to db (realtime pool)');
         if (useHttps) {
             https.createServer(sslOptions, app).listen(PORT);

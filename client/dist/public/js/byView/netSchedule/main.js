@@ -3,7 +3,7 @@
 'use strict';
 
 import {
-    formatConnection,
+    formatConnectionLines,
     formatViewerDate,
     formatViewerTime,
     getViewerTimeZone,
@@ -50,7 +50,12 @@ const render = occurrences => {
             item.href = occurrence.url;
             item.querySelector('[data-role="time"]').textContent = formatViewerTime(occurrence.startAt);
             item.querySelector('[data-role="title"]').textContent = occurrence.title;
-            item.querySelector('[data-role="connection"]').textContent = formatConnection(occurrence);
+            const connection = item.querySelector('[data-role="connection"]');
+            connection.replaceChildren(...formatConnectionLines(occurrence).map(line => {
+                const detail = document.createElement('span');
+                detail.textContent = line;
+                return detail;
+            }));
             const description = item.querySelector('[data-role="description"]');
             description.textContent = occurrence.description;
             description.hidden = !occurrence.description;

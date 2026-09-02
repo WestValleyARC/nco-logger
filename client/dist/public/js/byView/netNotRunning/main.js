@@ -4,6 +4,7 @@
 
 import { HttpClient, Looper, FavClient } from '#@client/lib/old__clientUtils.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
+import { formatConnectionLines } from '#@client/lib/publicSchedule.js';
 
 (async function () {
     const id = window.location.pathname.split('/')[3];
@@ -36,20 +37,14 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
             document.getElementById('netTitle').innerText = `${np.data.title}`;
             document.getElementById('waiting-card-title').innerText = `${np.data.title}`;
 
-            const connectionPrimary = document.getElementById('netConnectionPrimary');
-            const modeDetails = document.getElementById('netModeDetails');
             const connectionGroup = document.getElementById('netConnection');
-            const connection = [np.data.frequency, np.data.mode]
-                .filter(value => typeof value === 'string' && value.trim())
-                .map(value => value.trim())
-                .join(' · ');
-            const detail = typeof np.data.modeDetails === 'string' ? np.data.modeDetails.trim() : '';
-
-            connectionPrimary.innerText = connection;
-            connectionPrimary.hidden = !connection;
-            modeDetails.innerText = detail;
-            modeDetails.hidden = !detail;
-            connectionGroup.hidden = !connection && !detail;
+            const connectionLines = document.getElementById('netConnectionLines');
+            connectionLines.replaceChildren(...formatConnectionLines(np.data).map(line => {
+                const item = document.createElement('p');
+                item.textContent = line;
+                return item;
+            }));
+            connectionGroup.hidden = !connectionLines.childElementCount;
             showScheduledStart(np.data.scheduledStartAt);
 
             favorites.interval(i);

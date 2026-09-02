@@ -74,6 +74,7 @@ const publicOccurrenceResponse = occurrence => ({
     frequency: occurrence.netProfile.frequency || '',
     mode: occurrence.netProfile.mode || '',
     modeDetails: occurrence.netProfile.modeDetails || '',
+    connections: occurrence.netProfile.connections || [],
     startAt: occurrence.startAt,
     url: `/views/livenet/${occurrence.netProfile._id}`
 });
@@ -87,7 +88,7 @@ const listPublicOccurrences = async ({ window, timezone, start, limit, now = new
     })
         .sort({ startAt: 1, _id: 1 })
         .limit(range.limit)
-        .populate('netProfile', 'title frequency mode modeDetails notes invisible')
+        .populate('netProfile', 'title frequency mode modeDetails connections notes invisible')
         .lean();
 
     return {
