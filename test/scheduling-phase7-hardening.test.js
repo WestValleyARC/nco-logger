@@ -5,17 +5,36 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 const {
+    DEFAULT_NCO_ABANDONMENT_MINUTES,
+    NCO_ABANDONMENT_MINUTES,
     NCO_ABANDONMENT_MS,
+    resolveNcoAbandonmentMinutes,
     CLAIM_STALE_MS,
     recoverAutoCloseClaims,
     reconcileLiveNetPersistence,
     processAbandonedLiveNets
 } = require('../server/dist/lib/scheduling/hardening');
-const { processOccurrenceLifecycle } = require('../server/dist/lib/scheduling/lifecycle');
+const {
+    PREPARATION_WINDOW_MS,
+    GRACE_PERIOD_MS,
+    processOccurrenceLifecycle
+} = require('../server/dist/lib/scheduling/lifecycle');
 const { closeNet } = require('../server/dist/lib/sharedNetOps');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 const NOW = new Date('2030-01-10T20:00:00.000Z');
+
+test('abandonment timeout configuration is validated in minutes', () => {
+    assert.equal(resolveNcoAbandonmentMinutes('30'), 30);
+    assert.equal(resolveNcoAbandonmentMinutes(undefined), DEFAULT_NCO_ABANDONMENT_MINUTES);
+    for (const invalid of ['', 'invalid', 'NaN', 'Infinity', Number.MAX_VALUE, 0, -1]) {
+        assert.equal(resolveNcoAbandonmentMinutes(invalid), DEFAULT_NCO_ABANDONMENT_MINUTES);
+    }
+    assert.equal(NCO_ABANDONMENT_MINUTES, 30);
+    assert.equal(NCO_ABANDONMENT_MS, 30 * 60 * 1000);
+    assert.equal(PREPARATION_WINDOW_MS, 30 * 60 * 1000);
+    assert.equal(GRACE_PERIOD_MS, 30 * 60 * 1000);
+});
 
 test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
     const externalUri = process.env.TEST_MONGODB_URI;
@@ -76,10 +95,10 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
         }
         return liveNet;
     };
-    const addInteraction = ({ profile, liveNet, role = 'netcontrol', checkedState = true, lastSeen }) =>
+    const addInteraction = ({ profile, liveNet, role = 'netcontrol', checkedState = true, lastSeen, userProfile }) =>
         StationInteraction.create({
             callSign: `W1${++sequence}`, createdBy: 'user', role, checkedState, lastSeen,
-            checkedInAt: lastSeen, netProfile: profile._id, liveNet: liveNet._id
+            checkedInAt: lastSeen, userProfile, netProfile: profile._id, liveNet: liveNet._id
         });
     const captureEmails = () => {
         const sent = [];
@@ -115,6 +134,68 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
             assert.equal(closed.autoClosed, 1);
             assert.equal(await LiveNet.exists({ _id: abandonedLive._id }), null);
             assert.equal(email.sent.length, 1);
+        });
+
+        await t.test('active primary/co-owner presence prevents closure but absent owners and ordinary participants do not', async () => {
+            await reset();
+            const primaryProfile = await createProfile();
+            const primaryLive = await createLive(primaryProfile);
+            await addInteraction({
+                profile: primaryProfile, liveNet: primaryLive, role: 'netuser',
+                userProfile: ownerId, lastSeen: NOW
+            });
+            const coOwnerProfile = await createProfile();
+            const coOwnerLive = await createLive(coOwnerProfile);
+            await addInteraction({
+                profile: coOwnerProfile, liveNet: coOwnerLive, role: 'netlogger',
+                userProfile: coOwnerId, lastSeen: NOW
+            });
+            const absentOwnerProfile = await createProfile();
+            const absentOwnerLive = await createLive(absentOwnerProfile);
+            await addInteraction({
+                profile: absentOwnerProfile, liveNet: absentOwnerLive, role: 'netuser',
+                userProfile: ownerId, checkedState: false,
+                lastSeen: new Date(NOW.getTime() - NCO_ABANDONMENT_MS)
+            });
+            await addInteraction({
+                profile: absentOwnerProfile, liveNet: absentOwnerLive, role: 'netuser',
+                userProfile: followerId, lastSeen: NOW
+            });
+
+            const result = await processAbandonedLiveNets({
+                now: NOW, db, sendInactivityEmail: async () => {}
+            });
+            assert.equal(result.autoClosed, 1);
+            assert.ok(await LiveNet.exists({ _id: primaryLive._id }));
+            assert.ok(await LiveNet.exists({ _id: coOwnerLive._id }));
+            assert.equal(await LiveNet.exists({ _id: absentOwnerLive._id }), null);
+        });
+
+        await t.test('co-owner departure starts a fresh continuous abandonment interval', async () => {
+            await reset();
+            const profile = await createProfile();
+            const liveNet = await createLive(profile);
+            const coOwner = await addInteraction({
+                profile, liveNet, role: 'netlogger', userProfile: coOwnerId, lastSeen: NOW
+            });
+            assert.equal((await processAbandonedLiveNets({
+                now: NOW, db, sendInactivityEmail: async () => {}
+            })).autoClosed, 0);
+
+            coOwner.checkedState = false;
+            coOwner.lastSeen = NOW;
+            await coOwner.save();
+            assert.equal((await processAbandonedLiveNets({
+                now: new Date(NOW.getTime() + NCO_ABANDONMENT_MS - 1),
+                db, sendInactivityEmail: async () => {}
+            })).autoClosed, 0);
+            assert.ok(await LiveNet.exists({ _id: liveNet._id }));
+
+            assert.equal((await processAbandonedLiveNets({
+                now: new Date(NOW.getTime() + NCO_ABANDONMENT_MS),
+                db, sendInactivityEmail: async () => {}
+            })).autoClosed, 1);
+            assert.equal(await LiveNet.exists({ _id: liveNet._id }), null);
         });
 
         await t.test('manual and scheduled nets auto-close; scheduled completion uses actual close time and only owners are emailed', async () => {

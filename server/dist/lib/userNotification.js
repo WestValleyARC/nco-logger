@@ -256,14 +256,11 @@ class ContactFormMessage extends EmailBase {
 }
 
 class NetInactivityAutoClose extends EmailBase {
-    constructor({ title, abandonmentMinutes, inactivityDurationMs }) {
-        // Main Development owns the configuration and passes abandonmentMinutes. The millisecond
-        // input keeps this worktree compatible until its hardening changes are merged.
-        const resolvedMinutes = abandonmentMinutes ?? inactivityDurationMs / 60000;
-        if (!Number.isFinite(resolvedMinutes) || resolvedMinutes <= 0) {
+    constructor({ title, abandonmentMinutes }) {
+        if (!Number.isFinite(abandonmentMinutes) || abandonmentMinutes <= 0) {
             throw new Error('Auto-close abandonmentMinutes is required for email wording');
         }
-        const inactivityDuration = formatInactivityDuration(resolvedMinutes * 60000);
+        const inactivityDuration = formatInactivityDuration(abandonmentMinutes * 60000);
         super({ body: renderEmail({
             baseUrl: conf.base_url,
             subject: `NCO Logger automatically closed ${title}`,

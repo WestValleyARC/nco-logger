@@ -11,8 +11,18 @@ const { cleanupNetChat } = require('../localChat');
 const { realtimeClients } = require('../realtimeClients');
 const { NetInactivityAutoClose, formatInactivityDuration } = require('../userNotification');
 const { logger } = require('../logger');
+const { conf } = require('../configLib');
 
-const NCO_ABANDONMENT_MS = 60 * 60 * 1000;
+const DEFAULT_NCO_ABANDONMENT_MINUTES = 30;
+const resolveNcoAbandonmentMinutes = value => {
+    const minutes = Number(value);
+    const milliseconds = minutes * 60 * 1000;
+    return Number.isFinite(minutes) && minutes > 0 && Number.isFinite(milliseconds)
+        ? minutes
+        : DEFAULT_NCO_ABANDONMENT_MINUTES;
+};
+const NCO_ABANDONMENT_MINUTES = resolveNcoAbandonmentMinutes(conf.nco_abandonment_minutes);
+const NCO_ABANDONMENT_MS = NCO_ABANDONMENT_MINUTES * 60 * 1000;
 const CLAIM_STALE_MS = 15 * 60 * 1000;
 const PREPARATION_GRACE_MS = 30 * 60 * 1000;
 const MAX_AUTO_CLOSE_EMAILS_PER_PASS = 50;
@@ -26,6 +36,21 @@ const getModels = db => ({
 });
 
 const id = value => value == null ? '' : String(value);
+
+const isQualifyingPresence = ({ interaction, profile }) => (
+    interaction.role === 'netcontrol' ||
+    (interaction.userProfile && (profile.owners || []).some(ownerId => id(ownerId) === id(interaction.userProfile)))
+);
+
+const recentQualifyingPresenceFilter = ({ liveNet, profile, cutoff }) => ({
+    liveNet: liveNet._id,
+    checkedState: true,
+    lastSeen: { $gt: cutoff },
+    $or: [
+        { role: 'netcontrol' },
+        { userProfile: { $in: profile.owners || [] } }
+    ]
+});
 
 const observeAutoClose = async ({ liveNet, profile, lastNcoPresenceAt, now, LiveNetAutoClose }) => {
     try {
@@ -219,9 +244,9 @@ const reconcileLiveNetPersistence = async ({ now = new Date(), db = mongoose.con
 const defaultSendInactivityEmail = async ({ event, db }) => {
     const email = new NetInactivityAutoClose({
         title: event.netTitle,
-        inactivityDurationMs: NCO_ABANDONMENT_MS
+        abandonmentMinutes: NCO_ABANDONMENT_MINUTES
     });
-    return email.sendOperationalMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
+    return email.sendMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
 };
 
 const processAutoCloseEmails = async ({
@@ -272,13 +297,16 @@ const processAbandonedLiveNets = async ({
     });
     const interactions = await StationInteraction.find({
         liveNet: { $in: eligible.map(item => item._id) },
-        role: 'netcontrol',
         checkedState: { $in: [true, false] },
         lastSeen: { $exists: true }
-    }).select('liveNet checkedState lastSeen');
+    }).select('liveNet role userProfile checkedState lastSeen');
+    const eligibleById = new Map(eligible.map(item => [id(item._id), item]));
     const lastPresence = new Map();
     for (const interaction of interactions) {
         const key = id(interaction.liveNet);
+        const liveNet = eligibleById.get(key);
+        const profile = liveNet && profileById.get(id(liveNet.netProfile));
+        if (!profile || !isQualifyingPresence({ interaction, profile })) continue;
         if (!lastPresence.has(key) || interaction.lastSeen > lastPresence.get(key)) {
             lastPresence.set(key, interaction.lastSeen);
         }
@@ -305,13 +333,10 @@ const processAbandonedLiveNets = async ({
         if (!claimed) continue;
         if (beforeCloseClaim) await beforeCloseClaim({ liveNet, profile, event: claimed });
 
-        const recentNco = await StationInteraction.exists({
-            liveNet: liveNet._id,
-            role: 'netcontrol',
-            checkedState: true,
-            lastSeen: { $gt: cutoff }
-        });
-        if (recentNco) {
+        const recentQualifyingPresence = await StationInteraction.exists(
+            recentQualifyingPresenceFilter({ liveNet, profile, cutoff })
+        );
+        if (recentQualifyingPresence) {
             await LiveNetAutoClose.updateOne(
                 { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
                 { $set: { closeState: 'pending' }, $unset: { closeClaimedAt: 1, closeCommittedAt: 1 } }
@@ -338,13 +363,10 @@ const processAbandonedLiveNets = async ({
             continue;
         }
 
-        const ncoReturnedAtBoundary = await StationInteraction.exists({
-            liveNet: liveNet._id,
-            role: 'netcontrol',
-            checkedState: true,
-            lastSeen: { $gt: cutoff }
-        });
-        if (ncoReturnedAtBoundary) {
+        const qualifyingPresenceAtBoundary = await StationInteraction.exists(
+            recentQualifyingPresenceFilter({ liveNet, profile, cutoff })
+        );
+        if (qualifyingPresenceAtBoundary) {
             await LiveNet.updateOne({ _id: liveNet._id, closing: true }, { $set: { closing: false } });
             await LiveNetAutoClose.updateOne(
                 { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
@@ -379,7 +401,7 @@ const processAbandonedLiveNets = async ({
             { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
             { $set: { closeState: 'completed', closeCompletedAt: now } }
         )).modifiedCount;
-        logger.warn(`Automatically closed LiveNet ${liveNet._id} after ${formatInactivityDuration(NCO_ABANDONMENT_MS)} without NCO presence`);
+        logger.warn(`Automatically closed LiveNet ${liveNet._id} after ${formatInactivityDuration(NCO_ABANDONMENT_MS)} without qualifying presence`);
     }
 
     const emails = await processAutoCloseEmails({ now, db, sendInactivityEmail });
@@ -398,7 +420,10 @@ const processLiveNetHardening = async ({
 };
 
 module.exports = {
+    DEFAULT_NCO_ABANDONMENT_MINUTES,
+    NCO_ABANDONMENT_MINUTES,
     NCO_ABANDONMENT_MS,
+    resolveNcoAbandonmentMinutes,
     CLAIM_STALE_MS,
     defaultSendInactivityEmail,
     recoverAutoCloseClaims,

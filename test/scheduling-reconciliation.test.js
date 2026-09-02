@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const mongoose = require('mongoose');
+const { DateTime } = require('luxon');
 const { materializeSchedule } = require('../server/dist/lib/scheduling/worker');
 
 test('schedule disable and recurrence reconciliation', async t => {
@@ -18,9 +19,11 @@ test('schedule disable and recurrence reconciliation', async t => {
     const NetSchedule = require('../server/dist/models/netSchedule').getNetSchedule();
     const ScheduledOccurrence = require('../server/dist/models/scheduledOccurrence').getScheduledOccurrence();
     const UserProfile = require('../server/dist/models/userProfile').getUserProfile();
-    await Promise.all([NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), UserProfile.init()]);
+    const LiveNet = require('../server/dist/models/liveNet').getLiveNet();
+    await Promise.all([NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), UserProfile.init(), LiveNet.init()]);
     await Promise.all([
-        ScheduledOccurrence.deleteMany({}), NetSchedule.deleteMany({}), NetProfile.deleteMany({}), UserProfile.deleteMany({})
+        LiveNet.deleteMany({}), ScheduledOccurrence.deleteMany({}), NetSchedule.deleteMany({}),
+        NetProfile.deleteMany({}), UserProfile.deleteMany({})
     ]);
 
     const owner = new UserProfile({
@@ -72,6 +75,134 @@ test('schedule disable and recurrence reconciliation', async t => {
     });
 
     try {
+        await t.test('browser PATCH immediately reconciles repeated enabled edits and disable-edit-re-enable', async () => {
+            const baselineNow = new Date();
+            const localToday = DateTime.fromJSDate(baselineNow, { zone: 'UTC' }).startOf('day');
+            const initialDay = localToday.plus({ days: 1 });
+            const changedDay = localToday.plus({ days: 2 });
+            const secondChangedDay = localToday.plus({ days: 3 });
+            const { profile, schedule } = await createData({
+                startDate: localToday.toFormat('yyyy-MM-dd'),
+                weekdays: [initialDay.weekday]
+            });
+            await materializeSchedule({ schedule, now: baselineNow });
+
+            const initialOccurrences = await ScheduledOccurrence.find({
+                schedule: schedule._id, status: 'scheduled'
+            }).sort({ startAt: 1 });
+            assert.ok(initialOccurrences.length >= 3);
+
+            const individualCancellation = initialOccurrences[0];
+            individualCancellation.status = 'cancelled';
+            individualCancellation.cancelledAt = baselineNow;
+            individualCancellation.cancelledBy = owner._id;
+            individualCancellation.cancellationOrigin = 'individual';
+            await individualCancellation.save();
+
+            const explicitOverride = initialOccurrences[1];
+            const overrideStart = new Date(explicitOverride.startAt.getTime() + 45 * 60000);
+            explicitOverride.startAt = overrideStart;
+            explicitOverride.isOverride = true;
+            await explicitOverride.save();
+
+            const protectedRows = await ScheduledOccurrence.create([
+                ['completed', 4], ['missed', 5], ['preparing', 6], ['live', 7]
+            ].map(([status, days]) => ({
+                schedule: schedule._id,
+                netProfile: profile._id,
+                occurrenceKey: `protected-${status}`,
+                originalStartAt: localToday.plus({ days, hours: 12 }).toJSDate(),
+                startAt: localToday.plus({ days, hours: 12 }).toJSDate(),
+                status
+            })));
+            const pastScheduled = await ScheduledOccurrence.create({
+                schedule: schedule._id,
+                netProfile: profile._id,
+                occurrenceKey: 'protected-past',
+                originalStartAt: localToday.minus({ days: 1 }).toJSDate(),
+                startAt: localToday.minus({ days: 1 }).toJSDate(),
+                status: 'scheduled'
+            });
+
+            const assertAutomaticSchedule = async ({ weekdays, localStartTime }) => {
+                const rows = await ScheduledOccurrence.find({
+                    schedule: schedule._id,
+                    status: 'scheduled',
+                    isOverride: false,
+                    startAt: { $gt: new Date() }
+                });
+                assert.ok(rows.length > 0);
+                assert.ok(rows.every(row => weekdays.includes(DateTime.fromJSDate(row.startAt, { zone: 'UTC' }).weekday)));
+                assert.ok(rows.every(row => DateTime.fromJSDate(row.startAt, { zone: 'UTC' }).toFormat('HH:mm') === localStartTime));
+            };
+            const patchSchedule = async overrides => request(`/${profile._id}/schedule`, {
+                method: 'PATCH',
+                body: scheduleBody({
+                    startDate: localToday.toFormat('yyyy-MM-dd'),
+                    ...overrides
+                })
+            });
+
+            const weekdayEdit = await patchSchedule({ weekdays: [changedDay.weekday] });
+            assert.equal(weekdayEdit.status, 200);
+            assert.deepEqual(weekdayEdit.body.schedule.weekdays, [changedDay.weekday]);
+            assert.deepEqual((await NetSchedule.findById(schedule._id)).weekdays, [changedDay.weekday]);
+            await assertAutomaticSchedule({ weekdays: [changedDay.weekday], localStartTime: '19:00' });
+
+            const timeEdit = await patchSchedule({ weekdays: [changedDay.weekday], localStartTime: '20:30' });
+            assert.equal(timeEdit.body.schedule.localStartTime, '20:30');
+            await assertAutomaticSchedule({ weekdays: [changedDay.weekday], localStartTime: '20:30' });
+
+            const combinedEdit = await patchSchedule({ weekdays: [secondChangedDay.weekday], localStartTime: '21:15' });
+            assert.deepEqual(combinedEdit.body.schedule.weekdays, [secondChangedDay.weekday]);
+            assert.equal(combinedEdit.body.schedule.localStartTime, '21:15');
+            await assertAutomaticSchedule({ weekdays: [secondChangedDay.weekday], localStartTime: '21:15' });
+
+            const secondEnabledEdit = await patchSchedule({ weekdays: [changedDay.weekday], localStartTime: '22:00' });
+            assert.equal(secondEnabledEdit.status, 200);
+            await assertAutomaticSchedule({ weekdays: [changedDay.weekday], localStartTime: '22:00' });
+            for (const protectedRow of protectedRows) {
+                assert.equal((await ScheduledOccurrence.findById(protectedRow._id)).status, protectedRow.status);
+            }
+
+            await ScheduledOccurrence.deleteMany({ _id: { $in: protectedRows.slice(2).map(row => row._id) } });
+            assert.equal((await request(`/${profile._id}/schedule`, { method: 'DELETE' })).status, 200);
+            const reenabled = await patchSchedule({ weekdays: [secondChangedDay.weekday], localStartTime: '18:45' });
+            assert.equal(reenabled.status, 200);
+            assert.equal(reenabled.body.schedule.enabled, true);
+            await assertAutomaticSchedule({ weekdays: [secondChangedDay.weekday], localStartTime: '18:45' });
+
+            const persisted = await NetSchedule.findById(schedule._id);
+            assert.deepEqual(persisted.weekdays, [secondChangedDay.weekday]);
+            assert.equal(persisted.localStartTime, '18:45');
+            assert.equal((await ScheduledOccurrence.findById(individualCancellation._id)).cancellationOrigin, 'individual');
+            assert.equal((await ScheduledOccurrence.findById(individualCancellation._id)).status, 'cancelled');
+            assert.equal((await ScheduledOccurrence.findById(explicitOverride._id)).isOverride, true);
+            assert.equal((await ScheduledOccurrence.findById(explicitOverride._id)).startAt.toISOString(), overrideStart.toISOString());
+            for (const protectedRow of protectedRows.slice(0, 2)) {
+                assert.equal((await ScheduledOccurrence.findById(protectedRow._id)).status, protectedRow.status);
+            }
+            assert.equal((await ScheduledOccurrence.findById(pastScheduled._id)).status, 'scheduled');
+
+            const allRows = await ScheduledOccurrence.find({ schedule: schedule._id });
+            assert.equal(new Set(allRows.map(row => row.occurrenceKey)).size, allRows.length);
+            assert.equal(await LiveNet.countDocuments({ occurrence: { $in: allRows.map(row => row._id) } }), 0);
+
+            const browserSchedule = await request(`/${profile._id}/schedule`);
+            assert.deepEqual(browserSchedule.body.schedule.weekdays, [secondChangedDay.weekday]);
+            assert.equal(browserSchedule.body.schedule.localStartTime, '18:45');
+            const browserOccurrences = await request(
+                `/${profile._id}/occurrences?from=${encodeURIComponent(baselineNow.toISOString())}` +
+                `&to=${encodeURIComponent(localToday.plus({ days: 90 }).toISO())}&limit=200`
+            );
+            assert.equal(browserOccurrences.status, 200);
+            assert.ok(browserOccurrences.body.occurrences.some(occurrence =>
+                occurrence.status === 'scheduled' && !occurrence.isOverride &&
+                DateTime.fromISO(occurrence.startAt, { zone: 'UTC' }).weekday === secondChangedDay.weekday &&
+                DateTime.fromISO(occurrence.startAt, { zone: 'UTC' }).toFormat('HH:mm') === '18:45'
+            ));
+        });
+
         await t.test('disable tags automatic rows and same-recurrence re-enable restores them idempotently', async () => {
             const { profile, schedule } = await createData();
             await materializeSchedule({ schedule, now });
@@ -103,7 +234,7 @@ test('schedule disable and recurrence reconciliation', async t => {
             const current = await NetSchedule.findById(schedule._id);
             const result = await materializeSchedule({ schedule: current, now });
             assert.ok(result.created > 0);
-            assert.ok(result.removed > 0);
+            assert.equal(result.removed, 0);
             assert.equal(await ScheduledOccurrence.countDocuments({
                 schedule: schedule._id, cancellationOrigin: 'schedule-disabled'
             }), 0);
@@ -122,7 +253,7 @@ test('schedule disable and recurrence reconciliation', async t => {
             const current = await NetSchedule.findById(schedule._id);
             const result = await materializeSchedule({ schedule: current, now });
             assert.ok(result.created > 0);
-            assert.ok(result.removed > 0);
+            assert.equal(result.removed, 0);
             const occurrences = await ScheduledOccurrence.find({ schedule: schedule._id, status: 'scheduled' });
             assert.ok(occurrences.every(item => item.originalStartAt.getTime() === item.startAt.getTime()));
             assert.ok(occurrences.every(item => item.startAt.getUTCHours() === 3 && item.startAt.getUTCMinutes() === 30));
