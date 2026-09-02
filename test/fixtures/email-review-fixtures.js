@@ -27,6 +27,17 @@ const reviewFixture = (id, email, recipients) => {
 };
 
 const buildEmailReviewFixtures = async () => {
+    const autoCloseSnapshot = {
+        title: 'WVARC Tuesday Net', NPID: '507f1f77bcf86cd799439011', started: true,
+        startedAt: new Date('2030-01-01T19:00:00.000Z'),
+        closedAt: new Date('2030-01-01T20:00:00.000Z'), timezone: 'America/Phoenix',
+        formattedAttendees: [{
+            callSign: 'W1ABC', role: 'NCS', checkInIsoDate: '2030-01-01T19:00:00.000Z',
+            checkInTime: '12:00:00 PM MST', displayName: 'Alex', location: 'Phoenix, AZ',
+            sigReport: '59', highlight: true
+        }],
+        chatLog: 'W1ABC: Sample review chat entry\n'
+    };
     const report = await NetCloseReport.init({
         netProfileDoc: { id: '507f1f77bcf86cd799439011', title: 'WVARC Tuesday Net' },
         liveNetDoc: {
@@ -34,6 +45,8 @@ const buildEmailReviewFixtures = async () => {
             started: true,
             startedAt: new Date('2030-01-01T19:00:00.000Z')
         },
+        closedAt: new Date('2030-01-01T20:00:00.000Z'),
+        timezone: 'America/Phoenix',
         attendees: [{
             callSign: 'W1ABC', role: 'netcontrol', checkedInAt: new Date('2030-01-01T19:00:00.000Z'),
             displayName: 'Alex', location: 'Phoenix, AZ', rst: '59', highlight: true
@@ -58,7 +71,8 @@ const buildEmailReviewFixtures = async () => {
             startAt: new Date('2030-01-01T19:00:00.000Z'), timezone: 'America/Phoenix'
         }), ['follower@example.com']),
         reviewFixture('inactivity-auto-close', new NetInactivityAutoClose({
-            title: 'WVARC Tuesday Net', abandonmentMinutes: 30
+            title: 'WVARC Tuesday Net', abandonmentMinutes: 30,
+            reportSnapshot: autoCloseSnapshot
         }), ['owner@example.com', 'co-owner@example.com']),
         reviewFixture('net-close-report', report, ['owner@example.com', 'superuser@example.com'])
     ];

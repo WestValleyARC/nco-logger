@@ -13,7 +13,7 @@ const requiredText = (value, label) => {
     return value.trim();
 };
 
-const renderBlocks = blocks => {
+const renderBlocks = (blocks, baseUrl) => {
     const html = [];
     const text = [];
     for (const block of blocks || []) {
@@ -52,6 +52,16 @@ const renderBlocks = blocks => {
                 `<thead><tr>${columns.map(column => `<th scope="col" bgcolor="#dceff3" style="padding:8px 6px;border-bottom:1px solid #aebfc7;color:#071827;font-size:12px;line-height:1.35;text-align:left;">${ejs.escapeXML(column)}</th>`).join('')}</tr></thead>` +
                 `<tbody>${rows.map(row => `<tr${row.highlight ? ' bgcolor="#f3eee7"' : ''}>${row.values.map(value => `<td style="padding:8px 6px;border-bottom:1px solid #dce5ea;color:#253247;font-size:13px;line-height:1.4;vertical-align:top;word-break:break-word;">${ejs.escapeXML(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
             text.push(`${caption}:\n${rows.map(row => row.values.join(' | ')).join('\n') || '[No entries]'}`);
+        } else if (block.type === 'image') {
+            const imagePath = requiredText(block.path, 'Image path');
+            const alt = requiredText(block.alt, 'Image alt text');
+            const width = Number(block.width);
+            const height = Number(block.height);
+            if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
+                throw new Error('Email image dimensions must be positive integers');
+            }
+            const imageUrl = absoluteAppUrl(imagePath, baseUrl);
+            html.push(`<p style="Margin:0 0 18px;text-align:center;"><img src="${ejs.escapeXML(imageUrl)}" alt="${ejs.escapeXML(alt)}" width="${width}" height="${height}" style="display:block;width:100%;max-width:${width}px;height:auto;Margin:0 auto;border:0;" /></p>`);
         } else {
             throw new Error(`Unsupported email content block: ${block?.type || '(missing)'}`);
         }
@@ -63,7 +73,7 @@ const renderEmail = ({ baseUrl, subject, preheader, heading, blocks = [], cta, s
     const safeSubject = requiredText(subject, 'Email subject');
     const safeHeading = requiredText(heading, 'Email heading');
     const safePreheader = preheader ? requiredText(preheader, 'Email preheader') : safeSubject;
-    const content = renderBlocks(blocks);
+    const content = renderBlocks(blocks, baseUrl);
     const urls = appEmailUrls(baseUrl);
     const logoUrl = absoluteAppUrl('/img/NCO_Logger_Logo_compact.png', baseUrl);
     const action = cta ? {

@@ -186,7 +186,7 @@ class NetScheduledReminder extends EmailBase {
             preheader: `${title} is scheduled for ${scheduledTime}.`,
             heading: `${title} begins soon`,
             blocks: [
-                { type: 'paragraph', text: `${title} is scheduled to begin in approximately 10 minutes, at ${scheduledTime}.` },
+                { type: 'paragraph', text: `${title} is scheduled to begin at ${scheduledTime}. The net will begin in approximately 10 minutes.` },
                 { type: 'paragraph', text: 'You received this message because you follow this net.' }
             ],
             cta: { label: 'Open Live Net', path: `/views/livenet/${_id}` },
@@ -256,54 +256,113 @@ class ContactFormMessage extends EmailBase {
 }
 
 class NetInactivityAutoClose extends EmailBase {
-    constructor({ title, abandonmentMinutes }) {
+    constructor({ title, abandonmentMinutes, reportSnapshot }) {
         if (!Number.isFinite(abandonmentMinutes) || abandonmentMinutes <= 0) {
             throw new Error('Auto-close abandonmentMinutes is required for email wording');
         }
         const inactivityDuration = formatInactivityDuration(abandonmentMinutes * 60000);
-        super({ body: renderEmail({
+        const blocks = [
+            { type: 'paragraph', text: `NCO Logger did not detect an active NCO or a present owner/co-owner for approximately ${inactivityDuration}, so it automatically closed the net.` },
+            { type: 'paragraph', text: 'This prevents an abandoned net from remaining ON AIR. You can start the net again if needed.' },
+            {
+                type: 'message',
+                label: 'Closing a net when finished',
+                text: 'When your net has concluded, please use the red Close Net button in Station Controls. This properly closes the net and helps prevent it from being automatically closed later due to inactivity.'
+            },
+            {
+                type: 'image',
+                path: '/img/email/station-controls-close-net.png',
+                alt: 'Station Controls showing the red Close Net button',
+                width: 542,
+                height: 380
+            },
+            { type: 'paragraph', text: 'You received this mandatory operational notice because you are an owner or co-owner of the net.' }
+        ];
+        const rendered = renderEmail({
             baseUrl: conf.base_url,
             subject: `NCO Logger automatically closed ${title}`,
             preheader: `${title} was automatically closed after prolonged operator inactivity.`,
             heading: `${title} was automatically closed`,
-            blocks: [
-                { type: 'paragraph', text: `NCO Logger did not detect an active NCO or a present owner/co-owner for approximately ${inactivityDuration}, so it automatically closed the net.` },
-                { type: 'paragraph', text: 'This prevents an abandoned net from remaining ON AIR. You can start the net again if needed.' },
-                { type: 'paragraph', text: 'You received this mandatory operational notice because you are an owner or co-owner of the net.' }
-            ],
+            blocks,
             automatedNotice: 'This operational notice was generated automatically by NCO Logger.'
-        }) });
+        });
+        const attachments = reportSnapshot ? NetCloseReport.createAttachments(reportSnapshot) : [];
+        super({ body: { ...rendered, attachments } });
     }
 }
 
 class NetCloseReport extends EmailBase {
-    static async init({
+    static async createSnapshot({
         netProfileDoc: { id: NPID, title },
         liveNetDoc: { url, started, startedAt },
+        closedAt,
+        timezone = 'UTC',
         attendees,
-        fetchChat = fetchChatLog
+        fetchChat = fetchChatLog,
+        db = mongoose.connection
     }) {
         let chatLog = '';
-        try { chatLog = await fetchChat({ NPID, since: attendees[0]?.checkedInAt }); }
+        try { chatLog = await fetchChat({ NPID, since: attendees[0]?.checkedInAt, db }); }
         catch (err) { logger.warn(`Chat history unavailable during net-close report: ${err.message}`); }
         const priority = { netcontrol: 1, netlogger: 2, netrelay: 3 };
         const sorted = [...attendees].sort((a, b) => (priority[a.role] || 4) - (priority[b.role] || 4) || new Date(a.checkedInAt) - new Date(b.checkedInAt));
+        const formatCheckInTime = value => new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZoneName: 'short'
+        }).format(new Date(value));
         const formattedAttendees = sorted.map(a => ({
             callSign: a.callSign,
             role: a.role === 'netcontrol' ? 'NCS' : a.role === 'netrelay' ? 'Relay' : a.role === 'netlogger' ? 'Logger' : '',
             checkInIsoDate: new Date(a.checkedInAt).toISOString(),
-            checkInTime: new Date(a.checkedInAt).toUTCString().split(' ').slice(4).join(' '),
+            checkInTime: formatCheckInTime(a.checkedInAt),
             displayName: a.displayName || '', location: a.location || '', sigReport: a.rst || '', highlight: Boolean(a.highlight)
         }));
+        return {
+            title,
+            NPID: String(NPID),
+            url,
+            started: Boolean(started),
+            startedAt: startedAt || null,
+            closedAt: closedAt || null,
+            timezone,
+            formattedAttendees,
+            chatLog
+        };
+    }
+    static async init(options) {
+        const snapshot = await NetCloseReport.createSnapshot(options);
+        const { title, url, started, startedAt, closedAt, timezone, formattedAttendees } = snapshot;
         const subject = `${title} - Net Close Report`;
-        const startedAtString = started ? new Date(startedAt).toUTCString() : '';
+        const formatReportTime = value => new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZoneName: 'short'
+        }).format(value);
+        const startedAtString = started ? formatReportTime(new Date(startedAt)) : '';
+        const closedAtString = closedAt ? formatReportTime(new Date(closedAt)) : '';
         const rendered = renderEmail({
             baseUrl: conf.base_url,
             subject,
             preheader: `Close report for ${title}.`,
             heading: `${title} net-close report`,
             blocks: [
-                ...(startedAtString ? [{ type: 'details', items: [{ label: 'Net start', value: startedAtString }] }] : []),
+                {
+                    type: 'details',
+                    items: [
+                        ...(startedAtString ? [{ label: 'Net start', value: startedAtString }] : []),
+                        ...(closedAtString ? [{ label: 'Net closed', value: closedAtString }] : []),
+                        { label: 'Total check-ins', value: String(formattedAttendees.length) }
+                    ]
+                },
                 {
                     type: 'table',
                     caption: 'Station information',
@@ -319,17 +378,15 @@ class NetCloseReport extends EmailBase {
                 }
             ],
             cta: { label: 'Open Net', path: url },
-            secondaryLinks: [{ label: 'Manage Email Notifications', path: '/views/dataprivacy' }],
             automatedNotice: 'This report was generated automatically when the net closed.'
         });
-        const attachments = NetCloseReport.createAttachments({ title, NPID, url, started, startedAt, formattedAttendees, chatLog });
+        const attachments = NetCloseReport.createAttachments(snapshot);
         logger.info(`Generated report for ${title} with ${formattedAttendees.length} attendee(s)`);
         return new NetCloseReport({ body: { ...rendered, attachments } });
     }
-    static createAttachments({ title, NPID, url, started, startedAt, formattedAttendees, chatLog }) {
+    static createAttachments({ title, NPID, started, startedAt, closedAt, formattedAttendees, chatLog }) {
         const csvEscape = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
-        const reportUrl = absoluteAppUrl(url, conf.base_url);
-        const csv = [['Net', 'Callsign', 'Role', 'Highlighted', 'Check-In Date', 'Name', 'Location', 'SigReport', 'URL', 'Net ID', 'Net Start Date'], ...formattedAttendees.map(a => [title, a.callSign, a.role, a.highlight ? 'True' : '', a.checkInIsoDate, a.displayName, a.location, a.sigReport, reportUrl, NPID, started ? new Date(startedAt).toISOString() : ''])].map(row => row.map(csvEscape).join(',')).join('\n');
+        const csv = [['Net', 'Callsign', 'Role', 'Highlighted', 'Check-In Date', 'Name', 'Location', 'SigReport', 'Net ID', 'Net Start Date', 'Net Close Date'], ...formattedAttendees.map(a => [title, a.callSign, a.role, a.highlight ? 'True' : '', a.checkInIsoDate, a.displayName, a.location, a.sigReport, NPID, started ? new Date(startedAt).toISOString() : '', closedAt ? new Date(closedAt).toISOString() : ''])].map(row => row.map(csvEscape).join(',')).join('\n');
         const chat = `${title} (ID: ${NPID})\n\n${chatLog || '[ Empty Chat Log ]'}`;
         const slug = slugify(title, { replacement: '_', lower: true, strict: true, trim: true });
         const timestamp = startedAt ? new Date(startedAt).toISOString().replace(/[:.]/g, '-') : 'pre-start';

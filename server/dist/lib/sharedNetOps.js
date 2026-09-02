@@ -12,6 +12,7 @@ const { getLiveNet } = require('../models/liveNet');
 const { getPendingUnfollow, getPendingAccountDelete } = require('../models/taskQueues');
 const { getStationInteraction } = require('../models/stationInteraction');
 const { getScheduledOccurrence } = require('../models/scheduledOccurrence');
+const { getNetSchedule } = require('../models/netSchedule');
 const mongoose = require('mongoose');
 const { cleanupNetChat } = require('./localChat');
 const { withKeyedOperations } = require('./keyedOperation');
@@ -27,7 +28,8 @@ function getModels(db = null) {
         PendingUnfollow: getPendingUnfollow(db),
         PendingAccountDelete: getPendingAccountDelete(db),
         StationInteraction: getStationInteraction(db),
-        ScheduledOccurrence: getScheduledOccurrence(db)
+        ScheduledOccurrence: getScheduledOccurrence(db),
+        NetSchedule: getNetSchedule(db)
     };
 }
 
@@ -889,7 +891,7 @@ async function closeNet({
     closedAt = new Date(),
     db = mongoose.connection
 }) {
-    let { NetProfile, LiveNet, StationInteraction, UserProfile, ScheduledOccurrence } = getModels(db);
+    let { NetProfile, LiveNet, StationInteraction, UserProfile, ScheduledOccurrence, NetSchedule } = getModels(db);
 
     if (!alreadyClosing) {
         const claimed = await LiveNet.updateOne(
@@ -909,24 +911,10 @@ async function closeNet({
             const ncr = await NetCloseReport.init({
                 netProfileDoc,
                 liveNetDoc,
-                attendees: (
-                    await Promise.all(
-                        Array.from(liveNetDoc.lookupTable.values()).map(v =>
-                            StationInteraction.findById(v.stationInteraction)
-                        )
-                    )
-                )
-                    .map(({ photo, callSign, role, highlight, displayName, location, checkedInAt, sigReports }) => ({
-                        photo,
-                        callSign,
-                        role,
-                        highlight,
-                        displayName,
-                        location,
-                        checkedInAt,
-                        rst: sigReports.calculated
-                    }))
-                    .filter(({ checkedInAt }) => checkedInAt)
+                closedAt,
+                db,
+                timezone: await resolveNetReportTimezone({ liveNetDoc, ScheduledOccurrence, NetSchedule }),
+                attendees: await collectNetReportAttendees({ liveNetDoc, StationInteraction })
             });
 
             // Send email report if it was created successfully
@@ -983,6 +971,42 @@ async function closeNet({
     }
 }
 
+const resolveNetReportTimezone = async ({ liveNetDoc, ScheduledOccurrence, NetSchedule }) => {
+    if (!liveNetDoc.occurrence) return 'UTC';
+    const occurrence = await ScheduledOccurrence.findById(liveNetDoc.occurrence).select('schedule').lean();
+    if (!occurrence?.schedule) return 'UTC';
+    const schedule = await NetSchedule.findById(occurrence.schedule).select('timezone').lean();
+    return schedule?.timezone || 'UTC';
+};
+
+const collectNetReportAttendees = async ({ liveNetDoc, StationInteraction }) => (
+    await Promise.all(
+        Array.from(liveNetDoc.lookupTable.values()).map(value =>
+            StationInteraction.findById(value.stationInteraction)
+        )
+    )
+).filter(Boolean).map(({ callSign, role, highlight, displayName, location, checkedInAt, sigReports }) => ({
+    callSign,
+    role,
+    highlight,
+    displayName,
+    location,
+    checkedInAt,
+    rst: sigReports?.calculated || ''
+})).filter(({ checkedInAt }) => checkedInAt);
+
+const createNetCloseReportSnapshot = async ({ netProfileDoc, liveNetDoc, closedAt, db = mongoose.connection }) => {
+    const { StationInteraction, ScheduledOccurrence, NetSchedule } = getModels(db);
+    return NetCloseReport.createSnapshot({
+        netProfileDoc,
+        liveNetDoc,
+        closedAt,
+        db,
+        timezone: await resolveNetReportTimezone({ liveNetDoc, ScheduledOccurrence, NetSchedule }),
+        attendees: await collectNetReportAttendees({ liveNetDoc, StationInteraction })
+    });
+};
+
 async function flagAccountForDeletion({ userProfileDoc, deletionReason = 'manual', db = mongoose.connection }) {
     let { PendingAccountDelete } = getModels(db);
 
@@ -1020,6 +1044,7 @@ module.exports = {
     checkState,
     delNet,
     closeNet,
+    createNetCloseReportSnapshot,
     unFollow,
     hand,
     highlight,

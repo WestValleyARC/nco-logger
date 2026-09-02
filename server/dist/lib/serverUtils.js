@@ -57,13 +57,13 @@ const publicEndpoints = app => {
 };
 
 // Keep report formatting isolated from local chat persistence.
-const fetchChatLog = async ({ NPID, since }) => {
+const fetchChatLog = async ({ NPID, since, db = mongoose.connection }) => {
     let chatLog = '';
 
     try {
         // fetchChatHistory() returns AsyncGenerator of message arrays - Messages are received in batches/chunks
         // Each message has: username, body, createdAt, reactions (formatted emoji string), edited (boolean)
-        for await (const messages of fetchChatHistory({ npid: NPID, since })) {
+        for await (const messages of fetchChatHistory({ npid: NPID, since, db })) {
             chatLog += messages
                 .map(({ username, body, reactions, edited }) => {
                     const editedMarker = edited ? ' *' : '';

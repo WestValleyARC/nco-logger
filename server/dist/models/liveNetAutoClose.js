@@ -19,6 +19,7 @@ const liveNetAutoCloseSchema = new Schema(
         closeClaimedAt: { type: Date, default: null },
         closeCommittedAt: { type: Date, default: null },
         closeCompletedAt: { type: Date, default: null },
+        reportSnapshot: { type: Schema.Types.Mixed, default: null },
         email: {
             state: {
                 type: String,

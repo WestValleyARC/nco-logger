@@ -33,6 +33,9 @@ test('all seven deterministic review fixtures have consistent branding, text, li
     assert.deepEqual(fixtures.find(fixture => fixture.id === 'net-close-report').attachments.map(item => item.contentType), [
         'text/csv', 'text/plain'
     ]);
+    assert.deepEqual(fixtures.find(fixture => fixture.id === 'inactivity-auto-close').attachments.map(item => item.contentType), [
+        'text/csv', 'text/plain'
+    ]);
 });
 
 test('legacy runtime net-close template and obsolete documentation template are removed', () => {
