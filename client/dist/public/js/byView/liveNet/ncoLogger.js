@@ -1359,10 +1359,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         registerSlashBridgeHandler();
         document.dispatchEvent(new Event("nch-helper-slash-enable"));
         positionNativeChat();
-        customizeNativeChat();
-        applyDisplayPreferences();
-        renderHelperChatUi();
-    }
+    customizeNativeChat();
+    applyDisplayPreferences();
+    renderHelperChatUi();
+    chat.dispatchEvent(new Event("nch-chat-layout-ready"));
+  }
     function dockNativeChat() {
         try {
             dockNativeChatUnsafe();

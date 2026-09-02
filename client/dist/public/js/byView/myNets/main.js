@@ -24,7 +24,13 @@ const NET_TITLE_PATTERN = /^[\p{L}\p{N} @|_#*&/+\-().,':!]+$/u;
 const CONNECTION_FIELDS = {
     FM: [
         { key: 'frequency', label: 'Frequency', required: true, placeholder: '146.940' },
+        { key: 'operation', label: 'Operation', options: ['Repeater', 'Simplex'] },
+        { key: 'offset', label: 'Offset', placeholder: '-0.600', when: connection => connection.operation === 'Repeater' },
         { key: 'tone', label: 'PL / CTCSS', placeholder: '162.2' }
+    ],
+    HF: [
+        { key: 'frequency', label: 'Frequency', required: true, placeholder: '7.268' },
+        { key: 'mode', label: 'Mode', options: ['SSB', 'USB', 'LSB', 'CW', 'AM', 'Digital', 'Other'] }
     ],
     AllStarLink: [{ key: 'node', label: 'Node Number', required: true }],
     EchoLink: [{ key: 'callsign', label: 'Callsign / Node', required: true }],
@@ -38,6 +44,12 @@ const CONNECTION_FIELDS = {
     ],
     YSF: [{ key: 'room', label: 'Room / Reflector', required: true }],
     P25: [{ key: 'talkgroup', label: 'Talkgroup', required: true }],
+    M17: [
+        { key: 'reflector', label: 'Reflector', required: true },
+        { key: 'module', label: 'Module' }
+    ],
+    NXDN: [{ key: 'talkgroup', label: 'Talkgroup', required: true }],
+    Zello: [{ key: 'channel', label: 'Channel', required: true }],
     Other: [
         { key: 'label', label: 'Label', required: true },
         { key: 'value', label: 'Value', required: true }
@@ -46,21 +58,67 @@ const CONNECTION_FIELDS = {
 let connectionRows = [];
 let connectionsTouched = false;
 let editingHadStructuredConnections = false;
+let draggedConnectionCard = null;
+let currentCoOwnerProfileId = null;
+
+const moveConnection = (index, direction) => {
+    const destination = index + direction;
+    if (destination < 0 || destination >= connectionRows.length) return;
+    const [connection] = connectionRows.splice(index, 1);
+    connectionRows.splice(destination, 0, connection);
+    connectionsTouched = true;
+    renderConnections();
+    requestAnimationFrame(() => {
+        document.querySelector(`[data-connection-index="${destination}"] .connection-drag-handle`)?.focus();
+    });
+};
+
+const commitDraggedConnectionOrder = container => {
+    if (!draggedConnectionCard) return;
+    const currentRows = connectionRows;
+    const indexes = Array.from(container.querySelectorAll('.connection-card'))
+        .map(card => Number.parseInt(card.dataset.connectionIndex, 10));
+    if (indexes.length === currentRows.length && indexes.every(Number.isInteger)) {
+        const orderChanged = indexes.some((value, index) => value !== index);
+        if (orderChanged) {
+            connectionRows = indexes.map(index => currentRows[index]);
+            connectionsTouched = true;
+        }
+    }
+    draggedConnectionCard = null;
+    renderConnections();
+};
 
 const createConnectionField = (connection, field) => {
     const wrapper = document.createElement('label');
     wrapper.className = 'app-field connection-field';
     wrapper.textContent = field.label;
-    const input = document.createElement('input');
-    input.type = 'text';
+    const input = document.createElement(field.options ? 'select' : 'input');
+    if (!field.options) input.type = 'text';
     input.className = 'form-control app-input';
+    if (field.options) {
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = 'Not specified';
+        input.appendChild(blank);
+        field.options.forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            input.appendChild(option);
+        });
+    } else {
+        input.placeholder = field.placeholder || '';
+    }
     input.value = connection[field.key] || '';
-    input.placeholder = field.placeholder || '';
     input.required = Boolean(field.required);
     input.maxLength = field.key === 'value' ? 200 : 100;
-    input.addEventListener('input', () => {
-        connection[field.key] = input.value;
+    input.addEventListener(field.options ? 'change' : 'input', () => {
+        if (input.value) connection[field.key] = input.value;
+        else delete connection[field.key];
+        if (field.key === 'operation' && input.value === 'Simplex') delete connection.offset;
         connectionsTouched = true;
+        if (field.key === 'operation') renderConnections();
     });
     wrapper.appendChild(input);
     return wrapper;
@@ -72,6 +130,7 @@ const renderConnections = () => {
     connectionRows.forEach((connection, index) => {
         const card = document.createElement('div');
         card.className = 'connection-card';
+        card.dataset.connectionIndex = String(index);
         const header = document.createElement('div');
         header.className = 'connection-card-header';
         const typeField = document.createElement('label');
@@ -87,11 +146,52 @@ const renderConnections = () => {
         });
         select.value = connection.type;
         select.addEventListener('change', () => {
-            connectionRows[index] = { type: select.value };
+            connectionRows[index] = select.value === 'FM'
+                ? { type: 'FM', operation: 'Repeater' }
+                : { type: select.value };
             connectionsTouched = true;
             renderConnections();
         });
         typeField.appendChild(select);
+
+        const cardActions = document.createElement('div');
+        cardActions.className = 'connection-card-actions';
+        const dragHandle = document.createElement('button');
+        dragHandle.type = 'button';
+        dragHandle.className = 'connection-drag-handle';
+        dragHandle.draggable = true;
+        dragHandle.title = 'Drag to reorder';
+        dragHandle.setAttribute('aria-label', `Drag ${connection.type} connection to reorder`);
+        dragHandle.innerHTML = '<i class="bi bi-grip-vertical" aria-hidden="true"></i>';
+        dragHandle.addEventListener('dragstart', event => {
+            draggedConnectionCard = card;
+            card.classList.add('is-dragging');
+            event.dataTransfer?.setData('text/plain', String(index));
+            if (event.dataTransfer) {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setDragImage(card, 20, 20);
+            }
+        });
+        dragHandle.addEventListener('dragend', () => commitDraggedConnectionOrder(container));
+
+        const moveUp = document.createElement('button');
+        moveUp.type = 'button';
+        moveUp.className = 'connection-order-button';
+        moveUp.disabled = index === 0;
+        moveUp.title = 'Move Up';
+        moveUp.setAttribute('aria-label', `Move ${connection.type} connection up`);
+        moveUp.innerHTML = '<i class="bi bi-arrow-up" aria-hidden="true"></i>';
+        moveUp.addEventListener('click', () => moveConnection(index, -1));
+
+        const moveDown = document.createElement('button');
+        moveDown.type = 'button';
+        moveDown.className = 'connection-order-button';
+        moveDown.disabled = index === connectionRows.length - 1;
+        moveDown.title = 'Move Down';
+        moveDown.setAttribute('aria-label', `Move ${connection.type} connection down`);
+        moveDown.innerHTML = '<i class="bi bi-arrow-down" aria-hidden="true"></i>';
+        moveDown.addEventListener('click', () => moveConnection(index, 1));
+
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'connection-remove';
@@ -102,11 +202,25 @@ const renderConnections = () => {
             connectionsTouched = true;
             renderConnections();
         });
-        header.append(typeField, remove);
+        cardActions.append(dragHandle, moveUp, moveDown, remove);
+        header.append(typeField, cardActions);
         const fields = document.createElement('div');
         fields.className = 'connection-fields';
-        CONNECTION_FIELDS[connection.type].forEach(field => fields.appendChild(createConnectionField(connection, field)));
+        CONNECTION_FIELDS[connection.type].forEach(field => {
+            if (!field.when || field.when(connection)) fields.appendChild(createConnectionField(connection, field));
+        });
         card.append(header, fields);
+        card.addEventListener('dragover', event => {
+            if (!draggedConnectionCard || draggedConnectionCard === card) return;
+            event.preventDefault();
+            const bounds = card.getBoundingClientRect();
+            if (event.clientY > bounds.top + bounds.height / 2) card.after(draggedConnectionCard);
+            else card.before(draggedConnectionCard);
+        });
+        card.addEventListener('drop', event => {
+            event.preventDefault();
+            commitDraggedConnectionOrder(container);
+        });
         container.appendChild(card);
     });
     if (!connectionRows.length) {
@@ -682,16 +796,18 @@ function refreshNetList() {
                     );
                 }
 
-                actionsElem.appendChild(
-                    makeActionButton({
-                        label: 'Co-owner',
-                        icon: 'bi-person-plus',
-                        action: () => {
-                            netOwnerFormPrep(netProfile._id, netProfile.title);
-                            formShow('formContainerNetOwner');
-                        }
-                    })
-                );
+                if (netProfile.isPrimaryOwner) {
+                    actionsElem.appendChild(
+                        makeActionButton({
+                            label: 'Co-Owners',
+                            icon: 'bi-people',
+                            action: () => {
+                                netOwnerFormPrep(netProfile._id, netProfile.title);
+                                formShow('formContainerNetOwner');
+                            }
+                        })
+                    );
+                }
 
                 liElem.append(cardHeadingElem, operatingDetailsElem);
                 if (hasSchedule) liElem.appendChild(scheduleDetailsElem);
@@ -752,10 +868,59 @@ function refreshNetList() {
         });
 }
 
-window.netOwnerFormPrep = function (id, name) {
-    document.getElementById('netowner_form_title').innerText = `Additional Owner for ${name}`;
+const renderCoOwners = coOwners => {
+    const list = document.getElementById('coowner_list');
+    list.replaceChildren();
+    if (!coOwners.length) {
+        const empty = document.createElement('p');
+        empty.className = 'coowner-empty';
+        empty.textContent = 'No co-owners have been added.';
+        list.appendChild(empty);
+        return;
+    }
+    coOwners.forEach(coOwner => {
+        const row = document.createElement('div');
+        row.className = 'coowner-row';
+        const identity = document.createElement('span');
+        const callsign = document.createElement('strong');
+        callsign.textContent = coOwner.callSign;
+        const name = document.createElement('small');
+        name.textContent = coOwner.displayName || '';
+        identity.append(callsign, name);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'owned-net-action is-danger';
+        remove.innerHTML = '<i class="bi bi-person-dash" aria-hidden="true"></i><span>Remove Co-Owner</span>';
+        remove.addEventListener('click', async () => {
+            if (!window.confirm(`Remove ${coOwner.callSign} as a co-owner?`)) return;
+            try {
+                await axios.delete(`/api/data/netprofiles/${currentCoOwnerProfileId}/coowners/${coOwner.id}`);
+                await loadCoOwners();
+                refreshNetList();
+            } catch (error) {
+                netOwnerFormState.mesg('error', error.response?.data?.errorMessage || error.message);
+            }
+        });
+        row.append(identity, remove);
+        list.appendChild(row);
+    });
+};
+
+const loadCoOwners = async () => {
+    const response = await axios.get(`/api/data/netprofiles/${currentCoOwnerProfileId}/coowners`);
+    renderCoOwners(response.data.coOwners || []);
+};
+
+window.netOwnerFormPrep = async function (id, name) {
+    currentCoOwnerProfileId = id;
+    document.getElementById('netowner_form_title').innerText = `Co-Owners for ${name}`;
     document.getElementById('input_npid_for_netowner').value = id;
-    netOwnerFormState.mesg('info', 'enter email address');
+    netOwnerFormState.mesg('info', 'Add a registered operator');
+    try {
+        await loadCoOwners();
+    } catch (error) {
+        netOwnerFormState.mesg('error', error.response?.data?.errorMessage || error.message);
+    }
 };
 
 //called by netlist "edit" link
@@ -869,17 +1034,17 @@ function netowner_submitHandler(e) {
     const id = formDataToSend.get('npid_for_netowner');
 
     const dataPayload = {
-        email: formDataToSend.get('email')
+        identifier: formDataToSend.get('identifier')
     };
 
     axios
-        .post(`/api/data/netprofiles/addnetowner/${id}`, dataPayload)
-        .then(req => {
+        .post(`/api/data/netprofiles/${id}/coowners`, dataPayload)
+        .then(async req => {
             console.debug('Adding Net Owner: ', req);
-            netOwnerFormState.mesg('info', 'Success: User will see ownership of this net in their account also');
-            setTimeout(() => {
-                location.reload();
-            }, 6500);
+            document.getElementById('input_coowner_identifier').value = '';
+            netOwnerFormState.mesg('info', 'Co-owner added');
+            await loadCoOwners();
+            refreshNetList();
         })
         .catch(error => {
             if (error.response.data.errorMessage) {
@@ -895,7 +1060,7 @@ function netowner_submitHandler(e) {
 document.getElementById('netprofile_form').addEventListener('submit', np_submitHandler);
 document.getElementById('netowner_form').addEventListener('submit', netowner_submitHandler);
 document.getElementById('add_connection').addEventListener('click', () => {
-    connectionRows.push({ type: 'FM' });
+    connectionRows.push({ type: 'FM', operation: 'Repeater' });
     connectionsTouched = true;
     renderConnections();
 });

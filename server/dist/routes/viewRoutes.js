@@ -7,6 +7,53 @@ const LiveNet = require('../models/liveNet').getLiveNet(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const { canAccessScheduledPreparation } = require('../lib/scheduling/lifecycle');
 const { logger } = require('../lib/logger');
+const validator = require('validator');
+const { ContactFormMessage } = require('../lib/userNotification');
+
+const CONTACT_RECIPIENT = 'logger@westvalleyarc.com';
+const CONTACT_LIMITS = Object.freeze({ name: 100, callSign: 20, email: 254, subject: 150, message: 5000 });
+const CONTACT_RATE_LIMIT_COUNT = 3;
+const CONTACT_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const contactRateLimits = new Map();
+
+const contactFormValues = body => ({
+    name: typeof body?.name === 'string' ? body.name.trim() : '',
+    callSign: typeof body?.callSign === 'string' ? body.callSign.trim() : '',
+    email: typeof body?.email === 'string' ? body.email.trim() : '',
+    subject: typeof body?.subject === 'string' ? body.subject.trim() : '',
+    message: typeof body?.message === 'string' ? body.message.trim() : ''
+});
+
+const validateContactForm = body => {
+    const values = contactFormValues(body);
+    const errors = {};
+    for (const field of ['name', 'email', 'subject', 'message']) {
+        if (!values[field]) errors[field] = 'This field is required.';
+    }
+    for (const [field, maximum] of Object.entries(CONTACT_LIMITS)) {
+        if (values[field].length > maximum) errors[field] = `Enter no more than ${maximum} characters.`;
+    }
+    if (values.email && values.email.length <= CONTACT_LIMITS.email && !validator.isEmail(values.email)) {
+        errors.email = 'Enter a valid email address.';
+    }
+    return { values, errors };
+};
+
+const contactRateLimitAllows = (key, now = Date.now()) => {
+    if (contactRateLimits.size > 500) {
+        for (const [storedKey, entry] of contactRateLimits) {
+            if (now - entry.startedAt >= CONTACT_RATE_LIMIT_WINDOW_MS) contactRateLimits.delete(storedKey);
+        }
+    }
+    const current = contactRateLimits.get(key);
+    if (!current || now - current.startedAt >= CONTACT_RATE_LIMIT_WINDOW_MS) {
+        contactRateLimits.set(key, { startedAt: now, count: 1 });
+        return true;
+    }
+    if (current.count >= CONTACT_RATE_LIMIT_COUNT) return false;
+    current.count++;
+    return true;
+};
 
 router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
     try {
@@ -95,8 +142,43 @@ router.get('/termsofuse', (req, res) => {
     res.render('termsOfUse', populate(req, res, { VIEW: 'termsOfUse' }));
 });
 
+router.get('/contact', (req, res) => {
+    res.render('contact', populate(req, res, {
+        VIEW: 'contact', sent: req.query.sent === '1', errors: {}, form: contactFormValues()
+    }));
+});
+
+router.post('/contact', async (req, res) => {
+    if (String(req.body?.website ?? '').trim()) {
+        return res.redirect(303, '/views/contact?sent=1');
+    }
+    const { values, errors } = validateContactForm(req.body);
+    const renderForm = (status, deliveryError = '') => res.status(status).render('contact', populate(req, res, {
+        VIEW: 'contact', sent: false, errors, form: values, deliveryError
+    }));
+    if (Object.keys(errors).length) return renderForm(400);
+    const rateLimitKey = `${req.ip || 'unknown'}:${values.email.toLowerCase()}`;
+    if (!contactRateLimitAllows(rateLimitKey)) {
+        return renderForm(429, 'Too many messages have been submitted. Please try again later.');
+    }
+    try {
+        const contactEmail = new ContactFormMessage(values);
+        await contactEmail.sendMailToAddrs([CONTACT_RECIPIENT]);
+        return res.redirect(303, '/views/contact?sent=1');
+    } catch (err) {
+        logger.error(`Contact form delivery failed: ${err.message}`);
+        return renderForm(502, 'Your message could not be sent right now. Please try again later.');
+    }
+});
+
 router.get('/homepage', (req, res) => {
     res.redirect('/');
 });
 
 module.exports = router;
+module.exports.CONTACT_LIMITS = CONTACT_LIMITS;
+module.exports.CONTACT_RATE_LIMIT_COUNT = CONTACT_RATE_LIMIT_COUNT;
+module.exports.CONTACT_RATE_LIMIT_WINDOW_MS = CONTACT_RATE_LIMIT_WINDOW_MS;
+module.exports.contactRateLimitAllows = contactRateLimitAllows;
+module.exports.resetContactRateLimits = () => contactRateLimits.clear();
+module.exports.validateContactForm = validateContactForm;

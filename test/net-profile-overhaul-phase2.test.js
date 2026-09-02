@@ -55,9 +55,18 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
             assert.ok(template.includes('Add Connection'));
             assert.ok(!template.includes('Signal Reports'));
             assert.ok(template.includes('Automatically Check In Lurkers'));
-            for (const type of ['FM', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'Other']) {
+            for (const type of ['FM', 'HF', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'Other']) {
                 assert.ok(client.includes(type));
             }
+            assert.ok(client.indexOf('FM: [') < client.indexOf('HF: ['));
+            assert.match(client, /options: \['Repeater', 'Simplex'\]/);
+            assert.match(client, /delete connection\.offset/);
+            assert.match(client, /dragHandle\.draggable = true/);
+            assert.match(client, /Drag .* connection to reorder/);
+            assert.match(client, /Move .* connection up/);
+            assert.match(client, /Move .* connection down/);
+            assert.match(client, /moveUp\.disabled = index === 0/);
+            assert.match(client, /moveDown\.disabled = index === connectionRows\.length - 1/);
             assert.doesNotMatch(client, /^\s*Legacy:/m);
         });
 
@@ -112,6 +121,30 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
             assert.equal(saved.connections.length, 1);
             assert.equal(saved.connections[0].frequency, '146.940');
             assert.equal(saved.connections[0].tone, '162.2');
+        });
+
+        await t.test('preserves user-selected connection order through save, edit, and reload', async () => {
+            const initialConnections = [
+                { type: 'AllStarLink', node: '63916' },
+                { type: 'FM', frequency: '146.940', operation: 'Repeater', offset: '-0.600' },
+                { type: 'EchoLink', callsign: 'NY7S-R' },
+                { type: 'HF', frequency: '7.268', mode: 'LSB' }
+            ];
+            const created = await request('', {
+                method: 'POST', body: formBody({ title: 'Ordered Connections', connections: initialConnections })
+            });
+            assert.deepEqual(created.body.connections.map(connection => connection.type),
+                ['AllStarLink', 'FM', 'EchoLink', 'HF']);
+
+            const reordered = [initialConnections[3], initialConnections[2], initialConnections[1], initialConnections[0]];
+            const edited = await request(`/${created.body._id}`, {
+                method: 'PATCH', body: formBody({ title: 'Ordered Connections', connections: reordered })
+            });
+            assert.deepEqual(edited.body.connections.map(connection => connection.type),
+                ['HF', 'EchoLink', 'FM', 'AllStarLink']);
+            const reloaded = await request(`/${created.body._id}`);
+            assert.deepEqual(reloaded.body.connections.map(connection => connection.type),
+                ['HF', 'EchoLink', 'FM', 'AllStarLink']);
         });
 
         await t.test('legacy Reflector survives unrelated edit and scheduling relationship is preserved', async () => {

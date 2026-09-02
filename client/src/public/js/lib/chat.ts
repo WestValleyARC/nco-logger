@@ -6,7 +6,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
 import {
     chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot,
-    recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, isLatestChatMessage,
+    recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, InitialChatScrollGate, isLatestChatMessage,
     shouldScrollChatToLatest, SingleChatStream, sortChatMessages, trimOldestChatMessages
 } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
@@ -175,6 +175,7 @@ export class ChatWidget extends HTMLElement {
     private lightboxConversationKey = '';
     private messageScrollHeight = 0;
     private keepBottomOnImageLoad = true;
+    private initialScrollGate = new InitialChatScrollGate();
     private maxMessageChars = 2000;
     private maxUploadBytes = 5 * 1024 * 1024;
     private imageMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -265,7 +266,12 @@ export class ChatWidget extends HTMLElement {
         this.messageScrollHeight = container.scrollHeight;
     };
 
+    private readonly handleInitialLayoutReady = (): void => {
+        if (this.initialScrollGate.markLayoutReady()) this.scrollToLatest();
+    };
+
     connectedCallback(): void {
+        this.initialScrollGate = new InitialChatScrollGate();
         this.style.display = 'block';
         this.style.height = '100%';
         this.style.minHeight = '0';
@@ -365,6 +371,8 @@ export class ChatWidget extends HTMLElement {
         const messageContainer = this.querySelector<HTMLElement>('.chat-messages');
         messageContainer?.addEventListener('scroll', this.handleMessageScroll, { passive: true });
         messageContainer?.addEventListener('load', this.handleMessageImageLoad, true);
+        this.addEventListener('nch-chat-layout-ready', this.handleInitialLayoutReady);
+        if (this.classList.contains('nch-chat-docked')) this.handleInitialLayoutReady();
         this.populateEmojiPicker();
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
@@ -382,6 +390,7 @@ export class ChatWidget extends HTMLElement {
     }
 
     disconnectedCallback(): void {
+        this.removeEventListener('nch-chat-layout-ready', this.handleInitialLayoutReady);
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
         window.removeEventListener('resize', this.handleWindowResize);
@@ -697,6 +706,7 @@ export class ChatWidget extends HTMLElement {
             this.updateRecipients(data.recipients);
             this.inboxInitialized = true;
             this.render({ forceBottom: true });
+            if (this.initialScrollGate.markHistoryReady()) this.scrollToLatest();
             this.openEvents(data.ssePath);
         } catch (err) {
             if (signal.aborted) return;

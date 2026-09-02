@@ -215,6 +215,7 @@ const cleanPreparation = async ({ occurrence, now, finalStatus, cancelledBy, db,
     if (finalStatus === 'cancelled') {
         occurrence.cancelledAt = now;
         occurrence.cancelledBy = cancelledBy;
+        occurrence.cancellationOrigin = 'preparation';
     }
     await occurrence.save({ session });
     return liveNetId;

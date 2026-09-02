@@ -12,6 +12,9 @@ const dashboard = read('server/dist/views/dashboard.ejs');
 const navbar = read('server/dist/views/partials/navbar.ejs');
 const footer = read('server/dist/views/partials/footer.ejs');
 const dashboardClient = read('client/dist/public/js/byView/dashboard/main.js');
+const favoriteWidgets = read('client/src/public/js/lib/widgets.ts');
+const legacyFavoriteClient = read('client/dist/public/js/lib/old__clientUtils.js');
+const waitingPage = read('server/dist/views/netNotRunning.ejs');
 const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
 const heroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-night.png');
@@ -55,9 +58,13 @@ test('net dashboard preserves live data hooks and honest schedule empty states',
     assert.match(dashboardClient, /new HttpClient\('livenet', '\/api\/data\/livenets'\)/);
     assert.match(dashboardClient, /loadScheduledOccurrences/);
     assert.match(dashboardClient, /activeNets\.slice\(0, 4\)/);
+    assert.match(dashboardClient, /kind === 'upcoming' \? 3 : 4/);
+    assert.match(dashboardClient, /formatConnectionLines\(occurrence\)\.join\(' · '\)/);
+    assert.match(dashboardClient, /details\.title = connection/);
     assert.match(dashboardClient, /liveNet\.permanent/);
     assert.match(dashboardClient, /favorites\.handler/);
     assert.match(dashboardClient, /refresh:\s*30000 \/ serverInfo\.requestRateFactor/);
+    assert.match(dashboardClient, /`\$\{activeNets\.length\}\\u00A0LIVE NOW`/);
 });
 
 test('live net listings expose authoritative grouped check-in counts and render singular or plural labels', async () => {
@@ -98,18 +105,27 @@ test('live net listings expose authoritative grouped check-in counts and render 
 test('landing-only navigation and footer expose approved destinations without fake WVARC links', () => {
     assert.match(dashboard, /include\('\.\/partials\/navbar', \{ user: user, landing: true \}\)/);
     assert.match(navbar, />\s*Live Nets\s*</);
+    assert.match(navbar, /href="\/views\/livenets"[^>]*>[\s\S]*?Live Nets/);
+    assert.match(navbar, /if \(user\.isLoggedIn\)[\s\S]*?href="\/views\/favorites"/);
     assert.match(navbar, />\s*Start a Net\s*</);
     assert.match(navbar, />\s*Guide\s*</);
     assert.match(navbar, />\s*Sign in\s*</);
-    assert.match(footer, /mailto:logger@westvalleyarc\.com/);
+    assert.match(dashboard, /favicon bi bi-heart/);
+    assert.doesNotMatch(dashboard, /favicon bi bi-star/);
+    assert.match(waitingPage, /favicon[^>]*bi-heart|bi-heart[^>]*favicon/);
+    assert.match(favoriteWidgets, /bi-heart-fill.*bi-heart/);
+    assert.match(favoriteWidgets, /Remove from Favorites.*Add to Favorites/);
+    assert.match(legacyFavoriteClient, /bi-heart-fill/);
+    assert.doesNotMatch(legacyFavoriteClient, /bi-star-fill/);
+    assert.match(footer, /href="\/views\/contact"[^>]*>[\s\S]*Contact NCO Logger/);
+    assert.doesNotMatch(footer, /logger@westvalleyarc\.com/);
     assert.match(footer, /bi bi-envelope/);
     assert.match(footer, /\/views\/privacypolicy/);
     assert.match(footer, /\/views\/termsofuse/);
     assert.match(footer, /\/views\/cookiepolicy/);
-    for (const label of ['About WVARC', 'Club Website', 'Join WVARC']) {
-        assert.match(footer, new RegExp(`<span[^>]+aria-disabled="true"[^>]*>${label}<\\/span>`));
-    }
-    assert.doesNotMatch(footer, /href="#">(?:About WVARC|Club Website|Join WVARC)/);
+    assert.match(footer, /href="https:\/\/westvalleyarc\.com\/about-wvarc\/">About WVARC<\/a>/);
+    assert.match(footer, /href="https:\/\/westvalleyarc\.com\/">Club Website<\/a>/);
+    assert.match(footer, /href="https:\/\/westvalleyarc\.com\/membership\/">Join WVARC<\/a>/);
 });
 
 test('landing layout includes responsive hero, feature, net, and footer grids', () => {
@@ -122,4 +138,8 @@ test('landing layout includes responsive hero, feature, net, and footer grids', 
     assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-footer-grid/);
     assert.match(landingCss, /\.landing-feature-card\s*\{[\s\S]*border-right:/);
     assert.match(landingCss, /\.landing-page \.landing-hero::before/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-connections dd\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*text-overflow:\s*ellipsis;/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-connections[\s\S]*white-space:\s*nowrap;/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-card:hover\s*\{[\s\S]*outline:\s*0;/);
+    assert.match(landingCss, /\.landing-page \.scheduled-net-card:focus-visible\s*\{[\s\S]*outline:\s*2px solid/);
 });

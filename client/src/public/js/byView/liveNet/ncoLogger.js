@@ -1312,6 +1312,7 @@ import {
     customizeNativeChat();
     applyDisplayPreferences();
     renderHelperChatUi();
+    chat.dispatchEvent(new Event("nch-chat-layout-ready"));
   }
 
   function dockNativeChat() {

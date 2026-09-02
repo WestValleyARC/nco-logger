@@ -30,9 +30,9 @@
           </div>
           <span class="waiting-favorite">
             <% if (user && !PERM) { %>
-            <button type="button" class="bi bi-star favicon" id="fav-<%= NPID %>" aria-label="Toggle favorite net"></button>
+            <button type="button" class="bi bi-heart favicon" id="fav-<%= NPID %>" aria-label="Add to Favorites" title="Add to Favorites"></button>
             <% } else { %>
-            <button type="button" class="d-none bi bi-star favicon" id="fav-<%= NPID %>" aria-label="Toggle favorite net"></button>
+            <button type="button" class="d-none bi bi-heart favicon" id="fav-<%= NPID %>" aria-label="Add to Favorites"></button>
             <% } %>
           </span>
         </div>

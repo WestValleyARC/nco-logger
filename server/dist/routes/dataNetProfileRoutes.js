@@ -25,6 +25,9 @@ router.post(
     authCheck(REQ_CALLSIGN),
     netScheduleController.cancelScheduledPreparation
 );
+router.get('/:id/coowners', authCheck(REQ_CALLSIGN), netProfileController.netProfileCoOwners);
+router.post('/:id/coowners', authCheck(REQ_CALLSIGN), netProfileController.netProfileAddNetOwner);
+router.delete('/:id/coowners/:userId', authCheck(REQ_CALLSIGN), netProfileController.netProfileRemoveCoOwner);
 router.patch('/:id', authCheck(REQ_CALLSIGN), netProfileController.netProfileUpdate);
 router.get('/:id', authCheck(REQ_CALLSIGN), netProfileController.netProfileDetails);
 router.delete('/:id', authCheck(REQ_CALLSIGN), netProfileController.netProfileDelete);

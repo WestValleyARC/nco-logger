@@ -19,6 +19,9 @@ test('Net Profile Overhaul Phase 3 view integration', async t => {
             connections: [
                 { type: 'FM', frequency: '146.940', tone: '162.2' },
                 { type: 'FM', frequency: '448.200' },
+                { type: 'FM', frequency: '146.940', operation: 'Repeater', offset: '-0.600', tone: '100.0' },
+                { type: 'FM', frequency: '146.520', operation: 'Simplex', offset: '+0.600', tone: '100.0' },
+                { type: 'HF', frequency: '7.268', mode: 'LSB' },
                 { type: 'AllStarLink', node: '63916' },
                 { type: 'EchoLink', callsign: 'NY7S-4' },
                 { type: 'DMR', talkgroup: '3100', colorCode: '1' },
@@ -30,6 +33,9 @@ test('Net Profile Overhaul Phase 3 view integration', async t => {
         }), [
             'FM: 146.940 MHz · PL 162.2',
             'FM: 448.200 MHz',
+            'FM: 146.940 MHz · -0.600 MHz · PL 100.0',
+            'FM: 146.520 MHz · Simplex · PL 100.0',
+            'HF: 7.268 MHz · LSB',
             'AllStarLink: 63916',
             'EchoLink: NY7S-4',
             'DMR: TG 3100 · CC 1',
@@ -49,6 +55,22 @@ test('Net Profile Overhaul Phase 3 view integration', async t => {
             mode: 'Reflector', modeDetails: 'REF030C', connections: [{ type: 'YSF', room: 'America-Link' }]
         }), ['YSF: America-Link']);
         assert.deepEqual(formatter.formatConnectionLines({ connections: [] }), []);
+    });
+
+    await t.test('preserves saved connection array order in shared displays', () => {
+        assert.deepEqual(formatter.formatConnectionLines({
+            connections: [
+                { type: 'AllStarLink', node: '63916' },
+                { type: 'FM', frequency: '146.940', operation: 'Repeater', offset: '-0.600' },
+                { type: 'EchoLink', callsign: 'NY7S-R' },
+                { type: 'HF', frequency: '7.268', mode: 'LSB' }
+            ]
+        }), [
+            'AllStarLink: 63916',
+            'FM: 146.940 MHz · -0.600 MHz',
+            'EchoLink: NY7S-R',
+            'HF: 7.268 MHz · LSB'
+        ]);
     });
 
     await t.test('public schedule and Favorites payloads preserve scheduling data and connections', () => {

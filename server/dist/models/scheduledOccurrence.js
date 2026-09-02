@@ -56,6 +56,11 @@ const scheduledOccurrenceSchema = new Schema(
             ref: 'UserProfile',
             default: undefined
         },
+        cancellationOrigin: {
+            type: String,
+            enum: ['individual', 'schedule-disabled', 'preparation'],
+            default: undefined
+        },
         notification: {
             type: notificationSchema,
             default: () => ({})

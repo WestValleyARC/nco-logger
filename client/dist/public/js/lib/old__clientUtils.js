@@ -143,7 +143,7 @@ class FavClient {
 
             const npid = event.target.getAttribute('id')?.replace(/fav\-/, '');
 
-            if (targetClass.includes('bi-star-fill')) {
+            if (targetClass.includes('bi-heart-fill')) {
                 await this.#favorite(npid, false);
             } else {
                 await this.#favorite(npid, true);
@@ -162,11 +162,15 @@ class FavClient {
             if (npid) {
                 if (typeof this.#followIdsSet !== 'undefined') {
                     if (this.#followIdsSet.has(npid)) {
-                        if (!currentClass.includes('bi-star-fill')) {
-                            iconElem.setAttribute('class', currentClass.replace('bi-star', 'bi-star-fill'));
+                        if (!currentClass.includes('bi-heart-fill')) {
+                            iconElem.setAttribute('class', currentClass.replace('bi-heart', 'bi-heart-fill'));
                         }
+                        iconElem.setAttribute('aria-label', 'Remove from Favorites');
+                        iconElem.setAttribute('title', 'Remove from Favorites');
                     } else {
-                        iconElem.setAttribute('class', currentClass.replace('bi-star-fill', 'bi-star'));
+                        iconElem.setAttribute('class', currentClass.replace('bi-heart-fill', 'bi-heart'));
+                        iconElem.setAttribute('aria-label', 'Add to Favorites');
+                        iconElem.setAttribute('title', 'Add to Favorites');
                     }
                 }
             }

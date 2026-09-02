@@ -106,6 +106,7 @@ const occurrenceResponse = occurrence => ({
     cancelledAt: occurrence.cancelledAt,
     missedAt: occurrence.missedAt,
     cancelledBy: occurrence.cancelledBy,
+    cancellationOrigin: occurrence.cancellationOrigin,
     notification: occurrence.notification,
     createdAt: occurrence.createdAt,
     updatedAt: occurrence.updatedAt
@@ -172,7 +173,14 @@ const disableSchedule = async (req, res) => {
             const cancelledAt = new Date();
             const cancellation = await ScheduledOccurrence.updateMany(
                 { schedule: schedule._id, status: 'scheduled', startAt: { $gte: cancelledAt } },
-                { $set: { status: 'cancelled', cancelledAt, cancelledBy: req.user._id } },
+                {
+                    $set: {
+                        status: 'cancelled',
+                        cancelledAt,
+                        cancelledBy: req.user._id,
+                        cancellationOrigin: 'schedule-disabled'
+                    }
+                },
                 { session }
             );
             result = { schedule: scheduleResponse(schedule), cancelledOccurrences: cancellation.modifiedCount };
@@ -272,7 +280,14 @@ const cancelOccurrence = async (req, res) => {
                 schedule: schedule._id,
                 status: 'scheduled'
             },
-            { $set: { status: 'cancelled', cancelledAt: new Date(), cancelledBy: req.user._id } },
+            {
+                $set: {
+                    status: 'cancelled',
+                    cancelledAt: new Date(),
+                    cancelledBy: req.user._id,
+                    cancellationOrigin: 'individual'
+                }
+            },
             { new: true, runValidators: true }
         );
         if (!occurrence) throw new ApiError(409, 'Only scheduled occurrences can be cancelled');

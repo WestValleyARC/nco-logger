@@ -30,7 +30,14 @@ const withMHz = value => {
 const formatStructuredConnection = connection => {
     switch (connection?.type) {
         case 'FM':
-            return `FM: ${[withMHz(connection.frequency), clean(connection.tone) && `PL ${clean(connection.tone)}`].filter(Boolean).join(' · ')}`;
+            return `FM: ${[
+                withMHz(connection.frequency),
+                connection.operation === 'Repeater' && withMHz(connection.offset),
+                connection.operation === 'Simplex' && 'Simplex',
+                clean(connection.tone) && `PL ${clean(connection.tone)}`
+            ].filter(Boolean).join(' · ')}`;
+        case 'HF':
+            return `HF: ${[withMHz(connection.frequency), clean(connection.mode)].filter(Boolean).join(' · ')}`;
         case 'AllStarLink':
             return `AllStarLink: ${clean(connection.node)}`;
         case 'EchoLink':
@@ -43,6 +50,12 @@ const formatStructuredConnection = connection => {
             return `YSF: ${clean(connection.room) || clean(connection.reflector)}`;
         case 'P25':
             return `P25: ${clean(connection.talkgroup) && `TG ${clean(connection.talkgroup)}`}`;
+        case 'M17':
+            return `M17: ${[clean(connection.reflector), clean(connection.module)].filter(Boolean).join(' / ')}`;
+        case 'NXDN':
+            return `NXDN: ${clean(connection.talkgroup) && `TG ${clean(connection.talkgroup)}`}`;
+        case 'Zello':
+            return `Zello: ${clean(connection.channel)}`;
         case 'Other':
             return `Other: ${[clean(connection.label), clean(connection.value)].filter(Boolean).join(': ')}`;
         case 'Legacy':

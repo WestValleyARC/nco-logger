@@ -79,6 +79,18 @@ test('chat styles use content-derived cache-busting URLs', () => {
     assert.match(liveNetView, /nco-logger\.css\?v=<%= server\.appAssetVersion %>/);
 });
 
+test('highlight hover stays dark and initial chat waits for the docked logger layout', () => {
+    const css = read('client/dist/public/css/nco-logger.css');
+    const source = read('client/src/public/js/lib/chat.ts');
+    assert.match(css, /\.nch-row\.nch-highlighted:hover\s*\{[^}]*color:\s*#fff8de[^}]*background:\s*#5a4d22[^}]*border-color:\s*#d1ae48/s);
+    assert.match(css, /\.nch-row\.nch-highlighted:focus-within,[\s\S]*background:\s*#eac552/);
+    assert.match(source, /this\.render\(\{ forceBottom: true \}\);\s*if \(this\.initialScrollGate\.markHistoryReady\(\)\) this\.scrollToLatest\(\);\s*this\.openEvents/);
+    assert.match(source, /addEventListener\('nch-chat-layout-ready', this\.handleInitialLayoutReady\)/);
+    assert.match(read('client/src/public/js/byView/liveNet/ncoLogger.js'), /renderHelperChatUi\(\);\s*chat\.dispatchEvent\(new Event\("nch-chat-layout-ready"\)\)/);
+    assert.doesNotMatch(source, /requestAnimationFrame\(\(\) => this\.scrollToLatest\(\)\)/);
+    assert.match(source, /if \(shouldScrollChatToLatest\(forceBottom, wasNearBottom\)\)/);
+});
+
 test('application JavaScript cannot remain fresh after a same-server rebuild', () => {
     const serverUtils = read('server/dist/lib/serverUtils.js');
     const server = read('server/dist/server.js');

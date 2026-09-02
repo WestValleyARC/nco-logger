@@ -12,7 +12,7 @@ const { logger } = require('../logger');
 
 const WORKER_INTERVAL_MS = 60 * 1000;
 const HORIZON_DAYS = 90;
-const NOTIFICATION_LEAD_MS = 30 * 60 * 1000;
+const NOTIFICATION_LEAD_MS = 10 * 60 * 1000;
 const STALE_CLAIM_MS = 15 * 60 * 1000;
 const MAX_NOTIFICATIONS_PER_PASS = 100;
 
@@ -63,21 +63,68 @@ const materializeSchedule = async ({ schedule, now = new Date(), db = mongoose.c
     let created = 0;
     let synchronized = 0;
 
+    const restoredOverrides = await ScheduledOccurrence.updateMany(
+        {
+            schedule: schedule._id,
+            status: 'cancelled',
+            cancellationOrigin: 'schedule-disabled',
+            isOverride: true,
+            startAt: { $gt: now }
+        },
+        {
+            $set: { status: 'scheduled' },
+            $unset: { cancelledAt: 1, cancelledBy: 1, cancellationOrigin: 1 }
+        }
+    );
+    synchronized += restoredOverrides.modifiedCount;
+
     for (const candidate of candidates) {
         const { occurrence, inserted } = await findOrCreateOccurrence({ candidate, schedule, ScheduledOccurrence });
         if (inserted) created++;
-        const result = await ScheduledOccurrence.updateOne(
-            { _id: occurrence._id, status: 'scheduled', isOverride: false, startAt: { $ne: candidate.startAt } },
-            { $set: { startAt: candidate.startAt } }
-        );
+        const restoreDisabled = occurrence.status === 'cancelled' &&
+            occurrence.cancellationOrigin === 'schedule-disabled' &&
+            occurrence.isOverride === false && occurrence.startAt > now;
+        const result = restoreDisabled
+            ? await ScheduledOccurrence.updateOne(
+                  {
+                      _id: occurrence._id,
+                      status: 'cancelled',
+                      cancellationOrigin: 'schedule-disabled',
+                      isOverride: false,
+                      startAt: { $gt: now }
+                  },
+                  {
+                      $set: {
+                          status: 'scheduled',
+                          originalStartAt: candidate.originalStartAt,
+                          startAt: candidate.startAt
+                      },
+                      $unset: { cancelledAt: 1, cancelledBy: 1, cancellationOrigin: 1 }
+                  }
+              )
+            : await ScheduledOccurrence.updateOne(
+                  {
+                      _id: occurrence._id,
+                      status: 'scheduled',
+                      isOverride: false,
+                      $or: [
+                          { startAt: { $ne: candidate.startAt } },
+                          { originalStartAt: { $ne: candidate.originalStartAt } }
+                      ]
+                  },
+                  { $set: { originalStartAt: candidate.originalStartAt, startAt: candidate.startAt } }
+              );
         synchronized += result.modifiedCount;
     }
 
     const ordinaryFuture = await ScheduledOccurrence.find({
         schedule: schedule._id,
-        status: 'scheduled',
         isOverride: false,
-        startAt: { $gt: now }
+        startAt: { $gt: now },
+        $or: [
+            { status: 'scheduled' },
+            { status: 'cancelled', cancellationOrigin: 'schedule-disabled' }
+        ]
     }).select('_id occurrenceKey');
     const staleIds = ordinaryFuture
         .filter(occurrence => !generatedKeys.has(occurrence.occurrenceKey))
@@ -85,8 +132,11 @@ const materializeSchedule = async ({ schedule, now = new Date(), db = mongoose.c
     const removal = staleIds.length
         ? await ScheduledOccurrence.deleteMany({
               _id: { $in: staleIds },
-              status: 'scheduled',
-              isOverride: false
+              isOverride: false,
+              $or: [
+                  { status: 'scheduled' },
+                  { status: 'cancelled', cancellationOrigin: 'schedule-disabled' }
+              ]
           })
         : { deletedCount: 0 };
 

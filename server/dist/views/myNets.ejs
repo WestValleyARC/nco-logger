@@ -117,16 +117,20 @@
           <div class="panel-heading">
             <div>
               <div class="section-eyebrow">Shared management</div>
-              <h2 id="netowner_form_title">Additional net owner</h2>
+              <h2 id="netowner_form_title">Co-Owners</h2>
             </div>
             <span class="form-status" id="netowner_form_status" role="status" aria-live="polite"></span>
           </div>
-          <p class="panel-help">The added operator must already have an account using this email address.</p>
+          <p class="panel-help">Add a registered operator by callsign or account email. The primary owner cannot be removed.</p>
+
+          <div id="coowner_list" class="coowner-list" aria-live="polite">
+            <p class="panel-loading">Loading co-owners…</p>
+          </div>
 
           <form id="netowner_form" class="app-form">
             <div class="app-field">
-              <label for="input_email">Co-owner email address</label>
-              <input type="email" placeholder="operator@example.com" class="form-control app-input" id="input_email" name="email" autocomplete="email" required />
+              <label for="input_coowner_identifier">Callsign or email address</label>
+              <input type="text" placeholder="W7ABC or operator@example.com" class="form-control app-input" id="input_coowner_identifier" name="identifier" maxlength="254" required />
             </div>
             <input type="hidden" name="input_netowner_mode" id="input_netowner_mode" />
             <input type="hidden" name="npid_for_netowner" id="input_npid_for_netowner" />
