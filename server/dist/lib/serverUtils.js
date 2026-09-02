@@ -22,6 +22,7 @@ const applicationAssetPaths = [
     'css/app-shell.css',
     'css/local.css',
     'css/nco-logger.css',
+    'js/lib/appearance.js',
     'js/byView/liveNet/main.js',
     'js/byView/liveNet/ncoLogger.js',
     'js/lib/chat.js',
