@@ -1,6 +1,6 @@
 const CheckStateApplicator = require('./checkStateApplicator');
 const { logger } = require('../logger');
-const { getStationDetail, setNetRole } = require('../sharedNetOps');
+const { getStationDetail, setNetRole, handoffNetControl } = require('../sharedNetOps');
 
 class RoleModifier extends CheckStateApplicator {
     #targetRole;
@@ -39,7 +39,7 @@ class RoleModifier extends CheckStateApplicator {
             const isHandoff = this.myRole === 'netcontrol' && this.targetRole === 'netcontrol';
 
             if (isHandoff) {
-                await this.#handoffNetControl(station, newRole, req);
+                await this.#handoffNetControl(station, req);
             } else {
                 await this.#setRole(station, newRole);
             }
@@ -62,9 +62,11 @@ class RoleModifier extends CheckStateApplicator {
         });
     }
 
-    async #handoffNetControl(station, newRole, req) {
+    async #handoffNetControl(station, req) {
         const { present } = await this.getStationStates();
-        const isPresent = present.some(ia => ia.callSign.toUpperCase() === station.toUpperCase());
+        const isPresent = present.some(
+            ia => ia.callSign.toUpperCase() === station.toUpperCase() && ia.checkedState === true
+        );
         if (!isPresent) {
             throw new Error(`${station} must be online and present here`);
         }
@@ -75,10 +77,13 @@ class RoleModifier extends CheckStateApplicator {
         logger.info('handoffNetControl(): start db transaction');
         session.startTransaction();
         try {
-            // Promote target
-            await this.#setRole(station, newRole, session);
-            // Demote self
-            await this.#setRole(req.user.callSign, 'netlogger', session);
+            await handoffNetControl({
+                lnid: this.data.instance.ln._id,
+                sourceStation: req.user.callSign,
+                targetStation: station,
+                db: this.db,
+                session
+            });
 
             logger.info('handoffNetControl(): commit db transaction');
             await session.commitTransaction();

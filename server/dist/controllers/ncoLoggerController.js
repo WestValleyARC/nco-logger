@@ -182,11 +182,10 @@ async function handoff({ req, liveNet, source, target }) {
     const session = await mongoose.connection.startSession();
     session.startTransaction();
     try {
-        await netOps.setNetRole({ lnid: liveNet._id, station: target, newRole: 'netcontrol', session });
-        await netOps.setNetRole({
+        await netOps.handoffNetControl({
             lnid: liveNet._id,
-            station: normalizeCall(req.user.callSign),
-            newRole: 'netlogger',
+            sourceStation: normalizeCall(req.user.callSign),
+            targetStation: target,
             session
         });
         await session.commitTransaction();
