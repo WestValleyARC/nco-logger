@@ -173,6 +173,33 @@ class AccountInactivityWarning extends EmailBase {
     }
 }
 
+class ContactFormMessage extends EmailBase {
+    constructor({ name, callSign, email, subject, message }) {
+        const safeSubject = subject.replace(/[\r\n]+/g, ' ').trim();
+        const text = [
+            `Name: ${name}`,
+            callSign ? `Callsign: ${callSign}` : null,
+            `Email: ${email}`,
+            `Subject: ${safeSubject}`,
+            '',
+            message
+        ].filter(value => value !== null).join('\n');
+        const html = [
+            `<p><strong>Name:</strong> ${ejs.escapeXML(name)}</p>`,
+            callSign ? `<p><strong>Callsign:</strong> ${ejs.escapeXML(callSign)}</p>` : '',
+            `<p><strong>Email:</strong> ${ejs.escapeXML(email)}</p>`,
+            `<p><strong>Subject:</strong> ${ejs.escapeXML(safeSubject)}</p>`,
+            `<p><strong>Message:</strong></p><p>${ejs.escapeXML(message).replace(/\r?\n/g, '<br>')}</p>`
+        ].join('');
+        super({ body: {
+            subject: `NCO Logger contact: ${safeSubject}`,
+            replyTo: email,
+            text,
+            html
+        } });
+    }
+}
+
 class NetInactivityAutoClose extends EmailBase {
     constructor({ title }) {
         const subject = `NCO Logger automatically closed ${title}`;
@@ -230,6 +257,7 @@ class NetCloseReport extends EmailBase {
 
 module.exports = {
     EmailBase,
+    ContactFormMessage,
     AccountInactivityWarning,
     NetInactivityAutoClose,
     NetAnnounceStart,

@@ -712,6 +712,125 @@
     border: 0;
 }
 
+/* Contact */
+.contact-main {
+    background:
+        radial-gradient(circle at 16% 8%, rgba(0, 200, 240, 0.07), transparent 30rem),
+        linear-gradient(155deg, #071522 0%, #030a11 72%, #06111b 100%);
+}
+
+.contact-layout {
+    width: min(100%, 56rem);
+    padding-block: clamp(2.5rem, 6vw, 5rem);
+}
+
+.contact-heading {
+    margin-bottom: 1.5rem;
+}
+
+.contact-heading h1 {
+    margin-bottom: 0.65rem;
+    color: var(--app-text);
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    letter-spacing: -0.035em;
+}
+
+.contact-heading p {
+    max-width: 42rem;
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 1.05rem;
+}
+
+.contact-card {
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid rgba(155, 169, 178, 0.38);
+    border-radius: 0.9rem;
+    background: linear-gradient(150deg, rgba(11, 29, 41, 0.97), rgba(5, 15, 23, 0.99));
+    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.26);
+}
+
+.contact-card h2 {
+    margin-bottom: 1.25rem;
+    color: var(--app-text);
+}
+
+.contact-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.contact-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.contact-form .app-label span {
+    color: var(--app-muted);
+    font-weight: 400;
+}
+
+.contact-form textarea.app-input {
+    min-height: 10rem;
+    resize: vertical;
+}
+
+.contact-form textarea.app-input:focus {
+    border-color: var(--app-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(116, 198, 212, 0.12);
+}
+
+.contact-field-error {
+    margin: 0.35rem 0 0;
+    color: #ffaaa0;
+    font-size: 0.85rem;
+}
+
+.contact-notice {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 1.25rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--app-border);
+    border-radius: 0.55rem;
+    color: var(--app-muted);
+    background: rgba(116, 198, 212, 0.06);
+}
+
+.contact-notice strong {
+    color: var(--app-text);
+}
+
+.contact-notice-error {
+    color: #f0c2bc;
+    border-color: rgba(220, 84, 69, 0.46);
+    background: rgba(220, 84, 69, 0.08);
+}
+
+.contact-submit {
+    justify-self: start;
+    min-width: 10rem;
+}
+
+.contact-honeypot {
+    position: absolute !important;
+    left: -10000px !important;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+}
+
+@media (max-width: 575.98px) {
+    .contact-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-submit {
+        width: 100%;
+    }
+}
+
 .login-page .app-submit {
     color: #fff;
     background: linear-gradient(135deg, #ff971d, #ed6e00);
