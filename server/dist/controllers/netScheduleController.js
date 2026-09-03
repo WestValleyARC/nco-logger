@@ -7,6 +7,7 @@ const NetSchedule = require('../models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const { prepareOccurrence, cancelPreparation } = require('../lib/scheduling/lifecycle');
 const { materializeSchedule } = require('../lib/scheduling/worker');
+const { disableProfileSchedule } = require('../lib/scheduling/scheduleState');
 
 const ENDPOINT_VERSION = '1.0';
 const SCHEDULE_FIELDS = [
@@ -128,11 +129,24 @@ const createSchedule = async (req, res) => {
     try {
         await requireOwner(req);
         rejectUnsupportedFields(req.body, SCHEDULE_FIELDS);
+        if (req.body.enabled === false) {
+            throw new ApiError(400, 'New schedules must be enabled; use the schedule disable endpoint after creation');
+        }
+        const now = new Date();
         const schedule = new NetSchedule({
             ...selectFields(req.body, SCHEDULE_FIELDS),
             netProfile: req.params.id
         });
+        await schedule.validate();
+        if (schedule.type === 'oneTime') {
+            const localDate = DateTime.fromISO(schedule.startDate, { zone: 'UTC' });
+            const startAt = resolveLocalDateTime(localDate, schedule.localStartTime, schedule.timezone)
+                .toUTC()
+                .toJSDate();
+            if (startAt <= now) throw new ApiError(400, 'One-time schedule start must be in the future');
+        }
         await schedule.save();
+        await materializeSchedule({ schedule, now });
         return res.status(201).json({ endpointVersion: ENDPOINT_VERSION, schedule: scheduleResponse(schedule) });
     } catch (error) {
         return sendError(res, error);
@@ -143,6 +157,9 @@ const updateSchedule = async (req, res) => {
     try {
         await requireOwner(req);
         rejectUnsupportedFields(req.body, SCHEDULE_FIELDS);
+        if (req.body.enabled === false) {
+            throw new ApiError(400, 'Use the schedule disable endpoint to disable a schedule');
+        }
         const schedule = await NetSchedule.findOne({ netProfile: req.params.id });
         if (!schedule) throw new ApiError(404, 'Schedule not found');
         schedule.set(selectFields(req.body, SCHEDULE_FIELDS));
@@ -161,31 +178,17 @@ const disableSchedule = async (req, res) => {
         let result;
         await session.withTransaction(async () => {
             await requireOwner(req, session);
-            const schedule = await NetSchedule.findOne({ netProfile: req.params.id }).session(session);
-            if (!schedule) throw new ApiError(404, 'Schedule not found');
-
-            const activeOccurrence = await ScheduledOccurrence.exists({
-                schedule: schedule._id,
-                status: { $in: ['preparing', 'live'] }
-            }).session(session);
-            if (activeOccurrence) throw new ApiError(409, 'Cannot disable a schedule with a preparing or live occurrence');
-
-            schedule.enabled = false;
-            await schedule.save({ session });
-            const cancelledAt = new Date();
-            const cancellation = await ScheduledOccurrence.updateMany(
-                { schedule: schedule._id, status: 'scheduled', startAt: { $gte: cancelledAt } },
-                {
-                    $set: {
-                        status: 'cancelled',
-                        cancelledAt,
-                        cancelledBy: req.user._id,
-                        cancellationOrigin: 'schedule-disabled'
-                    }
-                },
-                { session }
-            );
-            result = { schedule: scheduleResponse(schedule), cancelledOccurrences: cancellation.modifiedCount };
+            const disabled = await disableProfileSchedule({
+                netProfileId: req.params.id,
+                cancelledBy: req.user._id,
+                db: mongoose.connection,
+                session
+            });
+            if (!disabled) throw new ApiError(404, 'Schedule not found');
+            result = {
+                schedule: scheduleResponse(disabled.schedule),
+                cancelledOccurrences: disabled.cancelledOccurrences
+            };
         });
         return res.json({ endpointVersion: ENDPOINT_VERSION, ...result });
     } catch (error) {
@@ -258,12 +261,21 @@ const updateOccurrence = async (req, res) => {
                 _id: req.params.occurrenceId,
                 netProfile: req.params.id,
                 schedule: schedule._id,
-                status: 'scheduled'
+                status: 'scheduled',
+                'notification.state': { $ne: 'claimed' }
             },
-            { $set: { startAt, isOverride: true } },
+            {
+                $set: {
+                    startAt,
+                    isOverride: true,
+                    notification: { state: 'pending', attempts: 0 }
+                }
+            },
             { new: true, runValidators: true }
         );
-        if (!occurrence) throw new ApiError(409, 'Only scheduled occurrences can be rescheduled');
+        if (!occurrence) {
+            throw new ApiError(409, 'Only scheduled occurrences without an active reminder claim can be rescheduled');
+        }
         return res.json({ endpointVersion: ENDPOINT_VERSION, occurrence: occurrenceResponse(occurrence) });
     } catch (error) {
         return sendError(res, error);

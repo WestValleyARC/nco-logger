@@ -179,7 +179,8 @@ test('Phase 5 public scheduling visibility', async t => {
             const css = read('client/dist/public/css/app-shell.css');
 
             assert.match(dashboardClient, /activeNets\.slice\(0, 4\)/);
-            assert.match(dashboardClient, /occurrences\.slice\(0, 4\)/);
+            assert.match(dashboardClient, /const previewLimit = kind === 'upcoming' \? 3 : 4/);
+            assert.match(dashboardClient, /occurrences\.slice\(0, previewLimit\)/);
             assert.match(dashboard, /href="\/views\/livenets"/);
             assert.match(dashboard, /href="\/views\/schedule\?view=today"/);
             assert.match(dashboard, /href="\/views\/schedule\?view=upcoming"/);
