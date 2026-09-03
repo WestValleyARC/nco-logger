@@ -44,7 +44,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     ["hi", [], "/h hi CALL", "Check in, then highlight"],
     ["li", [], "/h li", "Confirm and check in visible lurkers"],
     ["f", [], "/h f [frequency]", "Show or change frequency"],
-    ["w", [], "/h w [CALL]", "Ask NetControl.live for station role and permission details"]
+    ["w", [], "/h w [CALL]", "Ask NCO Logger for station role and permission details"]
   ].map(([name, aliases, usage, description]) => Object.freeze({
     name, aliases: Object.freeze(aliases), usage, description
   })));
@@ -429,7 +429,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
 
   async function runCommand(command, finalMessage = "") {
     if (!commandAllowed(command)) {
-      setStatus("That action is not available in the current helper mode.", "warning");
+      setStatus("That action is not available in the current operating mode.", "warning");
       return false;
     }
     let pendingCall = "";
@@ -474,7 +474,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       if (/create an account first/i.test(errorMessage) && ["l", "handoff"].includes(verb)) {
         const call = normalizeCall(targetCall);
         const role = verb === "l" ? "Logger" : "NCO";
-        setStatus(`${call || "This station"} needs a registered NetControl.live account before being assigned ${role}. Relay does not require an account.`, "warning");
+        setStatus(`${call || "This station"} needs a registered NCO Logger account before being assigned ${role}. Relay does not require an account.`, "warning");
       } else {
         setStatus(`Couldn’t complete that action: ${errorMessage}`, "error");
       }
@@ -545,7 +545,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       const message = result.callSign
         ? `${String(result.callSign).toLowerCase()}: ${result.role}/${result.level} [owner:${Boolean(result.owner)}]`
         : "";
-      setStatus(message || "NetControl.live returned no additional details.", "success");
+      setStatus(message || "NCO Logger returned no additional details.", "success");
       return true;
     } catch (error) {
       setStatus(`Couldn’t complete that read: ${error.message || String(error)}`, "error");
@@ -967,7 +967,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         thread.push({ id: message.id, from: senderCall, body, timestamp: Number(message.timestamp) || Date.now(), incoming: true });
         privateThreads.set(senderCall, thread.slice(-HELPER_CHAT_MAX));
         if (!privateChatTarget) privateChatTarget = senderCall;
-        setStatus(`Private helper message from ${senderCall}.`, "success");
+        setStatus(`Private Live Logger message from ${senderCall}.`, "success");
       }
     }
     renderHelperChatUi();
@@ -1010,7 +1010,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const peer = privateChatTarget ? helperPeers.get(privateChatTarget) : null;
     if (privatePane) privatePane.hidden = !privateChatTarget;
     if (warning) warning.textContent = privateChatTarget && !privatePeerAvailable(peer)
-      ? `${privateChatTarget} is not currently advertising NCO Helper private chat, so they may not receive this.`
+      ? `${privateChatTarget} is not currently available for Live Logger private chat, so they may not receive this.`
       : "";
     if (send) send.disabled = !privateChatTarget || !privatePeerAvailable(peer);
     if (input) input.disabled = !privateChatTarget || !privatePeerAvailable(peer);
@@ -1133,7 +1133,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const peer = targetCall ? helperPeers.get(targetCall) : null;
     const body = String(input?.value || "").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 800);
     if (!targetCall) return setStatus("Choose a private chat recipient first.", "warning");
-    if (!privatePeerAvailable(peer)) return setStatus(`${targetCall} is not currently running NCO Helper private chat.`, "warning");
+    if (!privatePeerAvailable(peer)) return setStatus(`${targetCall} is not currently available for Live Logger private chat.`, "warning");
     if (!body) return;
     const identity = currentRelayIdentity();
     const sent = await publishHelperPrivate("private", {
@@ -1142,13 +1142,13 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       body,
       fromCall: identity?.callSign || selfCall()
     });
-    if (!sent) return setStatus("Private helper chat could not send because the relay is not connected.", "error");
+    if (!sent) return setStatus("Private Live Logger chat could not send because the relay is not connected.", "error");
     const thread = privateThreads.get(targetCall) || [];
     thread.push({ id: makeLocalId("localpm"), from: identity?.callSign || selfCall(), body, timestamp: Date.now(), incoming: false });
     privateThreads.set(targetCall, thread.slice(-HELPER_CHAT_MAX));
     if (input) input.value = "";
     renderHelperChatUi();
-    setStatus(`Private helper message sent to ${targetCall}.`, "success");
+    setStatus(`Private Live Logger message sent to ${targetCall}.`, "success");
   }
 
   function normalizeLatestChatPrompt() {
@@ -1348,7 +1348,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const slot = panel?.querySelector("[data-role='chat-slot']");
     if (!slot) return;
     if (!chat) {
-      slot.textContent = "Waiting for NetControl.live chat to load…";
+      slot.textContent = "Waiting for live net chat to load…";
       return;
     }
     slot.textContent = "";
@@ -1461,14 +1461,14 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     if (identityTarget) {
       identityTarget.textContent = identity
         ? `Detected: Net ${identity.netId} · ${identity.callSign} · user ${identity.userId}`
-        : "Waiting for the current NetControl.live station identity.";
+        : "Waiting for the current live net station identity.";
     }
     if (tokenInput) {
       tokenInput.placeholder = relayToken ? "Relay token saved locally" : "Paste relay token";
     }
     if (tokenHint) {
       tokenHint.textContent = relayToken
-        ? "A relay token is saved in this extension's local Chrome storage."
+        ? "A relay token is saved in this browser's local storage."
         : "No relay token is saved.";
       tokenHint.dataset.saved = relayToken ? "true" : "false";
     }
@@ -1626,7 +1626,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   }
 
   async function openEditModal(callSign) {
-    if (!canManageStations()) return setStatus("Station editing is not available in this helper mode.", "warning");
+    if (!canManageStations()) return setStatus("Station editing is not available in this operating mode.", "warning");
     const call = normalizeCall(callSign);
     const modal = panel.querySelector("[data-role='edit-modal']");
     setStatus(`Loading ${call}’s current server profile…`, "working");
@@ -1768,7 +1768,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   }
 
   async function saveEditModal() {
-    if (!canManageStations()) return setStatus("Station editing is not available in this helper mode.", "warning");
+    if (!canManageStations()) return setStatus("Station editing is not available in this operating mode.", "warning");
     const modal = panel.querySelector("[data-role='edit-modal']");
     const oldCall = normalizeCall(modal.dataset.originalCall);
     const call = normalizeCall(modal.querySelector("[data-modal='callsign']").value);
@@ -2359,18 +2359,18 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   async function runSlashCommand(rawText) {
     const trimmed = String(rawText || "").trim();
     if (trimmed === "/") {
-      slashNothingSent("Type /h for NCO Helper commands.");
+      slashNothingSent("Type /h for NCO Logger commands.");
       return;
     }
     const tokens = trimmed.split(/\s+/);
     if (tokens[0]?.toLocaleLowerCase() !== "/h") {
-      slashNothingSent(`Unknown NCO Helper command “${tokens[0] || "/"}”. Type /h for help.`);
+      slashNothingSent(`Unknown NCO Logger command “${tokens[0] || "/"}”. Type /h for help.`);
       return;
     }
     const actionToken = String(tokens[1] || "help").toLocaleLowerCase();
     const command = SLASH_COMMAND_BY_TOKEN.get(actionToken);
     if (!command) {
-      slashNothingSent(`Unknown NCO Helper command “${tokens.slice(0, 2).join(" ")}”. Type /h for help.`);
+      slashNothingSent(`Unknown NCO Logger command “${tokens.slice(0, 2).join(" ")}”. Type /h for help.`);
       return;
     }
     const args = tokens.slice(2);
@@ -3122,7 +3122,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   function startSync() {
     if (!globalThis.NCOHelperSync || !globalThis.NCOHelperRelay) {
       stopSync();
-      updateRelayStatus("unavailable", "Relay transport is unavailable; local helper operation continues.");
+      updateRelayStatus("unavailable", "Relay transport is unavailable; local Live Logger operation continues.");
       return;
     }
     const identity = currentRelayIdentity();
@@ -3149,7 +3149,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       onNotice: notice => setStatus(notice.message, notice.status === "error" ? "error" : "warning")
     });
     if (!identity) {
-      updateRelayStatus("unavailable", "The current NetControl.live callsign and user ID could not be determined; local helper operation continues.");
+      updateRelayStatus("unavailable", "The current live net callsign and user ID could not be determined; local Live Logger operation continues.");
       refreshRelaySetup();
       return;
     }
@@ -3168,7 +3168,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             ? `Connecting for ${identity.callSign} on Net ${identity.netId}.`
             : state === "authentication_failed"
               ? "Relay authentication failed. Open Menu → Relay Setup to verify the saved relay token."
-              : "The relay is unavailable; local helper operation continues.");
+              : "The relay is unavailable; local Live Logger operation continues.");
         if (state === "connected") publishHelperPresence();
       },
       onReady() {
@@ -3401,7 +3401,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       const available = MODULE_IDS.includes(id) && moduleAvailable(id);
       const visible = available && !local.moduleLayout.collapsed[id];
       button.disabled = !available;
-      button.title = available ? "" : "Unavailable in the current helper mode";
+      button.title = available ? "" : "Unavailable in the current operating mode";
       button.setAttribute("aria-pressed", String(visible));
       button.classList.toggle("is-active", visible);
       const state = button.querySelector("[data-module-state]");
@@ -3630,7 +3630,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         </div>
         <span class="nch-header-actions">
           <details class="nch-header-menu" data-role="header-menu">
-            <summary aria-label="Open helper menu">Menu</summary>
+            <summary aria-label="Open Live Logger menu">Menu</summary>
             <div class="nch-header-menu-popover">
               <div class="nch-net-connections" data-role="net-connections"${latestNetConnections.length ? '' : ' hidden'}>
                 ${latestNetConnections.map(line => `<span>${escapeHtml(line)}</span>`).join('')}
@@ -3642,9 +3642,9 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                   <div class="nch-font-setting" data-role="helper-font-controls" aria-label="Logger text size">
                     <span>Logger text</span>
                     <span class="nch-font-buttons">
-                      <button data-helper-font="small" aria-label="Small plugin text" title="Small plugin text">A−</button>
-                      <button data-helper-font="normal" aria-label="Standard plugin text" title="Standard plugin text">A</button>
-                      <button data-helper-font="large" aria-label="Large plugin text" title="Large plugin text">A+</button>
+                      <button data-helper-font="small" aria-label="Small Logger text" title="Small Logger text">A−</button>
+                      <button data-helper-font="normal" aria-label="Standard Logger text" title="Standard Logger text">A</button>
+                      <button data-helper-font="large" aria-label="Large Logger text" title="Large Logger text">A+</button>
                     </span>
                   </div>
                   <div class="nch-font-setting" data-role="chat-font-controls" aria-label="Chat text size">
@@ -3736,7 +3736,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         <div class="nch-edit-modal nch-close-confirm" data-role="close-confirm" hidden>
           <div class="nch-edit-card" role="alertdialog" aria-modal="true" aria-labelledby="nch-close-title">
             <h3 id="nch-close-title">Close This Net?</h3>
-            <p>This will end the active NetControl.live session for everyone. Are you sure?</p>
+            <p>This will end the active live net session for everyone. Are you sure?</p>
             <div class="nch-modal-actions">
               <button class="nch-confirm-close" data-role="confirm-close">Yes, Close Net</button>
               <button data-role="cancel-close">Cancel</button>
@@ -3746,7 +3746,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         <div class="nch-help-modal" data-role="help-modal" hidden>
           <article class="nch-help-card" role="dialog" aria-modal="true" aria-labelledby="nch-help-title">
             <header class="nch-help-heading">
-              <div><h2 id="nch-help-title">NCO Helper User Guide</h2><small>Version ${escapeHtml(VERSION)}</small></div>
+              <div><h2 id="nch-help-title">NCO Logger User Guide</h2><small>Version ${escapeHtml(VERSION)}</small></div>
               <div class="nch-help-actions">
                 <div class="nch-font-setting" data-role="help-font-controls" aria-label="Help text size">
                   <span class="nch-font-buttons">
@@ -3766,13 +3766,13 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
               <section><h3>QRZ and photos</h3><p>All callsign and profile-photo lookups use the server's shared QRZ integration. Personal QRZ credentials are not requested or stored in the browser. Profile photos use the returned station image and fall back to the bundled default avatar.</p></section>
               <section><h3>Station rows</h3><p>Move the pointer anywhere over a station row, or focus it with the keyboard, to change the row color and open its available controls without making the row taller. Active Log controls use about half of the row width and float over the right side of following rows. Right-click a row to pin or unpin its controls; Shift-right-click keeps the browser menu. Checked Out and Lurker rows use small inline controls that temporarily replace the row text instead of covering other stations. Active tags and role tags are labeled and color matched; select a tag’s × to clear it. There are no colored edge tabs.</p></section>
               <section data-role="slash-command-help">${slashHelpHtml()}</section>
-              <section><h3>Notes, names, and locations</h3><p>Use Note in an Active Log row’s hover tray to edit a private one-line note; saved notes remain visible. Notes are not synchronized. Edit Station changes only callsign, name, and location; Enter saves and Escape cancels. Name and location overrides saved by the authenticated NCO or Logger persist across nets and sessions and are shared with every installed helper, including Relay and Viewer, while remaining helper-only. Names, suffixes, and locations are formatted consistently.</p></section>
-              <section><h3>Ordering and alerts</h3><p>NCO and Logger users can drag ordinary station rows to reorder them. Fixed-role rows cannot be moved. A new lurker pulses three times when it first appears after the helper has loaded. An active row pulses three times when that station newly raises a hand. Routine polling and lowering a hand do not restart the alert.</p></section>
-              <section><h3>Modules and layout</h3><p>Drag a module by its thin title bar. Resize from any edge or corner. Modules snap to a fine grid and neighboring edges, never overlap, and keep long content scrolling inside the module. Use Menu → Modules to turn each module on or off, choose the Plugin text size for everything inside NCO Helper, adjust Chat text separately when useful, or reset the layout. Reset Layout restores the designed arrangement with all five modules visible without deleting station data, notes, QRZ credentials, font choices, or synchronized state.</p></section>
+              <section><h3>Notes, names, and locations</h3><p>Use Note in an Active Log row’s hover tray to edit a private one-line note; saved notes remain visible. Notes are not synchronized. Edit Station changes only callsign, name, and location; Enter saves and Escape cancels. Name and location overrides saved by the authenticated NCO or Logger persist across nets and sessions and are shared with connected Live Logger sessions, including Relay and Viewer, while remaining visible only in Live Logger. Names, suffixes, and locations are formatted consistently.</p></section>
+              <section><h3>Ordering and alerts</h3><p>NCO and Logger users can drag ordinary station rows to reorder them. Fixed-role rows cannot be moved. A new lurker pulses three times when it first appears after Live Logger has loaded. An active row pulses three times when that station newly raises a hand. Routine polling and lowering a hand do not restart the alert.</p></section>
+              <section><h3>Modules and layout</h3><p>Drag a module by its thin title bar. Resize from any edge or corner. Modules snap to a fine grid and neighboring edges, never overlap, and keep long content scrolling inside the module. Use Menu → Modules to turn each module on or off, choose the Logger text size for everything inside Live Logger, adjust Chat text separately when useful, or reset the layout. Reset Layout restores the designed arrangement with all five modules visible without deleting station data, notes, font choices, or synchronized state.</p></section>
               <section><h3>Chat</h3><p>The app's authenticated group chat is docked inside the Chat module. Emoji, image upload, Send, pins, duplicate suppression, and image viewing remain available.</p></section>
               <section><h3>Status and counts</h3><p>The fixed bottom bar shows the current action, operator mode, and visible In Log, Active, Checked Out, and Recheck totals.</p></section>
               <section><h3>Synchronization and safety</h3><p>Authorized NCO and Logger users save operational tags, shared name/location overrides, visibility, selection, and station ordering directly to this live net. Private notes and personal module layout stay in this browser. Cancel and close controls never mutate the net until their explicit confirmation action is selected.</p></section>
-              <section><h3>Report a problem</h3><p>Use Menu → Report a Bug to open a prepared email to KE7WIL. Your email program will let you review and send it; the helper never sends email automatically.</p></section>
+              <section><h3>Report a problem</h3><p>Use Menu → Report a Bug to open a prepared email to KE7WIL. Your email program will let you review and send it; this action never sends email automatically.</p></section>
             </div>
           </article>
         </div>
@@ -3787,12 +3787,12 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         </div>
         <div class="nch-update-modal" data-role="update-modal" hidden>
           <article class="nch-update-card" role="alertdialog" aria-modal="true" aria-labelledby="nch-update-title">
-            <h2 id="nch-update-title">NCO Helper Update Available</h2>
+            <h2 id="nch-update-title">NCO Logger Update Available</h2>
             <p>Version <strong data-role="available-version"></strong> is available. Your installed version is ${escapeHtml(VERSION)}.</p>
-            <p>The desktop updater verifies the approved package, backs up this extension folder, installs in place, and automatically restores the previous files if installation fails. Chrome’s extension storage and relay settings stay associated with this unpacked extension.</p>
-            <p data-role="updater-fallback" hidden>If the updater does not open, install NCO Helper Updater or <a href="mailto:ke7wil@gmail.com?subject=NCO%20Helper%20Updater">contact KE7WIL</a>.</p>
+            <p>The desktop updater verifies the approved package, creates a backup, installs the update, and automatically restores the previous version if installation fails. Browser storage and relay settings remain associated with NCO Logger.</p>
+            <p data-role="updater-fallback" hidden>If the updater does not open, install NCO Logger Updater or <a href="mailto:ke7wil@gmail.com?subject=NCO%20Logger%20Updater">contact KE7WIL</a>.</p>
             <div class="nch-update-actions">
-              <button data-role="launch-updater">Open NCO Helper Updater</button>
+              <button data-role="launch-updater">Open NCO Logger Updater</button>
               <button data-role="close-update">Not Now</button>
             </div>
           </article>
@@ -3891,7 +3891,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         target.dataset.rowCheckout || target.dataset.rowCheckin || target.dataset.clearTag ||
         ["save-edit", "cancel-edit"].includes(target.dataset.role);
       if (stationAdminAction && !canManageStations()) {
-        setStatus("That station-management action is not available in this helper mode.", "warning");
+        setStatus("That station-management action is not available in this operating mode.", "warning");
         return;
       }
       const stationActionRow = target.closest(".nch-row-actions, .nch-inline-actions")?.closest(".nch-row[data-call]");
@@ -3922,7 +3922,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const call = normalizeCall(target.dataset.rowCheckout);
         const station = latestStations.find(item => normalizeCall(item.callSign) === call);
         if (!station || call === selfCall() || (!isNcoUser() && station.role === "netcontrol")) {
-          setStatus("That station cannot be checked out in the current helper mode.", "warning");
+          setStatus("That station cannot be checked out in the current operating mode.", "warning");
           return;
         }
         const succeeded = await runCommand(`o ${call}`);
@@ -3940,16 +3940,16 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const call = normalizeCall(target.dataset.delete);
         const station = latestStations.find(item => normalizeCall(item.callSign) === call);
         if (["netcontrol", "netlogger", "netrelay"].includes(station?.role || "")) {
-          setStatus("Special-role stations cannot be deleted from the helper log.", "warning");
+          setStatus("Special-role stations cannot be deleted from the Live Logger display.", "warning");
           return;
         }
-        if (confirm(`Are you sure you want to delete ${call} from the helper log? The official NetControl.live record will remain.`)) {
+        if (confirm(`Are you sure you want to delete ${call} from the Live Logger display? The live net record will remain.`)) {
           hiddenCalls.add(call);
           local.hiddenCalls = [...hiddenCalls];
           storageSet();
           publishSharedVisibility(call, true);
           renderQueue();
-          setStatus(`${call} removed from every connected helper display. The official NetControl.live record was not changed.`, "success");
+          setStatus(`${call} removed from every connected Live Logger display. The live net record was not changed.`, "success");
         }
       }
       if (target.dataset.editNote) {
@@ -4072,7 +4072,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         stopSync();
         startSync();
         refreshRelaySetup();
-        setStatus("Saved relay token removed. Local helper operation continues.", "success");
+        setStatus("Saved relay token removed. Local Live Logger operation continues.", "success");
       }
       if (target.dataset.quickTag) {
         await lookupAndCheckIn(panel.querySelector("[data-role='callsign']").value, target.dataset.quickTag);
@@ -4134,7 +4134,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         renderQueue();
         if (succeeded && ["i", "hi", "io"].includes(command)) clearEditor();
       }
-      if (target.dataset.role === "reset" && confirm("Reset this net's private helper order, locations, and tags?")) {
+      if (target.dataset.role === "reset" && confirm("Reset this net's private Live Logger order, locations, and tags?")) {
         local = {
           order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {}, hiddenCalls: [],
           paneSizes: { ...local.paneSizes }, collapsedSections: { ...local.collapsedSections },
