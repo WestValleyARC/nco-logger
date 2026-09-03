@@ -255,8 +255,6 @@ const netProfileRemoveCoOwner = async (req, res) => {
 };
 
 const netProfileCreatePost = async (req, res) => {
-    console.debug(req.body);
-
     try {
         const { title, frequency, mode, restrictedSigReports, autoIn, modeDetails, notes } = req.body;
         const hasConnections = hasOwn(req.body, 'connections');

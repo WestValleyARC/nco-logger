@@ -58,10 +58,13 @@
     --app-dashboard-hero-image: url('/img/nco-logger-hero-panorama.png');
 }
 
-/* Phase 1 theme slots intentionally retain the approved production hero. */
-:root[data-theme='dark'],
+/* Keep the dashboard hero aligned with the resolved Appearance theme. */
 :root[data-theme='light'] {
     --app-dashboard-hero-image: url('/img/nco-logger-hero-panorama.png');
+}
+
+:root[data-theme='dark'] {
+    --app-dashboard-hero-image: url('/img/nco-logger-hero-night.png');
 }
 
 .app-page {
