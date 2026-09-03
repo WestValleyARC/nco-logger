@@ -20,6 +20,7 @@ const {
     processOccurrenceLifecycle
 } = require('../server/dist/lib/scheduling/lifecycle');
 const { closeNet } = require('../server/dist/lib/sharedNetOps');
+const { NetCloseReport } = require('../server/dist/lib/userNotification');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 const NOW = new Date('2030-01-10T20:00:00.000Z');
@@ -50,10 +51,11 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
     const ScheduledOccurrence = require('../server/dist/models/scheduledOccurrence').getScheduledOccurrence(db);
     const LiveNet = require('../server/dist/models/liveNet').getLiveNet(db);
     const StationInteraction = require('../server/dist/models/stationInteraction').getStationInteraction(db);
+    const ChatMessage = require('../server/dist/models/chatMessage').getChatMessage(db);
     const LiveNetAutoClose = require('../server/dist/models/liveNetAutoClose').getLiveNetAutoClose(db);
     await Promise.all([
         NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), LiveNet.init(),
-        StationInteraction.init(), LiveNetAutoClose.init()
+        StationInteraction.init(), ChatMessage.init(), LiveNetAutoClose.init()
     ]);
 
     const ownerId = new mongoose.Types.ObjectId();
@@ -62,7 +64,8 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
     let sequence = 0;
     const reset = () => Promise.all([
         NetProfile.deleteMany({}), NetSchedule.deleteMany({}), ScheduledOccurrence.deleteMany({}),
-        LiveNet.deleteMany({}), StationInteraction.deleteMany({}), LiveNetAutoClose.deleteMany({})
+        LiveNet.deleteMany({}), StationInteraction.deleteMany({}), ChatMessage.deleteMany({}),
+        LiveNetAutoClose.deleteMany({})
     ]);
     const createProfile = overrides => NetProfile.create({
         title: `Hardening Net ${++sequence}`,
@@ -203,6 +206,10 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
             const manualProfile = await createProfile();
             const manualLive = await createLive(manualProfile);
             await addInteraction({ profile: manualProfile, liveNet: manualLive, lastSeen: new Date(NOW - NCO_ABANDONMENT_MS - 1) });
+            await ChatMessage.create({
+                liveNet: manualLive._id, netProfile: manualProfile._id, userProfile: ownerId,
+                callSign: 'W1CHAT', text: 'Captured before automatic cleanup'
+            });
             const scheduledProfile = await createProfile();
             const occurrence = await createOccurrence(scheduledProfile, 'live');
             const scheduledLive = await createLive(scheduledProfile, { occurrence });
@@ -215,6 +222,18 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
                 assert.deepEqual(message.owners.sort(), [String(ownerId), String(coOwnerId)].sort());
                 assert.ok(!message.owners.includes(String(followerId)));
             }
+            const autoCloseEvents = await LiveNetAutoClose.find({ closeState: 'completed' });
+            assert.equal(autoCloseEvents.length, 2);
+            for (const event of autoCloseEvents) {
+                assert.ok(event.reportSnapshot, 'report snapshot must survive destructive close cleanup');
+                const attachments = NetCloseReport.createAttachments(event.reportSnapshot);
+                assert.equal(attachments.length, 2);
+                assert.match(attachments[0].content.toString(), /Net Close Date/);
+                assert.doesNotMatch(attachments[0].content.toString(), /URL/);
+            }
+            const manualEvent = autoCloseEvents.find(event => String(event.netProfile) === String(manualProfile._id));
+            assert.match(manualEvent.reportSnapshot.chatLog, /W1CHAT: Captured before automatic cleanup/);
+            assert.equal(await ChatMessage.countDocuments({ netProfile: manualProfile._id }), 0);
             const completed = await ScheduledOccurrence.findById(occurrence._id);
             assert.equal(completed.status, 'completed');
             assert.equal(completed.completedAt.toISOString(), NOW.toISOString());

@@ -6,10 +6,10 @@ const { getLiveNet } = require('../../models/liveNet');
 const { getStationInteraction } = require('../../models/stationInteraction');
 const { getScheduledOccurrence } = require('../../models/scheduledOccurrence');
 const { getLiveNetAutoClose } = require('../../models/liveNetAutoClose');
-const { closeNet } = require('../sharedNetOps');
+const { closeNet, createNetCloseReportSnapshot } = require('../sharedNetOps');
 const { cleanupNetChat } = require('../localChat');
 const { realtimeClients } = require('../realtimeClients');
-const { NetInactivityAutoClose } = require('../userNotification');
+const { NetInactivityAutoClose, formatInactivityDuration } = require('../userNotification');
 const { logger } = require('../logger');
 const { conf } = require('../configLib');
 
@@ -242,11 +242,13 @@ const reconcileLiveNetPersistence = async ({ now = new Date(), db = mongoose.con
 };
 
 const defaultSendInactivityEmail = async ({ event, db }) => {
+    if (!event.reportSnapshot) throw new Error('Auto-close report snapshot is missing');
     const email = new NetInactivityAutoClose({
         title: event.netTitle,
-        abandonmentMinutes: NCO_ABANDONMENT_MINUTES
+        abandonmentMinutes: NCO_ABANDONMENT_MINUTES,
+        reportSnapshot: event.reportSnapshot
     });
-    return email.sendMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
+    return email.sendOperationalMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
 };
 
 const processAutoCloseEmails = async ({
@@ -381,6 +383,27 @@ const processAbandonedLiveNets = async ({
             { $set: { closeCommittedAt: now } }
         );
 
+        try {
+            const reportSnapshot = await createNetCloseReportSnapshot({
+                netProfileDoc: profile,
+                liveNetDoc: closeClaim,
+                closedAt: now,
+                db
+            });
+            await LiveNetAutoClose.updateOne(
+                { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
+                { $set: { reportSnapshot } }
+            );
+        } catch (error) {
+            await LiveNet.updateOne({ _id: liveNet._id, closing: true }, { $set: { closing: false } });
+            await LiveNetAutoClose.updateOne(
+                { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
+                { $set: { closeState: 'pending' }, $unset: { closeClaimedAt: 1, closeCommittedAt: 1 } }
+            );
+            logger.error(`Could not preserve auto-close report snapshot for LiveNet ${liveNet._id}: ${error.message}`);
+            continue;
+        }
+
         const closed = await closeNet({
             netProfileDoc: profile,
             liveNetDoc: closeClaim,
@@ -401,7 +424,7 @@ const processAbandonedLiveNets = async ({
             { _id: event._id, closeState: 'claimed', closeClaimedAt: now },
             { $set: { closeState: 'completed', closeCompletedAt: now } }
         )).modifiedCount;
-        logger.warn(`Automatically closed LiveNet ${liveNet._id} after ${NCO_ABANDONMENT_MINUTES} minutes without qualifying presence`);
+        logger.warn(`Automatically closed LiveNet ${liveNet._id} after ${formatInactivityDuration(NCO_ABANDONMENT_MS)} without qualifying presence`);
     }
 
     const emails = await processAutoCloseEmails({ now, db, sendInactivityEmail });
@@ -425,6 +448,7 @@ module.exports = {
     NCO_ABANDONMENT_MS,
     resolveNcoAbandonmentMinutes,
     CLAIM_STALE_MS,
+    defaultSendInactivityEmail,
     recoverAutoCloseClaims,
     reconcileLiveNetPersistence,
     processAutoCloseEmails,

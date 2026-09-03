@@ -1,10 +1,10 @@
 # Runtime Configuration
 
-This document describes Ham.Live's server configuration system (YAML files + environment variables) and the FlexOptions runtime feature-flag system.
+This document describes NCO Logger's server configuration system (YAML files + environment variables) and the FlexOptions runtime feature-flag system.
 
 ## Server Configuration Files
 
-Ham.Live uses a layered configuration system combining YAML files with environment variable overrides.
+NCO Logger uses a layered configuration system combining YAML files with environment variable overrides.
 
 ### Configuration Loading Architecture
 
@@ -118,12 +118,13 @@ All secrets and instance-specific values are supplied via environment variables.
 | `MONGODB_URI` | `conf.dburi` | Yes | MongoDB connection string |
 | `COOKIE_SESSION_KEY` | `conf.cookie_session_key` | Yes | Session cookie signing key |
 | `MAGIC_LINK_SECRET` | `conf.magic_link_secret` | Yes | JWT signing key for magic-link auth |
-| `BASE_URL` | `conf.base_url` | Yes (prod) | Public base URL (OAuth callbacks, email links) |
+| `BASE_URL` | `conf.base_url` | Yes (prod) | Public HTTP(S) origin for OAuth callbacks and absolute email links |
 | `MAIL_TRANSPORT` | `conf.mail_transport` | No | Set to `smtp` for delivery; otherwise development console mode |
 | `SMTP_HOST`, `SMTP_PORT` | `conf.smtp_host`, `conf.smtp_port` | No | Provider-neutral SMTP server |
 | `SMTP_SECURE`, `SMTP_REQUIRE_TLS` | matching config | No | TLS behavior |
 | `SMTP_USER`, `SMTP_PASS` | matching config | No | Optional SMTP authentication |
-| `EMAIL_FROM`, `EMAIL_REPLY_TO` | matching config | No | Sender identities |
+| `EMAIL_FROM` | `conf.email_from` | Required with SMTP | Canonical sender in `NCO Logger <address@example.com>` format; no production fallback sender |
+| `EMAIL_REPLY_TO` | `conf.email_reply_to` | No | Normal Reply-To; defaults to `logger@westvalleyarc.com` |
 | `GOOGLE_CLIENT_ID` | `conf.google_client_id` | No | Google OAuth2 (optional) |
 | `GOOGLE_CLIENT_SECRET` | `conf.google_client_secret` | No | Google OAuth2 (optional) |
 | `CHAT_MAX_MESSAGE_CHARS` | `conf.chat_max_message_chars` | No | Local chat length limit |
@@ -143,6 +144,11 @@ All secrets and instance-specific values are supplied via environment variables.
 **`loglevel` vs `LOG_LEVEL`**: `loglevel` is a YAML key used only as a reference value in the config object. The production logger (`node-json-logger`) reads `process.env.LOG_LEVEL` directly; that env var is not overlaid via `configLib.js`. In development, `logger.js` uses a colorized console logger that ignores both.
 
 Advertising and analytics integrations are removed from the WVARC fork.
+
+Email message builders cannot override From. Contact-form delivery is the sole Reply-To exception:
+it uses the validated visitor address while retaining the configured NCO Logger From identity.
+Application configuration does not establish or verify SPF, DKIM, DMARC, BIMI, or mailbox-provider
+profile settings.
 
 ---
 

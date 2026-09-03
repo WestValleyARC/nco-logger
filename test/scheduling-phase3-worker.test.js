@@ -280,7 +280,7 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
                 netProfileDoc: { title: 'Manual Test Net' },
                 liveNetDoc: { countdownTimer: 0, url: '/views/livenet/manual' }
             });
-            assert.match(manual.body.text, /N0CALL is starting Manual Test Net now/);
+            assert.match(manual.body.text, /N0CALL initiated the start of Manual Test Net, which is going live now/);
         });
 
         await t.test('a worker pass failure is contained and does not crash startup', async () => {

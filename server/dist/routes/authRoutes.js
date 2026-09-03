@@ -10,7 +10,7 @@ const MagicLoginStrategy = require('passport-magic-login').default;
 const jwt = require('jsonwebtoken');
 const gravatar = require('gravatar');
 const validator = require('validator');
-const { EmailBase, emailEnabled } = require('../lib/userNotification');
+const { MagicSignInEmail, emailEnabled } = require('../lib/userNotification');
 const { clearInactivityDeletionOnLogin } = require('../lib/accountInactivity');
 
 //MagicLogin Auth:
@@ -36,14 +36,7 @@ const sendMagicLink = async (destination, href, _code, req) => {
     }
 
     try {
-        const email = new EmailBase({
-            body: {
-                from: conf.email_from,
-                subject: 'Click to finish signing in',
-                html: `Click this <a href='${link}'>LINK</a> to finish logging in`,
-                text: `Finish signing in: ${link}`
-            }
-        });
+        const email = new MagicSignInEmail({ href });
 
         await email.sendMailToAddrs([destination]);
         logger.info('Auth link email accepted for delivery');

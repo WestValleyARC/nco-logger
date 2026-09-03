@@ -8,6 +8,7 @@ test('SMTP delivery retries with bounded attempts', async t => {
     conf.smtp_host = 'smtp.example.test';
     conf.smtp_port = '587';
     conf.base_url = 'https://logger.westvalleyarc.com';
+    conf.email_from = 'NCO Logger <logger@westvalleyarc.com>';
     let attempts = 0;
     let transportOptions;
     t.mock.method(nodemailer, 'createTransport', options => {
@@ -33,6 +34,7 @@ test('SMTP delivery retries with bounded attempts', async t => {
 test('SMTP does not retry a permanent rejection', async t => {
     conf.mail_transport = 'smtp';
     conf.smtp_host = 'smtp.example.test';
+    conf.email_from = 'NCO Logger <logger@westvalleyarc.com>';
     let attempts = 0;
     t.mock.method(nodemailer, 'createTransport', () => ({
         sendMail: async () => {
