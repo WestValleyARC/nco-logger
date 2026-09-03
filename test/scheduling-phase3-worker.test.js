@@ -6,6 +6,8 @@ const {
     HORIZON_DAYS,
     NOTIFICATION_LEAD_MS,
     STALE_CLAIM_MS,
+    MAX_NOTIFICATION_ATTEMPTS,
+    NOTIFICATION_RETRY_DELAY_MS,
     materializeSchedule,
     materializeEnabledSchedules,
     processDueNotifications,
@@ -197,24 +199,95 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
             assert.equal(sentIds.length, sentCount, 'a later worker process must not resend persisted notifications');
         });
 
-        await t.test('sent notifications cannot resend and failed sends record terminal failure', async () => {
+        await t.test('sent notifications cannot resend and known failures retry durably', async () => {
             const alreadySent = await notificationData({ minutesFromNow: 5, state: 'sent' });
             const failure = await notificationData({ minutesFromNow: 5 });
             let calls = 0;
-            await processDueNotifications({
-                now: NOW,
-                db,
-                sendNotification: async ({ occurrence }) => {
-                    calls++;
-                    if (occurrence._id.equals(failure.occurrence._id)) throw new Error('mock SMTP rejection');
-                }
+
+            await ScheduledOccurrence.deleteMany({
+                _id: { $nin: [alreadySent.occurrence._id, failure.occurrence._id] },
+                'notification.state': { $in: ['pending', 'claimed'] }
             });
+
+            const sendNotification = async ({ occurrence }) => {
+                calls++;
+                if (occurrence._id.equals(failure.occurrence._id) && calls < 3) {
+                    throw new Error('mock SMTP rejection');
+                }
+            };
+
+            await processDueNotifications({ now: NOW, db, sendNotification });
+
+            let retrying = await ScheduledOccurrence.findById(failure.occurrence._id);
             assert.equal(calls, 1);
             assert.equal((await ScheduledOccurrence.findById(alreadySent.occurrence._id)).notification.state, 'sent');
+            assert.equal(retrying.notification.state, 'pending');
+            assert.equal(retrying.notification.attempts, 1);
+            assert.ok(retrying.notification.failedAt);
+            assert.equal(
+                retrying.notification.retryAt.toISOString(),
+                new Date(NOW.getTime() + NOTIFICATION_RETRY_DELAY_MS).toISOString()
+            );
+
+            await processDueNotifications({
+                now: new Date(NOW.getTime() + NOTIFICATION_RETRY_DELAY_MS - 1),
+                db,
+                sendNotification
+            });
+            assert.equal(calls, 1, 'retry must not occur before retryAt');
+
+            await processDueNotifications({
+                now: new Date(NOW.getTime() + NOTIFICATION_RETRY_DELAY_MS),
+                db,
+                sendNotification
+            });
+
+            retrying = await ScheduledOccurrence.findById(failure.occurrence._id);
+            assert.equal(calls, 2);
+            assert.equal(retrying.notification.state, 'pending');
+            assert.equal(retrying.notification.attempts, 2);
+
+            await processDueNotifications({
+                now: new Date(NOW.getTime() + (2 * NOTIFICATION_RETRY_DELAY_MS)),
+                db,
+                sendNotification
+            });
+
+            const sent = await ScheduledOccurrence.findById(failure.occurrence._id);
+            assert.equal(calls, 3);
+            assert.equal(sent.notification.state, 'sent');
+            assert.equal(sent.notification.attempts, 3);
+            assert.equal(sent.notification.retryAt, null);
+        });
+
+        await t.test('known failures become terminal after the durable retry limit', async () => {
+            const failure = await notificationData({ minutesFromNow: 9 });
+            let calls = 0;
+
+            await ScheduledOccurrence.deleteMany({
+                _id: { $ne: failure.occurrence._id },
+                'notification.state': { $in: ['pending', 'claimed'] }
+            });
+
+            const sendNotification = async () => {
+                calls++;
+                throw new Error('mock SMTP rejection');
+            };
+
+            for (let attempt = 0; attempt < MAX_NOTIFICATION_ATTEMPTS; attempt++) {
+                await processDueNotifications({
+                    now: new Date(NOW.getTime() + (attempt * NOTIFICATION_RETRY_DELAY_MS)),
+                    db,
+                    sendNotification
+                });
+            }
+
             const failed = await ScheduledOccurrence.findById(failure.occurrence._id);
+            assert.equal(calls, MAX_NOTIFICATION_ATTEMPTS);
             assert.equal(failed.notification.state, 'failed');
-            assert.equal(failed.notification.attempts, 1);
+            assert.equal(failed.notification.attempts, MAX_NOTIFICATION_ATTEMPTS);
             assert.ok(failed.notification.failedAt);
+            assert.equal(failed.notification.retryAt, null);
         });
 
         await t.test('atomic claims prevent duplicate concurrent sends', async () => {
