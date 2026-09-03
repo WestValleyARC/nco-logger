@@ -12,6 +12,7 @@ const notificationSchema = new Schema(
         claimedAt: { type: Date, default: null },
         sentAt: { type: Date, default: null },
         failedAt: { type: Date, default: null },
+        retryAt: { type: Date, default: null },
         attempts: { type: Number, default: 0, min: 0 }
     },
     { _id: false }

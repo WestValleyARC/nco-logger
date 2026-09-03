@@ -15,6 +15,8 @@ const HORIZON_DAYS = 90;
 const NOTIFICATION_LEAD_MS = 10 * 60 * 1000;
 const STALE_CLAIM_MS = 15 * 60 * 1000;
 const MAX_NOTIFICATIONS_PER_PASS = 100;
+const MAX_NOTIFICATION_ATTEMPTS = 3;
+const NOTIFICATION_RETRY_DELAY_MS = 60 * 1000;
 
 const getModels = db => ({
     NetSchedule: getNetSchedule(db),
@@ -215,7 +217,12 @@ const processDueNotifications = async ({
             {
                 status: 'scheduled',
                 'notification.state': 'pending',
-                startAt: { $gt: now, $lte: dueThrough }
+                startAt: { $gt: now, $lte: dueThrough },
+                $or: [
+                    { 'notification.retryAt': { $exists: false } },
+                    { 'notification.retryAt': null },
+                    { 'notification.retryAt': { $lte: now } }
+                ]
             },
             {
                 $set: { 'notification.state': 'claimed', 'notification.claimedAt': claimedAt },
@@ -234,13 +241,46 @@ const processDueNotifications = async ({
             await sendNotification({ occurrence, netProfile, schedule, db });
             const sent = await ScheduledOccurrence.updateOne(
                 { _id: occurrence._id, 'notification.state': 'claimed', 'notification.claimedAt': claimedAt },
-                { $set: { 'notification.state': 'sent', 'notification.sentAt': new Date(now) } }
+                {
+                    $set: {
+                        'notification.state': 'sent',
+                        'notification.sentAt': new Date(now)
+                    },
+                    $unset: {
+                        'notification.claimedAt': 1,
+                        'notification.retryAt': 1,
+                        'notification.failedAt': 1
+                    }
+                }
             );
             totals.sent += sent.modifiedCount;
         } catch (error) {
+            const retryAt = new Date(now.getTime() + NOTIFICATION_RETRY_DELAY_MS);
+            const canRetry =
+                occurrence.notification.attempts < MAX_NOTIFICATION_ATTEMPTS &&
+                retryAt < occurrence.startAt;
+
             await ScheduledOccurrence.updateOne(
                 { _id: occurrence._id, 'notification.state': 'claimed', 'notification.claimedAt': claimedAt },
-                { $set: { 'notification.state': 'failed', 'notification.failedAt': new Date(now) } }
+                canRetry
+                    ? {
+                          $set: {
+                              'notification.state': 'pending',
+                              'notification.retryAt': retryAt,
+                              'notification.failedAt': new Date(now)
+                          },
+                          $unset: { 'notification.claimedAt': 1 }
+                      }
+                    : {
+                          $set: {
+                              'notification.state': 'failed',
+                              'notification.failedAt': new Date(now)
+                          },
+                          $unset: {
+                              'notification.claimedAt': 1,
+                              'notification.retryAt': 1
+                          }
+                      }
             );
             totals.failed++;
             logger.error(`Scheduled notification failed for occurrence ${occurrence._id}: ${error.message}`);
@@ -288,6 +328,8 @@ module.exports = {
     HORIZON_DAYS,
     NOTIFICATION_LEAD_MS,
     STALE_CLAIM_MS,
+    MAX_NOTIFICATION_ATTEMPTS,
+    NOTIFICATION_RETRY_DELAY_MS,
     materializeSchedule,
     materializeEnabledSchedules,
     processDueNotifications,

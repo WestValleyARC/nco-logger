@@ -26,6 +26,7 @@ export interface ScheduledOccurrence extends Document {
         claimedAt?: Date | null;
         sentAt?: Date | null;
         failedAt?: Date | null;
+        retryAt?: Date | null;
         attempts: number;
     };
     createdAt?: Date;
