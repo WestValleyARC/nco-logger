@@ -8,6 +8,7 @@ import {
     formatConnectionLines,
     formatViewerDate,
     formatViewerTimeRange,
+    getViewerTimeZone,
     loadScheduledOccurrences
 } from '#@client/lib/publicSchedule.js';
 
@@ -110,6 +111,9 @@ import {
         upcoming: document.querySelector('[data-scheduled-net-list="upcoming"]')
     };
     const scheduledTemplate = document.getElementById('scheduled-net-card-template');
+    document.querySelectorAll('[data-schedule-timezone]').forEach(element => {
+        element.textContent = `Times shown in ${getViewerTimeZone()}`;
+    });
 
     const renderScheduledNets = (kind, occurrences) => {
         const list = scheduledLists[kind];
