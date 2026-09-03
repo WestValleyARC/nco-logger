@@ -13,6 +13,7 @@ const { getPendingUnfollow, getPendingAccountDelete } = require('../models/taskQ
 const { getStationInteraction } = require('../models/stationInteraction');
 const { getScheduledOccurrence } = require('../models/scheduledOccurrence');
 const { getNetSchedule } = require('../models/netSchedule');
+const { disableProfileSchedule } = require('./scheduling/scheduleState');
 const mongoose = require('mongoose');
 const { cleanupNetChat } = require('./localChat');
 const { withKeyedOperations } = require('./keyedOperation');
@@ -752,6 +753,23 @@ async function delNet({ upid, npid, db = mongoose.connection }) {
             if (lnresult && lnresult.netControl && lnresult.netControl.toString() === upid.toString()) {
                 logger.info(`ncs user ${upid} is deleting net ${npid}, closing first...`);
                 await closeNet({ netProfileDoc: npresult, liveNetDoc: lnresult, db });
+            }
+        }
+
+        if (count === 1) {
+            const session = await db.startSession();
+            try {
+                await session.withTransaction(async () => {
+                    await disableProfileSchedule({
+                        netProfileId: npid,
+                        cancelledBy: upid,
+                        cancelAllScheduled: true,
+                        db,
+                        session
+                    });
+                });
+            } finally {
+                await session.endSession();
             }
         }
 
