@@ -12,7 +12,7 @@ const { conf } = require('./configLib');
 const { getFlexOptionsByUser, fetchChatLog } = require('./serverUtils');
 const { logger } = require('./logger');
 
-const EMAIL_FROM = conf.email_from || `${conf.app_name || 'Ham.Live'} <no-reply@example.com>`;
+const EMAIL_FROM = conf.email_from || `${conf.app_name || 'NCO Logger'} <no-reply@example.com>`;
 const emailEnabled = conf.mail_transport === 'smtp' && Boolean(conf.smtp_host);
 const template = fs.readFileSync(path.join(__dirname, '../views/email/net-close-report.ejs'), 'utf8');
 const bool = value => value === true || value === 'true';

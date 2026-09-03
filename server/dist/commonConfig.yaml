@@ -9,7 +9,7 @@
 applogname: 'Ham.Live-WebApp'
 # Display name shown in the UI (page titles, navbar, footer). Override with the
 # APP_NAME environment variable to brand your instance for your club/group.
-app_name: 'Ham.Live'
+app_name: 'NCO Logger'
 
 # QRZ.com callsign lookup (optional). Credentials come from QRZ_USERNAME / QRZ_PASSWORD.
 # When those are absent, callsign enrichment is skipped.

@@ -135,7 +135,7 @@ const addServerInfo = async (req, res, next) => {
         const { callSign = null, displayName = null, id: userId = null, newAccount = false } = req.user || {};
         const { requestRateFactor, httpClientTimeout, chat, awayInMs } =
             res.locals.flexOpts || {};
-        const { applogname: appLogName, cmd_help_url: cmdHelpUrl = '', app_name: appName = 'Ham.Live' } =
+        const { applogname: appLogName, cmd_help_url: cmdHelpUrl = '', app_name: appName = 'NCO Logger' } =
             conf || {};
         const googleAuth = Boolean(conf.google_client_id && conf.google_client_secret);
         const chatEnabled = true;
