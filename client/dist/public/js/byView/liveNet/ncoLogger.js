@@ -156,7 +156,6 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     let pollTimer = null;
     let lastServerLoggerRevision = 0;
     let lastSavedLoggerStateSignature = "";
-    let closedAfterHandoff = false;
     const helperPeers = new Map();
     const privateThreads = new Map();
     const pinnedChatMessages = new Map();
@@ -1974,12 +1973,20 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         local.details[call] = { ...detailsFor(call), pendingRole: "" };
         storageSet();
         if (desiredRole === "netcontrol") {
-            closedAfterHandoff = true;
+            const ownCall = selfCall();
+            latestStations = latestStations.map(station => {
+                const stationCall = normalizeCall(station.callSign);
+                if (stationCall === ownCall)
+                    return { ...station, role: "netlogger", level: 1 };
+                if (stationCall === call)
+                    return { ...station, role: "netcontrol", level: 0 };
+                return station;
+            });
+            currentUserRole = "netlogger";
             stopSync();
-            restoreNativeChat();
-            unlockBackgroundScroll();
-            panel?.remove();
-            panel = null;
+            applyRoleUi();
+            renderQueue();
+            startSync();
         }
         return true;
     }
@@ -4740,8 +4747,6 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             latestNetTitle = String(data.net?.title || "").trim();
             latestNetFrequency = String(data.net?.frequency || "").trim();
             latestNetConnections = formatConnectionLines(data.net);
-            if (closedAfterHandoff)
-                return;
             const me = latestStations.find(station => normalizeCall(station.callSign) === selfCall());
             if (!me) {
                 restoreNativeChat();
