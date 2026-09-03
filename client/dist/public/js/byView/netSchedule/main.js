@@ -2,6 +2,8 @@
 
 'use strict';
 
+import { FavClient } from '#@client/lib/old__clientUtils.js';
+import { serverInfo } from '#@client/lib/serverInfo.js';
 import {
     formatConnectionLines,
     formatViewerDate,
@@ -19,6 +21,7 @@ const state = document.getElementById('schedule-state');
 const dayTemplate = document.getElementById('schedule-day-template');
 const itemTemplate = document.getElementById('schedule-item-template');
 const periodControls = document.getElementById('schedule-period-controls');
+const favorites = new FavClient(1000, 1);
 
 document.querySelector(`[data-schedule-view="${view}"]`).classList.add('is-current');
 document.getElementById('schedule-eyebrow').textContent = view === 'today' ? "Today's Schedule" : '7-Day Schedule';
@@ -46,7 +49,8 @@ const render = occurrences => {
         });
         const container = day.querySelector('[data-role="items"]');
         items.forEach(occurrence => {
-            const item = itemTemplate.content.firstElementChild.cloneNode(true);
+            const row = itemTemplate.content.firstElementChild.cloneNode(true);
+            const item = row.querySelector('.schedule-item');
             item.href = occurrence.url;
             item.querySelector('[data-role="time"]').textContent = formatViewerTime(occurrence.startAt);
             item.querySelector('[data-role="title"]').textContent = occurrence.title;
@@ -59,7 +63,15 @@ const render = occurrences => {
             const description = item.querySelector('[data-role="description"]');
             description.textContent = occurrence.description;
             description.hidden = !occurrence.description;
-            container.appendChild(item);
+
+            const followControl = row.querySelector('[data-role="follow-control"]');
+            const followButton = followControl?.querySelector('.favicon');
+            if (serverInfo.isLoggedIn && followControl && followButton) {
+                followButton.id = `fav-${occurrence.netProfileId}`;
+                followControl.hidden = false;
+            }
+
+            container.appendChild(row);
         });
         results.appendChild(day);
     });
@@ -79,6 +91,7 @@ const refresh = async () => {
         });
         if (view === 'upcoming' && !start) start = data.range.localStart;
         render(data.occurrences);
+        if (serverInfo.isLoggedIn) await favorites.paintFromServerData();
         results.setAttribute('aria-busy', 'false');
     } catch (_error) {
         state.hidden = false;
@@ -86,6 +99,14 @@ const refresh = async () => {
         results.setAttribute('aria-busy', 'false');
     }
 };
+
+results.addEventListener('click', event => {
+    const favorite = event.target.closest('.favicon');
+    if (!favorite) return;
+    event.preventDefault();
+    event.stopPropagation();
+    favorites.handler({ target: favorite });
+});
 
 periodControls.addEventListener('click', event => {
     const button = event.target.closest('[data-shift]');

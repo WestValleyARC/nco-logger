@@ -131,6 +131,13 @@ import {
             const description = card.querySelector('[data-role="description"]');
             description.textContent = occurrence.description;
             description.hidden = !occurrence.description;
+            const followControl = card.querySelector('[data-role="follow-control"]');
+            const followButton = followControl?.querySelector('.favicon');
+            if (serverInfo.isLoggedIn && followControl && followButton) {
+                followButton.id = `fav-${occurrence.netProfileId}`;
+                followControl.hidden = false;
+            }
+
             const connection = formatConnectionLines(occurrence).join(' · ');
             const connections = card.querySelector('[data-role="connection-methods"]');
             if (connection) {
@@ -155,6 +162,7 @@ import {
             ]);
             renderScheduledNets('today', today.occurrences);
             renderScheduledNets('upcoming', upcoming.occurrences);
+            if (serverInfo.isLoggedIn) await favorites.paintFromServerData();
         } catch (_error) {
             Object.values(scheduledLists).forEach(list => {
                 const empty = list.querySelector('[data-scheduled-net-empty]');
@@ -189,6 +197,14 @@ import {
 
     Object.values(scheduledLists).forEach(list => {
         list.addEventListener('click', event => {
+            const favorite = event.target.closest('.favicon');
+            if (favorite) {
+                event.preventDefault();
+                event.stopPropagation();
+                favorites.handler({ target: favorite });
+                return;
+            }
+
             const row = event.target.closest('.scheduledNetRow');
             if (row?.dataset.href) window.location.assign(row.dataset.href);
         });

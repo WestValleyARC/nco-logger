@@ -50,15 +50,21 @@
         </section>
       </template>
       <template id="schedule-item-template">
-        <a class="schedule-item" href="#">
-          <time data-role="time"></time>
-          <span class="schedule-item-info">
-            <strong data-role="title"></strong>
-            <span data-role="connection"></span>
-            <span data-role="description" hidden></span>
-          </span>
-          <i class="bi bi-chevron-right" aria-hidden="true"></i>
-        </a>
+        <div class="schedule-item-row">
+          <a class="schedule-item" href="#">
+            <time data-role="time"></time>
+            <span class="schedule-item-info">
+              <strong data-role="title"></strong>
+              <span data-role="connection"></span>
+              <span data-role="description" hidden></span>
+            </span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+          </a>
+          <div class="schedule-item-actions" data-role="follow-control" hidden>
+            <button type="button" class="schedule-follow favicon bi bi-heart"
+              aria-label="Add to Favorites" title="Add to Favorites"></button>
+          </div>
+        </div>
       </template>
     </section>
   </main>
