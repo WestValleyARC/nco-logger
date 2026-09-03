@@ -4429,8 +4429,11 @@
 
     .landing-page .landing-net-panel .net-card {
         min-height: 0;
-        height: 4.45rem;
         padding: 0.45rem 0.25rem !important;
+    }
+
+    .landing-page .landing-live-panel .net-card {
+        height: 4.45rem;
     }
 
     .landing-page .landing-live-net-logo {
