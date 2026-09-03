@@ -290,6 +290,40 @@ test('Phase 3 scheduling materialization and notification worker', async t => {
             assert.equal(failed.notification.retryAt, null);
         });
 
+        await t.test('removing schedule end time clears an existing occurrence duration', async () => {
+            const schedule = await NetSchedule.create({
+                netProfile: new mongoose.Types.ObjectId(),
+                type: 'oneTime',
+                timezone: 'America/Phoenix',
+                localStartTime: '19:00',
+                startDate: '2030-01-08',
+                oneTimeDate: '2030-01-08',
+                durationMinutes: 60,
+                enabled: true
+            });
+
+            await materializeSchedule({
+                schedule,
+                now: new Date('2030-01-01T00:00:00Z'),
+                db
+            });
+
+            let occurrence = await ScheduledOccurrence.findOne({ schedule: schedule._id });
+            assert.equal(occurrence.durationMinutes, 60);
+
+            schedule.durationMinutes = undefined;
+            await schedule.save();
+
+            await materializeSchedule({
+                schedule,
+                now: new Date('2030-01-01T00:00:00Z'),
+                db
+            });
+
+            occurrence = await ScheduledOccurrence.findOne({ schedule: schedule._id });
+            assert.equal(occurrence.durationMinutes, undefined);
+        });
+
         await t.test('atomic claims prevent duplicate concurrent sends', async () => {
             const data = await notificationData({ minutesFromNow: 5 });
             let sends = 0;
