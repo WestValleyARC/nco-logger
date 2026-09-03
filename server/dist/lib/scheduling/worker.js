@@ -95,6 +95,9 @@ const materializeSchedule = async ({ schedule, now = new Date(), db = mongoose.c
             },
             ...(candidate.durationMinutes == null ? { $unset: { durationMinutes: 1 } } : {})
         };
+        const durationChanged = candidate.durationMinutes == null
+            ? { durationMinutes: { $exists: true } }
+            : { durationMinutes: { $ne: candidate.durationMinutes } };
         const result = restoreDisabled
             ? await ScheduledOccurrence.updateOne(
                   {
