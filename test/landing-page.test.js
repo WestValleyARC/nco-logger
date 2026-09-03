@@ -17,7 +17,10 @@ const legacyFavoriteClient = read('client/dist/public/js/lib/old__clientUtils.js
 const waitingPage = read('server/dist/views/netNotRunning.ejs');
 const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
-const heroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-night.png');
+const appearanceClient = read('client/dist/public/js/lib/appearance.js');
+const head = read('server/dist/views/partials/head.ejs');
+const lightHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-panorama.png');
+const darkHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-night.png');
 const { getCheckInCounts } = require('../server/dist/controllers/liveNetController');
 
 test('landing hero uses the approved copy, actions, logo identity, and tower artwork', () => {
@@ -28,13 +31,30 @@ test('landing hero uses the approved copy, actions, logo identity, and tower art
     assert.match(dashboard, /START A NET/);
     assert.match(dashboard, /VIEW SCHEDULE/);
     assert.match(dashboard, /href="#net-schedule"/);
-    assert.match(landingCss, /background-image:\s*url\('\/img\/nco-logger-hero-panorama\.png'\)/);
+    assert.match(landingCss, /\.landing-page \.landing-hero\s*\{[\s\S]*background-image:\s*var\(--app-dashboard-hero-image\)/);
     assert.match(navbar, /src="\/img\/NCO_Logger_Logo_navbar\.png"/);
     assert.match(navbar, /alt="NCO Logger by WVARC"/);
-    assert.ok(fs.statSync(heroPath).size > 100000);
-    assert.ok(fs.statSync(heroPath).size < 2500000);
+    assert.ok(fs.statSync(lightHeroPath).size > 100000);
+    assert.ok(fs.statSync(lightHeroPath).size < 2500000);
+    assert.ok(fs.statSync(darkHeroPath).size > 100000);
+    assert.ok(fs.statSync(darkHeroPath).size < 2500000);
     assert.match(landingCss, /\.landing-page \.landing-title-find\s*\{\s*color:\s*var\(--app-text\)/s);
     assert.match(landingCss, /\.landing-page \.landing-title-join\s*\{\s*color:\s*var\(--app-cyan\)/s);
+});
+
+test('landing hero follows the resolved Appearance theme', () => {
+    assert.match(
+        landingCss,
+        /:root\[data-theme='light'\]\s*\{\s*--app-dashboard-hero-image:\s*url\('\/img\/nco-logger-hero-panorama\.png'\);\s*\}/
+    );
+    assert.match(
+        landingCss,
+        /:root\[data-theme='dark'\]\s*\{\s*--app-dashboard-hero-image:\s*url\('\/img\/nco-logger-hero-night\.png'\);\s*\}/
+    );
+    assert.match(appearanceClient, /value === 'system' \? \(systemDarkMode\.matches \? 'dark' : 'light'\) : value/);
+    assert.match(appearanceClient, /if \(appearance === 'system'\) applyAppearance\(appearance\)/);
+    assert.match(appearanceClient, /systemDarkMode\.addEventListener\('change', handleSystemChange\)/);
+    assert.match(head, /Blocking by design:[\s\S]*<script src="\/js\/lib\/appearance\.js\?v=<%= server\.appAssetVersion %>"><\/script>/);
 });
 
 test('landing page contains exactly the four approved feature cards', () => {
