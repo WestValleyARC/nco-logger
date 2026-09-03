@@ -25,7 +25,9 @@ const captureDelivery = async (message, recipients) => {
 test('magic sign-in email is branded, preserves its destination, and includes security wording', async () => {
     const href = '/auth/magiclogin/callback?token=preserved-token';
     const email = new MagicSignInEmail({ href });
-    assert.match(email.body.html, /NCO LOGGER/);
+    assert.match(email.body.html, /NCO_Logger_Logo_compact\.png/);
+    assert.match(email.body.html, /alt="NCO Logger"/);
+    assert.doesNotMatch(email.body.html, />NCO LOGGER<\/div>/);
     assert.match(email.body.html, /Sign in to NCO Logger/);
     assert.match(email.body.html, /preserved-token/);
     assert.match(email.body.text, /Sign In to NCO Logger: https:\/\/logger\.westvalleyarc\.com\/auth\/magiclogin\/callback\?token=preserved-token/);
@@ -38,7 +40,9 @@ test('magic sign-in email is branded, preserves its destination, and includes se
 
 test('account inactivity warning is branded and directs retention through sign-in', async () => {
     const email = new AccountInactivityWarning();
-    assert.match(email.body.html, /NCO LOGGER/);
+    assert.match(email.body.html, /NCO_Logger_Logo_compact\.png/);
+    assert.match(email.body.html, /alt="NCO Logger"/);
+    assert.doesNotMatch(email.body.html, />NCO LOGGER<\/div>/);
     assert.match(email.body.text, /inactive for approximately three years/i);
     assert.match(email.body.text, /within 30 days/);
     assert.match(email.body.text, /Signing in counts as account activity/);
@@ -60,7 +64,9 @@ test('contact delivery is branded, escaped, and uses only the validated visitor 
         subject: 'Question\r\nBcc: attacker@example.com',
         message: '<script>alert(1)</script>\nSecond line'
     });
-    assert.match(email.body.html, /NCO LOGGER/);
+    assert.match(email.body.html, /NCO_Logger_Logo_compact\.png/);
+    assert.match(email.body.html, /alt="NCO Logger"/);
+    assert.doesNotMatch(email.body.html, />NCO LOGGER<\/div>/);
     assert.match(email.body.html, /Alex &lt;Admin&gt;/);
     assert.match(email.body.html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;<br>Second line/);
     assert.doesNotMatch(email.body.html, /<script>|mailto:/);

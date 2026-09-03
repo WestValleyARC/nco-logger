@@ -16,7 +16,9 @@ test('all seven deterministic review fixtures have consistent branding, text, li
     assert.equal(new Set(fixtures.map(fixture => fixture.id)).size, 7);
     for (const fixture of fixtures) {
         assert.ok(fixture.subject);
-        assert.match(fixture.html, /NCO LOGGER/);
+        assert.match(fixture.html, /NCO_Logger_Logo_compact\.png/);
+        assert.match(fixture.html, /alt="NCO Logger"/);
+        assert.doesNotMatch(fixture.html, />NCO LOGGER<\/div>/);
         assert.match(fixture.html, /West Valley Amateur Radio Club \(WVARC\)/);
         assert.match(fixture.html, /© 2026 West Valley Amateur Radio Club \(WVARC\)\. All rights reserved\./);
         assert.match(fixture.text, /NCO Logger is operated by West Valley Amateur Radio Club \(WVARC\)/);

@@ -82,9 +82,9 @@ test('renderer produces a branded HTML shell and a first-class text equivalent',
         automatedNotice: 'This message was generated automatically.'
     });
     assert.equal(rendered.subject, 'Foundation test');
-    assert.match(rendered.html, /NCO LOGGER/);
     assert.match(rendered.html, /NCO_Logger_Logo_compact\.png/);
     assert.match(rendered.html, /width="240" height="74" alt="NCO Logger"/);
+    assert.doesNotMatch(rendered.html, />NCO LOGGER<\/div>/);
     assert.match(rendered.html, /West Valley Amateur Radio Club \(WVARC\)/);
     assert.match(rendered.html, new RegExp(COPYRIGHT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.match(rendered.html, new RegExp(`${BASE_URL}/views/contact`));
