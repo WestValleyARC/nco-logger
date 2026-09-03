@@ -4753,6 +4753,48 @@
     text-decoration: none;
 }
 
+.schedule-item-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    border-bottom: 1px solid rgba(155, 169, 178, 0.18);
+}
+
+.schedule-item-row:last-child {
+    border-bottom: 0;
+}
+
+.schedule-item-row .schedule-item {
+    border-bottom: 0;
+}
+
+.schedule-item-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 1.1rem 0 0.35rem;
+}
+
+.schedule-follow,
+.scheduled-net-follow {
+    padding: 0.35rem;
+    color: var(--app-orange);
+    border: 0;
+    background: transparent;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.schedule-follow:hover,
+.schedule-follow:focus-visible,
+.scheduled-net-follow:hover,
+.scheduled-net-follow:focus-visible {
+    color: var(--app-cyan);
+    outline: 2px solid rgba(0, 200, 240, 0.45);
+    outline-offset: 2px;
+    border-radius: 0.35rem;
+}
+
 .schedule-item:last-child {
     border-bottom: 0;
 }
