@@ -96,7 +96,8 @@ const generateOccurrences = (schedule, { rangeStartDate, rangeEndDate } = {}) =>
             occurrenceKey,
             localDate: occurrenceKey,
             originalStartAt: instant,
-            startAt: new Date(instant.getTime())
+            startAt: new Date(instant.getTime()),
+            durationMinutes: schedule.durationMinutes
         });
     }
     return occurrences;

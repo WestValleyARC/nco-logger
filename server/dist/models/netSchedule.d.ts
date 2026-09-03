@@ -7,6 +7,7 @@ export interface NetSchedule extends Document {
     type: NetScheduleType;
     timezone: string;
     localStartTime: string;
+    durationMinutes?: number;
     startDate: string;
     endDate?: string;
     weekdays?: number[];

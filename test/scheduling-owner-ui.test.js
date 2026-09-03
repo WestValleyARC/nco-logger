@@ -45,6 +45,13 @@ test('Scheduling Owner UI Phase 1 uses the existing schedule API contract', asyn
         assert.doesNotMatch(client, /America\/Phoenix/);
     });
 
+    await t.test('end time is optional and maps to durationMinutes', () => {
+        assert.match(view, /id="schedule_end_time"[^>]*type="time"/);
+        assert.doesNotMatch(view, /id="schedule_end_time"[^>]*required/);
+        assert.match(client, /durationMinutes:\s*durationFromTimes/);
+        assert.match(client, /schedule\?\.durationMinutes/);
+    });
+
     await t.test('start values and optional indefinite end date use backend field names', () => {
         assert.match(view, /id="schedule_start_date"[^>]*type="date"/);
         assert.match(view, /id="schedule_start_time"[^>]*type="time"/);
@@ -58,7 +65,7 @@ test('Scheduling Owner UI Phase 1 uses the existing schedule API contract', asyn
         assert.match(client, /action:\s*\(\) => openScheduleEditor\(netProfile\)/);
         assert.match(client, /axios\.get\(`\/api\/data\/netprofiles\/\$\{netProfile\._id\}\/schedule`\)/);
         for (const field of [
-            'type', 'timezone', 'startDate', 'localStartTime', 'endDate',
+            'type', 'timezone', 'startDate', 'localStartTime', 'durationMinutes', 'endDate',
             'weekdays', 'monthlyOrdinal', 'monthlyWeekday', 'monthlyDay'
         ]) {
             assert.match(client, new RegExp(`schedule\\?\\.${field}|schedule\\.${field}`));

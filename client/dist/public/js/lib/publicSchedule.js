@@ -80,6 +80,13 @@ export const formatConnection = net => formatConnectionLines(net).join('\n');
 export const formatViewerTime = value =>
     new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
 
+export const formatViewerTimeRange = (startAt, durationMinutes) => {
+    const start = formatViewerTime(startAt);
+    if (!Number.isInteger(durationMinutes) || durationMinutes < 1) return start;
+    const endAt = new Date(new Date(startAt).getTime() + durationMinutes * 60000);
+    return `${start}–${formatViewerTime(endAt)}`;
+};
+
 export const formatViewerDate = (value, options = {}) =>
     new Intl.DateTimeFormat([], options).format(new Date(value));
 

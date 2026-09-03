@@ -34,6 +34,12 @@ const scheduledOccurrenceSchema = new Schema(
         occurrenceKey: { type: String, required: true },
         originalStartAt: { type: Date, required: true },
         startAt: { type: Date, required: true, index: true },
+        durationMinutes: {
+            type: Number,
+            min: 1,
+            max: 1440,
+            default: undefined
+        },
         isOverride: { type: Boolean, default: false },
         status: {
             type: String,

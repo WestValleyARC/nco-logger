@@ -256,6 +256,7 @@ const scheduleEditor = {
     timezone: document.getElementById('schedule_timezone'),
     startDate: document.getElementById('schedule_start_date'),
     startTime: document.getElementById('schedule_start_time'),
+    endTime: document.getElementById('schedule_end_time'),
     endDate: document.getElementById('schedule_end_date'),
     disable: document.getElementById('schedule_disable'),
     occurrencesStatus: document.getElementById('schedule_occurrences_status'),
@@ -266,6 +267,27 @@ let preparationWindowTimer = null;
 let preparationWindowTargets = [];
 
 const browserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+const timeToMinutes = value => {
+    if (!value) return null;
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+};
+
+const durationFromTimes = (startTime, endTime) => {
+    if (!endTime) return null;
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+    let duration = end - start;
+    if (duration <= 0) duration += 1440;
+    return duration;
+};
+
+const endTimeFromDuration = (startTime, durationMinutes) => {
+    if (!startTime || durationMinutes == null) return '';
+    const total = (timeToMinutes(startTime) + durationMinutes) % 1440;
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
 const localDateValue = date => {
     const pad = value => String(value).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -297,6 +319,10 @@ const populateScheduleForm = schedule => {
     scheduleEditor.timezone.value = schedule?.timezone || browserTimezone();
     scheduleEditor.startDate.value = schedule?.startDate || localDateValue(new Date());
     scheduleEditor.startTime.value = schedule?.localStartTime || '19:00';
+    scheduleEditor.endTime.value = endTimeFromDuration(
+        scheduleEditor.startTime.value,
+        schedule?.durationMinutes
+    );
     scheduleEditor.endDate.value = schedule?.endDate || '';
     document.querySelectorAll('input[name="schedule_weekday"]').forEach(input => {
         input.checked = (schedule?.weekdays || []).includes(Number(input.value));
@@ -314,6 +340,10 @@ const schedulePayload = () => {
         type,
         timezone: scheduleEditor.timezone.value.trim(),
         localStartTime: scheduleEditor.startTime.value,
+        durationMinutes: durationFromTimes(
+            scheduleEditor.startTime.value,
+            scheduleEditor.endTime.value
+        ),
         startDate: scheduleEditor.startDate.value,
         endDate: type === 'oneTime' ? null : scheduleEditor.endDate.value || null,
         enabled: true

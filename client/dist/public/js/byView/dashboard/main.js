@@ -7,7 +7,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
 import {
     formatConnectionLines,
     formatViewerDate,
-    formatViewerTime,
+    formatViewerTimeRange,
     loadScheduledOccurrences
 } from '#@client/lib/publicSchedule.js';
 
@@ -127,7 +127,8 @@ import {
             card.querySelector('[data-role="date"]').textContent = kind === 'today'
                 ? 'Today'
                 : formatViewerDate(occurrence.startAt, { month: 'short', day: 'numeric' });
-            card.querySelector('[data-role="start-time"]').textContent = formatViewerTime(occurrence.startAt);
+            card.querySelector('[data-role="start-time"]').textContent =
+                formatViewerTimeRange(occurrence.startAt, occurrence.durationMinutes);
             const description = card.querySelector('[data-role="description"]');
             description.textContent = occurrence.description;
             description.hidden = !occurrence.description;
