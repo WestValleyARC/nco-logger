@@ -37,6 +37,16 @@ const netScheduleSchema = new Schema(
             required: true,
             match: [TIME_PATTERN, 'localStartTime must use HH:mm format']
         },
+        durationMinutes: {
+            type: Number,
+            min: 1,
+            max: 1440,
+            default: undefined,
+            validate: {
+                validator: value => value == null || Number.isInteger(value),
+                message: 'durationMinutes must be a whole number of minutes'
+            }
+        },
         startDate: {
             type: String,
             required: true,

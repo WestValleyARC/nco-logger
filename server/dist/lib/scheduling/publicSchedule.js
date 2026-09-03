@@ -91,6 +91,7 @@ const publicOccurrenceResponse = occurrence => ({
     modeDetails: occurrence.netProfile.modeDetails || '',
     connections: occurrence.netProfile.connections || [],
     startAt: occurrence.startAt,
+    durationMinutes: occurrence.durationMinutes,
     url: `/views/livenet/${occurrence.netProfile._id}`
 });
 

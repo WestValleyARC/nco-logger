@@ -7,7 +7,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
 import {
     formatConnectionLines,
     formatViewerDate,
-    formatViewerTime,
+    formatViewerTimeRange,
     getViewerTimeZone,
     loadScheduledOccurrences,
     viewerDateKey
@@ -52,7 +52,8 @@ const render = occurrences => {
             const row = itemTemplate.content.firstElementChild.cloneNode(true);
             const item = row.querySelector('.schedule-item');
             item.href = occurrence.url;
-            item.querySelector('[data-role="time"]').textContent = formatViewerTime(occurrence.startAt);
+            item.querySelector('[data-role="time"]').textContent =
+                formatViewerTimeRange(occurrence.startAt, occurrence.durationMinutes);
             item.querySelector('[data-role="title"]').textContent = occurrence.title;
             const connection = item.querySelector('[data-role="connection"]');
             connection.replaceChildren(...formatConnectionLines(occurrence).map(line => {

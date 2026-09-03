@@ -43,6 +43,7 @@ const findOrCreateOccurrence = async ({ candidate, schedule, ScheduledOccurrence
             netProfile: schedule.netProfile,
             originalStartAt: candidate.originalStartAt,
             startAt: candidate.startAt,
+            durationMinutes: candidate.durationMinutes,
             isOverride: false,
             status: 'scheduled',
             notification: { state: 'pending', attempts: 0 }
@@ -84,6 +85,14 @@ const materializeSchedule = async ({ schedule, now = new Date(), db = mongoose.c
         const restoreDisabled = occurrence.status === 'cancelled' &&
             occurrence.cancellationOrigin === 'schedule-disabled' &&
             occurrence.isOverride === false && occurrence.startAt > now;
+        const timingUpdate = {
+            $set: {
+                originalStartAt: candidate.originalStartAt,
+                startAt: candidate.startAt,
+                ...(candidate.durationMinutes == null ? {} : { durationMinutes: candidate.durationMinutes })
+            },
+            ...(candidate.durationMinutes == null ? { $unset: { durationMinutes: 1 } } : {})
+        };
         const result = restoreDisabled
             ? await ScheduledOccurrence.updateOne(
                   {
@@ -96,10 +105,14 @@ const materializeSchedule = async ({ schedule, now = new Date(), db = mongoose.c
                   {
                       $set: {
                           status: 'scheduled',
-                          originalStartAt: candidate.originalStartAt,
-                          startAt: candidate.startAt
+                          ...timingUpdate.$set
                       },
-                      $unset: { cancelledAt: 1, cancelledBy: 1, cancellationOrigin: 1 }
+                      $unset: {
+                          cancelledAt: 1,
+                          cancelledBy: 1,
+                          cancellationOrigin: 1,
+                          ...(timingUpdate.$unset || {})
+                      }
                   }
               )
             : await ScheduledOccurrence.updateOne(
@@ -109,10 +122,11 @@ const materializeSchedule = async ({ schedule, now = new Date(), db = mongoose.c
                       isOverride: false,
                       $or: [
                           { startAt: { $ne: candidate.startAt } },
-                          { originalStartAt: { $ne: candidate.originalStartAt } }
+                          { originalStartAt: { $ne: candidate.originalStartAt } },
+                          { durationMinutes: { $ne: candidate.durationMinutes } }
                       ]
                   },
-                  { $set: { originalStartAt: candidate.originalStartAt, startAt: candidate.startAt } }
+                  timingUpdate
               );
         synchronized += result.modifiedCount;
     }

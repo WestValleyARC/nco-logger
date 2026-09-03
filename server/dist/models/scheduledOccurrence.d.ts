@@ -10,6 +10,7 @@ export interface ScheduledOccurrence extends Document {
     occurrenceKey: string;
     originalStartAt: Date;
     startAt: Date;
+    durationMinutes?: number;
     isOverride: boolean;
     status: OccurrenceStatus;
     liveNet?: Schema.Types.ObjectId;
