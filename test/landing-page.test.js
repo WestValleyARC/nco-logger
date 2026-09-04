@@ -121,7 +121,7 @@ test('net dashboard preserves live data hooks and honest schedule empty states',
     assert.match(dashboardClient, /formatConnectionLines\(occurrence\)\.join\(' · '\)/);
     assert.match(dashboardClient, /details\.title = connection/);
     assert.match(dashboardClient, /liveNet\.permanent/);
-    assert.match(dashboardClient, /favorites\.handler/);
+    assert.match(dashboardClient, /favorites\.interval\(i\)/);
     assert.match(dashboardClient, /refresh:\s*30000 \/ serverInfo\.requestRateFactor/);
     assert.match(dashboardClient, /`\$\{activeNets\.length\}\\u00A0LIVE NOW`/);
 });

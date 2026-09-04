@@ -80,7 +80,7 @@ test('public contact page validates and delivers through the existing email serv
             assert.deepEqual(deliveries.at(-1).recipients, ['logger@westvalleyarc.com']);
             assert.equal(deliveries.at(-1).body.replyTo, undefined, 'Reply-To is applied only by the delivery policy');
             assert.equal(deliveries.at(-1).body.from, undefined, 'configured EmailBase From identity remains authoritative');
-            assert.match(deliveries.at(-1).body.html, /NCO LOGGER/);
+            assert.match(deliveries.at(-1).body.html, /NCO Logger/);
             assert.doesNotMatch(deliveries.at(-1).body.html, /<script>/);
             assert.match(deliveries.at(-1).body.html, /&lt;script&gt;/);
             const success = await fetch(`${baseUrl}/views/contact?sent=1`);
