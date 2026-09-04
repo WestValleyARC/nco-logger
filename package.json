@@ -4,7 +4,7 @@
         "#@client/*": "./client/dist/public/js/*",
         "#@server/*": "./server/dist/*"
     },
-    "version": "1.1.0-beta.1",
+    "version": "1.1.0-beta.2",
     "main": "server/dist/server.js",
     "description": "Ham.Live — self-hostable web app for running amateur radio nets (open-source edition)",
     "scripts": {
