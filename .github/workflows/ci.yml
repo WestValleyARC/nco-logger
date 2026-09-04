@@ -46,13 +46,32 @@ jobs:
           df -h .
 
           set +e
-          timeout --preserve-status --signal=TERM 300s npm test -- --test-concurrency=1
+          timeout --preserve-status --signal=TERM 300s npm test -- --test-concurrency=1 &
+          test_pid=$!
+
+          (
+            sleep 240
+            if kill -0 "$test_pid" 2>/dev/null; then
+              echo "npm test is still running after 240 seconds; collecting live diagnostics"
+              echo "Full process tree:"
+              ps -eo pid,ppid,pgid,sid,stat,etime,args --forest
+              echo "Node test runners and workers:"
+              pgrep -af 'node.*--test|test/.*\.test\.js' || true
+              echo "MongoDB test processes:"
+              pgrep -af 'MongoMemoryServer|mongod|mongo_killer' || true
+              echo "Listening TCP sockets and owning processes:"
+              ss -lntp || true
+            fi
+          ) &
+          diagnostics_pid=$!
+
+          wait "$test_pid"
           test_status=$?
+          kill "$diagnostics_pid" 2>/dev/null || true
+          wait "$diagnostics_pid" 2>/dev/null || true
 
           if [ "$test_status" -eq 124 ] || [ "$test_status" -eq 137 ] || [ "$test_status" -eq 143 ]; then
-            echo "npm test did not complete before the timeout; collecting process diagnostics"
-            ps -ef
-            ps -ef | grep -E '[n]ode --test|[M]ongoMemoryServer|[m]ongod|[m]ongo_killer' || true
+            echo "npm test did not complete before the 300-second timeout"
           fi
 
           exit "$test_status"
