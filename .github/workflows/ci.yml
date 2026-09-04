@@ -31,8 +31,31 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test
-        run: npm test
+      - name: Test with diagnostics
+        timeout-minutes: 6
+        run: |
+          node --version
+          npm --version
+          printf 'CI=%s GITHUB_ACTIONS=%s RUNNER_OS=%s RUNNER_ARCH=%s\n' \
+            "${CI:-unset}" "${GITHUB_ACTIONS:-unset}" "${RUNNER_OS:-unset}" "${RUNNER_ARCH:-unset}"
+          printf 'Event=%s Run ID=%s Attempt=%s Workspace=%s\n' \
+            "${GITHUB_EVENT_NAME:-unset}" "${GITHUB_RUN_ID:-unset}" "${GITHUB_RUN_ATTEMPT:-unset}" "${GITHUB_WORKSPACE:-unset}"
+          uname -a
+          nproc
+          free -h
+          df -h .
+
+          set +e
+          timeout --preserve-status --signal=TERM 300s npm test
+          test_status=$?
+
+          if [ "$test_status" -eq 124 ] || [ "$test_status" -eq 137 ] || [ "$test_status" -eq 143 ]; then
+            echo "npm test did not complete before the timeout; collecting process diagnostics"
+            ps -ef
+            ps -ef | grep -E '[n]ode --test|[M]ongoMemoryServer|[m]ongod|[m]ongo_killer' || true
+          fi
+
+          exit "$test_status"
 
       - name: Verify generated artifacts
         run: git diff --exit-code
