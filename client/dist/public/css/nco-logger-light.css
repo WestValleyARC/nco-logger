@@ -1,0 +1,1420 @@
+/* WVARC NCO Logger light appearance. Color-only overrides preserve the approved layout. */
+
+:root[data-theme='light'] body.nco-logger-page,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper {
+  --nch-skin-bg: #e7f1f5;
+  --nch-skin-surface: #e3eef3;
+  --nch-skin-surface-raised: #ffffff;
+  --nch-skin-row: #f7fbfc;
+  --nch-skin-row-hover: #e5f2f5;
+  --nch-skin-border-major: #086d82;
+  --nch-skin-border-subtle: #c5d0d4;
+  --nch-skin-cyan: #087188;
+  --nch-skin-cyan-soft: #04586c;
+  --nch-skin-orange: #9b4900;
+  --nch-skin-text: #14242d;
+  --nch-skin-muted: #526169;
+  --nch-light-page: #e7f1f5;
+  --nch-light-header: #bdd5df;
+  --nch-light-panel: #ffffff;
+  --nch-light-panel-soft: #f2f7f9;
+  --nch-light-control: #ffffff;
+  --nch-light-control-hover: #eef3f4;
+  --nch-light-border: #aebcc2;
+  --nch-light-border-strong: #687f88;
+  --nch-light-focus: #087188;
+  --nch-light-shadow: rgba(24, 42, 49, .14);
+  --nch-light-danger: #9d2936;
+  --nch-light-danger-bg: #fff0f1;
+  --nch-light-success: #176b38;
+  --nch-light-success-bg: #e7f5eb;
+  --nch-light-warning: #78400f;
+  --nch-light-warning-bg: #fff4dc;
+  color: var(--nch-skin-text);
+  background: var(--nch-light-page);
+}
+
+:root[data-theme='light'] body.nco-logger-page #nco-logger-root,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-body {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-page);
+}
+
+:root[data-theme='light'] body.nco-logger-page #nco-logger-root .nch-page-loading {
+  color: var(--nch-skin-cyan-soft);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper {
+  border-color: var(--nch-skin-border-major);
+  box-shadow: none;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper header {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-header);
+  border-color: #9fb5be;
+  box-shadow: inset 0 -1px 0 #9fb5be, 0 2px 7px rgba(24, 42, 49, .1);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-helper-brand, .nch-net-title) {
+  color: #0e202a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-helper-brand:hover, .nch-helper-brand:focus-visible) [data-role='helper-title'],
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-net-title a:is(:hover, :focus-visible) {
+  color: var(--nch-skin-cyan-soft);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-helper-byline {
+  color: #425d68;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper [data-role='helper-version'] {
+  color: #607680;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-update-link {
+  color: var(--nch-skin-orange);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu > summary {
+  color: #15313d;
+  background: #ffffff;
+  border-color: #81969e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu > summary:is(:hover, :focus-visible),
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu[open] > summary {
+  color: #06313d;
+  background: #e5f2f4;
+  border-color: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-panel);
+  border-color: var(--nch-light-border-strong);
+  box-shadow: 0 12px 28px rgba(24, 42, 49, .2);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-net-connections {
+  color: var(--nch-skin-muted);
+  border-color: #c4d0d4;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover > button,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover > a,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover > details > summary {
+  color: #14242d;
+  background: transparent;
+  border-color: transparent;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover > details > summary,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module],
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel button.nch-menu-reset {
+  color: #263f49;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover > button:hover,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover > a:hover,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover > details[open] > summary,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module]:is(:hover, :focus-visible),
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel button.nch-menu-reset:is(:hover, :focus-visible) {
+  color: #0e202a;
+  background: #edf4f5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module],
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module][aria-pressed='true'] {
+  color: var(--nch-skin-text);
+  background: transparent;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module] small {
+  color: transparent;
+  background: #d5dde0;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module] small::after {
+  background: #697d86;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module][aria-pressed='true'] small {
+  background: #b9d9df;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-modules-menu-panel > button[data-toggle-module][aria-pressed='true'] small::after {
+  background: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-font-setting, .nch-modules-menu-panel button.nch-menu-reset) {
+  color: var(--nch-skin-muted);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-font-buttons button,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-header-menu-popover .nch-font-buttons button {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-control);
+  border-color: var(--nch-light-border);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-font-buttons button[aria-pressed='true'] {
+  color: #ffffff;
+  background: var(--nch-skin-cyan);
+  border-color: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-relay-menu-panel small, .nch-qrz small) {
+  color: var(--nch-skin-muted);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper [data-role='relay-token-hint'][data-saved='true'] {
+  color: var(--nch-light-success);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is([data-role='relay-token-hint'][data-saved='false'], .nch-qrz-password-hint[data-saved='false'], .nch-call-hint) {
+  color: var(--nch-light-warning);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-qrz {
+  background: #f3f5f5;
+  border-color: #c7d1d5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-qrz summary,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-qrz .nch-qrz-password-hint {
+  color: var(--nch-skin-cyan-soft);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-qrz .nch-qrz-limit-note {
+  color: var(--nch-light-warning);
+  background: var(--nch-light-warning-bg);
+  border-color: #b76a1a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-dashboard {
+  background: linear-gradient(to bottom, #d4e7ef 0, #d4e7ef 20%, #e7f1f5 20%, #e7f1f5 100%);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-module, .nch-module-header, .nch-module-content) {
+  background: transparent !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module:not(.nch-chat-section) {
+  background: #e3eef3 !important;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module:not(.nch-chat-section) .nch-module-content {
+  background: #e3eef3 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-lurkers-fixed, .nch-controls-pane, .nch-checked-out-section) {
+  background: #d4e7ef !important;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-lurkers-fixed, .nch-controls-pane, .nch-checked-out-section) .nch-module-content {
+  background: #d4e7ef !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module-header {
+  color: #04586c;
+  border-color: #ccd6da;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module-header > span:first-child::before {
+  color: rgba(5, 107, 133, .62);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module:is(.nch-module-dragging, .nch-module-resizing),
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module:has(.nch-resize-zone:focus-visible) {
+  border-color: var(--nch-light-focus);
+  outline-color: var(--nch-light-focus);
+  box-shadow: 0 8px 20px var(--nch-light-shadow);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-resize-zone:is(:hover, :focus) {
+  background: rgba(8, 117, 144, .28);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module-drop-preview {
+  background: rgba(8, 117, 144, .1);
+  border-color: var(--nch-light-focus);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-dashboard-dragging {
+  outline-color: var(--nch-light-focus);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(input[type='text'], input[type='password'], input:not([type]), select, textarea) {
+  color: var(--nch-skin-text);
+  caret-color: var(--nch-skin-text);
+  background: #ffffff;
+  border-color: #778c95;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(input, select, textarea)::placeholder {
+  color: #667982;
+  opacity: 1;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(input, select, textarea):focus,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-callsign-input:focus-visible {
+  border-color: var(--nch-light-focus);
+  outline-color: var(--nch-light-focus);
+  box-shadow: 0 0 0 2px rgba(8, 117, 144, .16);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button {
+  color: #15313d;
+  background: #ffffff;
+  border-color: #8599a1;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button:hover {
+  color: #0b2833;
+  background: #edf3f4;
+  border-color: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button, a, summary):focus-visible {
+  outline-color: var(--nch-light-focus);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button:disabled {
+  color: #65757d;
+  background: #e9edef;
+  border-color: #b6c2c7;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-quick-checkin button {
+  color: #15313d;
+  background: #f5f7f7;
+  border-color: #879ba3;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-quick-checkin button:hover {
+  background: #e6f0f2;
+  border-color: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-quick-checkin button.is-active,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-add-lurker, button.nch-qrz-login, button.nch-relay-save) {
+  color: #10351f;
+  background: var(--nch-light-success-bg);
+  border-color: #3e8b59;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-add-lurker, button.nch-qrz-login, button.nch-relay-save):hover {
+  background: #d3ecd9;
+  border-color: var(--nch-light-success);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-close-net, button.nch-confirm-close) {
+  color: #ffffff;
+  background: var(--nch-light-danger);
+  border-color: #791d28;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-close-net, button.nch-confirm-close):hover {
+  background: #791d28;
+  border-color: #5f151e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-undo-top {
+  color: #123743;
+  background: #dceff3;
+  border-color: #5d94a2;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper h3 {
+  color: var(--nch-skin-cyan-soft);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper h3 small {
+  color: var(--nch-skin-muted);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row {
+  color: var(--nch-skin-text);
+  background: #f7fbfc;
+  border-color: #cbd5d9;
+  box-shadow: 0 1px 2px rgba(24, 42, 49, .06);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row:is(:hover, :focus-within, .nch-actions-pinned) {
+  color: var(--nch-skin-text);
+  background: #e5f2f5;
+  border-color: #4f8594;
+  box-shadow: 0 1px 3px rgba(24, 42, 49, .1);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-station {
+  color: #10242d;
+  background: #e9f1f4;
+  border-color: #9eafb5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-detail {
+  color: #334d58;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-active-section .nch-row:not(.nch-highlighted):not(.nch-nco-row):not(.nch-role-netlogger):not(.nch-role-netrelay):not(.nch-role-specialGuest):not(.nch-selected-next):not(.nch-not-responding):not(.nch-needed-next-row):not(.nch-skip-row) {
+  color: #10242d;
+  background: #f7fbfc;
+  border-color: #cbd5d9;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-active-section .nch-row:not(.nch-highlighted):not(.nch-nco-row):not(.nch-role-netlogger):not(.nch-role-netrelay):not(.nch-role-specialGuest):not(.nch-selected-next):not(.nch-not-responding):not(.nch-needed-next-row):not(.nch-skip-row):is(:hover, :focus-within, .nch-actions-pinned) {
+  color: #0e202a;
+  background: #e5f2f5;
+  border-color: #4f8594;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-active-section :is(.nch-call-line, .nch-row-text) {
+  color: #10242d;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-active-section .nch-detail {
+  color: #304b56;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-drag {
+  color: #496f7d;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-drag-locked,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-empty {
+  color: #687a82;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-row.nch-checked-out, .nch-row.nch-lurker-row) {
+  color: #354d57;
+  background: #e8f0f3;
+  border-color: #cbd2d5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-row.nch-checked-out, .nch-row.nch-lurker-row) :is(.nch-detail, .nch-row-text) {
+  color: #405963;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-row.nch-checked-out, .nch-row.nch-lurker-row):is(:hover, :focus-within, .nch-actions-pinned) {
+  color: #263c46;
+  background: #dcebef;
+  border-color: #668c98;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-role-netlogger:not(.nch-highlighted) {
+  background: #f3edf6;
+  border-color: #9875ae;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-role-netrelay:not(.nch-highlighted) {
+  background: #edf6f4;
+  border-color: #4f8d87;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-role-specialGuest:not(.nch-highlighted) {
+  background: #faeff0;
+  border-color: #ae646c;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-nco-row:not(.nch-highlighted) {
+  color: #0b3040;
+  background: #e2f2f5;
+  border-color: #2f8196;
+  box-shadow: inset 3px 0 0 #087188, 0 1px 3px rgba(24, 42, 49, .08);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-nco-row:not(.nch-highlighted) .nch-station {
+  color: #092d3b;
+  background: #d2e9ee;
+  border-color: #4d8c9c;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-highlighted {
+  color: #3d2b05;
+  background: #fff6d8;
+  border-color: #a37b21;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-highlighted .nch-station {
+  color: #352503;
+  background: #ffedb5;
+  border-color: #93701b;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-highlighted:is(:hover, :focus-within, .nch-actions-pinned) {
+  color: #2b1d00;
+  background: #fce8a1;
+  border-color: #8e6813;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-highlighted:is(:hover, :focus-within, .nch-actions-pinned) .nch-station {
+  color: #291c00;
+  background: #ffe7a0;
+  border-color: #79570d;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-selected-next {
+  color: var(--nch-skin-text);
+  background: #f4eaf1;
+  border-color: #a94d83;
+  outline-color: rgba(169, 77, 131, .3);
+  box-shadow: none;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-not-responding {
+  color: #6f2029;
+  background: #fff0f1;
+  border-color: #b84f5b;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-needed-next-row {
+  background: #edf3fb;
+  border-color: #577daa;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-skip-row {
+  background: #f0f1f1;
+  border-color: #7b858b;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row-actions {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-panel);
+  border-color: var(--nch-light-border-strong);
+  box-shadow: 0 12px 28px rgba(24, 42, 49, .22);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-hand-toggle {
+  color: #4f626a;
+  background: transparent;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-hand-toggle:is(:hover, .is-active) {
+  color: #6f4600;
+  background: rgba(167, 106, 8, .14);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-needed-next {
+  color: #10351f;
+  background: var(--nch-light-success-bg);
+  border-color: #3e8b59;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-needed-next.is-active {
+  color: #ffffff;
+  background: var(--nch-light-success);
+  border-color: #10552c;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-skip-toggle {
+  color: #34405e;
+  background: #e8ebf7;
+  border-color: #7a89b9;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-skip-toggle.is-active {
+  color: #ffffff;
+  background: #52659f;
+  border-color: #394a82;
+}
+
+/* Docked Logger Chat: light colors only; layout remains owned by nco-logger.css. */
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-chat-section,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-chat-module-body,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-native-chat-slot,
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-floating,
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked,
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-widget, .chat-messages, .chat-composer-wrap) {
+  --hl-primary: #087188 !important;
+  --hl-primary-dark: #04586c !important;
+  --hl-tertiary: #356b79 !important;
+  --hl-background: #e3eef3 !important;
+  --hl-surface: #f2f7f9 !important;
+  --hl-text: #14242d !important;
+  color: #14242d !important;
+  background: #e3eef3 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-conversation-bar,
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-message {
+  border-color: transparent !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-message:is(:hover, :focus-within) {
+  background: rgba(8, 113, 136, .06) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-text, .chat-message-content) {
+  color: #14242d !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-message-author, .chat-message-sender, .chat-sender, .chat-author, .chat-user-name, .chat-username, .chat-callsign, .chat-call-sign) {
+  color: #8b4300 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-message-timestamp, .chat-timestamp, time, .chat-status, .chat-edited, .chat-emoji-empty, .text-muted) {
+  color: #526771 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-status.text-danger {
+  color: #9d2936 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-typing-indicator {
+  color: #45646f !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-reply-reference, .chat-reply-composer) {
+  color: #174e5d !important;
+  background: rgba(8, 113, 136, .08) !important;
+  border-color: #087188 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-text-input, .chat-message-input, .chat-edit-input, input[placeholder*='Message']) {
+  color: #14242d !important;
+  caret-color: #04586c !important;
+  background: #f7fbfc !important;
+  border-color: #7f9ba5 !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-text-input, .chat-message-input, .chat-edit-input, input[placeholder*='Message']):focus {
+  border-color: #087188 !important;
+  outline-color: #087188 !important;
+  box-shadow: 0 0 0 2px rgba(8, 113, 136, .16) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-text-input, .chat-message-input, .chat-edit-input, input[placeholder*='Message'])::placeholder {
+  color: #607680 !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send {
+  color: #ffffff !important;
+  background: #087188 !important;
+  border-color: #04586c !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send:is(:hover, :focus-visible) {
+  color: #ffffff !important;
+  background: #04586c !important;
+  border-color: #034858 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-icon-control {
+  color: #174e5d !important;
+  background: #f2f7f9 !important;
+  border-color: #8ca2aa !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-icon-control:is(:hover, :focus-visible) {
+  color: #063d4b !important;
+  background: #d9eaee !important;
+  border-color: #087188 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-recipient-toggle, .chat-ignore-button) {
+  color: #174e5d !important;
+  background: #f7fbfc !important;
+  border-color: #7897a2 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-recipient-toggle, .chat-ignore-button):is(:hover, :focus-visible) {
+  color: #0b3440 !important;
+  background: #dcecef !important;
+  border-color: #087188 !important;
+  outline-color: #087188 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-ignore-button {
+  color: #8d2b38 !important;
+  border-color: #b76670 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-ignore-button.is-active {
+  color: #ffffff !important;
+  background: #9d2936 !important;
+  border-color: #791d28 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-recipient-menu, .chat-options-panel, .chat-emoji-picker, .chat-quick-reactions) {
+  color: #14242d !important;
+  background: #fbfdfd !important;
+  border-color: #7897a2 !important;
+  box-shadow: 0 10px 24px rgba(24, 42, 49, .2) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-options-menu > summary {
+  color: #174e5d !important;
+  background: #f7fbfc !important;
+  border-color: #7897a2 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-options-menu > summary:is(:hover, :focus-visible),
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-options-menu[open] > summary {
+  color: #0b3440 !important;
+  background: #dcecef !important;
+  border-color: #087188 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-font-setting {
+  color: #263f49 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-font-setting button {
+  color: #15313d !important;
+  background: #f2f7f9 !important;
+  border-color: #91a5ad !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-font-setting button:is(:hover, :focus-visible),
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-font-setting button[aria-pressed='true'] {
+  color: #ffffff !important;
+  background: #087188 !important;
+  border-color: #04586c !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-recipient-choice {
+  color: #14242d !important;
+  background: transparent !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-recipient-choice:is(:hover, :focus-visible, [aria-current='true']) {
+  background: #e2f0f3 !important;
+  outline-color: #087188 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-recipient-choice.is-ignored {
+  color: #71333b !important;
+  background: #fff0f1 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-recipient-presence {
+  color: #5b6f78 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-recipient-choice.is-ignored .chat-recipient-presence {
+  color: #9d2936 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-presence-dot {
+  border-color: rgba(20, 36, 45, .45) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-recipient-unread, .chat-private-unread) {
+  color: #3f3000 !important;
+  background: #efd16c !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-pinned-strip, .nch-pinned-chat-strip) {
+  color: #3d2b05 !important;
+  background: linear-gradient(90deg, rgba(227, 238, 243, .98), rgba(244, 240, 225, .72)) !important;
+  border-color: #b68a2a !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-pinned-item {
+  color: #3d2b05 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-message-pinned {
+  color: #3d2b05 !important;
+  background: rgba(239, 209, 108, .2) !important;
+  border-color: #b68a2a !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-pinned-author, .chat-pinned-preview, .nch-pinned-chat-open, .nch-pinned-chat-text) {
+  color: #3d2b05 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-pinned-author, .nch-pinned-chat-open strong, .chat-pinned-disclosure, .chat-pinned-collection-toggle, .nch-pin-expand-label) {
+  color: #78400f !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-pinned-disclosure, .chat-pinned-collection-toggle):is(:hover, :focus-visible) {
+  color: #5e2d00 !important;
+  outline-color: #9a6718 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-pinned-unpin, .nch-unpin-chat, .nch-pin-chat) {
+  color: #8d2b38 !important;
+  background: #fff9f9 !important;
+  border-color: #b76670 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-pinned-image-open, .chat-pinned-image, .nch-pinned-chat-image, .chat-image) {
+  background: #f7fbfc !important;
+  border-color: #8aa1aa !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-message-actions, .chat-quick-reactions) {
+  background: rgba(251, 253, 253, .98) !important;
+  border-color: #8aa1aa !important;
+  box-shadow: 0 5px 14px rgba(24, 42, 49, .2) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-message-action {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-message-action, .chat-quick-reactions button):is(:hover, :focus-visible) {
+  background: #e2f0f3 !important;
+  border-color: currentColor !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-action-react { color: #805700 !important; }
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-action-reply { color: #08677d !important; }
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-action-private { color: #713d7c !important; text-shadow: none !important; }
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-action-edit { color: #8a4a00 !important; }
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-action-delete, .chat-action-pin, .chat-action-ban) { color: #9d2936 !important; }
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-reaction-chip {
+  color: #174e5d !important;
+  background: #edf5f7 !important;
+  border-color: #8aabb4 !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-reaction-chip.is-mine {
+  color: #ffffff !important;
+  background: #087188 !important;
+  border-color: #04586c !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-search {
+  color: #14242d !important;
+  caret-color: #04586c !important;
+  background: #f7fbfc !important;
+  border-color: #7f9ba5 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-search::placeholder {
+  color: #607680 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-emoji-tab, .chat-emoji-choice) {
+  color: #14242d !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-emoji-tab:hover, .chat-emoji-tab.active, .chat-emoji-choice:hover, .chat-emoji-tab:focus-visible, .chat-emoji-choice:focus-visible) {
+  background: #e2f0f3 !important;
+  border-color: #6394a1 !important;
+  outline-color: #087188 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-new-messages {
+  color: #075b70 !important;
+  background: #e1f1f4 !important;
+  border-color: #4e8f9f !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-reply-cancel, .chat-clear-button) {
+  color: #8d2b38 !important;
+  background: transparent !important;
+  border-color: #b76670 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .nch-chat-download {
+  color: #ffffff !important;
+  background: rgba(4, 88, 108, .9) !important;
+  border-color: #d6f0f4 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-lightbox {
+  background: rgba(24, 42, 49, .58) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-lightbox-card {
+  color: #14242d !important;
+  background: #fbfdfd !important;
+  border-color: #087188 !important;
+  box-shadow: 0 16px 38px rgba(24, 42, 49, .28) !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-lightbox-download, .chat-lightbox-close) {
+  color: #ffffff !important;
+  background: #087188 !important;
+  border-color: #04586c !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-lightbox-status {
+  color: #45646f !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-messages, .chat-recipient-menu, .chat-pinned-strip, .nch-pinned-chat-strip, .chat-emoji-grid, .chat-options-panel) {
+  scrollbar-color: #7897a2 #e3eef3;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-messages, .chat-recipient-menu, .chat-pinned-strip, .nch-pinned-chat-strip, .chat-emoji-grid, .chat-options-panel)::-webkit-scrollbar-track {
+  background: #e3eef3;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-messages, .chat-recipient-menu, .chat-pinned-strip, .nch-pinned-chat-strip, .chat-emoji-grid, .chat-options-panel)::-webkit-scrollbar-thumb {
+  background: #7897a2;
+  border-color: #e3eef3;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-note-action {
+  color: #15313d;
+  background: #dcecef;
+  border-color: #65939e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-role-choice-netcontrol, .nch-role-badge-netcontrol) {
+  color: #ffffff;
+  background: #17688f;
+  border-color: #0b526f;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-role-choice-netlogger, .nch-role-badge-netlogger) {
+  color: #ffffff;
+  background: #765091;
+  border-color: #5e3b78;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-role-choice-netrelay, .nch-role-badge-netrelay) {
+  color: #ffffff;
+  background: #28746f;
+  border-color: #175954;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(button.nch-role-choice-netuser, .nch-role-badge-netuser) {
+  color: #ffffff;
+  background: #5b6971;
+  border-color: #445159;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-role-badge-specialGuest {
+  color: #ffffff;
+  background: #8b5610;
+  border-color: #704208;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-note-preview,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row:is(:hover, :focus-within, .nch-actions-pinned) button.nch-note-preview {
+  color: #3f5963;
+  background: transparent;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-note-preview:hover {
+  color: #12313d;
+  background: transparent;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-highlighted button.nch-note-preview,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-row.nch-highlighted:is(:hover, :focus-within, .nch-actions-pinned) button.nch-note-preview {
+  color: #4b3405;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-highlight {
+  color: #3b2900;
+  background: #efd16c;
+  border-color: #9a7317;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-mobile {
+  color: #10313b;
+  background: #bfe8ee;
+  border-color: #4f96a4;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-short-time {
+  color: #233a5a;
+  background: #dce8fa;
+  border-color: #718bb0;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-portable {
+  color: #173c29;
+  background: #d5efe1;
+  border-color: #5c9674;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-io {
+  color: #493500;
+  background: #f3d979;
+  border-color: #9b761c;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-recheck {
+  color: #ffffff;
+  background: #765091;
+  border-color: #5e3b78;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-no-reply {
+  color: #303d43;
+  background: #dce2e5;
+  border-color: #87979e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-needed {
+  color: #173c29;
+  background: #cfebd8;
+  border-color: #57906b;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tag-skip {
+  color: #ffffff;
+  background: #52659f;
+  border-color: #394a82;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tray-title {
+  color: #0e202a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-tray-group > small {
+  color: #334d58;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-tray-help {
+  color: var(--nch-skin-muted);
+  background: transparent;
+  border-color: var(--nch-light-border);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-tray-unpin {
+  color: var(--nch-light-danger);
+  background: var(--nch-light-danger-bg);
+  border-color: #b7535e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-tray-unpin:is(:hover, :focus-visible) {
+  color: #ffffff;
+  background: var(--nch-light-danger);
+  border-color: #791d28;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-private-pane, .nch-private-message) {
+  color: var(--nch-skin-text);
+  background: #f7f8f8;
+  border-color: var(--nch-light-border);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-selector {
+  color: var(--nch-skin-text);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-selector > summary::after,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-choice-check {
+  color: var(--nch-skin-cyan-soft);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-options {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-panel);
+  border-color: var(--nch-skin-cyan);
+  box-shadow: 0 10px 24px rgba(24, 42, 49, .19);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-option-heading {
+  color: #0e202a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-option-empty {
+  color: var(--nch-skin-muted);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-peer-option {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-panel-soft);
+  border-color: transparent;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-peer-option:not(:disabled):is(:hover, :focus-visible),
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-peer-option[aria-selected='true'] {
+  background: #e2f0f3;
+  border-color: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-peer-option:disabled {
+  color: #68777e;
+  background: #e5e9eb;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-peer-dot {
+  background: var(--nch-light-danger);
+  box-shadow: 0 0 0 1px rgba(32, 49, 57, .2);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-private-peer-available .nch-private-peer-dot, .nch-private-peer-dot.is-available) {
+  background: #27834a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-warning,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-message strong {
+  color: var(--nch-light-warning);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-outgoing {
+  background: #e8f3f5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-private-selector > summary {
+  color: var(--nch-skin-cyan-soft);
+  background: #ffffff;
+  border-color: var(--nch-light-border);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-help-modal, .nch-update-modal, .nch-photo-viewer, .nch-edit-modal) {
+  background: rgba(32, 49, 57, .45);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-help-card, .nch-update-card, .nch-photo-card, .nch-edit-card) {
+  color: var(--nch-skin-text);
+  background: var(--nch-light-panel);
+  border-color: var(--nch-skin-cyan);
+  box-shadow: 0 16px 38px rgba(24, 42, 49, .24);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-help-heading {
+  border-color: var(--nch-light-border);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-help-heading small,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-update-card > small {
+  color: var(--nch-skin-muted);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-help-content section {
+  border-color: #c9d6db;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-slash-banner {
+  color: #183843;
+  background: #e5f1f4;
+  border-color: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-command-section {
+  background: #f7f8f8;
+  border-color: var(--nch-light-border);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-commands-content h4,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-update-card h2,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-update-card label {
+  color: var(--nch-skin-cyan-soft);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-slash-command-list li {
+  border-color: rgba(8, 117, 144, .2);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-slash-command-list code {
+  color: var(--nch-light-warning);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-slash-command-list small {
+  color: #72438a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-commands-content kbd {
+  color: #ffffff;
+  background: #855000;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-update-card {
+  border-color: #a66b18;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-update-card h2 {
+  color: var(--nch-light-warning);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-clean-install {
+  background: var(--nch-light-warning-bg);
+  border-color: #b48231;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-clean-install summary,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-clean-install p {
+  color: var(--nch-light-warning);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-update-actions button:first-child {
+  color: #10351f;
+  background: var(--nch-light-success-bg);
+  border-color: #3e8b59;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-photo-card img {
+  background: #edf2f4;
+  border-color: #7fa5b0;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-photo-download {
+  color: #15313d;
+  background: #e5eef1;
+  border-color: #77949e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-close-confirm .nch-edit-card {
+  border-color: var(--nch-light-danger);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-close-confirm h3 {
+  color: var(--nch-light-danger);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-host,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-shell {
+  color: var(--nch-skin-text);
+  background: #e7f1f5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-modebar {
+  background: var(--nch-light-header);
+  border-color: var(--nch-light-border-strong);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-modebar > strong small,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-preview dt {
+  color: var(--nch-skin-cyan-soft);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-modes button small,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-history p small {
+  color: var(--nch-skin-muted);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-viewer-navigator, .nch-viewer-coordination) {
+  background: #ffffff;
+  border-color: var(--nch-light-border);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-items button.is-selected {
+  color: #ffffff;
+  background: var(--nch-skin-cyan);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-viewer-preview pre {
+  color: var(--nch-skin-text);
+  background: #e5ecef;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-viewer-preview dl div, .nch-viewer-coordination section) {
+  border-color: #c3d0d5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-fixed-status-bar {
+  color: #102f39;
+  background: #78b6c3;
+  border-color: #4f8d9b;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), 0 -1px 4px rgba(24, 42, 49, .1);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-status, .nch-footer-mode, .nch-count-card strong) {
+  color: #102f39;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper :is(.nch-relay-status, .nch-count-card small) {
+  color: #294f59;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-status-icon {
+  color: #0a3a46;
+  background: #dff2f5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-status[data-type='success'] .nch-status-icon {
+  color: #10351f;
+  background: #bfe6c9;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-status[data-type='warning'] .nch-status-icon {
+  color: #513000;
+  background: #f5d68d;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-status[data-type='error'] .nch-status-icon,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-relay-status::before {
+  color: #ffffff;
+  background: var(--nch-light-danger);
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-relay-status[data-state='connected']::before {
+  background: #27834a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-relay-status[data-state='connecting']::before {
+  background: #a76a08;
+}
+
+/* Preserve the dark Logger's operational color language within the light tray. */
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-note-action {
+  color: #173e48;
+  background: #d7eaee;
+  border-color: #4f8794;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-edit-btn {
+  color: #173a52;
+  background: #dbeaf4;
+  border-color: #4d82a0;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-checkout-btn {
+  color: #65350e;
+  background: #f6e2cf;
+  border-color: #aa6427;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-checkout-btn:hover {
+  color: #ffffff;
+  background: #a85c1f;
+  border-color: #824414;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-delete-btn {
+  color: #7b2029;
+  background: #f8dadd;
+  border-color: #b84d58;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-delete-btn:hover {
+  color: #ffffff;
+  background: #9d2936;
+  border-color: #791d28;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-mobile-toggle {
+  color: #123e49;
+  background: #d4edf2;
+  border-color: #39879a;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-short-time-toggle {
+  color: #2b3f63;
+  background: #dfe7f7;
+  border-color: #627ca8;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-portable-toggle {
+  color: #1d4b31;
+  background: #d9eee3;
+  border-color: #4d8b67;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-inout-toggle {
+  color: #594400;
+  background: #f6e7b8;
+  border-color: #9c7a20;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-recheck-toggle {
+  color: #593776;
+  background: #eadff2;
+  border-color: #8054a5;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-guest-toggle {
+  color: #65400d;
+  background: #f3e3c7;
+  border-color: #a36b1b;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-highlight-toggle {
+  color: #594300;
+  background: #f5e6b3;
+  border-color: #aa8427;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-needed-next {
+  color: #19472b;
+  background: #d8eddf;
+  border-color: #4f8b64;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-no-reply-btn {
+  color: #37474e;
+  background: #e2e6e8;
+  border-color: #7e8d93;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-skip-toggle {
+  color: #34436d;
+  background: #e0e4f4;
+  border-color: #6979ae;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-mobile-toggle.is-active {
+  color: #ffffff;
+  background: #217b90;
+  border-color: #155d70;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-short-time-toggle.is-active {
+  color: #ffffff;
+  background: #526f9f;
+  border-color: #3d557e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-portable-toggle.is-active {
+  color: #ffffff;
+  background: #397b54;
+  border-color: #285f3e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-inout-toggle.is-active {
+  color: #3f3000;
+  background: #e4c75e;
+  border-color: #8e6b0e;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-recheck-toggle.is-active {
+  color: #ffffff;
+  background: #765091;
+  border-color: #5e3b78;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-guest-toggle.is-active {
+  color: #3f2704;
+  background: #e5bd70;
+  border-color: #8b5912;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-highlight-toggle.is-active {
+  color: #3b2a00;
+  background: #e9cf68;
+  border-color: #917018;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-needed-next.is-active {
+  color: #ffffff;
+  background: #2f7a49;
+  border-color: #205f37;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-no-reply-btn.is-active {
+  color: #ffffff;
+  background: #5d6a70;
+  border-color: #414d52;
+}
+
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper button.nch-skip-toggle.is-active {
+  color: #ffffff;
+  background: #52659f;
+  border-color: #394a82;
+}
