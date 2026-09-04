@@ -12,13 +12,17 @@ const resolvedDbName = (() => {
         return configLib_js_1.conf.dbname;
     }
 })();
-const changeStreamClient = new mongodb_1.MongoClient(configLib_js_1.conf.dburi, {
-    maxPoolSize: configLib_js_1.conf.change_stream_poolsize
-});
+let changeStreamClient = null;
 let databasePromise = null;
+const getChangeStreamClient = () => {
+    changeStreamClient ??= new mongodb_1.MongoClient(configLib_js_1.conf.dburi, {
+        maxPoolSize: configLib_js_1.conf.change_stream_poolsize
+    });
+    return changeStreamClient;
+};
 const getChangeStreamDb = () => {
     if (!databasePromise) {
-        databasePromise = changeStreamClient.connect()
+        databasePromise = getChangeStreamClient().connect()
             .then(client => client.db(resolvedDbName))
             .catch((error) => {
             databasePromise = null;
