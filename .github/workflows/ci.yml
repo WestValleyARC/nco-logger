@@ -46,7 +46,7 @@ jobs:
           df -h .
 
           set +e
-          timeout --preserve-status --signal=TERM 300s npm test
+          timeout --preserve-status --signal=TERM 300s npm test -- --test-concurrency=1
           test_status=$?
 
           if [ "$test_status" -eq 124 ] || [ "$test_status" -eq 137 ] || [ "$test_status" -eq 143 ]; then
