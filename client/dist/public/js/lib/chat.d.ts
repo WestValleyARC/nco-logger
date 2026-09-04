@@ -1,4 +1,5 @@
 import { LiveNetReactiveStore } from '#@client/lib/stores.js';
+export declare const typingIndicatorText: (callSigns: string[]) => string;
 export declare class ChatWidget extends HTMLElement {
     private readonly npid;
     private readonly publicMessages;
@@ -15,6 +16,12 @@ export declare class ChatWidget extends HTMLElement {
     private connectionRetryTimer;
     private connectionRetryAttempt;
     private statusTimer;
+    private typingIdleTimer;
+    private typingExpiryTimer;
+    private typingActive;
+    private typingRecipientId;
+    private lastTypingSentAt;
+    private readonly remoteTypists;
     private readonly composerOperation;
     private reloadingHistory;
     private historyReloadQueued;
@@ -69,6 +76,11 @@ export declare class ChatWidget extends HTMLElement {
     private reloadHistory;
     private send;
     private setComposerDisabled;
+    private handleTypingInput;
+    private stopTyping;
+    private sendTypingState;
+    private scheduleTypingExpiry;
+    private renderTypingIndicator;
     private uploadImage;
     private startEditing;
     private cancelEditing;
