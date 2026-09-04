@@ -2,19 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 const mongoose = require('mongoose');
+const { createTestDatabase } = require('./helpers/testDatabase');
 
 const OWNER = new mongoose.Types.ObjectId();
 const OTHER = new mongoose.Types.ObjectId();
 
 test('Phase 2 owner scheduling APIs', async t => {
-    const externalUri = process.env.TEST_MONGODB_URI;
-    let mongod;
-    if (externalUri) assert.match(externalUri, /scheduling_phase2_test/, 'TEST_MONGODB_URI must target the Phase 2 test database');
-    if (!externalUri) {
-        const { MongoMemoryServer } = require('mongodb-memory-server');
-        mongod = await MongoMemoryServer.create();
-    }
-    await mongoose.connect(externalUri || mongod.getUri());
+    const testDatabase = await createTestDatabase({ databaseName: 'scheduling_phase2_test', replicaSet: true });
+    await mongoose.connect(testDatabase.uri);
 
     const NetProfile = require('../server/dist/models/netProfile').getNetProfile();
     const NetSchedule = require('../server/dist/models/netSchedule').getNetSchedule();
@@ -245,6 +240,6 @@ test('Phase 2 owner scheduling APIs', async t => {
         await new Promise(resolve => server.close(resolve));
         await mongoose.connection.dropDatabase();
         await mongoose.disconnect();
-        if (mongod) await mongod.stop();
+        await testDatabase.cleanup();
     }
 });

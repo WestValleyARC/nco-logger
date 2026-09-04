@@ -12,6 +12,7 @@ const {
 } = require('../server/dist/lib/scheduling/lifecycle');
 const { closeNet } = require('../server/dist/lib/sharedNetOps');
 const { capturePresence } = require('../server/dist/lib/controllers/liveNetHelpers');
+const { createTestDatabase } = require('./helpers/testDatabase');
 
 const START_AT = new Date('2030-01-10T19:00:00.000Z');
 const OWNER_ID = new mongoose.Types.ObjectId();
@@ -27,9 +28,8 @@ const owner = {
 };
 
 test('Phase 4 scheduled LiveNet lifecycle', async t => {
-    const uri = process.env.TEST_MONGODB_URI;
-    assert.match(uri || '', /scheduling_phase4_test/, 'TEST_MONGODB_URI must target the Phase 4 test database');
-    await mongoose.connect(uri);
+    const testDatabase = await createTestDatabase({ databaseName: 'scheduling_phase4_test', replicaSet: true });
+    await mongoose.connect(testDatabase.uri);
     const NetProfile = require('../server/dist/models/netProfile').getNetProfile();
     const NetSchedule = require('../server/dist/models/netSchedule').getNetSchedule();
     const ScheduledOccurrence = require('../server/dist/models/scheduledOccurrence').getScheduledOccurrence();
@@ -362,5 +362,6 @@ test('Phase 4 scheduled LiveNet lifecycle', async t => {
     } finally {
         await mongoose.connection.dropDatabase();
         await mongoose.disconnect();
+        await testDatabase.cleanup();
     }
 });

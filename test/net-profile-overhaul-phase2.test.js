@@ -8,11 +8,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const mongoose = require('mongoose');
+const { createTestDatabase } = require('./helpers/testDatabase');
 
 test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
-    const uri = process.env.TEST_MONGODB_URI;
-    assert.match(uri || '', /net_profile_overhaul_phase2_test/, 'TEST_MONGODB_URI must target the Phase 2 test database');
-    await mongoose.connect(uri);
+    const testDatabase = await createTestDatabase({ databaseName: 'net_profile_overhaul_phase2_test' });
+    await mongoose.connect(testDatabase.uri);
     const NetProfile = require('../server/dist/models/netProfile').getNetProfile();
     const UserProfile = require('../server/dist/models/userProfile').getUserProfile();
     const NetSchedule = require('../server/dist/models/netSchedule').getNetSchedule();
@@ -188,5 +188,6 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
         await new Promise(resolve => server.close(resolve));
         await mongoose.connection.dropDatabase();
         await mongoose.disconnect();
+        await testDatabase.cleanup();
     }
 });
