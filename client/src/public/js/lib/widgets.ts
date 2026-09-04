@@ -46,6 +46,7 @@ import {
 import { createLogger } from '#@client/lib/logger.js';
 import type * as bootstrap from 'bootstrap';
 import { serverInfo } from '#@client/lib/serverInfo.js';
+import { formatConnectionLines } from '#@client/lib/publicSchedule.js';
 
 const logger = createLogger('lib/widgets.ts');
 const prefs = new UserAgentPersistentPreferences();
@@ -663,11 +664,16 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
                 border-bottom: 1px solid var(--favorite-divider);
             }
             #${this.defaultElementId} .favorite-title {
+                display: -webkit-box;
+                overflow: hidden;
                 color: var(--favorite-text);
                 font-size: 1.05rem;
                 font-weight: 700;
                 line-height: 1.25;
                 text-decoration: none;
+                overflow-wrap: anywhere;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
             }
             #${this.defaultElementId} .favorite-title::after {
                 position: absolute;
@@ -835,7 +841,7 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
     }
 
     private createFavoriteCard(net: FollowListNetInfo): HTMLElement {
-        const { id, title, frequency, mode, modeDetails, followCount } = net;
+        const { id, title, followCount } = net;
         const isLive = net.scheduling?.onAir === true;
         const isPreparing = net.scheduling?.preparing === true;
         const card = document.createElement('article');
@@ -867,19 +873,12 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
 
         const details = document.createElement('div');
         details.classList.add('favorite-details');
-        const connection = [frequency, mode].filter(Boolean).join(' · ');
-        if (connection) {
+        (formatConnectionLines(net) as string[]).forEach(line => {
             const connectionElement = document.createElement('p');
             connectionElement.classList.add('favorite-connection');
-            connectionElement.textContent = connection;
+            connectionElement.textContent = line;
             details.appendChild(connectionElement);
-        }
-        if (modeDetails) {
-            const modeDetailsElement = document.createElement('p');
-            modeDetailsElement.classList.add('favorite-mode-details');
-            modeDetailsElement.textContent = modeDetails;
-            details.appendChild(modeDetailsElement);
-        }
+        });
 
         const followers = document.createElement('p');
         followers.classList.add('favorite-followers');
