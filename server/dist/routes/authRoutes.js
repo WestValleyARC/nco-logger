@@ -21,7 +21,7 @@ const sendMagicLink = async (destination, href, _code, req) => {
     // sign-in link directly and also print it to the server console.
     if (!emailEnabled) {
         const isDevelopment = process.env.NODE_ENV !== 'production';
-        if (isDevelopment && req) req._devMagicLink = link;
+        if (isDevelopment && req) req._devMagicLink = href;
         if (!isDevelopment) {
             logger.error('Magic-link email unavailable because SMTP is not configured');
             throw new Error('Email delivery is unavailable');
