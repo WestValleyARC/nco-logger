@@ -91,7 +91,7 @@ test('daytime and nighttime heroes share identical composition rules at every br
 
 test('Appearance remains responsible only for the application color theme', () => {
     assert.match(appearanceClient, /value === 'system' \? \(systemDarkMode\.matches \? 'dark' : 'light'\) : value/);
-    assert.match(appearanceClient, /if \(appearance === 'system'\) applyAppearance\(appearance\)/);
+    assert.match(appearanceClient, /if \(appearance === 'system'\)\s+applyAppearance\(appearance\)/);
     assert.match(appearanceClient, /systemDarkMode\.addEventListener\('change', handleSystemChange\)/);
     assert.match(head, /Blocking by design:[\s\S]*<script src="\/js\/lib\/appearance\.js\?v=<%= server\.appAssetVersion %>"><\/script>/);
 });
