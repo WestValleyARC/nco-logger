@@ -31,6 +31,9 @@ const QUICK_REACTIONS = Object.freeze(['👍', '❤️', '😂', '😮']);
 const PIN_ROLES = new Set(['netcontrol', 'netlogger']);
 const rateWindows = new Map();
 let lastRateWindowSweep = 0;
+const TYPING_TTL_MS = 5000;
+const TYPING_RATE_WINDOW_MS = 10000;
+const TYPING_RATE_LIMIT_COUNT = 20;
 const PUBLIC_SCOPE_QUERY = Object.freeze({
     $or: [
         { scope: 'public', recipientUserProfile: null },
@@ -296,6 +299,156 @@ const sendError = (res, status, error) => res.status(status).json({ endpointVers
 const sendRateLimit = res => {
     res.set?.('Retry-After', String(Math.max(1, Math.ceil(RATE_LIMIT_WINDOW_MS / 1000))));
     return sendError(res, 429, 'Please wait before trying more chat actions');
+};
+
+class ChatTypingHub {
+    constructor({ now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
+        this.now = now;
+        this.setTimer = setTimer;
+        this.clearTimer = clearTimer;
+        this.connections = new Map();
+        this.states = new Map();
+        this.rateWindows = new Map();
+        this.lastRateWindowSweep = 0;
+        this.expiryTimer = null;
+        this.nextConnectionId = 1;
+    }
+
+    connect(connection) {
+        const id = this.nextConnectionId++;
+        this.connections.set(id, connection);
+        return () => {
+            this.connections.delete(id);
+            if (![...this.connections.values()].some(item => item.npid === connection.npid
+                && item.userId === connection.userId)) this.clearSender(connection.npid, connection.userId);
+        };
+    }
+
+    updateViewer(npid, userId, values) {
+        this.connections.forEach(connection => {
+            if (connection.npid === npid && connection.userId === userId) Object.assign(connection, values);
+        });
+    }
+
+    hasParticipant(npid, userId) {
+        return [...this.connections.values()].some(connection => connection.npid === npid
+            && connection.userId === userId);
+    }
+
+    hasState(npid, userId, recipientUserId) {
+        return this.states.has(`${npid}:${userId}:${recipientUserId || 'public'}`);
+    }
+
+    allows(userId) {
+        const now = this.now();
+        if (now - this.lastRateWindowSweep >= TYPING_RATE_WINDOW_MS) {
+            this.rateWindows.forEach((times, id) => {
+                const recent = times.filter(time => now - time < TYPING_RATE_WINDOW_MS);
+                if (recent.length) this.rateWindows.set(id, recent);
+                else this.rateWindows.delete(id);
+            });
+            this.lastRateWindowSweep = now;
+        }
+        const recent = (this.rateWindows.get(userId) || []).filter(time => now - time < TYPING_RATE_WINDOW_MS);
+        if (recent.length >= TYPING_RATE_LIMIT_COUNT) {
+            this.rateWindows.set(userId, recent);
+            return false;
+        }
+        recent.push(now);
+        this.rateWindows.set(userId, recent);
+        return true;
+    }
+
+    set({ npid, userId, callSign, displayName, recipientUserId, active }) {
+        const key = `${npid}:${userId}:${recipientUserId || 'public'}`;
+        if (!active) {
+            const state = this.states.get(key);
+            if (state) {
+                this.states.delete(key);
+                this.broadcast({ ...state, active: false, expiresAt: this.now() });
+                this.scheduleExpiry();
+            }
+            return;
+        }
+        const state = {
+            npid, userId, callSign, displayName, recipientUserId,
+            active: true, expiresAt: this.now() + TYPING_TTL_MS
+        };
+        this.states.set(key, state);
+        this.broadcast(state);
+        this.scheduleExpiry();
+    }
+
+    clearSender(npid, userId) {
+        [...this.states.entries()].forEach(([key, state]) => {
+            if (state.npid !== npid || state.userId !== userId) return;
+            this.states.delete(key);
+            this.broadcast({ ...state, active: false, expiresAt: this.now() });
+        });
+        this.scheduleExpiry();
+    }
+
+    broadcast(state) {
+        this.connections.forEach(connection => {
+            if (connection.npid !== state.npid || connection.userId === state.userId) return;
+            if (state.recipientUserId) {
+                if (connection.userId !== state.recipientUserId) return;
+                if (connection.ignoredUserIds?.has(state.userId)) return;
+            }
+            connection.writeEvent('typing', state);
+        });
+    }
+
+    expire() {
+        this.expiryTimer = null;
+        const now = this.now();
+        [...this.states.entries()].forEach(([key, state]) => {
+            if (state.expiresAt > now) return;
+            this.states.delete(key);
+            this.broadcast({ ...state, active: false, expiresAt: now });
+        });
+        this.scheduleExpiry();
+    }
+
+    scheduleExpiry() {
+        if (this.expiryTimer) this.clearTimer(this.expiryTimer);
+        this.expiryTimer = null;
+        const next = Math.min(...[...this.states.values()].map(state => state.expiresAt));
+        if (Number.isFinite(next)) this.expiryTimer = this.setTimer(() => this.expire(), Math.max(0, next - this.now()));
+    }
+}
+
+const chatTypingHub = new ChatTypingHub();
+
+const setTypingState = (req, res) => {
+    if (!req.user?._id) return sendError(res, 401, 'Authentication required');
+    if (!isObjectId(req.params.id)) return sendError(res, 400, 'Invalid net identifier');
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+        || Object.keys(body).some(key => !['active', 'recipientUserId'].includes(key))
+        || typeof body.active !== 'boolean'
+        || !(body.recipientUserId === null || typeof body.recipientUserId === 'string')) {
+        return sendError(res, 400, 'Invalid typing state');
+    }
+    const userId = req.user._id.toString();
+    const sender = [...chatTypingHub.connections.values()].find(connection => connection.npid === req.params.id
+        && connection.userId === userId);
+    if (!sender) return sendError(res, 403, 'Active chat connection required');
+    if (body.recipientUserId !== null && (!isObjectId(body.recipientUserId) || body.recipientUserId === userId
+        || (!chatTypingHub.hasParticipant(req.params.id, body.recipientUserId)
+            && !(!body.active && chatTypingHub.hasState(req.params.id, userId, body.recipientUserId))))) {
+        return sendError(res, 404, 'Private chat recipient is not connected to this net');
+    }
+    if (!chatTypingHub.allows(userId)) return sendError(res, 429, 'Please wait before sending more typing updates');
+    chatTypingHub.set({
+        npid: req.params.id,
+        userId,
+        callSign: sender.callSign,
+        displayName: sender.displayName,
+        recipientUserId: body.recipientUserId,
+        active: body.active
+    });
+    return res.status(204).end();
 };
 
 const isBanned = async ({ npid, userId, db = mongoose.connection }) => {
@@ -843,17 +996,27 @@ const streamEvents = async (req, res) => {
     };
     const ChatMessage = getChatMessage();
     const closeStreams = [];
+    let disconnectTyping = null;
     let heartbeat = null;
     let cleanedUp = false;
     const cleanup = () => {
         if (cleanedUp) return;
         cleanedUp = true;
         if (heartbeat) clearInterval(heartbeat);
+        disconnectTyping?.();
         closeStreams.forEach(changeStream => void changeStream.close());
     };
     req.once('close', cleanup);
     res.once('close', cleanup);
     try {
+        disconnectTyping = chatTypingHub.connect({
+            npid: req.params.id,
+            userId,
+            callSign: String(req.user.callSign || access.interaction?.callSign || '').trim().toUpperCase(),
+            displayName: access.interaction?.displayName || '',
+            ignoredUserIds,
+            writeEvent
+        });
         const netProfile = new mongoose.Types.ObjectId(req.params.id);
         const currentUserObjectId = new mongoose.Types.ObjectId(userId);
         const messageChangeStream = ChatMessage.watch([{ $match: { 'fullDocument.netProfile': netProfile } }], {
@@ -925,6 +1088,7 @@ const streamEvents = async (req, res) => {
         closeStreams.push(preferenceChangeStream);
         preferenceChangeStream.on('change', change => {
             ignoredUserIds = new Set((change.fullDocument?.ignoredPrivateUsers || []).map(participantId).filter(Boolean));
+            chatTypingHub.updateViewer(req.params.id, userId, { ignoredUserIds });
             writeEvent('preferences', { ignoredUserIds: [...ignoredUserIds] });
             void sendRecipients();
         });
@@ -997,6 +1161,7 @@ module.exports = {
     setMessagePin,
     banMessageAuthor,
     clearPublicChat,
+    setTypingState,
     streamEvents,
     fetchChatHistory,
     cleanupNetChat,
@@ -1028,6 +1193,9 @@ module.exports = {
     chatFirstName,
     chatDisplayName,
     resolveChatDisplayName,
+    ChatTypingHub,
+    chatTypingHub,
+    TYPING_TTL_MS,
     RATE_LIMIT_COUNT,
     RATE_LIMIT_WINDOW_MS
 };

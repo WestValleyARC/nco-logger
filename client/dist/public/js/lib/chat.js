@@ -7,6 +7,8 @@ import { appendChatText } from '#@client/lib/chatText.js';
 const logger = createLogger('lib/chat.ts');
 const PUBLIC_MESSAGE_LIMIT = 1000;
 const DIRECT_MESSAGE_LIMIT = 500;
+const TYPING_IDLE_MS = 2000;
+const TYPING_RENEW_MS = 1000;
 const CHAT_TIMING_SAMPLE_LIMIT = 60;
 const chatPerformance = {
     startedAt: performance.now(), fullRenders: 0, incrementalAppends: 0, renderedRows: 0,
@@ -32,6 +34,22 @@ globalThis.NCOChatDiagnostics = Object.freeze({
         incrementalAppend: chatTimingSummary(chatPerformance.incrementalAppendMs)
     })
 });
+export const typingIndicatorText = (callSigns) => {
+    if (callSigns.length === 1)
+        return `${callSigns[0]} is typing…`;
+    if (callSigns.length === 2)
+        return `${callSigns[0]} and ${callSigns[1]} are typing…`;
+    return `${callSigns[0]}, ${callSigns[1]}, and ${callSigns.length - 2} others are typing…`;
+};
+const isChatTypingEvent = (value) => {
+    if (!value || typeof value !== 'object')
+        return false;
+    const event = value;
+    return typeof event['userId'] === 'string' && typeof event['callSign'] === 'string'
+        && typeof event['displayName'] === 'string'
+        && (event['recipientUserId'] === null || typeof event['recipientUserId'] === 'string')
+        && typeof event['active'] === 'boolean' && typeof event['expiresAt'] === 'number';
+};
 const isLocalChatMessage = (value) => {
     if (!value || typeof value !== 'object')
         return false;
@@ -95,6 +113,12 @@ export class ChatWidget extends HTMLElement {
     connectionRetryTimer = null;
     connectionRetryAttempt = 0;
     statusTimer = null;
+    typingIdleTimer = null;
+    typingExpiryTimer = null;
+    typingActive = false;
+    typingRecipientId = null;
+    lastTypingSentAt = 0;
+    remoteTypists = new Map();
     composerOperation = new ExclusiveChatOperation();
     reloadingHistory = false;
     historyReloadQueued = false;
@@ -233,6 +257,7 @@ export class ChatWidget extends HTMLElement {
                 <div class="chat-messages flex-grow-1 overflow-auto" style="min-height:0" aria-live="polite"></div>
                 <button class="btn btn-sm btn-outline-info chat-new-messages align-self-center mt-1" type="button" hidden>New messages ↓</button>
                 <div class="chat-composer-wrap position-relative mt-2">
+                    <div class="chat-typing-indicator" role="status" aria-live="polite" aria-atomic="true" hidden></div>
                     <div class="chat-reply-composer" hidden>
                         <span class="chat-reply-composer-text"></span>
                         <button class="chat-reply-cancel" type="button" aria-label="Cancel reply" title="Cancel reply">×</button>
@@ -270,7 +295,9 @@ export class ChatWidget extends HTMLElement {
                 </div>
             </div>`;
         this.querySelector('.chat-form')?.addEventListener('submit', event => void this.send(event));
-        this.querySelector('#local-chat-message')?.addEventListener('keydown', event => {
+        const composer = this.querySelector('#local-chat-message');
+        composer?.addEventListener('input', () => this.handleTypingInput());
+        composer?.addEventListener('keydown', event => {
             if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
                 event.preventDefault();
                 if (!event.repeat)
@@ -334,6 +361,7 @@ export class ChatWidget extends HTMLElement {
         void this.connect(this.connectionAbort.signal);
     }
     disconnectedCallback() {
+        this.stopTyping(true);
         this.removeEventListener('nch-chat-layout-ready', this.handleInitialLayoutReady);
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
@@ -348,6 +376,10 @@ export class ChatWidget extends HTMLElement {
         if (this.statusTimer !== null)
             window.clearTimeout(this.statusTimer);
         this.statusTimer = null;
+        if (this.typingExpiryTimer !== null)
+            window.clearTimeout(this.typingExpiryTimer);
+        this.typingExpiryTimer = null;
+        this.remoteTypists.clear();
     }
     populateEmojiPicker() {
         const tabs = this.querySelector('.chat-emoji-tabs');
@@ -496,6 +528,8 @@ export class ChatWidget extends HTMLElement {
     async switchConversation(recipientId, focusComposer = false) {
         if (recipientId && !this.recipients.has(recipientId))
             return;
+        if (recipientId !== this.selectedRecipientId)
+            this.stopTyping();
         const container = this.querySelector('.chat-messages');
         if (container)
             this.scrollPositions.set(this.conversationKey(), container.scrollTop);
@@ -505,6 +539,7 @@ export class ChatWidget extends HTMLElement {
         this.cancelEditing(false);
         this.toggleRecipientMenu(false);
         this.renderRecipientControls();
+        this.renderTypingIndicator();
         this.render();
         if (container) {
             container.scrollTop = this.scrollPositions.get(this.conversationKey()) ?? container.scrollHeight;
@@ -714,6 +749,12 @@ export class ChatWidget extends HTMLElement {
     }
     suppressIgnoredConversation(recipientId) {
         this.unreadCounts.delete(recipientId);
+        this.remoteTypists.forEach((typing, key) => {
+            if (typing.userId === recipientId && typing.recipientUserId !== null)
+                this.remoteTypists.delete(key);
+        });
+        this.scheduleTypingExpiry();
+        this.renderTypingIndicator();
         const conversation = this.directConversations.get(recipientId);
         conversation?.forEach((message, id) => { if (!message.mine)
             conversation.delete(id); });
@@ -800,6 +841,25 @@ export class ChatWidget extends HTMLElement {
             }
             catch (err) {
                 logger.error('Invalid local chat recipient event', err);
+            }
+        });
+        source.addEventListener('typing', event => {
+            if (!this.eventStream.owns(source))
+                return;
+            try {
+                const typing = JSON.parse(String(event.data));
+                if (!isChatTypingEvent(typing))
+                    throw new Error('Invalid typing event');
+                const typingKey = `${typing.userId}:${typing.recipientUserId || 'public'}`;
+                if (typing.active && typing.expiresAt > Date.now())
+                    this.remoteTypists.set(typingKey, typing);
+                else
+                    this.remoteTypists.delete(typingKey);
+                this.scheduleTypingExpiry();
+                this.renderTypingIndicator();
+            }
+            catch (err) {
+                logger.error('Invalid local chat typing event', err);
             }
         });
         source.addEventListener('preferences', event => {
@@ -893,6 +953,7 @@ export class ChatWidget extends HTMLElement {
         const text = input?.value.trim() || '';
         if (!input || !text)
             return;
+        this.stopTyping();
         const recipientId = this.selectedRecipientId;
         const replyToId = this.replyingToId;
         const signal = this.connectionAbort?.signal;
@@ -957,11 +1018,78 @@ export class ChatWidget extends HTMLElement {
         if (emoji)
             emoji.disabled = disabled;
     }
+    handleTypingInput() {
+        const input = this.querySelector('#local-chat-message');
+        if (!input?.value) {
+            this.stopTyping();
+            return;
+        }
+        const now = Date.now();
+        if (!this.typingActive || this.typingRecipientId !== this.selectedRecipientId
+            || now - this.lastTypingSentAt >= TYPING_RENEW_MS) {
+            this.sendTypingState(true, this.selectedRecipientId);
+            this.typingActive = true;
+            this.typingRecipientId = this.selectedRecipientId;
+            this.lastTypingSentAt = now;
+        }
+        if (this.typingIdleTimer !== null)
+            window.clearTimeout(this.typingIdleTimer);
+        this.typingIdleTimer = window.setTimeout(() => this.stopTyping(), TYPING_IDLE_MS);
+    }
+    stopTyping(keepalive = false) {
+        if (this.typingIdleTimer !== null)
+            window.clearTimeout(this.typingIdleTimer);
+        this.typingIdleTimer = null;
+        if (this.typingActive)
+            this.sendTypingState(false, this.typingRecipientId, keepalive);
+        this.typingActive = false;
+        this.typingRecipientId = null;
+        this.lastTypingSentAt = 0;
+    }
+    sendTypingState(active, recipientUserId, keepalive = false) {
+        void fetch(`/api/chat/${encodeURIComponent(this.npid)}/typing`, {
+            method: 'POST', credentials: 'same-origin', keepalive,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active, recipientUserId })
+        }).catch(() => undefined);
+    }
+    scheduleTypingExpiry() {
+        if (this.typingExpiryTimer !== null)
+            window.clearTimeout(this.typingExpiryTimer);
+        this.typingExpiryTimer = null;
+        const next = Math.min(...[...this.remoteTypists.values()].map(typing => typing.expiresAt));
+        if (!Number.isFinite(next))
+            return;
+        this.typingExpiryTimer = window.setTimeout(() => {
+            const now = Date.now();
+            this.remoteTypists.forEach((typing, userId) => {
+                if (typing.expiresAt <= now)
+                    this.remoteTypists.delete(userId);
+            });
+            this.scheduleTypingExpiry();
+            this.renderTypingIndicator();
+        }, Math.max(0, next - Date.now()));
+    }
+    renderTypingIndicator() {
+        const indicator = this.querySelector('.chat-typing-indicator');
+        if (!indicator)
+            return;
+        const callSigns = [...this.remoteTypists.values()]
+            .filter(typing => this.selectedRecipientId
+            ? typing.recipientUserId !== null && typing.userId === this.selectedRecipientId
+            : typing.recipientUserId === null)
+            .map(typing => typing.callSign);
+        const text = callSigns.length ? typingIndicatorText(callSigns) : '';
+        if (indicator.textContent !== text)
+            indicator.textContent = text;
+        indicator.hidden = !text;
+    }
     async uploadImage(event) {
         const fileInput = event.currentTarget;
         const file = fileInput.files?.[0];
         if (!file)
             return;
+        this.stopTyping();
         const recipientId = this.selectedRecipientId;
         const replyToId = this.replyingToId;
         const signal = this.connectionAbort?.signal;

@@ -15,6 +15,7 @@ const {
     setMessagePin,
     banMessageAuthor,
     clearPublicChat,
+    setTypingState,
     streamEvents,
     MAX_UPLOAD_BYTES
 } = require('../lib/localChat');
@@ -55,6 +56,7 @@ router.use(requireSameOriginMutation);
 
 router.get('/:id/messages', listMessages);
 router.post('/:id/messages', createMessage);
+router.post('/:id/typing', express.json({ limit: '1kb' }), setTypingState);
 router.get('/:id/direct/:userId/messages', listDirectMessages);
 router.post('/:id/direct/:userId/messages', createMessage);
 router.post('/:id/direct/:userId/images', imageBody, uploadImage);
