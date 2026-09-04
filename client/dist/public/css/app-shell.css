@@ -58,13 +58,13 @@
     --app-dashboard-hero-image: url('/img/nco-logger-hero-panorama.png');
 }
 
-/* Keep the dashboard hero aligned with the resolved Appearance theme. */
-:root[data-theme='light'] {
-    --app-dashboard-hero-image: url('/img/nco-logger-hero-panorama.png');
+/* Select the dashboard artwork from the viewer's local time, independently of Appearance. */
+:root[data-hero-period='day'] {
+    --app-dashboard-hero-image: url('/img/nco-logger-hero-phoenix-day-final.png');
 }
 
-:root[data-theme='dark'] {
-    --app-dashboard-hero-image: url('/img/nco-logger-hero-night.png');
+:root[data-hero-period='night'] {
+    --app-dashboard-hero-image: url('/img/nco-logger-hero-phoenix-night-final.png');
 }
 
 .app-page {
@@ -3073,14 +3073,6 @@
     letter-spacing: 0.18em;
 }
 
-.landing-page .landing-hero {
-    min-height: min(47rem, calc(100vh - 4.5rem));
-    display: flex;
-    align-items: center;
-    padding: clamp(4.5rem, 9vw, 8rem) 0 clamp(4rem, 8vw, 7rem);
-    background: linear-gradient(110deg, rgba(8, 13, 17, 0.38), rgba(12, 22, 29, 0.16));
-}
-
 .landing-page .landing-hero::after {
     display: none;
 }
@@ -3451,11 +3443,6 @@
 }
 
 @media (max-width: 767.98px) {
-    .landing-page .landing-hero {
-        min-height: auto;
-        padding-top: 4rem;
-    }
-
     .landing-hero-grid {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -3607,8 +3594,9 @@
     border-bottom: 0;
     background-color: #061321;
     background-image: var(--app-dashboard-hero-image);
-    background-position: center right;
-    background-size: cover;
+    background-position: right center;
+    background-repeat: no-repeat;
+    background-size: contain;
 }
 
 .landing-page .landing-hero::before {
@@ -3924,7 +3912,7 @@
     }
 
     .landing-page .landing-hero {
-        background-position: 60% center;
+        background-position: center;
     }
 
     .landing-feature-grid {
@@ -3959,7 +3947,6 @@
         min-height: 39rem;
         align-items: flex-start;
         padding-top: 3.5rem;
-        background-position: 68% center;
     }
 
     .landing-page .landing-hero::before {
@@ -4006,7 +3993,6 @@
 
     .landing-page .landing-hero {
         min-height: 42rem;
-        background-position: 72% center;
     }
 
     .landing-page .landing-actions .app-button {
@@ -4073,11 +4059,11 @@
     }
 
     .landing-page .landing-hero {
-        min-height: 22.5rem;
+        min-height: 0;
+        aspect-ratio: 2560 / 859;
         padding: 1.65rem 0 1.85rem;
-        background-position: center 45%;
-        background-repeat: no-repeat;
-        background-size: cover;
+        background-position: center center;
+        background-size: 100% auto;
     }
 
     .landing-page .landing-hero::before {
@@ -5335,7 +5321,7 @@
         var(--app-bg);
 }
 
-/* The current production image remains a deliberately dark, branded hero in both themes. */
+/* Keep hero copy legible in light mode without coupling Appearance to hero period. */
 :root[data-theme='light'] .landing-page .landing-hero {
     --app-text: #f4f5f2;
     --app-cyan: #74c6d4;

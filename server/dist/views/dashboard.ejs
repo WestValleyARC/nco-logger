@@ -4,6 +4,8 @@
 
 <head>
   <%- include('./partials/head') %>
+  <!-- Resolve the local day/night hero before its stylesheet can paint. -->
+  <script src="/js/lib/heroTime.js?v=<%= server.appAssetVersion %>" data-node-env="<%= server.nodeEnv %>"></script>
   <%- include('./partials/pageTopFeatures') %>
   <title><%= server.appName %> <% if (server.logLevel !== "info") { %> (<%= server.logLevel %>) <% } %></title>
 </head>

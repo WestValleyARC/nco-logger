@@ -18,9 +18,11 @@ const waitingPage = read('server/dist/views/netNotRunning.ejs');
 const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
 const appearanceClient = read('client/dist/public/js/lib/appearance.js');
+const heroTimeClient = read('client/dist/public/js/lib/heroTime.js');
 const head = read('server/dist/views/partials/head.ejs');
-const lightHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-panorama.png');
-const darkHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-night.png');
+const serverUtils = read('server/dist/lib/serverUtils.js');
+const dayHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-phoenix-day-final.png');
+const nightHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-phoenix-night-final.png');
 const { getCheckInCounts } = require('../server/dist/controllers/liveNetController');
 
 test('landing hero uses the approved copy, actions, logo identity, and tower artwork', () => {
@@ -34,23 +36,60 @@ test('landing hero uses the approved copy, actions, logo identity, and tower art
     assert.match(landingCss, /\.landing-page \.landing-hero\s*\{[\s\S]*background-image:\s*var\(--app-dashboard-hero-image\)/);
     assert.match(navbar, /src="\/img\/NCO_Logger_Logo_navbar\.png"/);
     assert.match(navbar, /alt="NCO Logger by WVARC"/);
-    assert.ok(fs.statSync(lightHeroPath).size > 100000);
-    assert.ok(fs.statSync(lightHeroPath).size < 2500000);
-    assert.ok(fs.statSync(darkHeroPath).size > 100000);
-    assert.ok(fs.statSync(darkHeroPath).size < 2500000);
+    assert.ok(fs.statSync(dayHeroPath).size > 100000);
+    assert.ok(fs.statSync(dayHeroPath).size < 5000000);
+    assert.ok(fs.statSync(nightHeroPath).size > 100000);
+    assert.ok(fs.statSync(nightHeroPath).size < 5000000);
     assert.match(landingCss, /\.landing-page \.landing-title-find\s*\{\s*color:\s*var\(--app-text\)/s);
     assert.match(landingCss, /\.landing-page \.landing-title-join\s*\{\s*color:\s*var\(--app-cyan\)/s);
 });
 
-test('landing hero follows the resolved Appearance theme', () => {
+test('landing hero follows local daytime boundaries independently of Appearance', () => {
     assert.match(
         landingCss,
-        /:root\[data-theme='light'\]\s*\{\s*--app-dashboard-hero-image:\s*url\('\/img\/nco-logger-hero-panorama\.png'\);\s*\}/
+        /:root\[data-hero-period='day'\]\s*\{\s*--app-dashboard-hero-image:\s*url\('\/img\/nco-logger-hero-phoenix-day-final\.png'\);\s*\}/
     );
     assert.match(
         landingCss,
-        /:root\[data-theme='dark'\]\s*\{\s*--app-dashboard-hero-image:\s*url\('\/img\/nco-logger-hero-night\.png'\);\s*\}/
+        /:root\[data-hero-period='night'\]\s*\{\s*--app-dashboard-hero-image:\s*url\('\/img\/nco-logger-hero-phoenix-night-final\.png'\);\s*\}/
     );
+    assert.match(heroTimeClient, /const DAY_START_HOUR = 6;/);
+    assert.match(heroTimeClient, /const NIGHT_START_HOUR = 18;/);
+    assert.match(heroTimeClient, /hour >= DAY_START_HOUR && hour < NIGHT_START_HOUR \? 'day' : 'night'/);
+    assert.match(heroTimeClient, /setTimeout\(applyPeriod, millisecondsUntilNextBoundary\(date\)\)/);
+    assert.match(heroTimeClient, /visibilitychange/);
+    assert.match(dashboard, /Resolve the local day\/night hero before its stylesheet can paint[\s\S]*heroTime\.js\?v=<%= server\.appAssetVersion %>/);
+    assert.match(serverUtils, /'css\/app-shell\.css'/);
+    assert.match(serverUtils, /nodeEnv === 'development' \? createAppAssetVersion\(\) : appAssetVersion/);
+});
+
+test('landing hero defaults to right-aligned, undistorted artwork', () => {
+    assert.match(
+        landingCss,
+        /\.landing-page \.landing-hero\s*\{[^}]*background-position:\s*right center;[^}]*background-repeat:\s*no-repeat;[^}]*background-size:\s*contain;/
+    );
+});
+
+test('daytime and nighttime heroes share identical composition rules at every breakpoint', () => {
+    assert.match(
+        landingCss,
+        /@media \(max-width: 991\.98px\)[\s\S]*\.landing-page \.landing-hero\s*\{\s*background-position:\s*center;\s*\}/
+    );
+    assert.match(
+        landingCss,
+        /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-hero\s*\{[^}]*min-height:\s*0;[^}]*aspect-ratio:\s*2560 \/ 859;[^}]*background-position:\s*center center;[^}]*background-size:\s*100% auto;[^}]*\}/
+    );
+
+    const periodCompositionRules = [...landingCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector, declarations]) =>
+        selector.includes('data-hero-period') &&
+        selector.includes('.landing-hero') &&
+        /background-(?:position|size)/.test(declarations)
+    );
+
+    assert.equal(periodCompositionRules.length, 0);
+});
+
+test('Appearance remains responsible only for the application color theme', () => {
     assert.match(appearanceClient, /value === 'system' \? \(systemDarkMode\.matches \? 'dark' : 'light'\) : value/);
     assert.match(appearanceClient, /if \(appearance === 'system'\) applyAppearance\(appearance\)/);
     assert.match(appearanceClient, /systemDarkMode\.addEventListener\('change', handleSystemChange\)/);
