@@ -209,6 +209,8 @@ test('native server-backed pins are not hidden or replaced by NCO helper normali
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const chat = read('client/src/public/js/lib/chat.ts');
     const css = read('client/dist/public/css/nco-logger.css');
+    const localCss = read('client/dist/public/css/local.css');
+    const lightCss = read('client/dist/public/css/nco-logger-light.css');
     const normalize = source.slice(source.indexOf('function normalizeChatDisplay()'), source.indexOf('function safeNormalizeChatDisplay()'));
     assert.doesNotMatch(normalize, /nch-native-pin-control/);
     assert.doesNotMatch(normalize, /button\.className = "nch-pin-chat"/);
@@ -217,25 +219,39 @@ test('native server-backed pins are not hidden or replaced by NCO helper normali
     assert.match(chat, /class="chat-pinned-strip" aria-label="Pinned public messages"/);
     assert.match(chat, /this\.publicMessages\.values\(\)[\s\S]*message\.pinned/);
     assert.match(chat, /className = 'chat-pinned-image'/);
-    assert.match(chat, /open\.append\(author, preview, expandLabel\)/);
+    assert.match(chat, /author\.className = 'chat-pinned-author'[\s\S]*author\.textContent = message\.callSign/);
+    assert.match(chat, /visibleMessages = this\.pinnedCollectionExpanded \? pinnedMessages : pinnedMessages\.slice\(0, 3\)/);
+    assert.match(chat, /`\+ \$\{hiddenCount\} more pins ▾`/);
+    assert.match(chat, /'Show fewer ▴'/);
+    assert.match(chat, /if \(!truncated\)\s*\{[\s\S]*disclosure\?\.remove\(\)/);
+    assert.match(chat, /if \(!disclosure\)\s*\{[\s\S]*className = 'chat-pinned-disclosure'/);
+    assert.match(chat, /isPinnedTextTruncated\(preview\.scrollWidth, preview\.clientWidth\)/);
+    assert.match(chat, /imageButton\.className = 'chat-pinned-image-open'[\s\S]*this\.openLightbox\(/);
+    assert.match(chat, /if \(message\.canPin\)[\s\S]*unpin\.title = 'Unpin message'/);
     assert.match(chat, /void this\.togglePin\(message\)/);
-    assert.match(read('client/dist/public/css/local.css'),
-        /\.chat-pinned-strip\s*\{[^}]*display:\s*flex[^}]*flex:\s*0 0 auto[^}]*max-height:\s*86px/s);
-    assert.match(read('client/dist/public/css/local.css'),
-        /\.chat-pinned-image\s*\{[^}]*width:\s*42px[^}]*height:\s*28px[^}]*object-fit:\s*cover/s);
-    assert.match(read('client/dist/public/css/local.css'),
-        /\.chat-pinned-item\s*\{[^}]*flex:\s*0 0 auto/s);
-    assert.match(read('client/dist/public/css/local.css'),
-        /\.chat-pinned-item\.is-expanded \.chat-pinned-image\s*\{[^}]*max-width:\s*min\(100%, 420px\)[^}]*max-height:\s*220px/s);
-    assert.match(read('client/dist/public/css/local.css'),
-        /\.chat-pinned-expand-label\s*\{[^}]*border:[^}]*font-size:\s*0\.78rem[^}]*font-weight:\s*700/s);
+    assert.match(localCss,
+        /\.chat-pinned-strip\s*\{[^}]*display:\s*flex[^}]*flex:\s*0 0 auto[^}]*overflow:\s*visible[^}]*border-bottom:\s*1px/s);
+    assert.match(localCss,
+        /\.chat-pinned-image\s*\{[^}]*width:\s*auto[^}]*max-width:\s*70px[^}]*height:\s*auto[^}]*object-fit:\s*contain/s);
+    assert.match(localCss,
+        /\.chat-pinned-item\s*\{[^}]*width:\s*100%[^}]*grid-template-columns:\s*auto auto minmax\(0, 1fr\) auto auto[^}]*flex:\s*0 0 auto/s);
+    assert.match(localCss,
+        /\.chat-pinned-unpin\s*\{[^}]*grid-column:\s*5[^}]*justify-self:\s*end/s);
+    assert.match(localCss,
+        /\.chat-pinned-disclosure,[\s\S]*\.chat-pinned-collection-toggle\s*\{[^}]*background:\s*transparent[^}]*border:\s*0/s);
+    assert.match(localCss, /\.chat-pinned-author\s*\{[^}]*color:\s*#efbf62[^}]*font-weight:\s*600/s);
+    assert.match(lightCss, /:root\[data-theme='light'\] body\.nco-logger-page hl-chat\.nch-chat-docked :is\(\.chat-pinned-author,[^}]*\.chat-pinned-disclosure,[^}]*\.chat-pinned-collection-toggle/);
+    assert.match(lightCss, /:root\[data-theme='light'\] body\.nco-logger-page hl-chat\.nch-chat-docked :is\(\.chat-pinned-strip, \.nch-pinned-chat-strip\)\s*\{[^}]*background:\s*linear-gradient\(90deg, rgba\(227, 238, 243, \.98\), rgba\(244, 240, 225, \.72\)\)/s);
+    const pinCss = localCss.slice(localCss.indexOf('.chat-pinned-strip {'), localCss.indexOf('.chat-clear-button:focus-visible'));
+    assert.doesNotMatch(pinCss, /@media/);
+    assert.doesNotMatch(chat.slice(chat.indexOf('private renderPinnedMessages'), chat.indexOf('private updatePinnedTextOverflow')), /\[Image\]|Show full ▾/);
 });
 
 test('private chat keeps recipient, presence, unread, and ignore state inside the Chat module', () => {
     const source = read('client/src/public/js/lib/chat.ts');
     const css = read('client/dist/public/css/local.css');
-    assert.match(source, /To: Everyone · Public ▾/);
-    assert.match(source, /· Private ▾/);
+    assert.match(source, /To: Everyone \(Public\) ▾/);
+    assert.match(source, /To: \$\{selected\.callSign\} \(Private\) ▾/);
     assert.match(source, /Message \$\{selected\.callSign\} privately…/);
     assert.match(source, /Message the net…/);
     assert.match(source, /chat-recipient-unread/);

@@ -219,16 +219,16 @@ body {
 .chat-pinned-strip {
     display: flex;
     flex: 0 0 auto;
-    max-height: 86px;
     flex-direction: column;
-    gap: 4px;
-    padding: 4px 6px;
-    overflow-y: auto;
+    gap: 2px;
+    padding: 3px 4px 4px;
+    overflow: visible;
     border-bottom: 1px solid rgba(255, 200, 87, 0.45);
 }
 
-.chat-pinned-strip:has(.chat-pinned-item.is-expanded) {
+.chat-pinned-strip:is(.is-collection-expanded, :has(.chat-pinned-item.is-expanded)) {
     max-height: min(40vh, 320px);
+    overflow-y: auto;
 }
 
 .chat-pinned-strip[hidden] {
@@ -237,34 +237,30 @@ body {
 
 .chat-pinned-item {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: 100%;
+    box-sizing: border-box;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
     flex: 0 0 auto;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     min-height: 24px;
-    padding: 2px 4px;
-    background: rgba(255, 200, 87, 0.08);
-    border: 1px solid rgba(255, 200, 87, 0.38);
-    border-radius: 0.4rem;
+    padding: 1px 2px;
 }
 
 .chat-pinned-strip-icon {
     padding-top: 0.12rem;
 }
 
-.chat-pinned-open {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 5px;
-    padding: 0;
-    color: inherit;
-    background: transparent;
-    border: 0;
-    text-align: left;
+.chat-pinned-author {
+    color: #efbf62;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
-.chat-pinned-open:focus-visible,
+.chat-pinned-disclosure:focus-visible,
+.chat-pinned-collection-toggle:focus-visible,
+.chat-pinned-image-open:focus-visible,
 .chat-pinned-unpin:focus-visible {
     outline: 2px solid #ffc857;
     outline-offset: 2px;
@@ -277,46 +273,63 @@ body {
     white-space: nowrap;
 }
 
-.chat-pinned-expand-label {
-    padding: 0.2rem 0.45rem;
+.chat-pinned-disclosure,
+.chat-pinned-collection-toggle {
+    padding: 0;
     color: #ffc857;
-    background: rgba(255, 200, 87, 0.14);
-    border: 1px solid rgba(255, 200, 87, 0.7);
-    border-radius: 0.3rem;
-    font-size: 0.78rem;
-    font-weight: 700;
+    background: transparent;
+    border: 0;
+    font-size: 0.72rem;
+    font-weight: 650;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.15rem;
     white-space: nowrap;
 }
 
-.chat-pinned-image {
-    width: 42px;
-    height: 28px;
-    flex: 0 0 auto;
-    object-fit: cover;
-    border-radius: 0.3rem;
+.chat-pinned-disclosure:hover,
+.chat-pinned-collection-toggle:hover {
+    color: #ffda83;
+    text-decoration-color: currentColor;
 }
 
-.chat-pinned-item.is-expanded .chat-pinned-open {
-    align-items: flex-start;
-    flex-direction: column;
+.chat-pinned-collection-toggle {
+    align-self: flex-start;
+    margin: 1px 0 0 1.35rem;
+}
+
+.chat-pinned-image-open {
+    grid-column: 3 / 5;
+    justify-self: start;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
+    border: 0;
+    border-radius: 0.3rem;
+    cursor: zoom-in;
+}
+
+.chat-pinned-image {
+    display: block;
+    width: auto;
+    max-width: 70px;
+    height: auto;
+    max-height: 42px;
+    object-fit: contain;
+    border-radius: 0.3rem;
 }
 
 .chat-pinned-item.is-expanded .chat-pinned-preview {
     overflow: visible;
     text-overflow: clip;
     white-space: pre-wrap;
-}
-
-.chat-pinned-item.is-expanded .chat-pinned-image {
-    width: auto;
-    height: auto;
-    max-width: min(100%, 420px);
-    max-height: 220px;
-    object-fit: contain;
+    overflow-wrap: anywhere;
 }
 
 .chat-pinned-unpin {
     display: inline-flex;
+    grid-column: 5;
+    justify-self: end;
     width: 1.55rem;
     height: 1.55rem;
     align-items: center;

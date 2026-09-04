@@ -788,7 +788,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         panel?.querySelectorAll("[data-helper-font]").forEach(button => {
             button.setAttribute("aria-pressed", String(button.dataset.helperFont === helperPreset));
         });
-        panel?.querySelectorAll("[data-chat-font]").forEach(button => {
+        nativeChat()?.querySelectorAll("[data-chat-font]").forEach(button => {
             button.setAttribute("aria-pressed", String(button.dataset.chatFont === chatPreset));
         });
         panel?.querySelectorAll("[data-help-font]").forEach(button => {
@@ -834,6 +834,17 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             chatImageHost?.removeEventListener("click", openChatImage, true);
             chat.addEventListener("click", openChatImage, true);
             chatImageHost = chat;
+        }
+        if (chat && chat.dataset.nchFontControlsBound !== "true") {
+            chat.dataset.nchFontControlsBound = "true";
+            chat.addEventListener("click", event => {
+                const button = event.target.closest?.("[data-chat-font]");
+                if (!button)
+                    return;
+                local.chatFontPreset = normalizeFontPreset(button.dataset.chatFont);
+                storageSet();
+                applyDisplayPreferences();
+            });
         }
         if (chat && chatObserverHost !== chat) {
             chatObserver?.disconnect();
@@ -3855,14 +3866,6 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                       <button data-helper-font="small" aria-label="Small Logger text" title="Small Logger text">A−</button>
                       <button data-helper-font="normal" aria-label="Standard Logger text" title="Standard Logger text">A</button>
                       <button data-helper-font="large" aria-label="Large Logger text" title="Large Logger text">A+</button>
-                    </span>
-                  </div>
-                  <div class="nch-font-setting" data-role="chat-font-controls" aria-label="Chat text size">
-                    <span>Chat text</span>
-                    <span class="nch-font-buttons">
-                      <button data-chat-font="small" aria-label="Small chat text" title="Small chat text">A−</button>
-                      <button data-chat-font="normal" aria-label="Normal chat text" title="Normal chat text">A</button>
-                      <button data-chat-font="large" aria-label="Large chat text" title="Large chat text">A+</button>
                     </span>
                   </div>
                   <button class="nch-menu-reset" data-role="menu-reset" title="Restore the original module arrangement">Reset Layout</button>

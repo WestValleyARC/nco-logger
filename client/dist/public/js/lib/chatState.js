@@ -72,6 +72,10 @@ export const reconcileChatSnapshot = (messages, incoming, knownBeforeRequest) =>
 };
 export const sortChatMessages = (messages) => [...messages].sort(compareChatMessages);
 export const compareChatMessages = (left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+export const sortPinnedChatMessages = (messages) => [...messages].sort((left, right) => (right.pinnedAt || right.createdAt).localeCompare(left.pinnedAt || left.createdAt)
+    || right.id.localeCompare(left.id));
+export const hiddenPinnedMessageCount = (total, visibleLimit = 3) => Math.max(0, total - visibleLimit);
+export const isPinnedTextTruncated = (scrollWidth, clientWidth) => clientWidth > 0 && scrollWidth > clientWidth + 1;
 export const isLatestChatMessage = (messages, candidate) => {
     for (const message of messages) {
         if (message.id !== candidate.id && compareChatMessages(message, candidate) > 0)

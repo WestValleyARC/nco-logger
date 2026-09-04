@@ -1,7 +1,7 @@
 import { createLogger } from '#@client/lib/logger.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
-import { chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, InitialChatScrollGate, isLatestChatMessage, shouldScrollChatToLatest, SingleChatStream, sortChatMessages, trimOldestChatMessages } from '#@client/lib/chatState.js';
+import { chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, InitialChatScrollGate, isLatestChatMessage, shouldScrollChatToLatest, SingleChatStream, sortChatMessages, sortPinnedChatMessages, hiddenPinnedMessageCount, isPinnedTextTruncated, trimOldestChatMessages } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
 import { appendChatText } from '#@client/lib/chatText.js';
 const logger = createLogger('lib/chat.ts');
@@ -75,6 +75,7 @@ const isLocalChatMessage = (value) => {
         && (message['replyTo'] === null || typeof message['replyTo'] === 'string')
         && Array.isArray(message['reactions'])
         && typeof message['pinned'] === 'boolean'
+        && (message['pinnedAt'] === null || typeof message['pinnedAt'] === 'string')
         && typeof message['mine'] === 'boolean'
         && typeof message['canReact'] === 'boolean'
         && typeof message['canReply'] === 'boolean'
@@ -106,6 +107,7 @@ export class ChatWidget extends HTMLElement {
     unreadCounts = new Map();
     scrollPositions = new Map();
     expandedPinnedMessageIds = new Set();
+    pinnedCollectionExpanded = false;
     selectedRecipientId = null;
     inboxInitialized = false;
     eventStream = new SingleChatStream();
@@ -208,6 +210,7 @@ export class ChatWidget extends HTMLElement {
         const picker = this.querySelector('.chat-emoji-picker');
         if (picker && !picker.hidden)
             this.positionEmojiPicker();
+        this.updatePinnedTextOverflow();
     };
     handleMessageScroll = () => {
         this.keepBottomOnImageLoad = this.isNearBottom();
@@ -231,6 +234,7 @@ export class ChatWidget extends HTMLElement {
         this.messageScrollHeight = container.scrollHeight;
     };
     handleInitialLayoutReady = () => {
+        this.updatePinnedTextOverflow();
         if (this.initialScrollGate.markLayoutReady())
             this.scrollToLatest();
     };
@@ -243,11 +247,21 @@ export class ChatWidget extends HTMLElement {
             <div class="chat-widget h-100 d-flex flex-column" style="min-height:0">
                 <div class="chat-header-row">
                     <div class="chat-status small text-muted" role="status" aria-live="polite">Connecting…</div>
-                    <button class="chat-clear-button" type="button" title="Delete all public chat messages" aria-label="Delete all public chat messages" hidden>Delete All Messages</button>
+                    <details class="chat-options-menu">
+                        <summary aria-label="Chat options" title="Chat options">...</summary>
+                        <div class="chat-options-panel">
+                            <div class="chat-font-setting" aria-label="Chat font size"><span>Chat Font Size</span><span>
+                                <button data-chat-font="small" aria-label="Small chat text">A−</button>
+                                <button data-chat-font="normal" aria-label="Normal chat text">A</button>
+                                <button data-chat-font="large" aria-label="Large chat text">A+</button>
+                            </span></div>
+                            <button class="chat-clear-button" type="button" title="Delete all public chat messages" aria-label="Delete all public chat messages" hidden>Delete All Messages</button>
+                        </div>
+                    </details>
                 </div>
                 <div class="chat-conversation-bar">
                     <div class="chat-recipient-selector">
-                        <button class="chat-recipient-toggle" type="button" aria-haspopup="menu" aria-expanded="false">To: Everyone ▾</button>
+                        <button class="chat-recipient-toggle" type="button" aria-haspopup="menu" aria-expanded="false">To: Everyone (Public) ▾</button>
                         <div class="chat-recipient-menu" role="menu" aria-label="Choose chat recipient" hidden></div>
                     </div>
                     <span class="chat-private-unread" role="status" aria-live="polite" hidden></span>
@@ -494,7 +508,7 @@ export class ChatWidget extends HTMLElement {
         this.recipients.forEach(recipient => addChoice(this.recipientLabel(recipient), recipient.userId, recipient));
         const selected = this.selectedRecipientId ? this.recipients.get(this.selectedRecipientId) : null;
         toggle.textContent = selected
-            ? `To: ${this.recipientLabel(selected)} · Private ▾` : 'To: Everyone · Public ▾';
+            ? `To: ${selected.callSign} (Private) ▾` : 'To: Everyone (Public) ▾';
         toggle.setAttribute('aria-label', selected
             ? `Chat recipient: ${this.recipientLabel(selected)}, ${selected.presenceLabel}`
             : 'Chat recipient: Everyone');
@@ -1416,55 +1430,56 @@ export class ChatWidget extends HTMLElement {
         const strip = this.querySelector('.chat-pinned-strip');
         if (!strip)
             return;
-        const pinnedMessages = this.selectedRecipientId ? [] : sortChatMessages(this.publicMessages.values())
-            .filter(message => message.pinned && !message.deleted && !message.cleared);
+        const pinnedMessages = this.selectedRecipientId ? [] : sortPinnedChatMessages([...this.publicMessages.values()].filter(message => message.pinned && !message.deleted && !message.cleared));
         const activeIds = new Set(pinnedMessages.map(message => message.id));
         this.expandedPinnedMessageIds.forEach(id => {
             if (!activeIds.has(id))
                 this.expandedPinnedMessageIds.delete(id);
         });
+        const hiddenCount = hiddenPinnedMessageCount(pinnedMessages.length);
+        if (!hiddenCount)
+            this.pinnedCollectionExpanded = false;
         strip.replaceChildren();
         strip.hidden = pinnedMessages.length === 0;
-        pinnedMessages.forEach(message => {
-            const expanded = this.expandedPinnedMessageIds.has(message.id);
+        strip.classList.toggle('is-collection-expanded', this.pinnedCollectionExpanded);
+        const visibleMessages = this.pinnedCollectionExpanded ? pinnedMessages : pinnedMessages.slice(0, 3);
+        visibleMessages.forEach(message => {
+            const requestedExpanded = this.expandedPinnedMessageIds.has(message.id);
             const item = document.createElement('div');
-            item.className = `chat-pinned-item${expanded ? ' is-expanded' : ''}`;
+            item.className = 'chat-pinned-item';
             item.dataset['pinnedMessageId'] = message.id;
             const pin = document.createElement('span');
             pin.className = 'chat-pinned-strip-icon';
             pin.textContent = '📌';
             pin.setAttribute('aria-hidden', 'true');
-            const open = document.createElement('button');
-            open.type = 'button';
-            open.className = 'chat-pinned-open';
-            open.setAttribute('aria-expanded', String(expanded));
-            open.setAttribute('aria-label', `${expanded ? 'Collapse' : 'Show full'} pinned message from ${message.callSign}`);
             const author = document.createElement('strong');
-            author.textContent = message.displayName && message.displayName !== message.callSign
-                ? `${message.displayName} (${message.callSign})` : message.callSign;
-            const preview = document.createElement('span');
-            preview.className = 'chat-pinned-preview';
-            preview.textContent = message.text || (message.attachment ? '[Image]' : '[message unavailable]');
-            const expandLabel = document.createElement('span');
-            expandLabel.className = 'chat-pinned-expand-label';
-            expandLabel.textContent = expanded ? 'Collapse ▴' : 'Show full ▾';
-            open.append(author, preview, expandLabel);
+            author.className = 'chat-pinned-author';
+            author.textContent = message.callSign;
+            item.append(pin, author);
             if (message.attachment && this.safeAttachmentUrl(message)) {
+                const imageButton = document.createElement('button');
+                imageButton.type = 'button';
+                imageButton.className = 'chat-pinned-image-open';
+                imageButton.setAttribute('aria-label', `Open pinned image shared by ${message.callSign}`);
                 const image = document.createElement('img');
                 image.className = 'chat-pinned-image';
                 image.src = message.attachment.url;
                 image.alt = `Pinned image shared by ${message.callSign}`;
                 image.loading = 'lazy';
-                open.append(image);
+                imageButton.append(image);
+                imageButton.addEventListener('click', () => {
+                    this.openLightbox(message.attachment?.url ?? '', image.alt, message.attachment?.mimeType ?? '', imageButton);
+                });
+                item.append(imageButton);
             }
-            open.addEventListener('click', () => {
-                if (expanded)
-                    this.expandedPinnedMessageIds.delete(message.id);
-                else
-                    this.expandedPinnedMessageIds.add(message.id);
-                this.renderPinnedMessages();
-            });
-            item.append(pin, open);
+            else {
+                const preview = document.createElement('span');
+                preview.className = 'chat-pinned-preview';
+                preview.textContent = message.text || '[message unavailable]';
+                item.append(preview);
+                if (requestedExpanded)
+                    item.dataset['expandRequested'] = 'true';
+            }
             if (message.canPin) {
                 const unpin = document.createElement('button');
                 unpin.type = 'button';
@@ -1477,6 +1492,58 @@ export class ChatWidget extends HTMLElement {
             }
             strip.append(item);
         });
+        if (hiddenCount) {
+            const collectionToggle = document.createElement('button');
+            collectionToggle.type = 'button';
+            collectionToggle.className = 'chat-pinned-collection-toggle';
+            collectionToggle.textContent = this.pinnedCollectionExpanded
+                ? 'Show fewer ▴' : `+ ${hiddenCount} more pins ▾`;
+            collectionToggle.setAttribute('aria-expanded', String(this.pinnedCollectionExpanded));
+            collectionToggle.addEventListener('click', () => {
+                this.pinnedCollectionExpanded = !this.pinnedCollectionExpanded;
+                this.renderPinnedMessages();
+            });
+            strip.append(collectionToggle);
+        }
+        this.updatePinnedTextOverflow();
+    }
+    updatePinnedTextOverflow() {
+        this.querySelectorAll('.chat-pinned-item').forEach(item => {
+            const preview = item.querySelector('.chat-pinned-preview');
+            let disclosure = item.querySelector('.chat-pinned-disclosure');
+            if (!preview)
+                return;
+            item.classList.remove('is-expanded');
+            if (disclosure)
+                disclosure.hidden = true;
+            const truncated = isPinnedTextTruncated(preview.scrollWidth, preview.clientWidth);
+            const messageId = item.dataset['pinnedMessageId'] || '';
+            if (!truncated) {
+                disclosure?.remove();
+                this.expandedPinnedMessageIds.delete(messageId);
+                return;
+            }
+            if (!disclosure) {
+                disclosure = document.createElement('button');
+                disclosure.type = 'button';
+                disclosure.className = 'chat-pinned-disclosure';
+                disclosure.addEventListener('click', () => {
+                    if (item.classList.contains('is-expanded'))
+                        this.expandedPinnedMessageIds.delete(messageId);
+                    else
+                        this.expandedPinnedMessageIds.add(messageId);
+                    this.renderPinnedMessages();
+                });
+                item.insertBefore(disclosure, item.querySelector('.chat-pinned-unpin'));
+            }
+            const expanded = truncated && item.dataset['expandRequested'] === 'true';
+            item.classList.toggle('is-expanded', expanded);
+            disclosure.hidden = false;
+            disclosure.textContent = expanded ? 'Less ▴' : 'More ▾';
+            disclosure.setAttribute('aria-expanded', String(expanded));
+            const callSign = item.querySelector('.chat-pinned-author')?.textContent || 'sender';
+            disclosure.setAttribute('aria-label', `${expanded ? 'Collapse' : 'Show full'} pinned message from ${callSign}`);
+        });
     }
     renderMessage(message, renderKey = this.messageRenderKey(message)) {
         const row = document.createElement('div');
@@ -1486,8 +1553,9 @@ export class ChatWidget extends HTMLElement {
         const heading = document.createElement('div');
         const author = document.createElement('strong');
         author.className = 'chat-message-author';
-        author.textContent = message.displayName && message.displayName !== message.callSign
-            ? `${message.displayName} (${message.callSign})` : message.callSign;
+        const firstName = message.displayName.trim().split(/\s+/)[0];
+        author.textContent = firstName && firstName.toUpperCase() !== message.callSign.toUpperCase()
+            ? `${firstName} | ${message.callSign}` : message.callSign;
         const time = document.createElement('small');
         time.className = 'chat-message-timestamp text-muted ms-2';
         time.textContent = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1785,14 +1853,14 @@ export class ChatWidget extends HTMLElement {
         if (this.statusTimer !== null)
             window.clearTimeout(this.statusTimer);
         this.statusTimer = null;
-        status.textContent = text;
-        status.hidden = !text;
+        const visibleText = text === 'Live' ? '' : text;
+        status.textContent = visibleText;
+        status.hidden = !visibleText;
         status.classList.toggle('text-danger', error);
         if (hideAfterMs > 0) {
             this.statusTimer = window.setTimeout(() => {
-                const live = this.eventStream.active && !this.suspended;
-                status.textContent = live ? 'Live' : '';
-                status.hidden = !live;
+                status.textContent = '';
+                status.hidden = true;
                 status.classList.remove('text-danger');
                 this.statusTimer = null;
             }, hideAfterMs);
