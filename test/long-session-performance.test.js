@@ -36,3 +36,13 @@ test('long-session diagnostics are bounded and do not create a periodic log loop
     assert.doesNotMatch(logger, /setInterval\([^\n]*Diagnostics/);
     assert.doesNotMatch(chat, /setInterval\(/);
 });
+
+test('change streams use a bounded pool separate from the development request pool', () => {
+    const development = read('server/dist/devConfig.yaml');
+    const common = read('server/dist/commonConfig.yaml');
+    const requestPoolSize = Number(development.match(/realtime_mongoose_poolsize:\s*(\d+)/)?.[1]);
+    const streamPoolSize = Number(common.match(/change_stream_poolsize:\s*(\d+)/)?.[1]);
+
+    assert.equal(requestPoolSize, 5);
+    assert.equal(streamPoolSize, 10);
+});

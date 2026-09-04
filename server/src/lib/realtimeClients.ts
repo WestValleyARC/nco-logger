@@ -1,23 +1,10 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 
-import { conf } from '#@server/lib/configLib.js';
-const { dburi: dbUri, dbname: dbName } = conf;
-
-// The change stream must watch the SAME database Mongoose writes to. Mongoose
-// uses the database named in the connection URI path, so derive it from there
-// and fall back to conf.dbname only if the URI has no path component.
-const resolvedDbName = (() => {
-    try {
-        const fromUri = new URL(dbUri).pathname.replace(/^\//, '').split('?')[0];
-        return fromUri || dbName;
-    } catch {
-        return dbName;
-    }
-})();
 import SSE from 'express-sse-ts';
 import { type NextFunction, type Request, type Response, type RequestHandler } from 'express';
-import { ChangeStreamDocument, Collection, MongoClient, ObjectId } from 'mongodb';
+import { ChangeStreamDocument, Collection, ObjectId } from 'mongodb';
 import { logger } from '#@server/lib/logger.js';
+import { getChangeStreamDb } from '#@server/lib/changeStreamClient.js';
 import { FlexOptions } from '#@client/types/commonTypes.js';
 import { isFlexOptions, isLiveNetDetailsResponse, NetNotFoundError } from '#@server/types/commonTypesupport.js';
 // Dependency injection is used here to avoid a circular dependency with genLiveNetDetails.
@@ -31,24 +18,24 @@ interface SSEItems {
     flexOpts: FlexOptions;
 }
 
+interface PushState {
+    promise: Promise<void>;
+    rerunRequested: boolean;
+    nextPermitCachedResponse: boolean;
+}
+
 const dynoId = process.env['INSTANCE_ID'] || process.env['DYNO'] || 'node';
 
 export class RealtimeClients {
     private middlewareMap = new Map<string, SSEItems>();
-    private dbClient: MongoClient;
+    private pushStates = new Map<string, PushState>();
     private dataGenerator: null | typeof genLiveNetDetails = null;
-
-    constructor() {
-        this.dbClient = new MongoClient(dbUri);
-    }
 
     async init(dataGenerator: typeof genLiveNetDetails) {
         this.dataGenerator = dataGenerator;
 
         try {
-            await this.dbClient.connect();
-
-            const collection = this.dbClient.db(resolvedDbName).collection('stationinteractions');
+            const collection = (await getChangeStreamDb()).collection('stationinteractions');
 
             let changeStream = this.createChangeStream(collection);
 
@@ -180,10 +167,43 @@ export class RealtimeClients {
         }
     }
 
-    async push(npid: string, permitCachedResponse = false): Promise<void> {
+    push(npid: string, permitCachedResponse = false): Promise<void> {
         if (typeof npid !== 'string') {
-            throw new Error('RTC push(): Invalid npid');
+            return Promise.reject(new Error('RTC push(): Invalid npid'));
         }
+
+        const existingState = this.pushStates.get(npid);
+        if (existingState) {
+            existingState.rerunRequested = true;
+            // A request for fresh data must take precedence over a cache-permitted request.
+            existingState.nextPermitCachedResponse &&= permitCachedResponse;
+            return existingState.promise;
+        }
+
+        const state: PushState = {
+            promise: Promise.resolve(),
+            rerunRequested: false,
+            nextPermitCachedResponse: permitCachedResponse
+        };
+
+        state.promise = Promise.resolve().then(async () => {
+            try {
+                do {
+                    const nextPermitCachedResponse = state.nextPermitCachedResponse;
+                    state.rerunRequested = false;
+                    state.nextPermitCachedResponse = true;
+                    await this.pushOnce(npid, nextPermitCachedResponse);
+                } while (state.rerunRequested);
+            } finally {
+                this.pushStates.delete(npid);
+            }
+        });
+
+        this.pushStates.set(npid, state);
+        return state.promise;
+    }
+
+    private async pushOnce(npid: string, permitCachedResponse: boolean): Promise<void> {
 
         if (!this.middlewareMap.has(npid)) {
             logger.info(`RTC(${dynoId}): This runtime-instance has no clients of net ${npid}, ignoring push() request`);

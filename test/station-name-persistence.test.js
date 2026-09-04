@@ -24,9 +24,11 @@ const unsetPath = (object, path) => {
 
 function harness(initialOverride = null) {
     const records = new Map(initialOverride ? [['K7NNT', clone(initialOverride)]] : []);
+    const operations = { findOne: 0, findOneAndUpdate: 0 };
     const StationNameOverride = {
-        async findOne({ callSign }) { return clone(records.get(callSign) || null); },
+        async findOne({ callSign }) { operations.findOne++; return clone(records.get(callSign) || null); },
         async findOneAndUpdate(filter, update, options = {}) {
+            operations.findOneAndUpdate++;
             let saved = records.get(filter.callSign);
             if (!saved && !options.upsert) return null;
             if (!saved) saved = { callSign: filter.callSign };
@@ -53,7 +55,7 @@ function harness(initialOverride = null) {
     };
     const db = { model: name => name === 'StationNameOverride' ? StationNameOverride : {} };
     const liveNet = { lookupTable: new Map([['K7NNT', { stationInteraction: interaction._id }]]) };
-    return { records, db, interaction, StationInteractionModel, liveNet };
+    return { records, operations, db, interaction, StationInteractionModel, liveNet };
 }
 
 const source = role => ({ role, checkedState: true });
@@ -275,6 +277,32 @@ test('legacy participant data acquires a deterministic participant revision', as
     assert.equal(migrated.fields.location.origin, 'participant');
 });
 
+test('unchanged participant profile sync performs one read and no writes', async () => {
+    const setup = harness({
+        callSign: 'K7NNT',
+        fields: {
+            name: { value: 'Randy', revision: 1, origin: 'participant' },
+            location: { value: 'Mesa, AZ', revision: 1, origin: 'participant' }
+        }
+    });
+    const result = await participant(setup, { name: 'Randy', location: 'Mesa, AZ' });
+    assert.equal(result.fields.name.status, 'unchanged');
+    assert.equal(result.fields.location.status, 'unchanged');
+    assert.deepEqual(setup.operations, { findOne: 1, findOneAndUpdate: 0 });
+});
+
+test('participant override can populate an otherwise null lookup result', async () => {
+    const setup = harness({
+        callSign: 'K7NNT',
+        fields: {
+            name: { value: 'Randy', revision: 1, origin: 'participant' },
+            location: { value: '', revision: 0, origin: 'legacy' }
+        }
+    });
+    const result = await stationProfiles.applyManualOverrides('K7NNT', { outcome: 'disabled', result: null }, setup.db);
+    assert.equal(result.result.displayName, 'Randy');
+});
+
 test('live-net creation and reconnect route participant fields through server revisions', () => {
     const helpers = fs.readFileSync(path.resolve(
         __dirname, '../server/dist/lib/controllers/liveNetHelpers.js'
@@ -282,7 +310,8 @@ test('live-net creation and reconnect route participant fields through server re
     const controller = fs.readFileSync(path.resolve(
         __dirname, '../server/dist/controllers/liveNetController.js'
     ), 'utf8');
-    assert.match(helpers, /const updateStationInteraction[\s\S]*syncParticipantProfile[\s\S]*displayName: profile\.fields\.name\.value/);
+    assert.match(helpers, /const updateStationInteraction[\s\S]*participantProfileChanged[\s\S]*syncParticipantProfile/);
+    assert.match(helpers, /displayName: profile\?\.fields\.name\.value \?\? interaction\.displayName/);
     assert.match(helpers, /location: profile\.fields\.location\.value/);
     assert.match(controller, /liveNetCreatePost[\s\S]*syncParticipantProfile/);
 });

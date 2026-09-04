@@ -87,7 +87,8 @@ test('chat reconnect and bridge lifecycle avoid redundant polling and initial hi
     assert.match(bridge, /new MutationObserver\(queueAttach\)/);
     assert.match(bridge, /record\.addedNodes\.forEach\(addMessageNodes\)/);
     assert.doesNotMatch(bridge, /boundChat\.querySelectorAll\("\[data-message-id\]"\)\.forEach/);
-    assert.ok(server.indexOf("ChatMessage.watch(") < server.indexOf("writeEvent('ready'"));
+    assert.ok(server.indexOf('openChatChangeStream({') < server.indexOf("writeEvent('ready'"));
     assert.match(server, /req\.once\('close', cleanup\)/);
     assert.match(server, /res\.once\('close', cleanup\)/);
+    assert.match(server, /chatChangeSubscription\.close\(\)/);
 });

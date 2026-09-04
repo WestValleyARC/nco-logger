@@ -11,6 +11,7 @@ function harness({ known = true, checkedState = false, localProfile = null, manu
     const targetId = 'target-interaction';
     let persistedState = checkedState;
     let nextId = 0;
+    let updateOneCalls = 0;
     const savedNewStations = [];
     const liveNet = {
         _id: 'live-net',
@@ -56,12 +57,22 @@ function harness({ known = true, checkedState = false, localProfile = null, manu
         }
 
         static async updateOne(filter, update) {
+            updateOneCalls++;
             const interaction = interactionFor(filter._id);
             if (!interaction) return { matchedCount: 0 };
             for (const [key, value] of Object.entries(filter)) {
                 if (key !== '_id' && (interaction[key] ?? null) !== (value ?? null)) return { matchedCount: 0 };
             }
-            Object.assign(interaction, update.$set || {});
+            const set = Array.isArray(update) ? update[0].$set : update.$set || {};
+            for (const [key, value] of Object.entries(set)) {
+                if (value?.$cond) {
+                    const [condition, accepted] = value.$cond;
+                    const expected = condition.$eq[1];
+                    if ((interaction[key] ?? null) === expected) interaction[key] = accepted;
+                } else {
+                    interaction[key] = value;
+                }
+            }
             return { matchedCount: 1 };
         }
     }
@@ -87,6 +98,7 @@ function harness({ known = true, checkedState = false, localProfile = null, manu
         db,
         qrzLookupFn,
         savedNewStations,
+        updateOneCalls: () => updateOneCalls,
         persistedState: () => persistedState
     };
 }
@@ -169,15 +181,21 @@ test('persistent manual name is restored immediately in a new net and QRZ cannot
     assert.equal(setup.savedNewStations[0].displayName, 'Randy');
 });
 
-test('unknown station with fast QRZ uses immediate enrichment within a configured wait budget', async () => {
-    const setup = harness({ known: false, localProfile: null });
+test('configured QRZ check-in wait cannot delay station persistence', async () => {
+    const setup = harness({ known: false, localProfile: null, qrzDelayMs: 100 });
     const metrics = {};
-    await runCheckState(setup, true, metrics, { flexOpts: { qrzCheckInWaitMs: 50 } });
+    const deferredTasks = [];
+    const startedAt = performance.now();
+    await runCheckState(setup, true, metrics, { flexOpts: { qrzCheckInWaitMs: 5000 }, deferredTasks });
 
-    assert.equal(setup.savedNewStations[0].displayName, 'QRZ Operator');
+    assert.ok(performance.now() - startedAt < 50);
+    assert.equal(setup.savedNewStations[0].displayName, null);
     assert.equal(metrics.stations[0].path, 'new-station-qrz');
-    assert.equal(metrics.stations[0].qrzStatus, 'immediate-success');
-    assert.equal(typeof metrics.stations[0].qrzLookupMs, 'number');
+    assert.equal(metrics.stations[0].qrzStatus, 'deferred');
+    assert.equal(metrics.stations[0].qrzWaitMs, 0);
+    await Promise.all(deferredTasks);
+    assert.equal(setup.savedNewStations[0].displayName, 'QRZ Operator');
+    assert.equal(setup.updateOneCalls(), 1);
 });
 
 test('unknown station with slow QRZ logs first and enriches later', async () => {
@@ -208,9 +226,13 @@ for (const [label, outcome, expectedStatus] of [
         const setup = harness({ known: false, localProfile: null });
         setup.qrzLookupFn = async () => ({ result: null, atQuota: outcome === 'quota', outcome });
         const metrics = {};
-        const result = await runCheckState(setup, true, metrics, { flexOpts: { qrzCheckInWaitMs: 50 } });
+        const deferredTasks = [];
+        const result = await runCheckState(setup, true, metrics, {
+            flexOpts: { qrzCheckInWaitMs: 50 }, deferredTasks
+        });
         assert.equal(result[0].checkedState, true);
         assert.equal(setup.savedNewStations.length, 1);
+        await Promise.all(deferredTasks);
         assert.equal(setup.savedNewStations[0].qrzLookupStatus, expectedStatus);
     });
 }

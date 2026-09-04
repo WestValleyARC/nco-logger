@@ -57,6 +57,10 @@ const stationInteractionSchema = new Schema(
         displayName: String,
         photo: String,
         location: String,
+        participantProfile: {
+            name: String,
+            location: String
+        },
         qrzLookupStatus: {
             type: String,
             enum: [
