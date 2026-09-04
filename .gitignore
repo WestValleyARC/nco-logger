@@ -110,3 +110,6 @@ test.js
 
 # Local DB backup archives produced by server/dist/bin/dbBackup.js
 backups/
+
+# Local TLS private keys
+*_key.pem
