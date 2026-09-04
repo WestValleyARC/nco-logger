@@ -82,6 +82,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     collapsed: { lurkers: true, checkedOut: true }
   });
   const DEFAULT_AVATAR = "/img/nco-logger-default-avatar.svg";
+  const appearanceManager = window.ncoLoggerAppearance;
   const npid = location.pathname.split("/")[3] || "";
   if (!/^[0-9a-f]{24}$/i.test(npid)) return;
 
@@ -176,6 +177,14 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     refreshScheduleRequests: 0, refreshScheduleSuppressed: 0,
     sharedStateSent: 0, sharedStateSuppressed: 0
   };
+
+  function syncAppearanceSwitch() {
+    const toggle = panel?.querySelector("[data-role='appearance-switch']");
+    if (!toggle || !appearanceManager) return;
+    const useDark = appearanceManager.getTheme() === "dark";
+    toggle.checked = useDark;
+    toggle.setAttribute("aria-checked", String(useDark));
+  }
   const recordTiming = (samples, duration) => {
     samples.push(duration);
     if (samples.length > TIMING_SAMPLE_LIMIT) samples.shift();
@@ -2207,7 +2216,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       ? [managementGroup, statusGroup, attentionGroup, roleGroup]
       : [managementGroup];
     return `<span class="nch-row-actions nch-active-actions" aria-label="Controls for ${escapeHtml(call)}">
-      <strong class="nch-tray-title"><span>Controls for ${escapeHtml(call)}</span><button class="nch-tray-help" data-role="commands-help" aria-label="Commands and shortcuts" title="Commands and shortcuts">?</button></strong>
+      <strong class="nch-tray-title"><span>Controls for ${escapeHtml(call)}</span>${pinnedActionCall === call ? `<button class="nch-tray-unpin" data-unpin-controls="${escapeHtml(call)}" aria-label="Unpin controls" title="Unpin controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5c0 1.1-.9 2-2 2v2h5v7l1 2 1-2v-7h5v-2c-1.1 0-2-.9-2-2Z"></path></svg></button>` : ""}<button class="nch-tray-help" data-role="commands-help" aria-label="Commands and shortcuts" title="Commands and shortcuts">?</button></strong>
       ${orderedGroups.join("")}
     </span>`;
   }
@@ -2526,11 +2535,14 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       ? `<span class="nch-drag" title="Drag this row to reorder" aria-label="Drag ${escapeHtml(call)} to reorder">⋮⋮</span>`
       : `<span class="nch-drag nch-drag-locked" title="${pinned ? "Pinned station" : "Read-only order"}">•</span>`;
     const pulse = pulsePresentation(call);
+    const detailText = station.checkedState === false
+      ? details.name
+      : [details.name, details.location].filter(Boolean).join(" — ");
     return `
       <div class="nch-row nch-has-actions${station.checkedState === null ? " nch-lurker-row" : ""}${station.checkedState === false ? " nch-checked-out" : ""}${station.checkedState === true && station.highlight ? " nch-highlighted" : ""}${station.checkedState === true && details.notResponding ? " nch-not-responding" : ""}${station.checkedState === true && details.neededNext ? " nch-needed-next-row" : ""}${station.checkedState === true && details.skipped ? " nch-skip-row" : ""}${details.specialGuest ? " nch-special-guest-row" : ""}${isNco ? " nch-nco-row" : ""}${roleClass}${pulse.className}" data-call="${escapeHtml(call)}" data-group="${group}" data-pinned="${pinned ? "true" : "false"}" tabindex="0" aria-label="${escapeHtml(call)} station row"${rowDraggable ? ' draggable="true"' : ""}${pulse.style}>
         ${dragHandle}
         <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span><span class="nch-hand-slot">${hand}</span></div>
-        <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml([details.name, details.location].filter(Boolean).join(" — "))}">${escapeHtml([details.name, details.location].filter(Boolean).join(" — "))}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
+        <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
         ${stationActionTray(station, details, call, busy)}
       </div>`;
   }
@@ -3600,6 +3612,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   function stopResizing(event, cancelled = false) {
     if (!resizing || (event && event.pointerId !== resizing.pointerId)) return;
     if (cancelled) local.moduleLayout = resizing.originalLayout;
+    panel?.querySelector(`[data-module='${resizing.moduleId}']`)?.classList.remove("nch-module-resizing");
     resizing = null;
     document.body.classList.remove("nch-resizing");
     delete document.body.dataset.nchResizeEdge;
@@ -3640,6 +3653,14 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
               <div class="nch-net-connections" data-role="net-connections"${latestNetConnections.length ? '' : ' hidden'}>
                 ${latestNetConnections.map(line => `<span>${escapeHtml(line)}</span>`).join('')}
               </div>
+              <div class="nch-appearance-setting" role="group" aria-label="Logger appearance">
+                <span aria-hidden="true">☀ Light</span>
+                <label class="nch-appearance-switch">
+                  <input type="checkbox" role="switch" data-role="appearance-switch" aria-label="Use dark appearance">
+                  <span class="nch-appearance-switch-track" aria-hidden="true"></span>
+                </label>
+                <span aria-hidden="true">Dark ☾</span>
+              </div>
               <details class="nch-modules-menu" data-role="menu-modules">
                 <summary>Modules</summary>
                 <div class="nch-modules-menu-panel" aria-label="Visible modules">
@@ -3675,8 +3696,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
           <section class="nch-module nch-controls-pane" data-module="controls">
             <h3 class="nch-module-header" data-module-drag="controls" tabindex="0" aria-label="Move Station Controls"><span>Station Controls</span></h3>
             <div class="nch-module-content nch-entry-controls">
-            <input class="nch-callsign-input nch-admin-only" data-role="callsign" aria-label="Callsign" autocomplete="off" maxlength="15" placeholder="Enter callsign">
-            <small class="nch-call-hint nch-admin-only" title="Press ENTER after entering the callsign." aria-label="Press ENTER after entering the callsign.">Press ENTER after entering the callsign.</small>
+            <input class="nch-callsign-input nch-admin-only" data-role="callsign" aria-label="Callsign" autocomplete="off" maxlength="15" placeholder="Callsign">
+            <small class="nch-call-hint nch-admin-only">Type a callsign and press ENTER</small>
             <div class="nch-quick-checkin nch-admin-only" aria-label="Check in with station status">
               <button data-quick-tag="mobile" data-short="M" aria-pressed="false" title="Mark Mobile, look up QRZ, and check in">Mobile</button>
               <button data-quick-tag="shortTime" data-short="ST" aria-pressed="false" title="Mark Short Time, look up QRZ, and check in">Short Time</button>
@@ -3700,17 +3721,17 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             ${moduleResizeZones("chat")}
           </section>
           <section class="nch-module nch-checked-out-section" data-module="checkedOut">
-            <h3 class="nch-module-header" data-module-drag="checkedOut" tabindex="0" aria-label="Move Checked Out"><span>Checked Out <small data-role="checked-out-order-note">drag stations to reorder</small></span></h3>
+            <h3 class="nch-module-header" data-module-drag="checkedOut" tabindex="0" aria-label="Move Checked Out"><span>Checked Out</span></h3>
             <div class="nch-module-content" data-role="checked-out"></div>
             ${moduleResizeZones("checkedOut")}
           </section>
           <section class="nch-module nch-active-section" data-module="active">
-            <h3 class="nch-module-header" data-module-drag="active" tabindex="0" aria-label="Move Active Log"><span>Active Log <small data-role="active-order-note">fixed roles stay pinned</small></span></h3>
+            <h3 class="nch-module-header" data-module-drag="active" tabindex="0" aria-label="Move Active Log"><span>Active Log</span></h3>
             <div class="nch-module-content" data-role="active"></div>
             ${moduleResizeZones("active")}
           </section>
           <section class="nch-module nch-lurkers-fixed" data-module="lurkers">
-            <h3 class="nch-module-header" data-module-drag="lurkers" tabindex="0" aria-label="Move Lurkers"><span>Lurkers <small>visible to NCO Logger</small></span></h3>
+            <h3 class="nch-module-header" data-module-drag="lurkers" tabindex="0" aria-label="Move Lurkers"><span>Lurkers</span></h3>
             <div class="nch-module-content" data-role="lurkers"></div>
             ${moduleResizeZones("lurkers")}
           </section>
@@ -3823,6 +3844,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     setStatus("");
     lockBackgroundScroll();
     dockNativeChat();
+    syncAppearanceSwitch();
 
     panel.addEventListener("click", async event => {
       if (event.target.matches?.("[data-role='photo-viewer']")) {
@@ -3878,6 +3900,12 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         local.chatFontPreset = normalizeFontPreset(target.dataset.chatFont);
         storageSet();
         applyDisplayPreferences();
+        return;
+      }
+      if (target.dataset.unpinControls) {
+        clearPinnedStationAction(target.dataset.unpinControls);
+        renderQueue();
+        setStatus(`${normalizeCall(target.dataset.unpinControls)} controls unpinned.`, "success");
         return;
       }
       if (target.dataset.role === "private-send") {
@@ -4159,6 +4187,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       }
     });
 
+    panel.querySelector("[data-role='appearance-switch']")?.addEventListener("change", event => {
+      appearanceManager?.setAppearance(event.currentTarget.checked ? "dark" : "light");
+    });
+
     panel.addEventListener("contextmenu", event => {
       const row = event.target.closest?.(".nch-row[data-call]");
       if (!row || event.shiftKey || event.target.closest?.("button, input, textarea, select, a, [contenteditable='true']")) return;
@@ -4343,6 +4375,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
           startItem: { ...layout.items[moduleId] }, originalLayout: layout,
           edge: moduleResizer.dataset.resizeEdge || "se"
         };
+        panel.querySelector(`[data-module='${moduleId}']`)?.classList.add("nch-module-resizing");
         moduleResizer.setPointerCapture?.(event.pointerId);
         document.body.classList.add("nch-resizing");
         document.body.dataset.nchResizeEdge = resizing.edge;
@@ -4388,6 +4421,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       storageSet();
     });
     panel.querySelector("[data-role='menu-reset']")?.addEventListener("click", () => {
+      if (!confirm("Reset the module layout to its default arrangement?")) return;
       local.moduleLayout = resolveGridLayout(defaultModuleLayoutForMode());
       storageSet();
       applyModuleLayout();
@@ -4589,6 +4623,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   );
   window.addEventListener("resize", handleWindowResize);
   window.addEventListener("keydown", handleActionHotkey, true);
+  window.addEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
   Promise.all([relayStorageGet(), storageGet()]).then(async ([relayData, saved]) => {
     browserStorage.remove(legacyQrzUserKey);
     browserStorage.remove(legacyQrzAuthKey);
@@ -4656,6 +4691,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     pollTimer = null;
     window.removeEventListener("resize", handleWindowResize);
     window.removeEventListener("keydown", handleActionHotkey, true);
+    window.removeEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
     stopSync();
     restoreNativeChat();
     unlockBackgroundScroll();
