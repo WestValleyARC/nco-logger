@@ -9,6 +9,7 @@ export declare class ChatWidget extends HTMLElement {
     private readonly unreadCounts;
     private readonly scrollPositions;
     private readonly expandedPinnedMessageIds;
+    private pinnedCollectionExpanded;
     private selectedRecipientId;
     private inboxInitialized;
     private readonly eventStream;
@@ -40,6 +41,7 @@ export declare class ChatWidget extends HTMLElement {
     private lightboxConversationKey;
     private messageScrollHeight;
     private keepBottomOnImageLoad;
+    private initialScrollGate;
     private maxMessageChars;
     private maxUploadBytes;
     private imageMimeTypes;
@@ -49,6 +51,7 @@ export declare class ChatWidget extends HTMLElement {
     private readonly handleWindowResize;
     private readonly handleMessageScroll;
     private readonly handleMessageImageLoad;
+    private readonly handleInitialLayoutReady;
     connectedCallback(): void;
     disconnectedCallback(): void;
     private populateEmojiPicker;
@@ -101,6 +104,7 @@ export declare class ChatWidget extends HTMLElement {
     private syncScrollTracking;
     private messageRenderKey;
     private renderPinnedMessages;
+    private updatePinnedTextOverflow;
     private renderMessage;
     private appendEditor;
     private appendReplyReference;

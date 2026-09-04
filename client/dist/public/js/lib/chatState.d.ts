@@ -2,6 +2,9 @@ export interface IdentifiedChatMessage {
     id: string;
     createdAt: string;
 }
+export interface PinnedChatMessage extends IdentifiedChatMessage {
+    pinnedAt: string | null;
+}
 export interface CloseableChatStream {
     close(): void;
 }
@@ -30,6 +33,9 @@ export declare const reconcileChatMessages: <T extends IdentifiedChatMessage>(me
 export declare const reconcileChatSnapshot: <T extends IdentifiedChatMessage>(messages: Map<string, T>, incoming: Iterable<T>, knownBeforeRequest: ReadonlySet<string>) => number;
 export declare const sortChatMessages: <T extends IdentifiedChatMessage>(messages: Iterable<T>) => T[];
 export declare const compareChatMessages: <T extends IdentifiedChatMessage>(left: T, right: T) => number;
+export declare const sortPinnedChatMessages: <T extends PinnedChatMessage>(messages: Iterable<T>) => T[];
+export declare const hiddenPinnedMessageCount: (total: number, visibleLimit?: number) => number;
+export declare const isPinnedTextTruncated: (scrollWidth: number, clientWidth: number) => boolean;
 export declare const isLatestChatMessage: <T extends IdentifiedChatMessage>(messages: Iterable<T>, candidate: T) => boolean;
 export declare const trimOldestChatMessages: <T extends IdentifiedChatMessage>(messages: Map<string, T>, limit: number) => string[];
 export declare const shouldScrollChatToLatest: (initialLoad: boolean, wasNearBottom: boolean) => boolean;

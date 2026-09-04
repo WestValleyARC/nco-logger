@@ -5,6 +5,10 @@ export interface IdentifiedChatMessage {
     createdAt: string;
 }
 
+export interface PinnedChatMessage extends IdentifiedChatMessage {
+    pinnedAt: string | null;
+}
+
 export interface CloseableChatStream {
     close(): void;
 }
@@ -100,6 +104,17 @@ export const sortChatMessages = <T extends IdentifiedChatMessage>(messages: Iter
 
 export const compareChatMessages = <T extends IdentifiedChatMessage>(left: T, right: T): number =>
     left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+
+export const sortPinnedChatMessages = <T extends PinnedChatMessage>(messages: Iterable<T>): T[] =>
+    [...messages].sort((left, right) =>
+        (right.pinnedAt || right.createdAt).localeCompare(left.pinnedAt || left.createdAt)
+        || right.id.localeCompare(left.id));
+
+export const hiddenPinnedMessageCount = (total: number, visibleLimit = 3): number =>
+    Math.max(0, total - visibleLimit);
+
+export const isPinnedTextTruncated = (scrollWidth: number, clientWidth: number): boolean =>
+    clientWidth > 0 && scrollWidth > clientWidth + 1;
 
 export const isLatestChatMessage = <T extends IdentifiedChatMessage>(messages: Iterable<T>, candidate: T): boolean => {
     for (const message of messages) {

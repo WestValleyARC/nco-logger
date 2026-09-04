@@ -88,3 +88,27 @@ test('long-session chat collections discard oldest messages at their configured 
     assert.equal(messages.has('0000'), false);
     assert.equal(messages.has('1000'), true);
 });
+
+test('pinned messages sort by newest pin time and compact counts stop at three', async () => {
+    const { hiddenPinnedMessageCount, sortPinnedChatMessages } = await loadState();
+    const messages = [
+        { id: 'old-message-new-pin', createdAt: '2026-08-01T00:00:00.000Z', pinnedAt: '2026-09-04T03:00:00.000Z' },
+        { id: 'new-message-old-pin', createdAt: '2026-09-01T00:00:00.000Z', pinnedAt: '2026-09-04T01:00:00.000Z' },
+        { id: 'middle-pin', createdAt: '2026-08-15T00:00:00.000Z', pinnedAt: '2026-09-04T02:00:00.000Z' }
+    ];
+    assert.deepEqual(sortPinnedChatMessages(messages).map(message => message.id), [
+        'old-message-new-pin', 'middle-pin', 'new-message-old-pin'
+    ]);
+    assert.equal(hiddenPinnedMessageCount(1), 0);
+    assert.equal(hiddenPinnedMessageCount(3), 0);
+    assert.equal(hiddenPinnedMessageCount(4), 1);
+    assert.equal(hiddenPinnedMessageCount(7), 4);
+});
+
+test('pinned text disclosure uses measured overflow rather than message length', async () => {
+    const { isPinnedTextTruncated } = await loadState();
+    assert.equal(isPinnedTextTruncated(120, 120), false, 'a fitting short pin has no disclosure');
+    assert.equal(isPinnedTextTruncated(121, 120), false, 'subpixel rounding is tolerated');
+    assert.equal(isPinnedTextTruncated(122, 120), true, 'rendered overflow gets a disclosure');
+    assert.equal(isPinnedTextTruncated(500, 0), false, 'hidden/unlaid-out content is not guessed from length');
+});
