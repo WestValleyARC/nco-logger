@@ -116,8 +116,8 @@ node server/dist/bin/getAllEmail.js
 # Manage system notifications (create/list/expire)
 node server/dist/bin/manageNotifications.js --help
 
-# Database backup, restore, migrate, verify
-node server/dist/bin/dbBackup.js <subcommand> --help
+# Database backup, restore, migrate, verify (production Compose deployment)
+docker compose run --rm backup <subcommand> --help
 ```
 
 All CLI tools require proper database configuration. Run from the project root directory.

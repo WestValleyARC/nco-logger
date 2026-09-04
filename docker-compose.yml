@@ -69,6 +69,30 @@ services:
                 - action: rebuild
                   path: ./Dockerfile
 
+    backup:
+        profiles: ['operations']
+        build:
+            context: .
+            dockerfile: Dockerfile.backup
+        image: westvalleyarc/nco-logger-backup:dev
+        user: ${NCO_BACKUP_UID:-1000}:${NCO_BACKUP_GID:-1000}
+        environment:
+            MONGODB_PRODUCTION_URI: ${MONGODB_COMPOSE_URI:-mongodb://mongo:27017/hamlive?replicaSet=rs0&directConnection=true}
+            MONGODB_DEVELOPMENT_URI: ${MONGODB_DEVELOPMENT_URI:-}
+            HAMLIVE_BACKUP_DIR: /backups
+        depends_on:
+            mongo:
+                condition: service_healthy
+        networks:
+            - hamlive
+        volumes:
+            - ${NCO_BACKUP_DIR:-./backups}:/backups
+        read_only: true
+        tmpfs:
+            - /tmp
+        security_opt:
+            - no-new-privileges:true
+
     mongo:
         image: mongo:7
         container_name: nco-logger-mongo
