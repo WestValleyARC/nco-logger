@@ -271,8 +271,11 @@ documents appropriate to your instance and jurisdiction before going live.
 
 ### Backups
 
-A backup/restore/migrate CLI is included at `server/dist/bin/dbBackup.js` (it shells out to
-`mongodump`/`mongorestore`). See [docs/runbook.md](docs/runbook.md) for operational procedures.
+A dedicated one-shot Compose service provides the source-built backup/restore CLI and pinned
+MongoDB Database Tools without adding administration tools to the web image. Run
+`docker compose run --rm backup backup --production`; archives persist in
+`${NCO_BACKUP_DIR:-./backups}` on the host (`/backups` in the operations container). See
+[docs/runbook.md](docs/runbook.md) for validation and safe restore procedures.
 
 ---
 

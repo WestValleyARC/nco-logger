@@ -1,6 +1,6 @@
 # Operational runbook (admin tasks)
 
-This runbook contains actionable, admin-facing command-line tasks and playbook steps: backups, restores, scheduled backup examples, and controlled operator commands. Keep secrets out of these files — obtain `MONGO_URI` and other credentials from your secrets manager or environment.
+This runbook contains actionable, admin-facing command-line tasks and playbook steps: backups, restores, scheduled backup examples, and controlled operator commands. Keep secrets out of these files and obtain database credentials from the deployment environment or secrets manager.
 
 Operational playbook (quick actions)
 
@@ -24,73 +24,77 @@ Operational playbook (quick actions)
 
 Database backup & restore (MongoDB) — operational runbook
 
-This section provides copy/pasteable commands and best-practice steps to back up and restore the MongoDB databases used by Ham.Live. The repository stores DB connection info in `server/dist/prodConfig.yaml` (or via environment variables). Do NOT store production credentials in plain text; obtain `MONGO_URI` from your secrets manager or environment before running the commands below.
+This section provides copy/pasteable commands and best-practice steps to back up and restore the MongoDB database used by NCO Logger. Compose supplies the production URI to the operations container; do not put credentials in commands or committed files.
 
-Preferred tool: `server/dist/bin/dbBackup.js`
+Preferred tool: the one-shot Compose `backup` service
 
-For day-to-day backup/restore/migration work, use the wrapper at `server/dist/bin/dbBackup.js`. It pulls the source URI from `configLib` (so you do not paste credentials), runs `mongodump` with `readPreference=secondary` by default, and refuses to write to a production target without an explicit `--confirm-production` flag. The raw `mongodump`/`mongorestore` examples below remain valid as a fallback.
+The supported production workflow runs the source-built Node wrapper in a dedicated operations image containing pinned MongoDB Database Tools. It does not install database administration tools in the web container. The service defaults to `primaryPreferred`, which works with the bundled single-node replica set; use `--read-preference secondary` only when the deployment actually has a secondary.
+
+Backups persist through container recreation at:
+
+- Host: `${NCO_BACKUP_DIR:-./backups}` (relative paths are relative to the Compose project directory)
+- Operations container: `/backups`
+
+Create the host directory once with private permissions. Its owner must match
+`NCO_BACKUP_UID:NCO_BACKUP_GID` (both default to `1000`):
 
 ```bash
-# Backup prod to ./backups/ (uses dburi from prodConfig.yaml)
-node server/dist/bin/dbBackup.js backup --production
+install -d -m 0700 "${NCO_BACKUP_DIR:-./backups}"
+```
 
-# Backup prod and upload to S3
-node server/dist/bin/dbBackup.js backup --production --s3-bucket my-bucket
+```bash
+# Back up production. The archive appears under ${NCO_BACKUP_DIR:-./backups}.
+docker compose run --rm backup backup --production
 
-# Restore an archive into the dev DB.
-# When the archive's source dbname differs from the target, pass --archive-dbname
-# so namespaces are remapped automatically. Without it, mongorestore writes into
-# the archive's original namespace (e.g. hamlive-prod) on the target cluster,
-# which is destructive on a shared cluster.
-node server/dist/bin/dbBackup.js restore \
-    --archive ./backups/hamlive-prod-20260430T121115Z.archive.gz \
-    --archive-dbname hamlive-prod \
+# Validate the resulting archive without writing to a database.
+docker compose run --rm --entrypoint sh backup -c \
+    'mongorestore --uri="$MONGODB_PRODUCTION_URI" --archive=/backups/hamlive-YYYYMMDDTHHMMSSZ.archive.gz --gzip --dryRun'
+
+# Safely test a restore into a separate database. A development URI is required
+# explicitly; the CLI never falls back to the production URI.
+MONGODB_DEVELOPMENT_URI='mongodb://mongo:27017/hamlive-restore?replicaSet=rs0&directConnection=true' \
+docker compose run --rm backup restore \
+    --archive /backups/hamlive-YYYYMMDDTHHMMSSZ.archive.gz \
+    --archive-dbname hamlive \
     --env development \
     --drop -y
 
-# Refresh dev DB from prod (same cluster, different dbname — auto-remaps namespaces)
-node server/dist/bin/dbBackup.js migrate --source-env production --target-env development --drop -y
-
-# Migrate from prod (current provider) to a new provider via raw URIs
-node server/dist/bin/dbBackup.js migrate \
-    --source-profile prod \
-    --target-uri "mongodb+srv://user:pass@new-cluster.example.com/hamlive-prod?retryWrites=true" \
-    --confirm-production hamlive-prod
-
-# Verify parity (doc counts + indexes) between two URIs after migration
-node server/dist/bin/dbBackup.js verify --source-profile prod --target-profile prod-new
-
-# List local + S3 backups
-node server/dist/bin/dbBackup.js list --s3-bucket my-bucket
-
-# Prune local backups older than 30 days
-node server/dist/bin/dbBackup.js prune --keep-days 30 -y
+# A production restore requires the actual URI-derived database name twice: once
+# in the URI and once as explicit confirmation. Stop application writes first.
+docker compose run --rm backup restore \
+    --production \
+    --archive /backups/hamlive-YYYYMMDDTHHMMSSZ.archive.gz \
+    --confirm-production hamlive \
+    --drop
 ```
 
 Connection profiles can live in `~/.hamlive-backup.yaml` to avoid pasting URIs:
 
 ```yaml
 prod:
-    uri: "mongodb+srv://user:pass@cluster.example.com/hamlive-prod?retryWrites=true"
-    dbname: hamlive-prod
+    uri: "mongodb+srv://user:pass@cluster.example.com/hamlive?retryWrites=true"
+    dbname: hamlive
+    environment: production
 prod-new:
     uri: "mongodb+srv://user:pass@new-cluster.example.com/hamlive-prod?retryWrites=true"
     dbname: hamlive-prod
 ```
 
-Run `node server/dist/bin/dbBackup.js <subcommand> --help` for the full option list. Requires the MongoDB Database Tools (`mongodump`, `mongorestore`) on `PATH`; the AWS CLI (`aws`) is required only for `--s3-*` flags.
+Run `docker compose run --rm backup <subcommand> --help` for the full option list. The dedicated image supplies `mongodump` and `mongorestore`. Optional legacy S3 flags still require an AWS CLI and are not included in this focused image.
 
 Notes on the production safety guard
 
-- `restore` and `migrate` refuse to write to a target whose dbname matches `/prod/i` (substring, case-insensitive) unless `--confirm-production <dbname>` is passed. This protects against typos.
-- A side effect: a sandbox dbname like `hamlive-prod-test` will trip the guard. Use a non-`prod` test name (e.g. `hamlive-restore-test`) when restoring archives into a throwaway target.
+- Production/development classification comes from the selected environment, not a substring in the database name. Production writes require `--confirm-production <actual-uri-database>`.
+- Raw/profile target URIs without an environment classification fail closed unless `--confirm-target <actual-uri-database>` is supplied.
+- A configured profile `dbname` must exactly match the database encoded in its URI.
+- `--env development` requires `MONGODB_DEVELOPMENT_URI`; it never inherits the production URI.
 - `migrate` additionally refuses a non-empty target unless `--allow-non-empty` is passed, and prints a "same cluster" notice when source and target share hosts (e.g. prod ↔ dev on the same MongoDB Atlas cluster).
 
 Recommended verification after any restore or migration
 
 ```bash
 # Doc-count + index parity between source and the restored target.
-node server/dist/bin/dbBackup.js verify --source-env production --target-env development
+docker compose run --rm backup verify --source-env production --target-env development
 ```
 
 
@@ -99,7 +103,19 @@ Important safety notes
 
 - Always run backups from a machine/role that has secure access to the DB and to an offsite backup target (S3, vault, NFS). Do not leave unencrypted backups on shared disks.
 - Prefer creating backups during low-traffic windows and, when possible, coordinate a maintenance window (place app instances into maintenance/read-only or stop writes) for the most consistent snapshot.
-- For replica sets you can use `mongodump --oplog` for a point-in-time-consistent dump, but **only when dumping the entire instance** (no `--db` filter and no dbname in the URI path). On hosted multi-tenant clusters such as MongoDB Atlas, where one cluster hosts both `hamlive-prod` and `hamlive-dev` and credentials grant access to a single DB at a time, `--oplog` is incompatible and should be omitted (the `dbBackup.js` wrapper detects this automatically). For per-DB dumps, prefer running during a low-write window for consistency.
+- `--oplog` is valid only for full-instance dumps. Normal database-scoped archives omit it, and restore therefore does not add `--oplogReplay`. Use `--oplog-replay` only for an archive known to contain an oplog.
+
+Emergency raw backup through the Mongo container
+
+If the operations image is unavailable, the bundled `mongo:7` container includes Database Tools. From the Compose project directory, stream an emergency archive directly to the host backup directory:
+
+```bash
+mkdir -p "${NCO_BACKUP_DIR:-./backups}"
+docker compose exec -T mongo mongodump \
+    --uri='mongodb://localhost:27017/hamlive?replicaSet=rs0&directConnection=true' \
+    --archive --gzip --readPreference=primaryPreferred \
+    > "${NCO_BACKUP_DIR:-./backups}/hamlive-emergency-$(date -u +%Y%m%dT%H%M%SZ).archive.gz"
+```
 
 Set MONGO_URI (example – DO NOT hard-code credentials)
 
@@ -120,7 +136,7 @@ BACKUP_DIR=/var/backups/hamlive
 mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="$BACKUP_DIR/hamlive-$(date -u +%Y%m%dT%H%M%SZ).gz"
 
-mongodump --uri="$MONGO_URI" --archive="$BACKUP_FILE" --gzip --readPreference=secondary
+mongodump --uri="$MONGO_URI" --archive="$BACKUP_FILE" --gzip --readPreference=primaryPreferred
 
 # ensure the file was created
 ls -lh "$BACKUP_FILE"
@@ -175,14 +191,13 @@ mongosh "$MONGO_URI/hamlive-staging" --eval 'db.getCollection("LiveNets").count(
 Automated scheduled backup (cron example)
 
 ```bash
-# Preferred: use the dbBackup.js wrapper, which handles secondary read pref,
-# S3 upload (SSE-AES256), and pruning in one command.
-# CRON (root or backup user):
-# 0 2 * * * cd /opt/hamlive-web && /usr/bin/node server/dist/bin/dbBackup.js backup --production --s3-bucket <secure-bucket> >> /var/log/hamlive-backup.log 2>&1
-# 30 2 * * * cd /opt/hamlive-web && /usr/bin/node server/dist/bin/dbBackup.js prune --keep-days 30 -y >> /var/log/hamlive-backup.log 2>&1
+# Schedule the supported Compose command from the host (root or a dedicated
+# operator permitted to run this Compose project):
+# 0 2 * * * cd /opt/nco-logger && docker compose run --rm backup backup --production >> /var/log/nco-backup.log 2>&1
+# 30 2 * * * cd /opt/nco-logger && docker compose run --rm backup prune --keep-days 30 -y >> /var/log/nco-backup.log 2>&1
 
 # Raw equivalent (no wrapper) — kept for reference:
-# 0 2 * * * /usr/local/bin/mongodump --uri="$MONGO_URI" --archive=/var/backups/hamlive/hamlive-$(date -u +"%Y%m%dT%H%M%SZ").gz --gzip --readPreference=secondary && /usr/local/bin/aws s3 cp /var/backups/hamlive/hamlive-$(date -u +"%Y%m%dT%H%M%SZ").gz s3://<secure-bucket>/hamlive/ --sse AES256 && find /var/backups/hamlive -type f -mtime +30 -delete
+# See "Emergency raw backup through the Mongo container" above for the raw fallback.
 ```
 
 Retention & security
