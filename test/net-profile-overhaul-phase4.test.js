@@ -6,11 +6,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 const mongoose = require('mongoose');
+const { createTestDatabase } = require('./helpers/testDatabase');
 
 test('Net Profile Overhaul Phase 4 signal reports and automatic lurker check-in', async t => {
-    const uri = process.env.TEST_MONGODB_URI;
-    assert.match(uri || '', /net_profile_overhaul_phase4_test/, 'TEST_MONGODB_URI must target the Phase 4 test database');
-    await mongoose.connect(uri);
+    const testDatabase = await createTestDatabase({ databaseName: 'net_profile_overhaul_phase4_test' });
+    await mongoose.connect(testDatabase.uri);
     const NetProfile = require('../server/dist/models/netProfile').getNetProfile();
     const UserProfile = require('../server/dist/models/userProfile').getUserProfile();
     const LiveNet = require('../server/dist/models/liveNet').getLiveNet();
@@ -136,5 +136,6 @@ test('Net Profile Overhaul Phase 4 signal reports and automatic lurker check-in'
         await new Promise(resolve => server.close(resolve));
         await mongoose.connection.dropDatabase();
         await mongoose.disconnect();
+        await testDatabase.cleanup();
     }
 });

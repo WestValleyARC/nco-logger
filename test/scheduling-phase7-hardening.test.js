@@ -21,6 +21,7 @@ const {
 } = require('../server/dist/lib/scheduling/lifecycle');
 const { closeNet } = require('../server/dist/lib/sharedNetOps');
 const { NetCloseReport } = require('../server/dist/lib/userNotification');
+const { createTestDatabase } = require('./helpers/testDatabase');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 const NOW = new Date('2030-01-10T20:00:00.000Z');
@@ -38,14 +39,8 @@ test('abandonment timeout configuration is validated in minutes', () => {
 });
 
 test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
-    const externalUri = process.env.TEST_MONGODB_URI;
-    let mongod;
-    if (externalUri) assert.match(externalUri, /scheduling_phase7_test/, 'TEST_MONGODB_URI must target the Phase 7 test database');
-    if (!externalUri) {
-        const { MongoMemoryServer } = require('mongodb-memory-server');
-        mongod = await MongoMemoryServer.create();
-    }
-    const db = await mongoose.createConnection(externalUri || mongod.getUri()).asPromise();
+    const testDatabase = await createTestDatabase({ databaseName: 'scheduling_phase7_test', replicaSet: true });
+    const db = await mongoose.createConnection(testDatabase.uri).asPromise();
     const NetProfile = require('../server/dist/models/netProfile').getNetProfile(db);
     const NetSchedule = require('../server/dist/models/netSchedule').getNetSchedule(db);
     const ScheduledOccurrence = require('../server/dist/models/scheduledOccurrence').getScheduledOccurrence(db);
@@ -359,6 +354,6 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
     } finally {
         await db.dropDatabase();
         await db.close();
-        if (mongod) await mongod.stop();
+        await testDatabase.cleanup();
     }
 });

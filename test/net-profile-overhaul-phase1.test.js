@@ -11,13 +11,13 @@ const {
     removeLegacyTitleUniqueIndex
 } = require('../server/dist/models/netProfile');
 const { getNetSchedule } = require('../server/dist/models/netSchedule');
+const { createTestDatabase } = require('./helpers/testDatabase');
 
 const OWNER = new mongoose.Types.ObjectId();
 
 test('Net Profile Overhaul Phase 1 model compatibility', async t => {
-    const uri = process.env.TEST_MONGODB_URI;
-    assert.match(uri || '', /net_profile_overhaul_phase1_test/, 'TEST_MONGODB_URI must target the Phase 1 test database');
-    const db = await mongoose.createConnection(uri).asPromise();
+    const testDatabase = await createTestDatabase({ databaseName: 'net_profile_overhaul_phase1_test' });
+    const db = await mongoose.createConnection(testDatabase.uri).asPromise();
     const NetProfile = getNetProfile(db);
     const NetSchedule = getNetSchedule(db);
     await Promise.all([NetProfile.init(), NetSchedule.init()]);
@@ -117,4 +117,5 @@ test('Net Profile Overhaul Phase 1 model compatibility', async t => {
 
     await db.dropDatabase();
     await db.close();
+    await testDatabase.cleanup();
 });

@@ -10,11 +10,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { DateTime } = require('luxon');
 const { materializeSchedule } = require('../server/dist/lib/scheduling/worker');
+const { createTestDatabase } = require('./helpers/testDatabase');
 
 test('schedule disable and recurrence reconciliation', async t => {
-    const uri = process.env.TEST_MONGODB_URI;
-    assert.match(uri || '', /scheduling_reconciliation_test/, 'TEST_MONGODB_URI must target the reconciliation test database');
-    await mongoose.connect(uri);
+    const testDatabase = await createTestDatabase({ databaseName: 'scheduling_reconciliation_test', replicaSet: true });
+    await mongoose.connect(testDatabase.uri);
     const NetProfile = require('../server/dist/models/netProfile').getNetProfile();
     const NetSchedule = require('../server/dist/models/netSchedule').getNetSchedule();
     const ScheduledOccurrence = require('../server/dist/models/scheduledOccurrence').getScheduledOccurrence();
@@ -339,5 +339,6 @@ test('schedule disable and recurrence reconciliation', async t => {
         await new Promise(resolve => server.close(resolve));
         await mongoose.connection.dropDatabase();
         await mongoose.disconnect();
+        await testDatabase.cleanup();
     }
 });
