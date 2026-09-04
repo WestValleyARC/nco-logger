@@ -37,6 +37,10 @@ chat_rate_limit_window_ms: 10000
 chat_upload_dir: '/app/data/chat-uploads'
 chat_max_upload_mb: 5
 
+# Long-lived realtime/chat change streams use a dedicated MongoDB client so
+# they can never consume the primary Mongoose request pool.
+change_stream_poolsize: 10
+
 # Continuous absence allowed before a non-permanent live net is automatically closed.
 nco_abandonment_minutes: 30
 

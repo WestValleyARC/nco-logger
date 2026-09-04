@@ -4,34 +4,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.realtimeClients = exports.RealtimeClients = void 0;
-const configLib_js_1 = require("#@server/lib/configLib.js");
-const { dburi: dbUri, dbname: dbName } = configLib_js_1.conf;
-const resolvedDbName = (() => {
-    try {
-        const fromUri = new URL(dbUri).pathname.replace(/^\//, '').split('?')[0];
-        return fromUri || dbName;
-    }
-    catch {
-        return dbName;
-    }
-})();
 const express_sse_ts_1 = __importDefault(require("express-sse-ts"));
-const mongodb_1 = require("mongodb");
 const logger_js_1 = require("#@server/lib/logger.js");
+const changeStreamClient_js_1 = require("#@server/lib/changeStreamClient.js");
 const commonTypesupport_js_1 = require("#@server/types/commonTypesupport.js");
 const dynoId = process.env['INSTANCE_ID'] || process.env['DYNO'] || 'node';
 class RealtimeClients {
     middlewareMap = new Map();
-    dbClient;
+    pushStates = new Map();
     dataGenerator = null;
-    constructor() {
-        this.dbClient = new mongodb_1.MongoClient(dbUri);
-    }
     async init(dataGenerator) {
         this.dataGenerator = dataGenerator;
         try {
-            await this.dbClient.connect();
-            const collection = this.dbClient.db(resolvedDbName).collection('stationinteractions');
+            const collection = (await (0, changeStreamClient_js_1.getChangeStreamDb)()).collection('stationinteractions');
             let changeStream = this.createChangeStream(collection);
             let retryDelay = 1000;
             changeStream.on('error', error => {
@@ -103,10 +88,38 @@ class RealtimeClients {
             }
         }
     }
-    async push(npid, permitCachedResponse = false) {
+    push(npid, permitCachedResponse = false) {
         if (typeof npid !== 'string') {
-            throw new Error('RTC push(): Invalid npid');
+            return Promise.reject(new Error('RTC push(): Invalid npid'));
         }
+        const existingState = this.pushStates.get(npid);
+        if (existingState) {
+            existingState.rerunRequested = true;
+            existingState.nextPermitCachedResponse &&= permitCachedResponse;
+            return existingState.promise;
+        }
+        const state = {
+            promise: Promise.resolve(),
+            rerunRequested: false,
+            nextPermitCachedResponse: permitCachedResponse
+        };
+        state.promise = Promise.resolve().then(async () => {
+            try {
+                do {
+                    const nextPermitCachedResponse = state.nextPermitCachedResponse;
+                    state.rerunRequested = false;
+                    state.nextPermitCachedResponse = true;
+                    await this.pushOnce(npid, nextPermitCachedResponse);
+                } while (state.rerunRequested);
+            }
+            finally {
+                this.pushStates.delete(npid);
+            }
+        });
+        this.pushStates.set(npid, state);
+        return state.promise;
+    }
+    async pushOnce(npid, permitCachedResponse) {
         if (!this.middlewareMap.has(npid)) {
             logger_js_1.logger.info(`RTC(${dynoId}): This runtime-instance has no clients of net ${npid}, ignoring push() request`);
             logger_js_1.logger.info(`RTC(${dynoId}): This runtime-instance has only clients of NPIDs: ${JSON.stringify(Array.from(this.middlewareMap.keys()))}`);

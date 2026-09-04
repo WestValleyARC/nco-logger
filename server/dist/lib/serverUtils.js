@@ -7,8 +7,8 @@ const sanitizeHtml = require('sanitize-html');
 const { nameCase } = require('@foundernest/namecase');
 const { XMLParser } = require('fast-xml-parser');
 const fillTemplate = require('es6-dynamic-template');
-const NodeCache = require('node-cache');
-const gOptsCache = new NodeCache({ stdTTL: 10, checkperiod: 600 });
+const gOptsCache = new WeakMap();
+const GLOBAL_OPTIONS_TTL_MS = 10_000;
 const { logger } = require('../lib/logger');
 const { conf } = require('../lib/configLib');
 const { getFlexOption } = require('../models/flexOptions');
@@ -29,10 +29,12 @@ const applicationAssetPaths = [
     'js/lib/chatState.js'
 ];
 const publicAssetRoot = path.join(__dirname, '../../../client/dist/public');
-const assetHash = createHash('sha256');
-applicationAssetPaths.forEach(assetPath => assetHash.update(readFileSync(path.join(publicAssetRoot, assetPath))));
-const appAssetRevision = assetHash.digest('hex').slice(0, 12);
-const appAssetVersion = `${appVersion}-${appAssetRevision}`;
+const createAppAssetVersion = () => {
+    const assetHash = createHash('sha256');
+    applicationAssetPaths.forEach(assetPath => assetHash.update(readFileSync(path.join(publicAssetRoot, assetPath))));
+    return `${appVersion}-${assetHash.digest('hex').slice(0, 12)}`;
+};
+const appAssetVersion = createAppAssetVersion();
 let qrzSessionKey = null;
 let qrzInQuotaWait = 0;
 let qrzReqPrevQuota;
@@ -97,20 +99,33 @@ const getFlexOptionsByUser = async ({ user, cachedResponse = false, db = mongoos
 
     if (!user?.flexOptions) return resp;
 
-    if (cachedResponse) gOpts = gOptsCache.get(user.id);
-
     const FlexOption = getFlexOption(db);
-
-    if (!gOpts) {
-        if ((gOpts = await FlexOption.findOne({ scope: 'global' }))) {
-        } else {
-            logger.warn('getFlexOptionsByUser(): missing global options, creating default global options');
-            gOpts = await FlexOption.create({
-                scope: 'global',
-                option: {}
-            });
+    const now = Date.now();
+    let cacheEntry = gOptsCache.get(db);
+    if (cachedResponse && cacheEntry?.value && cacheEntry.expiresAt > now) {
+        gOpts = cacheEntry.value;
+    } else {
+        if (!cacheEntry?.promise) {
+            cacheEntry = cacheEntry || {};
+            cacheEntry.promise = (async () => {
+                let globalOptions = await FlexOption.findOne({ scope: 'global' });
+                if (!globalOptions) {
+                    logger.warn('getFlexOptionsByUser(): missing global options, creating default global options');
+                    globalOptions = await FlexOption.create({ scope: 'global', option: {} });
+                }
+                return typeof globalOptions.toObject === 'function' ? globalOptions.toObject() : globalOptions;
+            })();
+            gOptsCache.set(db, cacheEntry);
         }
-        gOptsCache.set(user.id, gOpts.toObject());
+        try {
+            gOpts = await cacheEntry.promise;
+            if (cachedResponse) {
+                cacheEntry.value = gOpts;
+                cacheEntry.expiresAt = Date.now() + GLOBAL_OPTIONS_TTL_MS;
+            }
+        } finally {
+            cacheEntry.promise = null;
+        }
     }
 
     if (!gOpts) return resp;
@@ -132,6 +147,7 @@ const addServerInfo = async (req, res, next) => {
         const isLoggedIn = Boolean(req.user);
 
         const { NODE_ENV: nodeEnv, LOG_LEVEL: logLevel } = process.env;
+        const requestAppAssetVersion = nodeEnv === 'development' ? createAppAssetVersion() : appAssetVersion;
         const { callSign = null, displayName = null, id: userId = null, newAccount = false } = req.user || {};
         const { requestRateFactor, httpClientTimeout, chat, awayInMs } =
             res.locals.flexOpts || {};
@@ -148,7 +164,7 @@ const addServerInfo = async (req, res, next) => {
                 appLogName,
                 appName,
                 appVersion,
-                appAssetVersion,
+                appAssetVersion: requestAppAssetVersion,
                 cmdHelpUrl,
                 googleAuth,
                 chatEnabled,
@@ -169,7 +185,7 @@ const addServerInfo = async (req, res, next) => {
         };
 
         res.set('X-App-Revision', process.env.APP_REVISION || 'workspace');
-        res.set('X-App-Asset-Version', appAssetVersion);
+        res.set('X-App-Asset-Version', requestAppAssetVersion);
 
         next();
     } catch (err) {

@@ -194,6 +194,10 @@ const createStationInteraction = async ({ req, res, netProfileDoc, liveNetDoc })
         email,
         displayName: profile.fields.name.value,
         location: profile.fields.location.value,
+        participantProfile: {
+            name: stationProfiles.normalizeName(displayName),
+            location: stationProfiles.normalizeLocation(location)
+        },
         chatEnabled: chat,
         checkedState: autoIn ? true : null,
         checkedInAt: autoIn ? now : null,
@@ -234,17 +238,26 @@ const updateStationInteraction = async ({ req, res, netProfileDoc, liveNetDoc })
         throw new Error(`could not retrieve ia doc for ${callSign}, npid: ${netProfileDoc.id}`);
     }
 
-    const profile = await stationProfiles.syncParticipantProfile({
-        callSign, name: displayName, location, editorCallSign: callSign, editorUserId: userId
-    });
+    const participantProfile = {
+        name: stationProfiles.normalizeName(displayName),
+        location: stationProfiles.normalizeLocation(location)
+    };
+    const participantProfileChanged = interaction.participantProfile?.name !== participantProfile.name ||
+        interaction.participantProfile?.location !== participantProfile.location;
+    const profile = participantProfileChanged
+        ? await stationProfiles.syncParticipantProfile({
+            callSign, name: displayName, location, editorCallSign: callSign, editorUserId: userId
+        })
+        : null;
 
     const lastSeenDelta = Date.now() - interaction.lastSeen;
     const update = {
         lastSeen: Date.now(),
-        displayName: profile.fields.name.value,
+        displayName: profile?.fields.name.value ?? interaction.displayName,
         photo,
         userProfile: userId,
-        location: profile.fields.location.value,
+        location: profile?.fields.location.value ?? interaction.location,
+        participantProfile,
         chatEnabled: chat
     };
 

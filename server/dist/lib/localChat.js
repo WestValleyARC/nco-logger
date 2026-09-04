@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { conf } = require('./configLib');
+const { getChangeStreamDb } = require('./changeStreamClient');
 const { logger } = require('./logger');
 const { getLiveNet } = require('../models/liveNet');
 const { getStationInteraction } = require('../models/stationInteraction');
@@ -151,6 +152,7 @@ const toChatMessage = (message, role = 'netuser', currentUserId = '') => {
         replyTo: message.replyTo?.toString() || null,
         reactions: cleared || deleted ? [] : summarizeReactions(message.reactions || [], currentUserId),
         pinned: !cleared && Boolean(message.pinnedAt),
+        pinnedAt: !cleared && message.pinnedAt ? message.pinnedAt.toISOString() : null,
         mine,
         canReact: authorizeChatAction({ role, action: 'react', mine, deleted, cleared, scope, participant }),
         canReply: authorizeChatAction({ role, action: 'reply', mine, deleted, cleared, scope, participant }),
@@ -969,6 +971,58 @@ const clearPublicChat = async (req, res) => {
     }
 };
 
+const CHAT_STREAM_COLLECTIONS = Object.freeze({
+    messages: 'chatmessages',
+    bans: 'chatbans',
+    interactions: 'stationinteractions',
+    profiles: 'userprofiles'
+});
+
+const openChatChangeStream = ({ db, netProfile, liveNet, currentUser, onMessage, onBan, onPresence,
+    onPreference, onError }) => {
+    const changeStream = db.watch([{
+        $match: {
+            $or: [
+                { 'ns.coll': CHAT_STREAM_COLLECTIONS.messages, 'fullDocument.netProfile': netProfile },
+                { 'ns.coll': CHAT_STREAM_COLLECTIONS.bans, 'fullDocument.netProfile': netProfile },
+                { 'ns.coll': CHAT_STREAM_COLLECTIONS.interactions, 'fullDocument.liveNet': liveNet },
+                { 'ns.coll': CHAT_STREAM_COLLECTIONS.profiles, 'documentKey._id': currentUser }
+            ]
+        }
+    }], { fullDocument: 'updateLookup' });
+
+    const handleChange = change => {
+        switch (change.ns?.coll) {
+            case CHAT_STREAM_COLLECTIONS.messages:
+                if (change.fullDocument) onMessage(change.fullDocument);
+                break;
+            case CHAT_STREAM_COLLECTIONS.bans:
+                if (change.fullDocument) onBan(change.fullDocument);
+                break;
+            case CHAT_STREAM_COLLECTIONS.interactions:
+                if (change.fullDocument) onPresence(change.fullDocument);
+                break;
+            case CHAT_STREAM_COLLECTIONS.profiles:
+                onPreference(change.fullDocument);
+                break;
+        }
+    };
+
+    changeStream.on('change', handleChange);
+    changeStream.on('error', onError);
+    let closed = false;
+
+    return {
+        async close() {
+            if (closed) return;
+            closed = true;
+            changeStream.removeListener('change', handleChange);
+            changeStream.removeListener('error', onError);
+            await changeStream.close();
+        }
+    };
+};
+
 const streamEvents = async (req, res) => {
     let userId;
     let access;
@@ -994,8 +1048,7 @@ const streamEvents = async (req, res) => {
         if (res.writableEnded || res.destroyed) return false;
         return res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
-    const ChatMessage = getChatMessage();
-    const closeStreams = [];
+    let chatChangeSubscription = null;
     let disconnectTyping = null;
     let heartbeat = null;
     let cleanedUp = false;
@@ -1004,7 +1057,11 @@ const streamEvents = async (req, res) => {
         cleanedUp = true;
         if (heartbeat) clearInterval(heartbeat);
         disconnectTyping?.();
-        closeStreams.forEach(changeStream => void changeStream.close());
+        if (chatChangeSubscription) {
+            void chatChangeSubscription.close().catch(err => {
+                logger.warn(`Local chat SSE cleanup failed: ${err.message}`);
+            });
+        }
     };
     req.once('close', cleanup);
     res.once('close', cleanup);
@@ -1019,40 +1076,6 @@ const streamEvents = async (req, res) => {
         });
         const netProfile = new mongoose.Types.ObjectId(req.params.id);
         const currentUserObjectId = new mongoose.Types.ObjectId(userId);
-        const messageChangeStream = ChatMessage.watch([{ $match: { 'fullDocument.netProfile': netProfile } }], {
-            fullDocument: 'updateLookup'
-        });
-        closeStreams.push(messageChangeStream);
-        messageChangeStream.on('change', change => {
-            if (!change.fullDocument) return;
-            const message = chatEventForViewer(change.fullDocument, access.role, userId, ignoredUserIds);
-            if (!message) return;
-            writeEvent('message', message);
-        });
-        messageChangeStream.on('error', err => {
-            logger.warn(`Local chat SSE change stream closed: ${err.message}`);
-            res.end();
-        });
-
-        const ChatBan = getChatBan();
-        const banChangeStream = ChatBan.watch([{ $match: { 'fullDocument.netProfile': netProfile } }], {
-            fullDocument: 'updateLookup'
-        });
-        closeStreams.push(banChangeStream);
-        banChangeStream.on('change', change => {
-            if (change.fullDocument?.userProfile?.toString() !== userId) return;
-            writeEvent('access', {
-                suspended: true,
-                reason: change.fullDocument.reason || ''
-            });
-            res.end();
-        });
-        banChangeStream.on('error', err => {
-            logger.warn(`Local chat ban stream closed: ${err.message}`);
-            res.end();
-        });
-
-        const StationInteraction = getStationInteraction();
         const sendRecipients = async () => {
             try {
                 const recipients = await listRecipientsForAccess({
@@ -1066,33 +1089,44 @@ const streamEvents = async (req, res) => {
                 logger.warn(`Local chat recipient refresh failed: ${err.message}`);
             }
         };
-        const presenceChangeStream = StationInteraction.watch([{
-            $match: { 'fullDocument.liveNet': access.liveNet._id }
-        }], { fullDocument: 'updateLookup' });
-        closeStreams.push(presenceChangeStream);
-        presenceChangeStream.on('change', change => {
-            const interaction = change.fullDocument;
-            if (participantId(interaction?.userProfile) === userId && interaction.role !== access.role) {
-                // Reconnect so history and all server-derived UI permissions
-                // are serialized with the viewer's current role.
-                return res.end();
+        const changeStreamDb = await getChangeStreamDb();
+        if (cleanedUp) return;
+        chatChangeSubscription = openChatChangeStream({
+            db: changeStreamDb,
+            netProfile,
+            liveNet: access.liveNet._id,
+            currentUser: currentUserObjectId,
+            onMessage: fullDocument => {
+                const message = chatEventForViewer(fullDocument, access.role, userId, ignoredUserIds);
+                if (message) writeEvent('message', message);
+            },
+            onBan: fullDocument => {
+                if (fullDocument.userProfile?.toString() !== userId) return;
+                writeEvent('access', {
+                    suspended: true,
+                    reason: fullDocument.reason || ''
+                });
+                res.end();
+            },
+            onPresence: interaction => {
+                if (participantId(interaction?.userProfile) === userId && interaction.role !== access.role) {
+                    // Reconnect so history and all server-derived UI permissions
+                    // are serialized with the viewer's current role.
+                    return res.end();
+                }
+                return void sendRecipients();
+            },
+            onPreference: fullDocument => {
+                ignoredUserIds = new Set((fullDocument?.ignoredPrivateUsers || []).map(participantId).filter(Boolean));
+                chatTypingHub.updateViewer(req.params.id, userId, { ignoredUserIds });
+                writeEvent('preferences', { ignoredUserIds: [...ignoredUserIds] });
+                void sendRecipients();
+            },
+            onError: err => {
+                logger.warn(`Local chat SSE change stream closed: ${err.message}`);
+                res.end();
             }
-            return void sendRecipients();
         });
-        presenceChangeStream.on('error', err => logger.warn(`Local chat presence stream closed: ${err.message}`));
-
-        const UserProfile = getUserProfile();
-        const preferenceChangeStream = UserProfile.watch([{
-            $match: { 'documentKey._id': currentUserObjectId }
-        }], { fullDocument: 'updateLookup' });
-        closeStreams.push(preferenceChangeStream);
-        preferenceChangeStream.on('change', change => {
-            ignoredUserIds = new Set((change.fullDocument?.ignoredPrivateUsers || []).map(participantId).filter(Boolean));
-            chatTypingHub.updateViewer(req.params.id, userId, { ignoredUserIds });
-            writeEvent('preferences', { ignoredUserIds: [...ignoredUserIds] });
-            void sendRecipients();
-        });
-        preferenceChangeStream.on('error', err => logger.warn(`Local chat preference stream closed: ${err.message}`));
     } catch (err) {
         logger.warn(`Local chat SSE unavailable: ${err.message}`);
         return res.end();
@@ -1163,6 +1197,7 @@ module.exports = {
     clearPublicChat,
     setTypingState,
     streamEvents,
+    openChatChangeStream,
     fetchChatHistory,
     cleanupNetChat,
     banUserHelper,

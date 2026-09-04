@@ -79,10 +79,13 @@ async function syncParticipantProfile({ callSign, name, location, editorCallSign
     db = mongoose.connection }) {
     const incoming = { name: normalizeName(name), location: normalizeLocation(location) };
     const fields = {};
-    await ensureProfile(callSign, {}, db);
+    let saved = await findProfile(callSign, db);
+    if (!saved?.fields?.name || !saved?.fields?.location || normalizeName(saved.displayName)) {
+        saved = await ensureProfile(callSign, {}, db);
+    }
     for (const field of PROFILE_FIELDS) {
         for (let attempt = 0; attempt < 3; attempt++) {
-            const current = (await getProfileState(callSign, {}, db)).fields[field];
+            const current = fieldState(saved, field);
             if (current.origin === 'manual') {
                 fields[field] = { status: 'protected', field, ...current };
                 break;
@@ -94,8 +97,9 @@ async function syncParticipantProfile({ callSign, name, location, editorCallSign
             }
             const result = await compareAndSetField({
                 callSign, field, value: incoming[field], expectedRevision: current.revision,
-                editorCallSign, editorUserId, origin, db
+                editorCallSign, editorUserId, origin, db, skipEnsure: true
             });
+            saved = { ...plain(saved), fields: { ...plain(saved)?.fields, [field]: result } };
             if (result.status === 'accepted' || result.origin === 'manual' || attempt === 2) {
                 fields[field] = result.origin === 'manual' && result.status === 'conflict'
                     ? { ...result, status: 'protected' }
@@ -108,12 +112,12 @@ async function syncParticipantProfile({ callSign, name, location, editorCallSign
 }
 
 async function compareAndSetField({ callSign, field, value, expectedRevision, editorCallSign, editorUserId,
-    origin = 'manual', fallback = {}, db = mongoose.connection }) {
+    origin = 'manual', fallback = {}, db = mongoose.connection, skipEnsure = false }) {
     if (!PROFILE_FIELDS.includes(field)) throw new Error('Invalid station profile field');
     const expected = Number(expectedRevision);
     if (!Number.isInteger(expected) || expected < 0) throw new Error(`Invalid expected ${field} revision`);
     const StationProfile = getStationNameOverride(db);
-    await ensureProfile(callSign, fallback, db);
+    if (!skipEnsure) await ensureProfile(callSign, fallback, db);
     const next = {
         value: normalizeValue(value), revision: expected + 1,
         editorCallSign: normalizeCall(editorCallSign), editorUserId: String(editorUserId || ''),
@@ -132,8 +136,10 @@ async function compareAndSetField({ callSign, field, value, expectedRevision, ed
 async function applyManualOverrides(callSign, lookup, db = mongoose.connection) {
     const fallback = { name: lookup?.result?.displayName, location: lookup?.result?.location };
     const state = await getProfileState(callSign, fallback, db);
-    const hasManual = PROFILE_FIELDS.some(field => state.fields[field].origin === 'manual');
-    const result = lookup?.result || hasManual
+    const hasOverride = PROFILE_FIELDS.some(field =>
+        ['manual', 'participant'].includes(state.fields[field].origin) && state.fields[field].value
+    );
+    const result = lookup?.result || hasOverride
         ? { ...(lookup?.result || {}), callSign: normalizeCall(callSign) }
         : null;
     for (const field of PROFILE_FIELDS) {

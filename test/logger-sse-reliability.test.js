@@ -6,6 +6,7 @@ const http = require('node:http');
 const express = require('express');
 const SSE = require('express-sse-ts').default;
 const { apiNotFound } = require('../server/dist/lib/apiNotFound');
+const { RealtimeClients } = require('../server/dist/lib/realtimeClients');
 
 const listen = app => new Promise(resolve => {
     const server = app.listen(0, '127.0.0.1', () => resolve(server));
@@ -52,4 +53,36 @@ test('an unmatched API request still returns the JSON 404 response', async t => 
     const response = await fetch(`http://127.0.0.1:${server.address().port}/api/missing`);
     assert.equal(response.status, 404);
     assert.deepEqual(await response.json(), { error: 'Not Found' });
+});
+
+test('real-time pushes for one net are serialized and collapse a burst into one trailing refresh', async () => {
+    const clients = new RealtimeClients();
+    const releases = [];
+    const permitCachedResponses = [];
+    let active = 0;
+    let maxActive = 0;
+
+    clients.pushOnce = async (_npid, permitCachedResponse) => {
+        permitCachedResponses.push(permitCachedResponse);
+        active++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise(resolve => releases.push(resolve));
+        active--;
+    };
+
+    const first = clients.push('net-id', true);
+    await Promise.resolve();
+    await Promise.resolve();
+    const burst = Array.from({ length: 12 }, () => clients.push('net-id', false));
+
+    assert.equal(releases.length, 1);
+    releases.shift()();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(releases.length, 1);
+    releases.shift()();
+
+    await Promise.all([first, ...burst]);
+    assert.equal(maxActive, 1);
+    assert.deepEqual(permitCachedResponses, [true, false]);
 });

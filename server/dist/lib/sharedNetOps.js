@@ -73,26 +73,24 @@ async function applyDeferredQrzEnrichment({ dia, liveNetId, callSign, baseline, 
     const result = response?.result;
     const status = qrzStatus(response?.outcome, ['success', 'success-cache'].includes(response?.outcome), true);
     try {
-        const updates = [
-            ['name', 'displayName', result?.displayName],
-            ['location', 'location', result?.location]
-        ];
-        for (const [, interactionField, value] of updates) {
+        const set = { qrzLookupStatus: status, qrzLookupAt: new Date() };
+        for (const [interactionField, value] of [
+            ['displayName', result?.displayName],
+            ['location', result?.location],
+            ['photo', result?.photo]
+        ]) {
             if (!value || baseline[interactionField]) continue;
-            await StationInteraction.updateOne(
-                { _id: dia._id, [interactionField]: baseline[interactionField] },
-                { $set: { [interactionField]: value } }
-            );
-        }
-        if (result?.photo && !baseline.photo) {
-            await StationInteraction.updateOne(
-                { _id: dia._id, photo: baseline.photo },
-                { $set: { photo: result.photo } }
-            );
+            set[interactionField] = {
+                $cond: [
+                    { $eq: [{ $ifNull: [`$${interactionField}`, null] }, baseline[interactionField] ?? null] },
+                    value,
+                    `$${interactionField}`
+                ]
+            };
         }
         await StationInteraction.updateOne(
             { _id: dia._id },
-            { $set: { qrzLookupStatus: status, qrzLookupAt: new Date() } }
+            [{ $set: set }]
         );
         logger.info(`QRZ deferred enrichment ${status} for ${callSign}`);
     } catch (err) {
@@ -272,45 +270,21 @@ async function checkStateUnlocked({
         newStations.map(async dstStation => {
             let userData;
             let manualOverrides;
-            let qrzData = null;
             const dstStationUpper = dstStation.toUpperCase();
             const timing = stationMetrics.get(dstStationUpper);
             const profileStartedAt = performance.now();
-            let lookupStatus = 'deferred';
 
             [userData, manualOverrides] = await Promise.all([
                 UserProfile.findOne({ callSign: dstStationUpper }),
                 stationProfiles.getManualOverrides(dstStationUpper, db)
             ]);
             if (timing) timing.profileLookupMs = elapsedMs(profileStartedAt);
-            // Ordinary account display names are not authoritative station-log names.
-            // Start QRZ for every new station, while preserving the non-blocking
-            // local-profile path and any local location/photo/account data.
-            const qrzStartedAt = performance.now();
-            const lookup = Promise.resolve()
-                .then(() => qrzLookupFn(dstStationUpper, flexOpts, db))
-                .catch(() => ({ result: null, outcome: 'network-failure' }));
-            const configuredWait = Number(flexOpts?.qrzCheckInWaitMs);
-            const configuredBudget = Math.min(5000, Math.max(0, Number.isFinite(configuredWait) ? configuredWait : 0));
-            const waitMs = userData ? 0 : configuredBudget;
-            let lookupResponse = null;
-            if (waitMs > 0) {
-                lookupResponse = await Promise.race([
-                    lookup,
-                    new Promise(resolve => setTimeout(() => resolve(null), waitMs))
-                ]);
-            }
-            if (lookupResponse) {
-                qrzData = lookupResponse.result;
-                lookupStatus = qrzStatus(lookupResponse.outcome, Boolean(qrzData), false);
-            }
             if (timing) {
                 timing.path = userData ? 'new-station-local-profile' : 'new-station-qrz';
-                timing.qrzStatus = lookupResponse ? lookupStatus : 'deferred';
-                timing.qrzWaitMs = waitMs;
-                if (lookupResponse) timing.qrzLookupMs = elapsedMs(qrzStartedAt);
+                timing.qrzStatus = 'deferred';
+                timing.qrzWaitMs = 0;
             }
-            if (!lookupResponse) deferredQrz.push({ callSign: dstStationUpper, lookup });
+            deferredQrz.push({ callSign: dstStationUpper });
 
             return new StationInteraction({
                 netProfile: liveNet.netProfile,
@@ -318,12 +292,12 @@ async function checkStateUnlocked({
                 callSign: dstStationUpper,
                 createdBy: 'admin',
                 userProfile: userData?._id || null,
-                displayName: manualOverrides.name || qrzData?.displayName || null,
-                photo: userData?.photo || qrzData?.photo || null,
+                displayName: manualOverrides.name || null,
+                photo: userData?.photo || null,
                 email: userData?.email || null,
-                location: manualOverrides.location || userData?.location || qrzData?.location || null,
-                qrzLookupStatus: lookupStatus,
-                qrzLookupAt: lookupStatus === 'deferred' ? null : new Date(),
+                location: manualOverrides.location || userData?.location || null,
+                qrzLookupStatus: 'deferred',
+                qrzLookupAt: null,
                 chatEnabled: false,
                 highlight: highlight,
                 hand: hand,
@@ -422,12 +396,17 @@ async function checkStateUnlocked({
     for (const pending of deferredQrz) {
         const dia = newIaDocs.find(item => item.callSign.toUpperCase() === pending.callSign);
         if (!dia) continue;
+        // Start QRZ only after the station and lookup-table writes have completed.
+        // QRZ cache/auth/network work must never compete with check-in persistence.
+        const lookup = Promise.resolve()
+            .then(() => qrzLookupFn(pending.callSign, flexOpts, db))
+            .catch(() => ({ result: null, outcome: 'network-failure' }));
         const task = applyDeferredQrzEnrichment({
             dia,
             liveNetId: liveNet._id,
             callSign: pending.callSign,
             baseline: { displayName: dia.displayName ?? null, location: dia.location ?? null, photo: dia.photo ?? null },
-            lookup: pending.lookup,
+            lookup,
             db
         });
         if (Array.isArray(deferredTasks)) deferredTasks.push(task);

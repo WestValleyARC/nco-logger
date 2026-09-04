@@ -66,6 +66,7 @@ export type Config = {
     port: number;
     run_background_tasks_on_startup: boolean;
     realtime_mongoose_poolsize: number;
+    change_stream_poolsize: number;
     dbname: string;
     dburi: string;
     batch_mongoose_poolsize: number;

@@ -108,6 +108,7 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     });
     assert.equal(pinned.status, 200);
     assert.equal(pinned.payload.message.pinned, true);
+    assert.match(pinned.payload.message.pinnedAt, /^\d{4}-\d{2}-\d{2}T/);
     const forbiddenPin = await invoke(setMessagePin, {
         ...makeReq(userOne, 'W1AAA', 'Alice', { pinned: false }),
         params: { id: netProfile.toString(), messageId: sent.payload.message.id }
