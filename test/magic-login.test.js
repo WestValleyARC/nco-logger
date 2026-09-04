@@ -42,6 +42,7 @@ test('console magic login returns a relative link that authenticates successfull
     const originalNodeEnv = process.env.NODE_ENV;
     const originalConf = {
         base_url: conf.base_url,
+        magic_link_secret: conf.magic_link_secret,
         mail_transport: conf.mail_transport,
         smtp_host: conf.smtp_host
     };
@@ -49,6 +50,7 @@ test('console magic login returns a relative link that authenticates successfull
 
     process.env.NODE_ENV = 'development';
     conf.base_url = 'http://localhost:3000';
+    conf.magic_link_secret = 'test-only-magic-link-secret';
     conf.mail_transport = 'console';
     conf.smtp_host = '';
     UserProfile.findOneAndUpdate = async () => ({
