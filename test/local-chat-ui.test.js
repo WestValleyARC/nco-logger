@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const loadEmoji = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/chatEmoji.js')).href);
 const loadChatText = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/chatText.js')).href);
+const loadLoggerResponsive = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/loggerResponsive.js')).href);
 
 test('chat text safely identifies explicit and plausible protocol-less web URLs', async () => {
     const { chatLinkHref, chatTextParts } = await loadChatText();
@@ -50,12 +51,13 @@ test('chat URL rendering uses inert text nodes and preserves Unicode around link
     ]);
 });
 
-test('Viewer defaults to Chat left and Active Log right while saved layouts take precedence', () => {
+test('Viewer defaults to Chat left and Active Log right while compatible saved layouts take precedence', () => {
     for (const file of ['client/src/public/js/byView/liveNet/ncoLogger.js', 'client/dist/public/js/byView/liveNet/ncoLogger.js']) {
         const source = read(file);
         assert.match(source, /VIEWER_DEFAULT_MODULE_LAYOUT[\s\S]*chat:\s*\{ x: 0, y: 0, w: 12, h: 20 \}[\s\S]*active:\s*\{ x: 12, y: 0, w: 12, h: 20 \}[\s\S]*collapsed:\s*\{ lurkers: true, checkedOut: true \}/);
         assert.match(source, /currentUserRole === "netuser" \? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT/g);
-        assert.match(source, /defaultModuleLayoutPending = Object\.keys\(savedModuleLayout\)\.length === 0[\s\S]*Object\.keys\(savedCollapsedSections\)\.length === 0/);
+        assert.match(source, /const savedContextLayout = savedLayoutForContext\(currentLayoutContext\)[\s\S]*defaultModuleLayoutPending = currentLayoutContext === "desktop"[\s\S]*: !savedContextLayout/);
+        assert.match(source, /isCurrentResponsiveLayout\(candidate, context\)/);
     }
 });
 
@@ -136,11 +138,51 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
     assert.match(source, /currentUserRole === "netuser"[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
     assert.match(source, /responsiveLayouts:\s*local\.responsiveLayouts/);
+    assert.match(source, /hasCanonicalReadOnlyTop\(local\.moduleLayout\)[\s\S]*normalizeModuleLayout\(defaultModuleLayoutForMode\(\)\)/);
+    assert.doesNotMatch(source, /hasCanonicalReadOnlyTop\(local\.moduleLayout\)[\s\S]{0,100}normalizeModuleLayout\(DEFAULT_MODULE_LAYOUT\)/);
     assert.match(source, /switchLayoutContext\(layoutContext\(\)\)/);
     assert.match(source, /Reset Portrait Layout[\s\S]*Reset Landscape Layout/);
     assert.match(source, /Reset only the \$\{layoutContextLabel\(targetContext\)\}/);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 26px\)[^}]*overflow:\s*visible/s);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.nch-module-header\s*\{[^}]*min-height:\s*32px/s);
+});
+
+test('357x741 is phone portrait and cannot retain an unstamped desktop layout', async () => {
+    const {
+        classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYOUT_VERSION
+    } = await loadLoggerResponsive();
+    const context = classifyLoggerLayout(357, 741);
+    assert.equal(context, 'phonePortrait');
+    assert.equal(classifyLoggerLayout(741, 357), 'phoneLandscape');
+
+    const legacyDesktopGeometry = {
+        gridVersion: 4,
+        items: {
+            lurkers: { x: 0, y: 0, w: 10, h: 4 },
+            controls: { x: 10, y: 0, w: 4, h: 4 },
+            checkedOut: { x: 14, y: 0, w: 10, h: 4 },
+            chat: { x: 0, y: 4, w: 8, h: 16 },
+            active: { x: 8, y: 4, w: 16, h: 16 }
+        }
+    };
+    assert.equal(isCurrentResponsiveLayout(legacyDesktopGeometry, context), false);
+    assert.equal(isCurrentResponsiveLayout({
+        ...legacyDesktopGeometry,
+        responsiveLayoutVersion: LOGGER_RESPONSIVE_LAYOUT_VERSION,
+        layoutContext: context
+    }, context), false);
+    assert.equal(isCurrentResponsiveLayout({
+        ...legacyDesktopGeometry,
+        responsiveLayoutVersion: LOGGER_RESPONSIVE_LAYOUT_VERSION,
+        layoutContext: 'tabletPortrait'
+    }, context), false);
+    assert.equal(isCurrentResponsiveLayout({
+        gridVersion: 4,
+        responsiveLayoutVersion: LOGGER_RESPONSIVE_LAYOUT_VERSION,
+        layoutContext: context,
+        items: Object.fromEntries(['controls', 'active', 'chat', 'lurkers', 'checkedOut']
+            .map((id, index) => [id, { x: 0, y: index * 5, w: 24, h: 5 }]))
+    }, context), true);
 });
 
 test('private unread shortcut opens one sender directly and lists multiple senders', () => {

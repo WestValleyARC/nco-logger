@@ -1,6 +1,7 @@
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
 import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, isQrzNameFresh, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
 import { formatConnectionLines } from "../../lib/publicSchedule.js";
+import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYOUT_VERSION } from "../../lib/loggerResponsive.js";
 (() => {
     "use strict";
     const POLL_MS = 3000;
@@ -248,18 +249,13 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const helperModeShortLabel = () => helperModeLabel().replace(/ Mode$/, "");
     const moduleAvailable = id => id !== "controls" || canManageStations();
     const normalizeFontPreset = value => ["small", "normal", "large"].includes(value) ? value : "normal";
-    const usableViewport = () => ({
-        width: Math.round(window.visualViewport?.width || window.innerWidth),
-        height: Math.round(window.visualViewport?.height || window.innerHeight)
+    const layoutViewport = () => ({
+        width: Math.round(document.documentElement.clientWidth || window.innerWidth),
+        height: Math.round(document.documentElement.clientHeight || window.innerHeight)
     });
     const layoutContext = () => {
-        const { width, height } = usableViewport();
-        const orientation = width > height ? "Landscape" : "Portrait";
-        if (width <= 600 || (orientation === "Landscape" && height <= 500 && width <= 950))
-            return `phone${orientation}`;
-        if (width <= 1100)
-            return `tablet${orientation}`;
-        return "desktop";
+        const { width, height } = layoutViewport();
+        return classifyLoggerLayout(width, height);
     };
     const layoutRows = (context = currentLayoutContext) => context === "phonePortrait" ? 44
         : context === "phoneLandscape" || context === "tabletPortrait" ? 24 : GRID_ROWS;
@@ -3602,7 +3598,13 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             };
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
-        return { gridVersion: LAYOUT_GRID_VERSION, items, collapsed };
+        return {
+            gridVersion: LAYOUT_GRID_VERSION,
+            responsiveLayoutVersion: LOGGER_RESPONSIVE_LAYOUT_VERSION,
+            layoutContext: currentLayoutContext,
+            items,
+            collapsed
+        };
     }
     const gridRectsOverlap = (left, right) => left.x < right.x + right.w && left.x + left.w > right.x && left.y < right.y + right.h && left.y + left.h > right.y;
     function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
@@ -3686,7 +3688,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     }
     function canonicalizeReadOnlyTop(layout, force = false) {
         const normalized = normalizeModuleLayout(layout);
-        if (moduleAvailable("controls"))
+        if (moduleAvailable("controls") || currentLayoutContext !== "desktop")
             return normalized;
         const lurkers = normalized.items.lurkers;
         const checkedOut = normalized.items.checkedOut;
@@ -3722,16 +3724,23 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     function saveActiveLayoutContext() {
         local.responsiveLayouts = local.responsiveLayouts && typeof local.responsiveLayouts === "object"
             ? local.responsiveLayouts : {};
+        local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
         local.responsiveLayouts[currentLayoutContext] = local.moduleLayout;
+    }
+    function savedLayoutForContext(context) {
+        const candidate = context === "desktop"
+            ? (local.responsiveLayouts?.desktop || local.moduleLayout)
+            : local.responsiveLayouts?.[context];
+        if (!candidate || typeof candidate !== "object")
+            return null;
+        return context === "desktop" || isCurrentResponsiveLayout(candidate, context) ? candidate : null;
     }
     function switchLayoutContext(nextContext) {
         if (!nextContext || nextContext === currentLayoutContext)
             return false;
         saveActiveLayoutContext();
         currentLayoutContext = nextContext;
-        local.moduleLayout = nextContext === "desktop"
-            ? (local.responsiveLayouts?.desktop || defaultModuleLayoutForMode())
-            : (local.responsiveLayouts?.[nextContext] || defaultModuleLayoutForMode());
+        local.moduleLayout = savedLayoutForContext(nextContext) || defaultModuleLayoutForMode();
         panel?.setAttribute("data-layout-context", nextContext);
         const label = panel?.querySelector("[data-role='layout-context']");
         if (label)
@@ -5041,7 +5050,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             lastRemoteRenderSignature = nextRenderSignature;
             if (!["netcontrol", "netlogger"].includes(previousRole) && canManageStations()) {
                 local.moduleLayout = hasCanonicalReadOnlyTop(local.moduleLayout)
-                    ? normalizeModuleLayout(DEFAULT_MODULE_LAYOUT)
+                    ? normalizeModuleLayout(defaultModuleLayoutForMode())
                     : normalizeModuleLayout(local.moduleLayout);
                 local.moduleLayout.collapsed.controls = false;
                 local.moduleLayout = resolveGridLayout(local.moduleLayout, "controls");
@@ -5124,8 +5133,6 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const savedModuleLayout = saved.moduleLayout && typeof saved.moduleLayout === "object" ? saved.moduleLayout : {};
         const savedCollapsedSections = saved.collapsedSections && typeof saved.collapsedSections === "object"
             ? saved.collapsedSections : {};
-        defaultModuleLayoutPending = Object.keys(savedModuleLayout).length === 0
-            && Object.keys(savedCollapsedSections).length === 0;
         local = {
             order: Array.isArray(saved.order) ? saved.order : [],
             checkedOutOrder: Array.isArray(saved.checkedOutOrder) ? saved.checkedOutOrder : [],
@@ -5153,7 +5160,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         if (!local.responsiveLayouts.desktop && Object.keys(local.moduleLayout).length) {
             local.responsiveLayouts.desktop = local.moduleLayout;
         }
-        local.moduleLayout = normalizeModuleLayout(local.responsiveLayouts[currentLayoutContext] || (currentLayoutContext === "desktop" ? local.moduleLayout : defaultModuleLayoutForMode()));
+        const savedContextLayout = savedLayoutForContext(currentLayoutContext);
+        defaultModuleLayoutPending = currentLayoutContext === "desktop"
+            ? !Object.keys(savedModuleLayout).length && !Object.keys(savedCollapsedSections).length
+            : !savedContextLayout;
+        local.moduleLayout = normalizeModuleLayout(savedContextLayout || defaultModuleLayoutForMode());
         storeSharedProfiles();
         if (!defaultModuleLayoutPending)
             storageSet();
