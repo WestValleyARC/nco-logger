@@ -119,6 +119,25 @@ test('composer controls and text retain the intended accessible styling', () => 
     assert.doesNotMatch(source, />Download<\/button>/);
 });
 
+test('typing indicator reserves one composer line without overlaying chat history', () => {
+    const css = read('client/dist/public/css/local.css');
+    const source = read('client/src/public/js/lib/chat.ts');
+    assert.match(source, /chat-composer-wrap[\s\S]*chat-typing-indicator[\s\S]*chat-form/);
+    assert.match(css, /\.chat-typing-indicator\s*\{[^}]*display:\s*block[^}]*overflow:\s*hidden[^}]*white-space:\s*nowrap/s);
+    assert.match(css, /\.chat-typing-indicator\[hidden\]\s*\{[^}]*visibility:\s*hidden/s);
+    assert.doesNotMatch(css, /\.chat-typing-indicator\s*\{[^}]*position:\s*(?:absolute|fixed)/s);
+});
+
+test('private unread alert shares normal flow with the recipient selector', () => {
+    const css = read('client/dist/public/css/local.css');
+    const source = read('client/src/public/js/lib/chat.ts');
+    assert.match(source, /chat-recipient-selector[\s\S]*chat-recipient-toggle[\s\S]*chat-private-unread[\s\S]*<\/div>[\s\S]*chat-ignore-button/);
+    assert.match(css, /\.chat-recipient-selector\s*\{[^}]*display:\s*flex[^}]*min-width:\s*0[^}]*max-width:\s*100%/s);
+    assert.match(css, /\.chat-private-unread\s*\{[^}]*overflow:\s*hidden[^}]*text-overflow:\s*ellipsis/s);
+    assert.doesNotMatch(css, /\.chat-private-unread\s*\{[^}]*position:\s*(?:absolute|fixed)/s);
+    assert.match(css, /@media \(max-width:\s*520px\)\s*\{[\s\S]*\.chat-recipient-selector\s*\{[^}]*flex:\s*1 1 100%[^}]*width:\s*100%[\s\S]*\.chat-recipient-toggle\s*\{[^}]*flex:\s*1 1 100%[^}]*max-width:\s*100%[^}]*min-height:\s*44px/s);
+});
+
 test('chat styles use content-derived cache-busting URLs', () => {
     const serverUtils = read('server/dist/lib/serverUtils.js');
     const localCssPartial = read('server/dist/views/partials/featureLocalCss.ejs');
