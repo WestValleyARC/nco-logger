@@ -212,8 +212,44 @@ body {
 .chat-private-unread {
     min-width: 0;
     max-width: 100%;
+    border: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.chat-unread-menu {
+    position: fixed;
+    z-index: 2147483646;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    display: grid;
+    width: min(20rem, calc(100vw - 16px));
+    max-height: min(50dvh, 22rem);
+    padding: .35rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--chat-surface);
+    border: 1px solid var(--chat-accent);
+    border-radius: .5rem;
+    box-shadow: 0 .6rem 1.5rem rgba(0, 0, 0, .55);
+}
+
+.chat-unread-menu[hidden] { display: none; }
+
+.chat-unread-choice {
+    min-height: 2.5rem;
+    padding: .45rem .6rem;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: .3rem;
+    text-align: left;
+}
+
+.chat-unread-choice:is(:hover, :focus-visible) {
+    background: rgba(116, 198, 212, .18);
+    outline: 2px solid var(--chat-accent-bright);
 }
 
 .chat-ignore-button {
@@ -226,6 +262,18 @@ body {
     color: #fff;
     background: rgba(255, 82, 99, 0.28);
     border-color: #ff7482;
+}
+
+hl-chat.chat-private-active .chat-recipient-toggle,
+hl-chat.chat-private-active .chat-form {
+    border-color: var(--chat-accent-bright);
+}
+
+hl-chat.chat-private-active .chat-form {
+    padding: .25rem;
+    background: rgba(116, 198, 212, .08);
+    border: 1px solid var(--chat-accent);
+    border-radius: .4rem;
 }
 
 .chat-pinned-strip {
@@ -495,17 +543,16 @@ body {
     display: block;
     min-height: 1.25em;
     margin: 0 0 0.2rem 0.25rem;
-    overflow: hidden;
+    overflow-wrap: anywhere;
     color: var(--bs-secondary-color, #8b949e);
     font-size: 0.78rem;
     font-style: italic;
     line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
 }
 
 .chat-typing-indicator[hidden] {
-    visibility: hidden;
+    display: none;
 }
 
 #local-chat-message {
@@ -723,7 +770,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
     background: rgba(0, 0, 0, 0.82);
 }
 
@@ -836,7 +883,7 @@ body {
 
     .chat-lightbox-card {
         width: calc(100vw - 1rem);
-        height: calc(100vh - 1rem);
+        height: calc(100dvh - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     }
 }
 

@@ -119,13 +119,61 @@ test('composer controls and text retain the intended accessible styling', () => 
     assert.doesNotMatch(source, />Download<\/button>/);
 });
 
-test('typing indicator reserves one composer line without overlaying chat history', () => {
+test('typing indicator uses a distinct wrapping region that collapses when idle', () => {
     const css = read('client/dist/public/css/local.css');
     const source = read('client/src/public/js/lib/chat.ts');
     assert.match(source, /chat-composer-wrap[\s\S]*chat-typing-indicator[\s\S]*chat-form/);
-    assert.match(css, /\.chat-typing-indicator\s*\{[^}]*display:\s*block[^}]*overflow:\s*hidden[^}]*white-space:\s*nowrap/s);
-    assert.match(css, /\.chat-typing-indicator\[hidden\]\s*\{[^}]*visibility:\s*hidden/s);
+    assert.match(css, /\.chat-typing-indicator\s*\{[^}]*display:\s*block[^}]*overflow-wrap:\s*anywhere[^}]*white-space:\s*normal/s);
+    assert.match(css, /\.chat-typing-indicator\[hidden\]\s*\{[^}]*display:\s*none/s);
     assert.doesNotMatch(css, /\.chat-typing-indicator\s*\{[^}]*position:\s*(?:absolute|fixed)/s);
+});
+
+test('responsive logger keeps independent orientation layouts and touch-safe controls', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    const css = read('client/dist/public/css/nco-logger.css');
+    assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0[\s\S]*active: \{ x: 0, y: 6[\s\S]*chat: \{ x: 0, y: 20/);
+    assert.match(source, /phoneLandscape:[\s\S]*active: \{ x: 8, y: 0, w: 16/);
+    assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
+    assert.match(source, /currentUserRole === "netuser"[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
+    assert.match(source, /responsiveLayouts:\s*local\.responsiveLayouts/);
+    assert.match(source, /switchLayoutContext\(layoutContext\(\)\)/);
+    assert.match(source, /Reset Portrait Layout[\s\S]*Reset Landscape Layout/);
+    assert.match(source, /Reset only the \$\{layoutContextLabel\(targetContext\)\}/);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 26px\)[^}]*overflow:\s*visible/s);
+    assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.nch-module-header\s*\{[^}]*min-height:\s*32px/s);
+});
+
+test('private unread shortcut opens one sender directly and lists multiple senders', () => {
+    const source = read('client/src/public/js/lib/chat.ts');
+    const css = read('client/dist/public/css/local.css');
+    assert.match(source, /unreadIds\.length === 1[\s\S]*switchConversation\(unreadIds\[0\]/);
+    assert.match(source, /className = 'chat-unread-choice'/);
+    assert.match(source, /this\.unreadCounts\.entries\(\)[\s\S]*count > 0/);
+    assert.match(css, /\.chat-unread-menu\s*\{[^}]*position:\s*fixed[^}]*max-height:[^}]*overflow-y:\s*auto/s);
+});
+
+test('chat preserves separate public and private drafts and uses an em dash in authors', () => {
+    const source = read('client/src/public/js/lib/chat.ts');
+    assert.match(source, /private readonly drafts = new Map<string, string>\(\)/);
+    assert.match(source, /this\.drafts\.set\(this\.conversationKey\(\), input\.value\)/);
+    assert.match(source, /input\.value = this\.drafts\.get\(this\.conversationKey\(\)\) \|\| ''/);
+    assert.match(source, /`\$\{firstName\} — \$\{message\.callSign\}`/);
+});
+
+test('slash command assistance filters current-role commands without changing submission semantics', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(source, /function renderSlashSuggestions\(\)/);
+    assert.match(source, /command\.name\.startsWith\(query\)/);
+    assert.match(source, /className = "nch-command-suggestion"/);
+    assert.match(source, /setSlashComposerText\(/);
+    assert.match(source, /<details class="nch-hotkey-help"/);
+});
+
+test('server-returned station metadata replaces stale browser presentation state', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(source, /function reconcileStationMetadata\(stations\)/);
+    assert.match(source, /name:\s*serverName[\s\S]*location:\s*serverLocation[\s\S]*nameOverride:\s*false[\s\S]*locationOverride:\s*false/);
+    assert.match(source, /latestStations = nextStations;\s*reconcileStationMetadata\(latestStations\)/);
 });
 
 test('private unread alert shares normal flow with the recipient selector', () => {

@@ -77,6 +77,33 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         },
         collapsed: { lurkers: true, checkedOut: true }
     });
+    const RESPONSIVE_DEFAULT_MODULE_LAYOUTS = Object.freeze({
+        phonePortrait: Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                controls: { x: 0, y: 0, w: 24, h: 6 }, active: { x: 0, y: 6, w: 24, h: 14 },
+                chat: { x: 0, y: 20, w: 24, h: 14 }, lurkers: { x: 0, y: 34, w: 24, h: 5 },
+                checkedOut: { x: 0, y: 39, w: 24, h: 5 }
+            }, collapsed: {}
+        }),
+        phoneLandscape: Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                controls: { x: 0, y: 0, w: 8, h: 8 }, chat: { x: 0, y: 8, w: 8, h: 16 },
+                active: { x: 8, y: 0, w: 16, h: 16 }, lurkers: { x: 8, y: 16, w: 8, h: 8 },
+                checkedOut: { x: 16, y: 16, w: 8, h: 8 }
+            }, collapsed: {}
+        }),
+        tabletPortrait: Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                lurkers: { x: 0, y: 0, w: 9, h: 5 }, controls: { x: 9, y: 0, w: 6, h: 5 },
+                checkedOut: { x: 15, y: 0, w: 9, h: 5 }, chat: { x: 0, y: 5, w: 10, h: 19 },
+                active: { x: 10, y: 5, w: 14, h: 19 }
+            }, collapsed: {}
+        }),
+        tabletLandscape: DEFAULT_MODULE_LAYOUT
+    });
     const DEFAULT_AVATAR = "/img/nco-logger-default-avatar.svg";
     const appearanceManager = window.ncoLoggerAppearance;
     const npid = location.pathname.split("/")[3] || "";
@@ -95,10 +122,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     let latestNetFrequency = "";
     let latestNetConnections = [];
     let currentUserRole = "netuser";
+    let currentLayoutContext = "desktop";
     let defaultModuleLayoutPending = false;
     let local = {
         order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
-        hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {},
+        hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {}, responsiveLayouts: {},
         helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0
     };
     let dragging = null;
@@ -220,6 +248,23 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const helperModeShortLabel = () => helperModeLabel().replace(/ Mode$/, "");
     const moduleAvailable = id => id !== "controls" || canManageStations();
     const normalizeFontPreset = value => ["small", "normal", "large"].includes(value) ? value : "normal";
+    const usableViewport = () => ({
+        width: Math.round(window.visualViewport?.width || window.innerWidth),
+        height: Math.round(window.visualViewport?.height || window.innerHeight)
+    });
+    const layoutContext = () => {
+        const { width, height } = usableViewport();
+        const orientation = width > height ? "Landscape" : "Portrait";
+        if (width <= 600 || (orientation === "Landscape" && height <= 500 && width <= 950))
+            return `phone${orientation}`;
+        if (width <= 1100)
+            return `tablet${orientation}`;
+        return "desktop";
+    };
+    const layoutRows = (context = currentLayoutContext) => context === "phonePortrait" ? 44
+        : context === "phoneLandscape" || context === "tabletPortrait" ? 24 : GRID_ROWS;
+    const layoutContextLabel = context => context === "desktop" ? "Desktop"
+        : `${context.startsWith("phone") ? "Phone" : "Tablet"} — ${context.endsWith("Portrait") ? "Portrait" : "Landscape"}`;
     function commandAllowed(command) {
         const [verb, rawCall = ""] = String(command || "").trim().split(/\s+/);
         const call = normalizeCall(rawCall);
@@ -246,23 +291,30 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             moduleLayout: layout.moduleLayout && typeof layout.moduleLayout === "object"
                 ? layout.moduleLayout
                 : saved.moduleLayout,
+            responsiveLayouts: layout.responsiveLayouts && typeof layout.responsiveLayouts === "object"
+                ? layout.responsiveLayouts
+                : saved.responsiveLayouts,
             helperFontPreset: normalizeFontPreset(layout.helperFontPreset || saved.helperFontPreset),
             chatFontPreset: normalizeFontPreset(layout.chatFontPreset || saved.chatFontPreset),
             helpFontPreset: normalizeFontPreset(layout.helpFontPreset || saved.helpFontPreset),
             sharedProfiles: data[sharedProfileKey] && typeof data[sharedProfileKey] === "object" ? data[sharedProfileKey] : {}
         });
     }));
-    const storageSet = () => browserStorage.set({
-        [stateKey]: local,
-        [layoutKey]: {
-            paneSizes: local.paneSizes || {},
-            collapsedSections: local.collapsedSections || {},
-            moduleLayout: local.moduleLayout || {},
-            helperFontPreset: normalizeFontPreset(local.helperFontPreset),
-            chatFontPreset: normalizeFontPreset(local.chatFontPreset),
-            helpFontPreset: normalizeFontPreset(local.helpFontPreset)
-        }
-    });
+    const storageSet = () => {
+        saveActiveLayoutContext();
+        return browserStorage.set({
+            [stateKey]: local,
+            [layoutKey]: {
+                paneSizes: local.paneSizes || {},
+                collapsedSections: local.collapsedSections || {},
+                moduleLayout: local.responsiveLayouts?.desktop || local.moduleLayout || {},
+                responsiveLayouts: local.responsiveLayouts || {},
+                helperFontPreset: normalizeFontPreset(local.helperFontPreset),
+                chatFontPreset: normalizeFontPreset(local.chatFontPreset),
+                helpFontPreset: normalizeFontPreset(local.helpFontPreset)
+            }
+        });
+    };
     const storeSharedProfiles = () => browserStorage.set({ [sharedProfileKey]: sharedProfiles });
     const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, char => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
@@ -809,6 +861,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     }
     function handleWindowResize() {
         window.requestAnimationFrame(() => {
+            switchLayoutContext(layoutContext());
             applyModuleLayout();
             positionNativeChat();
         });
@@ -825,6 +878,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         if (!sendButton)
             return;
         sendButton.textContent = "Send";
+        setupSlashSuggestions();
         sendButton.title = "Send message";
         sendButton.setAttribute("aria-label", "Send message");
         sendButton.classList.add("nch-chat-send");
@@ -1436,6 +1490,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         }
     }
     function lockBackgroundScroll() {
+        if (currentLayoutContext.startsWith("phone")) {
+            unlockBackgroundScroll();
+            return;
+        }
         if (backgroundScrollLocked)
             return;
         backgroundScrollLocked = true;
@@ -2415,6 +2473,67 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         button.click();
     }
     const slashComposer = () => nativeChat()?.querySelector(".chat-text-input, .chat-message-input, .chat-input, textarea[placeholder^='Message'], input[placeholder^='Message'], [contenteditable='true'][role='textbox']");
+    function slashCommandsForRole() {
+        if (isNcoUser())
+            return SLASH_COMMANDS;
+        if (currentUserRole === "netlogger") {
+            return SLASH_COMMANDS.filter(command => !["guest", "hi", "li", "f"].includes(command.name));
+        }
+        return SLASH_COMMANDS.filter(command => ["help", "note", "w"].includes(command.name));
+    }
+    function renderSlashSuggestions() {
+        const input = slashComposer();
+        const host = nativeChat()?.querySelector(".nch-command-suggestions");
+        if (!input || !host)
+            return;
+        const value = String("value" in input ? input.value : input.textContent || "").trimStart();
+        const match = value.match(/^\/(?:h\s*)?([a-z?]*)$/i);
+        if (!match) {
+            host.hidden = true;
+            host.replaceChildren();
+            return;
+        }
+        const query = String(match[1] || "").toLowerCase();
+        const commands = slashCommandsForRole().filter(command => !query || command.name.startsWith(query) || command.aliases.some(alias => alias.startsWith(query)));
+        host.replaceChildren(...commands.map(command => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "nch-command-suggestion";
+            button.innerHTML = `<code>${escapeHtml(command.usage)}</code><span>${escapeHtml(command.description)}</span>`;
+            button.addEventListener("click", () => {
+                setSlashComposerText(`${command.usage.replace(/\[?(?:CALL|frequency)\]?/g, "").trim()} `);
+                input.focus();
+                renderSlashSuggestions();
+            });
+            return button;
+        }));
+        host.hidden = commands.length === 0;
+    }
+    function setupSlashSuggestions() {
+        const input = slashComposer();
+        const composer = input?.closest(".chat-composer-wrap");
+        if (!input || !composer)
+            return;
+        let host = composer.querySelector(".nch-command-suggestions");
+        if (!host) {
+            host = document.createElement("div");
+            host.className = "nch-command-suggestions";
+            host.setAttribute("role", "listbox");
+            host.setAttribute("aria-label", "Available slash commands");
+            host.hidden = true;
+            input.closest("form")?.before(host);
+        }
+        if (input.dataset.nchSuggestionsBound === "true")
+            return;
+        input.dataset.nchSuggestionsBound = "true";
+        input.addEventListener("input", renderSlashSuggestions);
+        input.addEventListener("keydown", event => {
+            if (event.key === "Escape" && !host.hidden) {
+                event.stopPropagation();
+                host.hidden = true;
+            }
+        });
+    }
     function setSlashComposerText(value) {
         const input = slashComposer();
         if (!input)
@@ -2461,11 +2580,13 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             ["O", "Check Out"], ["N", "Needed Next"], ["R", "No Reply"], ["S", "Skip"],
             ["A", "Attention"], ["C", "Clear Tags"], ["E", "Edit Station"], ["T", "Note"], ["G", "Special Guest"]
         ].map(([key, label]) => `<span><kbd>${escapeHtml(shortcutHint(key))}</kbd> ${escapeHtml(label)}</span>`).join("");
-        return `<h3>Commands and keyboard shortcuts</h3>
+        return `<h3>/ Commands</h3>
       <p class="nch-slash-banner">${escapeHtml(SLASH_HELP_BANNER)}</p>
       <div class="nch-command-sections">${commandCards}</div>
-      <h4>Hotkeys</h4>
-      <div class="nch-hotkey-grid">${hotkeys}</div>`;
+      <details class="nch-hotkey-help"${currentLayoutContext === "desktop" ? " open" : ""}>
+        <summary>Keyboard Shortcuts</summary>
+        <div class="nch-hotkey-grid">${hotkeys}</div>
+      </details>`;
     }
     function showSlashHelp() {
         const help = panel?.querySelector("[data-role='commands-modal']");
@@ -2922,6 +3043,26 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                 displayName: String(station.displayName || ""),
                 location: String(station.location || "")
             }))
+        });
+    }
+    function reconcileStationMetadata(stations) {
+        stations.forEach(station => {
+            const call = normalizeCall(station.callSign);
+            if (!call)
+                return;
+            const saved = local.details[call] || {};
+            const serverName = formatName(station.displayName || "");
+            const serverLocation = formatLocation(station.location || "");
+            local.details[call] = {
+                ...saved,
+                name: serverName,
+                location: serverLocation,
+                nameOverride: false,
+                locationOverride: false,
+                qrzNameVersion: serverName ? QRZ_NAME_VERSION : 0
+            };
+            if (sharedProfiles[call])
+                delete sharedProfiles[call];
         });
     }
     function viewerItems() {
@@ -3393,7 +3534,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     }
     function normalizeModuleLayout(source = local.moduleLayout) {
         const candidate = source && typeof source === "object" ? source : {};
-        const fallbackLayout = currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT;
+        const fallbackLayout = rawDefaultModuleLayoutForMode();
+        const maximumRows = layoutRows();
         const migratedCollapsed = {
             controls: Boolean(local.collapsedSections?.entry), chat: Boolean(local.collapsedSections?.chat),
             checkedOut: Boolean(local.collapsedSections?.checkedOut), active: Boolean(local.collapsedSections?.active),
@@ -3451,10 +3593,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                 supplied = { ...legacyItem, x: legacyX * 2, w: legacyW * 2 };
             }
             const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, Math.round(Number(supplied.w) || fallback.w)));
-            const h = Math.min(GRID_ROWS, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
+            const h = Math.min(maximumRows, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
             items[id] = {
                 x: Math.min(GRID_COLUMNS - w, Math.max(0, Math.round(Number(supplied.x) || 0))),
-                y: Math.min(GRID_ROWS - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
+                y: Math.min(maximumRows - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
                 w,
                 h
             };
@@ -3465,6 +3607,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const gridRectsOverlap = (left, right) => left.x < right.x + right.w && left.x + left.w > right.x && left.y < right.y + right.h && left.y + left.h > right.y;
     function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
         const layout = normalizeModuleLayout(source);
+        const maximumRows = layoutRows();
         const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]);
         visible.sort((left, right) => {
             if (left === fixedId)
@@ -3480,7 +3623,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         let attempts = 0;
         const candidatesFor = (item, allowEveryCell = false) => {
             const maxX = GRID_COLUMNS - item.w;
-            const maxY = GRID_ROWS - item.h;
+            const maxY = maximumRows - item.h;
             const xs = new Set([item.x, 0, maxX]);
             const ys = new Set([item.y, 0, maxY]);
             placed.forEach(other => {
@@ -3518,7 +3661,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             const candidates = id === fixedId && !nudgeFixed ? [item] : candidatesFor(item, id === fixedId && nudgeFixed);
             for (const candidate of candidates) {
                 attempts += 1;
-                if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > GRID_COLUMNS || candidate.y + candidate.h > GRID_ROWS)
+                if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > GRID_COLUMNS || candidate.y + candidate.h > maximumRows)
                     continue;
                 if (placed.some(other => gridRectsOverlap(candidate, other)))
                     continue;
@@ -3537,7 +3680,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const resolved = tryResolveGridLayout(normalized, fixedId);
         if (resolved)
             return resolved;
-        const fallback = normalizeModuleLayout(DEFAULT_MODULE_LAYOUT);
+        const fallback = normalizeModuleLayout(defaultModuleLayoutForMode());
         fallback.collapsed = { ...normalized.collapsed };
         return tryResolveGridLayout(fallback) || fallback;
     }
@@ -3553,9 +3696,49 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         normalized.items.checkedOut = { x: 12, y: 0, w: 12, h: 4 };
         return normalized;
     }
+    function rawDefaultModuleLayoutForMode() {
+        let defaults = currentLayoutContext === "desktop"
+            ? (currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT)
+            : RESPONSIVE_DEFAULT_MODULE_LAYOUTS[currentLayoutContext] || DEFAULT_MODULE_LAYOUT;
+        if (currentUserRole === "netuser" && currentLayoutContext !== "desktop") {
+            const viewerItems = currentLayoutContext === "phonePortrait"
+                ? {
+                    ...defaults.items,
+                    active: { x: 0, y: 0, w: 24, h: 14 }, chat: { x: 0, y: 14, w: 24, h: 14 },
+                    lurkers: { x: 0, y: 28, w: 24, h: 5 }, checkedOut: { x: 0, y: 33, w: 24, h: 5 }
+                }
+                : defaults.items;
+            defaults = {
+                ...defaults,
+                items: viewerItems,
+                collapsed: { ...defaults.collapsed, controls: true, lurkers: true, checkedOut: true }
+            };
+        }
+        return defaults;
+    }
     function defaultModuleLayoutForMode() {
-        const defaults = currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT;
-        return canonicalizeReadOnlyTop(defaults, true);
+        return canonicalizeReadOnlyTop(rawDefaultModuleLayoutForMode(), true);
+    }
+    function saveActiveLayoutContext() {
+        local.responsiveLayouts = local.responsiveLayouts && typeof local.responsiveLayouts === "object"
+            ? local.responsiveLayouts : {};
+        local.responsiveLayouts[currentLayoutContext] = local.moduleLayout;
+    }
+    function switchLayoutContext(nextContext) {
+        if (!nextContext || nextContext === currentLayoutContext)
+            return false;
+        saveActiveLayoutContext();
+        currentLayoutContext = nextContext;
+        local.moduleLayout = nextContext === "desktop"
+            ? (local.responsiveLayouts?.desktop || defaultModuleLayoutForMode())
+            : (local.responsiveLayouts?.[nextContext] || defaultModuleLayoutForMode());
+        panel?.setAttribute("data-layout-context", nextContext);
+        const label = panel?.querySelector("[data-role='layout-context']");
+        if (label)
+            label.textContent = layoutContextLabel(nextContext);
+        lockBackgroundScroll();
+        storageSet();
+        return true;
     }
     function hasCanonicalReadOnlyTop(layout) {
         const normalized = normalizeModuleLayout(layout);
@@ -3580,7 +3763,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             module.classList.toggle("nch-grid-source", id === draggingId);
             module.classList.toggle("nch-read-only-top", !moduleAvailable("controls") && (id === "lurkers" || id === "checkedOut") && item.y === 0);
         });
-        dashboard.style.setProperty("--nch-grid-rows", String(GRID_ROWS));
+        dashboard.style.setProperty("--nch-grid-rows", String(layoutRows()));
         dashboard.style.setProperty("--nch-grid-gap", `${GRID_GAP}px`);
         window.requestAnimationFrame(positionNativeChat);
     }
@@ -3628,6 +3811,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         local.moduleLayout.collapsed[id] = collapsed;
         if (!collapsed)
             local.moduleLayout = resolveGridLayout(local.moduleLayout, id);
+        saveActiveLayoutContext();
         applyModuleLayout();
         storageSet();
     }
@@ -3638,7 +3822,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const item = layout.items[id];
         item.w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
         item.x = Math.min(item.x, GRID_COLUMNS - item.w);
-        item.h = Math.min(GRID_ROWS - item.y, Math.max(MIN_MODULE_ROWS[id], item.h + heightDelta));
+        item.h = Math.min(layoutRows() - item.y, Math.max(MIN_MODULE_ROWS[id], item.h + heightDelta));
         const resolved = tryResolveGridLayout(layout, id);
         if (!resolved)
             return;
@@ -3661,7 +3845,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const layout = normalizeModuleLayout();
         const item = layout.items[id];
         item.x = Math.min(GRID_COLUMNS - item.w, Math.max(0, item.x + xDelta));
-        item.y = Math.min(GRID_ROWS - item.h, Math.max(0, item.y + yDelta));
+        item.y = Math.min(layoutRows() - item.h, Math.max(0, item.y + yDelta));
         const resolved = tryResolveGridLayout(layout, id);
         if (!resolved)
             return;
@@ -3672,7 +3856,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     function gridMetrics(dashboard) {
         const style = getComputedStyle(dashboard);
         const gap = Math.max(0, parseFloat(style.rowGap) || GRID_GAP);
-        const rows = Math.max(1, Number(style.getPropertyValue("--nch-grid-rows")) || GRID_ROWS);
+        const rows = Math.max(1, Number(style.getPropertyValue("--nch-grid-rows")) || layoutRows());
         const columnWidth = Math.max(1, (dashboard.clientWidth - gap * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
         const rowHeight = Math.max(1, (dashboard.clientHeight - gap * (rows - 1)) / rows);
         return { columnWidth, columnStep: columnWidth + gap, rowStep: rowHeight + gap, rows };
@@ -3693,7 +3877,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         };
         return {
             x: snap(requestedX, xCandidates, 0, GRID_COLUMNS - item.w, 2),
-            y: snap(requestedY, yCandidates, 0, GRID_ROWS - item.h, 1)
+            y: snap(requestedY, yCandidates, 0, layoutRows() - item.h, 1)
         };
     }
     function previewModuleGrid(clientX, clientY) {
@@ -3720,7 +3904,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         if (!modulePointerDrag || event.pointerId !== modulePointerDrag.pointerId)
             return;
         const distance = Math.hypot(event.clientX - modulePointerDrag.startX, event.clientY - modulePointerDrag.startY);
-        if (!modulePointerDrag.started && distance < 6)
+        if (!modulePointerDrag.started && distance < (event.pointerType === "touch" ? 12 : 6))
             return;
         if (!modulePointerDrag.started) {
             modulePointerDrag.started = true;
@@ -3797,7 +3981,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             item.y = bottomEdge - item.h;
         }
         else if (resizing.edge.includes("s")) {
-            item.h = Math.min(GRID_ROWS - item.y, Math.max(MIN_MODULE_ROWS[resizing.moduleId], resizing.startItem.h + rowDelta));
+            item.h = Math.min(layoutRows() - item.y, Math.max(MIN_MODULE_ROWS[resizing.moduleId], resizing.startItem.h + rowDelta));
         }
         const resolved = tryResolveGridLayout(layout, resizing.moduleId);
         if (!resolved)
@@ -3832,6 +4016,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         panel = document.createElement("aside");
         panel.id = "netcontrol-ncs-helper";
         panel.dataset.renderedRole = currentUserRole;
+        panel.dataset.layoutContext = currentLayoutContext;
         panel.innerHTML = `
       <header>
         <a class="nch-helper-brand" href="/views/dashboard" aria-label="Return to the live nets page" title="Back to Live Nets">
@@ -3868,7 +4053,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                       <button data-helper-font="large" aria-label="Large Logger text" title="Large Logger text">A+</button>
                     </span>
                   </div>
-                  <button class="nch-menu-reset" data-role="menu-reset" title="Restore the original module arrangement">Reset Layout</button>
+                  <small class="nch-layout-context" data-role="layout-context">${escapeHtml(layoutContextLabel(currentLayoutContext))}</small>
+                  ${currentLayoutContext === "desktop"
+            ? '<button class="nch-menu-reset" data-role="menu-reset" data-reset-layout="desktop">Reset Desktop Layout</button>'
+            : '<button class="nch-menu-reset" data-role="menu-reset" data-reset-orientation="Portrait">Reset Portrait Layout</button><button class="nch-menu-reset" data-role="menu-reset" data-reset-orientation="Landscape">Reset Landscape Layout</button>'}
                 </div>
               </details>
               <button data-role="menu-commands">Commands &amp; Shortcuts</button>
@@ -4057,6 +4245,16 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             }
             const clickedRow = event.target.closest?.(".nch-row[data-call]");
             const clickedInteractive = event.target.closest?.("button, input, textarea, select, a, [contenteditable='true'], .nch-drag, .nch-row-actions");
+            const touchStationActions = currentLayoutContext !== "desktop"
+                && window.matchMedia("(hover: none), (pointer: coarse)").matches
+                && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
+            if (clickedRow && !clickedInteractive && touchStationActions) {
+                const call = normalizeCall(clickedRow.dataset.call);
+                pinnedActionCall = pinnedActionCall === call ? "" : call;
+                renderQueue();
+                setStatus(pinnedActionCall ? `${call} actions opened.` : `${call} actions closed.`, "success");
+                return;
+            }
             if (clickedRow && !clickedInteractive && canManageStations()) {
                 const call = normalizeCall(clickedRow.dataset.call);
                 if (pinnedActionCall && pinnedActionCall !== call)
@@ -4069,6 +4267,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                     setStatus(selectedNextCall ? `${call} selected as the next station.` : `${call} next-station selection cleared.`, "success");
                     return;
                 }
+            }
+            if (!clickedRow && pinnedActionCall && !event.target.closest?.(".nch-row-actions, .nch-inline-actions")) {
+                pinnedActionCall = "";
+                renderQueue();
             }
             const target = event.target.closest("button");
             if (!target)
@@ -4125,7 +4327,9 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             if (target.dataset.viewPhoto) {
                 const call = normalizeCall(target.dataset.viewPhoto);
                 const source = target.querySelector("img.nch-avatar")?.src || DEFAULT_AVATAR;
-                openPhotoViewer(source, `${call} QRZ photo`, `${call} enlarged QRZ profile`, target);
+                const name = detailsFor(call).name;
+                const identity = name && normalizeCall(name) !== call ? `${name} — ${call}` : call;
+                openPhotoViewer(source, identity, `${identity} enlarged profile photo`, target);
             }
             if (target.dataset.role === "close-photo") {
                 closePhotoViewer();
@@ -4392,6 +4596,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                     order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {}, hiddenCalls: [],
                     paneSizes: { ...local.paneSizes }, collapsedSections: { ...local.collapsedSections },
                     moduleLayout: normalizeModuleLayout(),
+                    responsiveLayouts: { ...local.responsiveLayouts },
                     helperFontPreset: normalizeFontPreset(local.helperFontPreset),
                     chatFontPreset: normalizeFontPreset(local.chatFontPreset),
                     helpFontPreset: normalizeFontPreset(local.helpFontPreset),
@@ -4625,7 +4830,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             const dashboard = panel.querySelector("[data-role='dashboard']");
             if (!module || !dashboard)
                 return;
-            event.preventDefault();
+            if (event.pointerType !== "touch")
+                event.preventDefault();
             modulePointerDrag = {
                 moduleId: module.dataset.module, module, dashboard, pointerId: event.pointerId,
                 startX: event.clientX, startY: event.clientY, started: false,
@@ -4668,17 +4874,27 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             applyModuleLayout();
             storageSet();
         });
-        panel.querySelector("[data-role='menu-reset']")?.addEventListener("click", () => {
-            if (!confirm("Reset the module layout to its default arrangement?"))
+        panel.querySelectorAll("[data-role='menu-reset']").forEach(button => button.addEventListener("click", () => {
+            const orientation = button.dataset.resetOrientation;
+            const targetContext = orientation
+                ? `${currentLayoutContext.startsWith("phone") ? "phone" : "tablet"}${orientation}`
+                : "desktop";
+            if (!confirm(`Reset only the ${layoutContextLabel(targetContext)} module layout?`))
                 return;
-            local.moduleLayout = resolveGridLayout(defaultModuleLayoutForMode());
+            const priorContext = currentLayoutContext;
+            currentLayoutContext = targetContext;
+            const resetLayout = resolveGridLayout(defaultModuleLayoutForMode());
+            currentLayoutContext = priorContext;
+            local.responsiveLayouts[targetContext] = resetLayout;
+            if (targetContext === currentLayoutContext)
+                local.moduleLayout = resetLayout;
             storageSet();
             applyModuleLayout();
             const menu = panel.querySelector("[data-role='header-menu']");
             if (menu)
                 menu.open = false;
-            setStatus("Module layout reset.", "success");
-        });
+            setStatus(`${layoutContextLabel(targetContext)} layout reset.`, "success");
+        }));
         applyRoleUi();
         applyDisplayPreferences();
         applyModuleLayout();
@@ -4781,6 +4997,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             const nextStations = Array.isArray(data.stations) ? data.stations : [];
             observeStationTransitions(nextStations);
             latestStations = nextStations;
+            reconcileStationMetadata(latestStations);
             latestNetTitle = String(data.net?.title || "").trim();
             latestNetFrequency = String(data.net?.frequency || "").trim();
             latestNetConnections = formatConnectionLines(data.net);
@@ -4873,6 +5090,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     }
     const relayStorageGet = () => new Promise(resolve => browserStorage.get([relayTokenKey], resolve));
     window.addEventListener("resize", handleWindowResize);
+    window.visualViewport?.addEventListener("resize", handleWindowResize);
     window.addEventListener("keydown", handleActionHotkey, true);
     window.addEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
     Promise.all([relayStorageGet(), storageGet()]).then(async ([relayData, saved]) => {
@@ -4919,6 +5137,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             paneSizes: saved.paneSizes && typeof saved.paneSizes === "object" ? saved.paneSizes : {},
             collapsedSections: saved.collapsedSections && typeof saved.collapsedSections === "object" ? saved.collapsedSections : {},
             moduleLayout: saved.moduleLayout && typeof saved.moduleLayout === "object" ? saved.moduleLayout : {},
+            responsiveLayouts: saved.responsiveLayouts && typeof saved.responsiveLayouts === "object" ? saved.responsiveLayouts : {},
             helperFontPreset: normalizeFontPreset(saved.helperFontPreset),
             chatFontPreset: normalizeFontPreset(saved.chatFontPreset),
             helpFontPreset: normalizeFontPreset(saved.helpFontPreset),
@@ -4930,7 +5149,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                 local.details[rawCall] = { ...details, name: "", nameOverride: false, qrzNameVersion: 0 };
             }
         }
-        local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
+        currentLayoutContext = layoutContext();
+        if (!local.responsiveLayouts.desktop && Object.keys(local.moduleLayout).length) {
+            local.responsiveLayouts.desktop = local.moduleLayout;
+        }
+        local.moduleLayout = normalizeModuleLayout(local.responsiveLayouts[currentLayoutContext] || (currentLayoutContext === "desktop" ? local.moduleLayout : defaultModuleLayoutForMode()));
         storeSharedProfiles();
         if (!defaultModuleLayoutPending)
             storageSet();
@@ -4949,6 +5172,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             clearInterval(pollTimer);
         pollTimer = null;
         window.removeEventListener("resize", handleWindowResize);
+        window.visualViewport?.removeEventListener("resize", handleWindowResize);
         window.removeEventListener("keydown", handleActionHotkey, true);
         window.removeEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
         stopSync();

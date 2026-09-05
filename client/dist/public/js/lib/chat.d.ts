@@ -8,6 +8,7 @@ export declare class ChatWidget extends HTMLElement {
     private readonly recipients;
     private readonly unreadCounts;
     private readonly scrollPositions;
+    private readonly drafts;
     private readonly expandedPinnedMessageIds;
     private pinnedCollectionExpanded;
     private selectedRecipientId;
@@ -57,6 +58,7 @@ export declare class ChatWidget extends HTMLElement {
     private populateEmojiPicker;
     private renderEmojiChoices;
     private toggleRecipientMenu;
+    private toggleUnreadMenu;
     private recipientLabel;
     private renderRecipientControls;
     private conversationKey;
