@@ -1,4 +1,4 @@
-import { ServerInfo, EndPointResponse, Station, NetInfo, FollowListNetInfo, FollowListResponse, FollowListLimits, FollowListMessage, NetInfoCommon, LiveNetDetailsResponse, FlexOptions, CommandItem, Alias, CommandList, CommandResponse, Client, LiveNetPresenceResponse, StrengthTone, RstReportBase, SigReportType, DefaultInteractionParams, InteractionPayload, SigReportInteractionPayload, NPID, SystemNotification, SystemNotificationResponse } from '#@client/types/commonTypes.js';
+import { NetInfoCommon, StrengthTone, RstReportBase, SigReportType, DefaultInteractionParams, InteractionPayload, SigReportInteractionPayload, NPID } from '#@client/types/commonTypes.js';
 export declare class EndPointReponseError extends Error {
     readonly status: number;
     constructor(message: string, status: number);

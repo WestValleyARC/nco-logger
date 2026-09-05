@@ -1,6 +1,0 @@
-# Development-only overrides. Production uses docker-compose.yml alone.
-services:
-    app:
-        environment:
-            NODE_ENV: development
-            BASE_URL: ${DEV_BASE_URL:-http://localhost:3000}

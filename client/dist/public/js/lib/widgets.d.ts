@@ -1,7 +1,7 @@
 import { StoreSubscriber, ReactiveStore, NewDataReturnType, LiveNetReactiveStore, FavoritesReactiveStore, PropertiesOfInterest, StateGroupKey, ReadonlyStateGroup } from '#@client/lib/stores.js';
 import { EndPointResponse, Station, NPID } from '#@client/types/commonTypes.js';
 import { SimpleInteractions, SimpleInteractionMethodNames, DefaultStateTypes } from '#@client/types/clientTypes.js';
-import { InteractionClient, AdminClient, getIconSvg } from '#@client/lib/clientUtils.js';
+import { AdminClient, getIconSvg } from '#@client/lib/clientUtils.js';
 export declare class NetworkStatus extends HTMLElement {
     private updateOnlineStatus;
     connectedCallback(): void;
@@ -109,7 +109,7 @@ export declare class FavoritesList extends HamLiveElement<FavoritesReactiveStore
 }
 type StationIcon = (typeof LiveNetElement.ICONS)[keyof typeof LiveNetElement.ICONS];
 export declare abstract class LiveNetElement extends HamLiveElement<LiveNetReactiveStore> implements SimpleInteractions<Promise<DefaultStateTypes>> {
-    protected ia: InteractionClient;
+    protected ia: any;
     static ICONS: {
         readonly netcontrol: "bi-mic-fill";
         readonly netlogger: "bi-journal-check";
@@ -275,7 +275,7 @@ type CellContentStyling = {
 };
 export declare abstract class StationTableMember extends LiveNetElement {
     callSign: string | null;
-    static readonly styleCache: Map<"netcontrol-online-null" | "netcontrol-online-false" | "netcontrol-online-true" | "netcontrol-offline-null" | "netcontrol-offline-false" | "netcontrol-offline-true" | "netlogger-online-null" | "netlogger-online-false" | "netlogger-online-true" | "netlogger-offline-null" | "netlogger-offline-false" | "netlogger-offline-true" | "netrelay-online-null" | "netrelay-online-false" | "netrelay-online-true" | "netrelay-offline-null" | "netrelay-offline-false" | "netrelay-offline-true" | "netuser-online-null" | "netuser-online-false" | "netuser-online-true" | "netuser-offline-null" | "netuser-offline-false" | "netuser-offline-true", CellContentStyling>;
+    static readonly styleCache: Map<`${Station}-${Station}-${Station}`, CellContentStyling>;
     protected set defaultElementCursorisPointer(pointer: boolean);
     private handleClickType;
     protected highlightClick: (e: Event) => void;
@@ -292,8 +292,8 @@ export declare abstract class StationTableMember extends LiveNetElement {
     protected getStyling(station: Station): CellContentStyling;
     protected applyStyling(element: HTMLElement, styling: Omit<CellContentStyling, 'icon'>): void;
     protected haveThisStationPropertiesChanged(properties: PropertiesOfInterest[]): boolean;
-    protected get station(): Readonly<Station> | null;
-    protected get stationPrior(): Readonly<Station> | null;
+    protected get station(): any;
+    protected get stationPrior(): any;
 }
 export declare class AvatarCell extends StationTableMember {
     private defaultPhoto;

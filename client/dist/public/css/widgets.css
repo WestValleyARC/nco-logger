@@ -1,9 +1,0 @@
-/* hamlive-oss — MIT License. See LICENSE. */
-
-.d-none {
-    display: none;
-}
-
-.offline {
-    filter: var(--hl-offline-filter);
-}

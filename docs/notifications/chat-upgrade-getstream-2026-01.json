@@ -1,8 +1,0 @@
-{
-    "notificationId": "chat-upgrade-getstream-2026-01",
-    "title": "Chat System Upgraded",
-    "message": "<p>We've upgraded our in-net chat system with new features and improved reliability.</p><p><strong>What's new:</strong></p><ul><li>Faster, more reliable message delivery</li><li>Emoji reactions on messages (👍 ❤️ 😂 😮)</li><li>Inline image sharing</li><li>NCS/Loggers: enter commands directly in chat with / (e.g., /i W1ABC)</li></ul><p>73 - KK6BEB</p>",
-    "severity": "info",
-    "active": true,
-    "supersedes": ["roomlio-shutdown-2026-01"]
-}
