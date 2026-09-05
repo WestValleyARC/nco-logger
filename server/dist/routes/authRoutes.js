@@ -100,6 +100,19 @@ router.get('/magiclogin/callback', async (req, res, next) => {
 });
 
 const googleAuthEnabled = Boolean(conf.google_client_id && conf.google_client_secret);
+const handleGoogleCallback = (req, res, next) => {
+    passport.authenticate('google', (error, user) => {
+        if (error) {
+            logger.error('Google OAuth callback failed', error);
+            return res.redirect('/views/login?error=google-auth');
+        }
+        if (!user) return res.redirect('/views/login?error=google-auth');
+        return req.logIn(user, loginError => {
+            if (loginError) return next(loginError);
+            return res.redirect(user.callSign ? '/views/dashboard' : '/views/myaccount');
+        });
+    })(req, res, next);
+};
 if (googleAuthEnabled) {
     passport.use(new GoogleStrategy({
         callbackURL: `${conf.base_url}/auth/google/redirect`, clientID: conf.google_client_id,
@@ -122,16 +135,7 @@ if (googleAuthEnabled) {
             return done(error);
         }
     }));
-    router.get('/google/redirect', (req, res, next) => {
-        passport.authenticate('google', (error, user) => {
-            if (error) return next(error);
-            if (!user) return res.redirect('/views/login');
-            return req.logIn(user, loginError => {
-                if (loginError) return next(loginError);
-                return res.redirect(user.callSign ? '/views/dashboard' : '/views/myaccount');
-            });
-        })(req, res, next);
-    });
+    router.get('/google/redirect', handleGoogleCallback);
     router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 } else {
     logger.warn('Google OAuth not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) — email sign-in only.');
@@ -153,4 +157,5 @@ router.get('/logout', (_req, res) => res.redirect(303, '/views/dashboard'));
 router.get('/login', (_req, res) => res.redirect('/views/login'));
 
 module.exports = router;
+module.exports.handleGoogleCallback = handleGoogleCallback;
 module.exports.userForMagicLogin = userForMagicLogin;
