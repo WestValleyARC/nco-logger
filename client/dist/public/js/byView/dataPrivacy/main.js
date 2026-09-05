@@ -56,7 +56,7 @@ import { HttpClient } from '#@client/lib/old__clientUtils.js';
             });
 
             undeleteBtn.addEventListener('click', async () => {
-                await axios.get('/api/util/undeleteme');
+                await axios.post('/api/util/undeleteme');
                 deleteOutputElem.innerHTML = `Account: ${userData._id} delete flag <strong>removed</strong>.`;
                 undeleteBtn.hidden = true;
 

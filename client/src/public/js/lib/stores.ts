@@ -635,7 +635,7 @@ class StationIndexer {
             hooks.forEach(hook => hook(currentStation, currentStationChangedProperties, priorStation));
         });
 
-        this._changedPropertiesMap = changedPropertiesMap as ReadonlyMap<string, PropertiesOfInterest[]>;
+        this._changedPropertiesMap = changedPropertiesMap;
     }
 
     private processAggregateDiffs(): void {
@@ -667,7 +667,7 @@ class StationIndexer {
                     orderChanged = true; // Different lengths mean different order
                 }
 
-                orderChanged && logger.debug('Order of call signs has changed');
+                if (orderChanged) logger.debug('Order of call signs has changed');
 
                 // Signal that the attendees group has changed if there are any changes
                 if (addedCallSigns.length || removedCallSigns.length || orderChanged) {
@@ -817,7 +817,7 @@ class StationIndexer {
     }
 
     public getGroup(groupName: StateGroupKey): ReadonlyStateGroup | undefined {
-        return this.stateGroupCollection.getGroup(groupName) as ReadonlyStateGroup;
+        return this.stateGroupCollection.getGroup(groupName);
     }
 
     public isInGroup(groupName: StateGroupKey, callSign: string): boolean {

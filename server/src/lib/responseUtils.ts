@@ -113,7 +113,10 @@ export class ResponseHandler {
             throw new Error(`Invalid status code: ${status}`);
         }
 
-        const response = this.prepareResponse({}, message);
+        const publicMessage = status === 'INTERNAL_SERVER_ERROR' || status === 'NOT_IMPLEMENTED'
+            ? 'The request could not be completed'
+            : message;
+        const response = this.prepareResponse({}, publicMessage);
         return res.status(HttpStatus[status]).json(response);
     }
 }
@@ -131,12 +134,12 @@ export const handleRequest = async (
 
     try {
         const result = await callback();
-        successMessage && logger.info(successMessage);
+        if (successMessage) logger.info(successMessage);
         handleResponse.sendResponse(res, 'OK', result);
     } catch (err) {
         const errorMessage =
             err instanceof Error ? err.message : typeof err === 'string' ? err : 'An unknown error occurred';
-        handleResponse.sendError(res, 'INTERNAL_SERVER_ERROR', errorMessage);
+        handleResponse.sendError(res, 'INTERNAL_SERVER_ERROR', 'The request could not be completed');
         logger.error(err instanceof Error ? err.stack : errorMessage);
     }
 };

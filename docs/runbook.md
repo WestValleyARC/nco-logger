@@ -43,8 +43,9 @@ install -d -m 0700 "${NCO_BACKUP_DIR:-./backups}"
 ```
 
 ```bash
-# Back up production. The archive appears under ${NCO_BACKUP_DIR:-./backups}.
-docker compose run --rm backup backup --production
+# Back up production database + uploads. The completion manifest appears only
+# after both components are safely written.
+docker compose --profile operations run --rm backup backup --production --require-uploads
 
 # Validate the resulting archive without writing to a database.
 docker compose run --rm --entrypoint sh backup -c \
@@ -52,12 +53,17 @@ docker compose run --rm --entrypoint sh backup -c \
 
 # Safely test a restore into a separate database. A development URI is required
 # explicitly; the CLI never falls back to the production URI.
-MONGODB_DEVELOPMENT_URI='mongodb://mongo:27017/hamlive-restore?replicaSet=rs0&directConnection=true' \
+# Supply an authenticated, least-privilege URI for a separate restore database.
+# Never reuse the live application database as this target.
+MONGODB_DEVELOPMENT_URI='mongodb://restore-user:REDACTED@mongo:27017/hamlive-restore?authSource=hamlive-restore&replicaSet=rs0&directConnection=true' \
 docker compose run --rm backup restore \
     --archive /backups/hamlive-YYYYMMDDTHHMMSSZ.archive.gz \
     --archive-dbname hamlive \
     --env development \
     --drop -y
+
+# Add --restore-uploads to verify the companion manifest/digests and restore
+# attachments into an empty upload target during the recovery drill.
 
 # A production restore requires the actual URI-derived database name twice: once
 # in the URI and once as explicit confirmation. Stop application writes first.
@@ -80,7 +86,11 @@ prod-new:
     dbname: hamlive-prod
 ```
 
-Run `docker compose run --rm backup <subcommand> --help` for the full option list. The dedicated image supplies `mongodump` and `mongorestore`. Optional legacy S3 flags still require an AWS CLI and are not included in this focused image.
+Run `docker compose --profile operations run --rm backup <subcommand> --help` for the full option list. The dedicated image supplies `mongodump`, `mongorestore`, `tar`, and the AWS CLI. With `--s3-bucket`, all coordinated files are uploaded over HTTPS with S3 server-side encryption. Credentials and bucket policy remain deployment-managed secrets.
+
+Backups intentionally exclude the disposable `sessions`, `magiclogintokens`, and
+`ratelimits` collections. This prevents a recovery from reviving revoked sessions,
+consumed login links, or obsolete abuse-control windows.
 
 Notes on the production safety guard
 
@@ -111,9 +121,8 @@ If the operations image is unavailable, the bundled `mongo:7` container includes
 
 ```bash
 mkdir -p "${NCO_BACKUP_DIR:-./backups}"
-docker compose exec -T mongo mongodump \
-    --uri='mongodb://localhost:27017/hamlive?replicaSet=rs0&directConnection=true' \
-    --archive --gzip --readPreference=primaryPreferred \
+docker compose exec -T mongo sh -c \
+    'mongodump --username="$MONGO_INITDB_ROOT_USERNAME" --password="$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase=admin --db=hamlive --archive --gzip --readPreference=primaryPreferred' \
     > "${NCO_BACKUP_DIR:-./backups}/hamlive-emergency-$(date -u +%Y%m%dT%H%M%SZ).archive.gz"
 ```
 
@@ -188,17 +197,17 @@ mongorestore --archive="$BACKUP_FILE" --gzip --nsInclude='hamlive-prod.*' --dryR
 mongosh "$MONGO_URI/hamlive-staging" --eval 'db.getCollection("LiveNets").count(); db.getCollection("FlexOptions").find().limit(1).pretty()'
 ```
 
-Automated scheduled backup (cron example)
+Automated scheduled backup
 
 ```bash
-# Schedule the supported Compose command from the host (root or a dedicated
-# operator permitted to run this Compose project):
-# 0 2 * * * cd /opt/nco-logger && docker compose run --rm backup backup --production >> /var/log/nco-backup.log 2>&1
-# 30 2 * * * cd /opt/nco-logger && docker compose run --rm backup prune --keep-days 30 -y >> /var/log/nco-backup.log 2>&1
-
-# Raw equivalent (no wrapper) — kept for reference:
-# See "Emergency raw backup through the Mongo container" above for the raw fallback.
+# Runs immediately and every 900 seconds by default, then prunes complete local
+# backup sets according to NCO_BACKUP_RETENTION_DAYS.
+docker compose --profile scheduled-backup up -d backup-scheduler
 ```
+
+Set `NCO_BACKUP_S3_BUCKET` and deployment-managed AWS credentials for off-host
+replication. Without an off-host destination the service logs a warning and the
+production release gate remains incomplete. Monitor nonzero exits/restarts.
 
 Retention & security
 
@@ -221,9 +230,9 @@ Recovery verification, RTO/RPO & test-restore schedule
 
 This section defines recommended recovery goals, an explicit verification checklist to run after any restore, and a pragmatic cadence for test restores.
 
-Recommended targets (example guidance)
+Supported recovery objectives (deployment approval and monitoring still required)
 
-- RPO (Recovery Point Objective): target 15 minutes for critical operational data (LiveNets, StationInteraction), 24 hours for lower-priority analytics or logs. Adjust based on cost and infrastructure.
+- RPO (Recovery Point Objective): the supplied scheduler supports a 15-minute full database-plus-upload cadence. Increasing the interval changes the achievable RPO and requires an explicit operator decision.
 - RTO (Recovery Time Objective): target 1 hour for a full service restore to staging for verification; target 4 hours for production failover depending on team & runbook readiness.
 
 Test-restore cadence
@@ -374,34 +383,18 @@ Runtime log level changes (without restart):
 
 ### Environment Variables
 
-The server requires these critical environment variables and uses environment-specific `.env` files:
+The server loads one root `.env` file and then applies the environment-specific
+YAML defaults. It does not load `server/dist/.env-development` or
+`.env-production`.
 
 ```bash
-NODE_ENV=development|production    # Controls config file selection
+NODE_ENV=development|production    # Controls YAML selection and security mode
 PORT=3000                         # HTTP server port (development only)
 LOG_LEVEL=debug|info|warn|error   # Controls logging verbosity
 ```
 
-**Environment file loading:**
-
-- Development: `server/dist/.env-development` is loaded when `NODE_ENV=development`
-- Production: `server/dist/.env-production` is loaded when `NODE_ENV=production`
-
-**Environment file contents:**
-
-`.env-development`:
-
-```bash
-PORT=3000          # Local development server port
-LOG_LEVEL=debug    # Verbose logging for development
-```
-
-`.env-production`:
-
-```bash
-#PORT set by cloud provider    # Cloud platforms set PORT automatically
-LOG_LEVEL=info                 # Production-appropriate log level
-```
+Create the root file with `npm run setup`. Production deployments should inject
+the same named variables through a secret manager where possible.
 
 **Environment variable debugging:**
 
@@ -411,8 +404,8 @@ echo "NODE_ENV: $NODE_ENV"
 echo "PORT: $PORT"
 echo "LOG_LEVEL: $LOG_LEVEL"
 
-# Verify .env file loading
-ls -la server/dist/.env-*
+# Verify the root file is private without printing its values
+stat -c '%a %n' .env
 
 # Test environment variable precedence
 NODE_ENV=development node -e "console.log('PORT:', process.env.PORT); console.log('LOG_LEVEL:', process.env.LOG_LEVEL);"
@@ -423,8 +416,8 @@ NODE_ENV=development node -e "console.log('PORT:', process.env.PORT); console.lo
 The application uses a layered YAML configuration system:
 
 1. **Base configuration**: Always loads `commonConfig.yaml`
-2. **Environment override**: Loads environment-specific config based on `NODE_ENV`
-3. **Final merge**: Environment config overrides common config
+2. **Environment YAML**: Loads `devConfig.yaml` or `prodConfig.yaml` based on `NODE_ENV`
+3. **Root environment**: root `.env`/process variables override YAML values
 
 **Configuration loading debug:**
 
@@ -450,22 +443,16 @@ node -e "const { conf } = require('./server/dist/lib/configLib.js'); console.log
 ```bash
 # Check if required config files exist
 ls -la server/dist/*Config.yaml
-ls -la server/dist/.env-*
+stat -c '%a %n' .env
 
 # Validate YAML syntax
 node -e "require('yaml').parse(require('fs').readFileSync('server/dist/commonConfig.yaml', 'utf8'))"
 
-# Validate .env file syntax (should not error)
-node -e "require('dotenv').config({path: 'server/dist/.env-development'}); console.log('✓ .env-development loaded');"
-node -e "require('dotenv').config({path: 'server/dist/.env-production'}); console.log('✓ .env-production loaded');"
-
 # Compare environment differences
 diff server/dist/devConfig.yaml server/dist/prodConfig.yaml
-diff server/dist/.env-development server/dist/.env-production
 
 # Test complete configuration loading
 NODE_ENV=development node -e "
-  require('dotenv').config({path: 'server/dist/.env-development'});
   const { conf } = require('./server/dist/lib/configLib.js');
   console.log('PORT:', process.env.PORT);
   console.log('LOG_LEVEL:', process.env.LOG_LEVEL);

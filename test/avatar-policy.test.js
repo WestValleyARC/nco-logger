@@ -122,6 +122,6 @@ test('supported site-photo behavior remains available outside NCO Logger', () =>
     const auth = fs.readFileSync(path.join(root, 'server/dist/routes/authRoutes.js'), 'utf8');
     const widgets = fs.readFileSync(path.join(root, 'client/src/public/js/lib/widgets.ts'), 'utf8');
     assert.match(auth, /gravatar\.url/);
-    assert.match(auth, /profile\.photos\[0\]\.value/);
+    assert.match(auth, /profile\.photos\?\.\[0\]\?\.value/);
     assert.match(widgets, /this\.station\?\.photo \?\? this\.defaultPhoto/);
 });

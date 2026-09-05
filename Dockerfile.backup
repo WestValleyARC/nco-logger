@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=linux/amd64 node:22-bookworm-slim AS build
+FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -10,21 +10,13 @@ COPY server ./server
 COPY scripts ./scripts
 RUN npm run build && npm prune --omit=dev
 
-FROM --platform=linux/amd64 node:22-bookworm-slim AS runtime
+FROM mongo:7@sha256:b6421fd6d1c5ded6377b397d8983e2f82e2100dc5123332dcfda2065a472be5b AS mongo-tools
 
-ARG MONGODB_TOOLS_VERSION=100.18.0
-ARG MONGODB_TOOLS_SHA256=c7c797bcb78099ecb0c716eabc82403bcb886578ef8bee499a5b8f1c8c52aa0e
+FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS runtime
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
-    && curl -fsSLo /tmp/mongodb-tools.tgz "https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian12-x86_64-${MONGODB_TOOLS_VERSION}.tgz" \
-    && echo "${MONGODB_TOOLS_SHA256}  /tmp/mongodb-tools.tgz" | sha256sum -c - \
-    && tar -xzf /tmp/mongodb-tools.tgz -C /tmp \
-    && cp "/tmp/mongodb-database-tools-debian12-x86_64-${MONGODB_TOOLS_VERSION}/bin/mongodump" /usr/local/bin/ \
-    && cp "/tmp/mongodb-database-tools-debian12-x86_64-${MONGODB_TOOLS_VERSION}/bin/mongorestore" /usr/local/bin/ \
-    && chmod 0755 /usr/local/bin/mongodump /usr/local/bin/mongorestore \
-    && apt-get purge -y curl \
-    && rm -rf /var/lib/apt/lists/* /tmp/mongodb-tools.tgz /tmp/mongodb-database-tools-*
+    && apt-get install -y --no-install-recommends awscli ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production \
     HAMLIVE_BACKUP_DIR=/backups
@@ -33,7 +25,9 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/server/dist ./server/dist
-RUN mkdir -p /backups && chown node:node /backups
+COPY --from=mongo-tools /usr/bin/mongodump /usr/bin/mongorestore /usr/local/bin/
+COPY --chown=node:node scripts/docker/backup-scheduler.sh /usr/local/bin/backup-scheduler
+RUN mkdir -p /backups /uploads && chown node:node /backups /uploads
 
 USER node
 VOLUME ["/backups"]

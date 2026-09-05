@@ -64,7 +64,7 @@ group here.
 
 You can run a fully working instance on your laptop with **zero paid accounts**. External services
 (email, callsign lookup, geocoding) are optional and degrade gracefully when not configured;
-local chat requires only MongoDB, and magic sign-in links are printed to the development console.
+local chat requires only MongoDB, and magic sign-in links appear on the development login page without being logged.
 
 ```bash
 git clone https://github.com/Constant-Digital-Holdings-LLC/hamlive-oss.git hamlive-oss
@@ -79,8 +79,8 @@ one isn't already running (no Docker required), and runs the app. Then open
 isn't configured, the link is shown right on the page). Stop everything with Ctrl+C.
 
 > The auto-started MongoDB (`npm run mongo:dev` / the one embedded in `npm run dev`) is **in-memory
-> and ephemeral** — data is lost when the process stops. For persistent data, use
-> `docker compose up -d` before running `npm run dev` (see INSTALL.md).
+> and ephemeral** — data is lost when the process stops. For persistent data, run the authenticated
+> Docker development stack described in INSTALL.md.
 
 👉 **Full instructions, OS-specific notes, and how to host for your club are in [INSTALL.md](INSTALL.md).**
 
@@ -89,7 +89,7 @@ isn't configured, the link is shown right on the page). Stop everything with Ctr
 - **Backend:** Node.js + Express + EJS + MongoDB (Mongoose)
 - **Frontend:** TypeScript ES modules, Custom Elements, reactive stores (no bundler)
 - **Real-time:** Server-Sent Events with polling fallback
-- **Auth:** magic-link email + optional Google OAuth, signed HTTP-only session cookies
+- **Auth:** one-time magic-link email + optional Google OAuth, with opaque server-side sessions
 
 ## Documentation
 

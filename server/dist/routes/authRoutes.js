@@ -6,261 +6,144 @@ const { conf } = require('../lib/configLib');
 const { logger } = require('../lib/logger');
 const UserProfile = require('../models/userProfile').getUserProfile(null);
 const GoogleStrategy = require('passport-google-oauth20');
-const MagicLoginStrategy = require('passport-magic-login').default;
-const jwt = require('jsonwebtoken');
 const gravatar = require('gravatar');
 const validator = require('validator');
 const { MagicSignInEmail, emailEnabled } = require('../lib/userNotification');
 const { clearInactivityDeletionOnLogin } = require('../lib/accountInactivity');
+const { consumeMagicLoginToken, issueMagicLoginToken, revokeMagicLoginToken } = require('../lib/magicLoginTokens');
+const { consumeRateLimit } = require('../lib/persistentRateLimit');
 
-//MagicLogin Auth:
-const sendMagicLink = async (destination, href, _code, req) => {
-    const link = `${conf.base_url}${href}`;
+const MAGIC_REQUEST_WINDOW_MS = Number(process.env.MAGIC_LOGIN_RATE_WINDOW_MS) || 15 * 60 * 1000;
+const MAGIC_REQUEST_IP_LIMIT = Number(process.env.MAGIC_LOGIN_IP_LIMIT) || 10;
+const MAGIC_REQUEST_IDENTITY_LIMIT = Number(process.env.MAGIC_LOGIN_IDENTITY_LIMIT) || 3;
 
-    // Local test drive: when email delivery is not configured, surface the
-    // sign-in link directly and also print it to the server console.
+const sendMagicLink = async (destination, href, req) => {
     if (!emailEnabled) {
-        const isDevelopment = process.env.NODE_ENV !== 'production';
-        if (isDevelopment && req) req._devMagicLink = href;
-        if (!isDevelopment) {
-            logger.error('Magic-link email unavailable because SMTP is not configured');
-            throw new Error('Email delivery is unavailable');
+        if (process.env.NODE_ENV !== 'production' && req) {
+            req._devMagicLink = href;
+            return;
         }
-        logger.info(
-            `\n\n========== LOCAL LOGIN (email delivery disabled) ==========\n` +
-                `Magic sign-in link:\n${link}\n` +
-                `Open it in your browser to finish logging in.\n` +
-                `==========================================================\n`
-        );
-        return;
+        logger.error('Magic-link email unavailable because SMTP is not configured');
+        throw new Error('Email delivery is unavailable');
     }
+    const email = new MagicSignInEmail({ href });
+    await email.sendMailToAddrs([destination]);
+    logger.info('Auth link email accepted for delivery');
+};
 
+const userForMagicLogin = async destination => {
+    let currentUser = await UserProfile.findOneAndUpdate(
+        { email: destination },
+        { lastLogin: Date.now(), lastAuthVia: 'email', photo: gravatar.url(destination, { protocol: 'https' }) },
+        { new: true }
+    );
+    if (currentUser?.locked) return null;
+    if (currentUser) {
+        await clearInactivityDeletionOnLogin({ userProfileDoc: currentUser, UserProfile });
+        return currentUser;
+    }
     try {
-        const email = new MagicSignInEmail({ href });
-
-        await email.sendMailToAddrs([destination]);
-        logger.info('Auth link email accepted for delivery');
-    } catch (err) {
-        logger.error(`Magic-link email delivery failed: ${err.message}`);
-        throw new Error('Magic-link email delivery failed');
+        currentUser = await new UserProfile({
+            lastAuthVia: 'email', displayName: '', flexOptions: { option: {} }, destination,
+            email: destination, photo: gravatar.url(destination, { protocol: 'https' }), newAccount: true
+        }).save({ validateBeforeSave: false });
+        logger.info('New partial user account created by email link');
+        return currentUser;
+    } catch (error) {
+        if (error?.code === 11000) return UserProfile.findOne({ email: destination, locked: { $ne: true } });
+        throw error;
     }
 };
 
-const magicLogin = new MagicLoginStrategy({
-    secret: conf.magic_link_secret,
-    callbackUrl: '/auth/magiclogin/callback',
-    sendMagicLink,
-
-    verify: (payload, done) => {
-        logger.info('Processing magic-link user lookup');
-
-        if (!payload.destination) {
-            logger.error('Magic login payload is missing its destination');
-            throw new Error('Magic login payload missing destination');
-        }
-        //check if user already exists in our db
-        UserProfile.findOneAndUpdate(
-            { email: payload.destination },
-            {
-                lastLogin: Date.now(),
-                lastAuthVia: 'email',
-                photo: gravatar.url(payload.destination, { protocol: 'https' })
-            }
-        ).then(async currentUser => {
-            if (currentUser) {
-                //already have the user
-                    logger.debug('Magic Login returning user found');
-                if (currentUser.locked) {
-                    logger.error('Magic Login account is locked');
-
-                    done(null, false);
-                } else {
-                    await clearInactivityDeletionOnLogin({ userProfileDoc: currentUser, UserProfile });
-                    done(null, currentUser);
-                }
-            } else {
-                // if not, create user in our db
-                new UserProfile({
-                    lastAuthVia: 'email',
-                    displayName: '',
-                    flexOptions: {
-                        option: {}
-                    },
-                    email: payload.destination,
-                    photo: gravatar.url(payload.destination),
-                    newAccount: true
-                })
-                    .save({ validateBeforeSave: false })
-                    .then(newUser => {
-                        logger.info('New partial user account created by email link');
-                        done(null, newUser);
-                    })
-                    .catch(err => {
-                        logger.error(err.stack);
-                        logger.error('Likely data validation error. Missing required info on user creation?');
-                    });
-            }
-        });
-    },
-
-    jwtOptions: {
-        expiresIn: '30 days'
-    }
-});
-
-passport.use(magicLogin);
-router.post('/magiclogin', async (req, res) => {
-    const destination = typeof req.body?.destination === 'string' ? req.body.destination.trim() : '';
-    if (!validator.isEmail(destination)) {
-        return res.status(400).json({ success: false, error: 'Enter a valid email address' });
-    }
-
-    const code = String(Math.floor(Math.random() * 90000) + 10000);
-    const token = jwt.sign({ destination, code }, conf.magic_link_secret, { expiresIn: '30 days' });
-    const href = `/auth/magiclogin/callback?token=${encodeURIComponent(token)}`;
-
+router.post('/magiclogin', async (req, res, next) => {
+    const destination = typeof req.body?.destination === 'string' ? req.body.destination.trim().toLowerCase() : '';
+    if (!validator.isEmail(destination)) return res.status(400).json({ success: false, error: 'Enter a valid email address' });
     try {
-        await sendMagicLink(destination, href, code, req);
-        const response = { success: true, message: 'Sign-in email accepted for delivery' };
-        if (!emailEnabled && process.env.NODE_ENV !== 'production') {
-            response.devMagicLink = req._devMagicLink || null;
+        const [source, identity] = await Promise.all([
+            consumeRateLimit({ bucket: 'magic-ip', subject: req.ip || 'unknown', limit: MAGIC_REQUEST_IP_LIMIT, windowMs: MAGIC_REQUEST_WINDOW_MS }),
+            consumeRateLimit({ bucket: 'magic-identity', subject: destination, limit: MAGIC_REQUEST_IDENTITY_LIMIT, windowMs: MAGIC_REQUEST_WINDOW_MS })
+        ]);
+        const response = { success: true, message: 'If delivery is available, a sign-in email will arrive shortly' };
+        if (!source.allowed || !identity.allowed) return res.status(202).json(response);
+
+        const token = await issueMagicLoginToken({ destination });
+        const href = `/auth/magiclogin/callback?token=${encodeURIComponent(token)}`;
+        try {
+            await sendMagicLink(destination, href, req);
+        } catch (error) {
+            await revokeMagicLoginToken({ token });
+            throw error;
         }
+        if (!emailEnabled && process.env.NODE_ENV !== 'production') response.devMagicLink = req._devMagicLink || null;
         return res.status(emailEnabled ? 202 : 200).json(response);
-    } catch (_err) {
-        return res.status(502).json({
-            success: false,
-            error: 'The sign-in email could not be sent. Please try again or use Google sign-in.'
+    } catch (error) {
+        if (error.message === 'Email delivery is unavailable') {
+            return res.status(502).json({ success: false, error: 'The sign-in email could not be sent. Please try again or use Google sign-in.' });
+        }
+        return next(error);
+    }
+});
+
+router.get('/magiclogin/callback', async (req, res, next) => {
+    try {
+        const record = await consumeMagicLoginToken({ token: req.query.token });
+        if (!record) return res.redirect('/views/login?error=invalid-link');
+        const user = await userForMagicLogin(record.destination);
+        if (!user) return res.redirect('/views/login?error=invalid-link');
+        return req.logIn(user, error => {
+            if (error) return next(error);
+            return res.redirect(user.callSign ? '/views/dashboard' : '/views/myaccount');
         });
-    }
-});
-// router.get('/magiclogin/callback', passport.authenticate('magiclogin'));
-router.get('/magiclogin/callback', passport.authenticate('magiclogin'), (req, res) => {
-    if (req.user) {
-        if (req.user.callSign) {
-            res.redirect('/views/dashboard');
-        } else {
-            res.redirect('/views/myaccount');
-        }
-    } else {
-        res.redirect('/views/login');
+    } catch (error) {
+        return next(error);
     }
 });
 
-//Google Auth (optional):
-// Only register the Google strategy and routes when credentials are configured.
-// Without them, the login page shows email magic-link sign-in only.
 const googleAuthEnabled = Boolean(conf.google_client_id && conf.google_client_secret);
-
 if (googleAuthEnabled) {
-    passport.use(
-        new GoogleStrategy(
-            {
-                //options for google strat
-                callbackURL: `${conf.base_url}/auth/google/redirect`,
-                clientID: conf.google_client_id,
-                clientSecret: conf.google_client_secret
-            },
-            (accessToken, refreshToken, profile, done) => {
-            //passport callback function
-
-            logger.debug('Google authenticated: ' + profile.displayName);
-
-            //check if user already exists in our db
-            UserProfile.findOneAndUpdate(
-                { email: profile.emails[0].value },
-                {
-                    lastLogin: Date.now(),
-                    lastAuthVia: 'google',
-                    photo: profile.photos[0].value
-                }
-            ).then(async currentUser => {
-                if (currentUser) {
-                    //already have the user
-                    logger.debug('Google Auth returning user found');
-
-                    if (currentUser.locked) {
-                        logger.error('Google Auth account is locked');
-
-                        done(null, false);
-                    } else {
-                        await clearInactivityDeletionOnLogin({ userProfileDoc: currentUser, UserProfile });
-                        done(null, currentUser);
-                    }
-                } else {
-                    // if not, create user in our db
-                    new UserProfile({
-                        lastAuthVia: 'google',
-                        displayName: profile.displayName,
-                        googleId: profile.id,
-                        flexOptions: {
-                            option: {}
-                        },
-                        email: profile.emails[0].value,
-                        photo: profile.photos[0].value,
-                        newAccount: true
-                    })
-                        .save()
-                        .then(newUser => {
-                            logger.debug('New partial user account created by Google Auth');
-                            done(null, newUser);
-                        })
-                        .catch(err => {
-                            logger.error(err.stack);
-                            logger.error('Likely data validation error. Missing required info on user creation?');
-                        });
-                }
-            });
+    passport.use(new GoogleStrategy({
+        callbackURL: `${conf.base_url}/auth/google/redirect`, clientID: conf.google_client_id,
+        clientSecret: conf.google_client_secret
+    }, async (_accessToken, _refreshToken, profile, done) => {
+        try {
+            const email = profile.emails?.[0]?.value?.toLowerCase();
+            if (!email) return done(null, false);
+            let user = await UserProfile.findOneAndUpdate(
+                { email }, { lastLogin: Date.now(), lastAuthVia: 'google', photo: profile.photos?.[0]?.value }, { new: true }
+            );
+            if (user?.locked) return done(null, false);
+            if (user) await clearInactivityDeletionOnLogin({ userProfileDoc: user, UserProfile });
+            else user = await new UserProfile({
+                lastAuthVia: 'google', displayName: profile.displayName, googleId: profile.id,
+                flexOptions: { option: {} }, email, photo: profile.photos?.[0]?.value, newAccount: true
+            }).save();
+            return done(null, user);
+        } catch (error) {
+            return done(error);
         }
-    )
-);
-
-//callback for google to redirect to
-router.get('/google/redirect', passport.authenticate('google'), (req, res) => {
-    // this time around, we have a "code" on the uri from google. Passport will exchange the code
-    // for profile info
-
-    if (req.user) {
-        if (req.user.callSign) {
-            res.redirect('/views/dashboard');
-        } else {
-            res.redirect('/views/myaccount');
-        }
-    } else {
-        res.redirect('/views/login');
-    }
-});
-
-// google specific auth, specify what we want from google (scope)
-router.get(
-    '/google',
-    passport.authenticate('google', {
-        scope: ['profile', 'email']
-    })
-);
+    }));
+    router.get('/google/redirect', passport.authenticate('google', { failureRedirect: '/views/login' }), (req, res) => {
+        res.redirect(req.user?.callSign ? '/views/dashboard' : '/views/myaccount');
+    });
+    router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 } else {
     logger.warn('Google OAuth not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) — email sign-in only.');
-    // Fallback so a stray link does not 404; send users to the login page.
-    router.get(['/google', '/google/redirect'], (req, res) => res.redirect('/views/login'));
+    router.get(['/google', '/google/redirect'], (_req, res) => res.redirect('/views/login'));
 }
 
-//logout is now async
-router.get('/logout', function (req, res, next) {
-    req.logout(function (err) {
-        if (err) {
-            return next(err);
-        }
-        res.redirect('/views/dashboard');
+router.post('/logout', (req, res, next) => {
+    req.logout(error => {
+        if (error) return next(error);
+        if (!req.session) return res.redirect(303, '/views/dashboard');
+        return req.session.destroy(destroyError => {
+            if (destroyError) return next(destroyError);
+            res.clearCookie('hamlive.sid', { path: '/' });
+            return res.redirect(303, '/views/dashboard');
+        });
     });
 });
-
-//old sync version
-// router.get('/logout', (req, res) => {
-//     req.logout();
-//     res.redirect('/views/dashboard');
-// });
-
-router.get('/login', (req, res) => {
-    res.redirect('/views/login');
-});
+router.get('/logout', (_req, res) => res.redirect(303, '/views/dashboard'));
+router.get('/login', (_req, res) => res.redirect('/views/login'));
 
 module.exports = router;
+module.exports.userForMagicLogin = userForMagicLogin;

@@ -10,6 +10,9 @@ test('backup defaults to primaryPreferred and omits oplog for a database URI', (
     );
     assert.ok(args[0].includes('readPreference=primaryPreferred'));
     assert.ok(!args.includes('--oplog'));
+    for (const collection of ['sessions', 'magiclogintokens', 'ratelimits']) {
+        assert.ok(args.includes(`--excludeCollection=${collection}`));
+    }
 });
 
 test('backup permits an explicit secondary read preference', () => {
@@ -124,10 +127,19 @@ test('database identity comes from the URI and missing names fail closed', () =>
 
 test('production and unclassified writes require exact target confirmation', async () => {
     const production = { dbname: 'hamlive', environment: 'production' };
-    await assert.rejects(() => backup.confirmTargetWrite(production, {}), /Refusing production write/);
-    await backup.confirmTargetWrite(production, { 'confirm-production': 'hamlive' });
+    assert.throws(() => backup.confirmTargetWrite(production, {}), /Refusing production write/);
+    backup.confirmTargetWrite(production, { 'confirm-production': 'hamlive' });
 
     const unknown = { dbname: 'restore-target', environment: 'unclassified' };
-    await assert.rejects(() => backup.confirmTargetWrite(unknown, {}), /unclassified/);
-    await backup.confirmTargetWrite(unknown, { 'confirm-target': 'restore-target' });
+    assert.throws(() => backup.confirmTargetWrite(unknown, {}), /unclassified/);
+    backup.confirmTargetWrite(unknown, { 'confirm-target': 'restore-target' });
+});
+
+test('coordinated backup companions are deterministic and reject unsafe upload paths', () => {
+    const companions = backup.companionFiles('/backups/hamlive-20260101T000000Z.archive.gz');
+    assert.equal(companions.manifest, '/backups/hamlive-20260101T000000Z.archive.gz.manifest.json');
+    assert.equal(companions.uploads, '/backups/hamlive-20260101T000000Z.archive.gz.uploads.tar.gz');
+    assert.equal(backup.safeUploadArchiveEntries('./image.png\n./nested/file.jpg\n'), true);
+    assert.equal(backup.safeUploadArchiveEntries('../secrets\n'), false);
+    assert.equal(backup.safeUploadArchiveEntries('/etc/passwd\n'), false);
 });

@@ -425,7 +425,8 @@ class StationIndexer {
                 else {
                     orderChanged = true;
                 }
-                orderChanged && logger.debug('Order of call signs has changed');
+                if (orderChanged)
+                    logger.debug('Order of call signs has changed');
                 if (addedCallSigns.length || removedCallSigns.length || orderChanged) {
                     this.stateGroupCollection.stateGroups.attendees.newData = true;
                 }

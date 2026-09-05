@@ -6,61 +6,49 @@ This document describes Ham.Live's middleware stack and the request processing p
 
 The following middleware is registered on the Express app in this exact order:
 
-### 1. HTTPS Redirect (conditional)
+### 1. Runtime, proxy, host, and HTTPS validation
 
 ```javascript
-if (process.env['FORCE_HTTPS'] === 'true') {
-    app.use((req, res, next) => {
-        const proto = req.headers['x-forwarded-proto'];
-        if (proto && proto !== 'https') {
-            return res.redirect(301, `https://${req.headers.host}${req.url}`);
-        }
-        next();
-    });
-}
+validateRuntimeConfig(process.env);
+app.set('trust proxy', trustedProxySetting(process.env.TRUST_PROXY));
+app.use(canonicalHostGuard(conf.base_url));
+app.use(forceHttps(conf.base_url));
 ```
 
-An inline middleware, not a third-party library. Active only when `FORCE_HTTPS=true`. Inspects the `x-forwarded-proto` header set by a TLS-terminating reverse proxy (nginx, Caddy, Render, Fly, Railway, etc.). Only redirects when the header is present and non-HTTPS; plain HTTP traffic without the header passes through unaffected.
+Production startup validates the canonical HTTPS origin, secrets, authenticated Mongo URI, legal
+approval gate, and explicit proxy trust. Redirects always use the configured origin, never an
+untrusted Host header.
 
-### 2. Cookie Session
+### 2. Security headers and mutation protection
 
 ```javascript
-app.use(
-    cookieSession({
-        maxAge: 3.5 * 24 * 60 * 60 * 1000, // 3.5 days
-        keys: [conf.cookie_session_key]      // single key, from COOKIE_SESSION_KEY env var
-    })
-);
+app.use(helmet(/* application CSP and production HSTS */));
+app.use(mutationRequestGuard(conf.base_url));
 ```
 
-Uses the `cookie-session` package. Single signing key (`COOKIE_SESSION_KEY`). Fixed 3.5-day TTL. No `name`, `secure`, `httpOnly`, or `sameSite` options are set — the package's defaults apply.
+Helmet applies CSP/frame/referrer/content-type/permissions controls. State-changing methods must
+present a canonical same-origin Origin/Referer or valid same-origin Fetch Metadata; cross-site and
+missing-context production mutations are rejected.
 
-### 3. Session Keep-Alive
+### 3. Server-side session
 
 ```javascript
-app.use(cookieSessionKeepAlive());
+app.use(session({ store: MongoStore.create(...), /* secure cookie options */ }));
 ```
 
-Implemented in `serverUtils.js`. Renews the session timestamp every 10 minutes of activity, resetting the TTL clock.
+The opaque `hamlive.sid` cookie maps to a MongoDB session with a rolling, bounded 12-hour lifetime.
 
-### 4. Cookie Session Stubs
-
-```javascript
-app.use(cookieSessionStubs);
-```
-
-Adds `regenerate()` and `save()` stub methods to the session object to satisfy Passport.js, which expects the `express-session` API that `cookie-session` does not provide.
-
-### 5. Passport
+### 4. Passport
 
 ```javascript
 app.use(passport.initialize());
 app.use(passport.session());
 ```
 
-Initializes Passport and restores authentication state from the session. Strategies configured: Google OAuth2 (optional, only when `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set) and magic-link email (`passport-magic-login`). No local (username/password) strategy.
+Initializes Passport and restores authentication state from the session. Google OAuth2 is optional;
+the primary magic-link flow uses the application token store. Deserialization rejects locked users.
 
-### 6. Application Middleware
+### 5. Application Middleware
 
 ```javascript
 app.use(flexOpts);           // load per-user FlexOptions from MongoDB into res.locals.flexOpts
@@ -74,14 +62,14 @@ app.use(dailyDispatch);      // triggers background task processing once per day
 - **`addServerInfo`** — Async middleware in `serverUtils.js`. Builds `res.locals.serverInfo` with server environment, feature flags, and per-user data; consumed by `populate()` for EJS views.
 - **`dailyDispatch`** — Middleware in `lib/dailyProcessingDispatch.js`. Checks a `DayTracker` MongoDB document; when tasks are due, forks `lib/tasksLoader.js` as a child process to run background tasks. Always calls `next()`.
 
-### 7. EJS Setup
+### 6. EJS Setup
 
 ```javascript
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 ```
 
-### 8. Request Parsing and Static Files
+### 7. Request Parsing and Static Files
 
 ```javascript
 app.use(express.urlencoded({ extended: true }));
@@ -91,7 +79,7 @@ app.use(express.static(path.join(__dirname, '../../client/dist/public'), { maxAg
 
 Standard Express body parsers (no size limit is set explicitly beyond Express defaults). Static files are served with a 2-hour browser cache.
 
-### 9. Routes
+### 8. Routes and centralized errors
 
 All route handlers are mounted after the middleware chain above. See [Routing and API](routing-api.md) for the full route map.
 
@@ -116,7 +104,9 @@ router.post('/:id', authCheck(REQ_CALLSIGN), handler);
 
 ## Error Handling
 
-There is no four-argument Express error handler. Errors are handled at the route level through:
+Async routes pass failures to a final four-argument Express error handler. It logs internal causes
+and returns a stable generic response without stack traces or database messages. Existing helper
+wrappers likewise sanitize 5xx output.
 
 - **`handleRequest(res, callback, label)`** — Async wrapper from `lib/responseUtils.js`. Calls `callback()`, sends `200 OK` on success; catches exceptions and sends `500 INTERNAL_SERVER_ERROR`.
 - **`ResponseHandler`** — Class from `lib/responseUtils.js`. `sendResponse(res, status, data)` and `sendError(res, status, message)` both produce `EndPointResponse`-shaped JSON.
@@ -137,14 +127,13 @@ All API responses use `prepareEndPointResponse()` from `lib/responseUtils.js`. R
 }
 ```
 
-## Packages NOT in Use
+## Deliberately absent packages
 
 The following packages are **not installed and not used**:
 
-- `helmet` — no security-header middleware
 - `cors` — no CORS middleware
 - `express-rate-limit` — no rate limiting
-- `csurf` — no CSRF tokens
+- `csurf` — the application instead enforces a global canonical-origin/Fetch-Metadata policy
 - `compression` — no gzip middleware
 - `morgan` — no morgan request logging
 - `connect-livereload` — no hot-reload middleware

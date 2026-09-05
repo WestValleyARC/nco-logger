@@ -1142,18 +1142,25 @@ async function* fetchChatHistory({ npid, since, db = mongoose.connection }) {
     const ChatMessage = getChatMessage(db);
     const query = { netProfile: npid, deletedAt: null, ...PUBLIC_SCOPE_QUERY };
     if (since) query.createdAt = { $gte: new Date(since) };
-    const messages = await ChatMessage.find(query).sort({ createdAt: 1, _id: 1 }).lean();
     const batchSize = 100;
-    for (let index = 0; index < messages.length; index += batchSize) {
-        yield messages.slice(index, index + batchSize).map(message => ({
+    const maximum = Math.min(50000, Math.max(100, Number(process.env.CHAT_REPORT_MAX_MESSAGES) || 10000));
+    const cursor = ChatMessage.find(query).sort({ createdAt: 1, _id: 1 }).limit(maximum).lean().cursor({ batchSize });
+    let batch = [];
+    for await (const message of cursor) {
+        batch.push({
             username: message.callSign || message.displayName || 'Unknown',
             body: [message.text, message.attachment?.storageName ? '[Image attachment]' : ''].filter(Boolean).join(' '),
             createdAt: message.createdAt.toISOString(),
             reactions: summarizeReactions(message.reactions || [])
                 .map(reaction => `${reaction.emoji} ${reaction.count}`).join(' '),
             edited: Boolean(message.editedAt)
-        }));
+        });
+        if (batch.length === batchSize) {
+            yield batch;
+            batch = [];
+        }
     }
+    if (batch.length) yield batch;
 }
 
 const cleanupNetChat = async (npid, db = mongoose.connection) => {

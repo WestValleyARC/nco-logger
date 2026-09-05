@@ -125,14 +125,14 @@ Server-rendered EJS pages. See [Views](views.md).
 - `GET  /auth/magiclogin/callback` — Complete magic-link authentication
 - `GET  /auth/google` — Initiate Google OAuth2 flow (when configured)
 - `GET  /auth/google/redirect` — Google OAuth2 callback
-- `GET  /auth/logout` — Log out and redirect
+- `POST /auth/logout` — Destroy the server session and redirect
 
 ### Other Routes
 
 - `GET|POST /api/chat/:id/messages` — Local chat history/send
 - `GET /api/chat/:id/events` — Local chat SSE
 - `DELETE /api/chat/:id/messages/:messageId` — Message deletion/moderation
-- `GET /api/util/undeleteme` — Restore a soft-deleted account
+- `POST /api/util/undeleteme` — Restore a soft-deleted account
 - `GET /api/util/resolvelocation` — Reverse geocode a lat/lon (optional; requires `GEO_KEY`)
 - `GET /api/util/notifications/pending` — Fetch pending system notifications
 - `POST /api/util/notifications/:notificationId/dismiss` — Dismiss a notification
@@ -196,7 +196,7 @@ MongoDB change-stream-to-SSE bridge. Local chat is always enabled and uses the a
 ### Authentication Services
 
 - **Google OAuth2** — Optional. Enabled only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Strategy registered via `passport-google-oauth20`.
-- **Magic Link Email** — Primary passwordless auth via `passport-magic-login` and SMTP (`MAIL_TRANSPORT`). When `MAIL_TRANSPORT` is not configured, the sign-in link is logged to the console and returned in the JSON response for local development.
+- **Magic Link Email** — Primary passwordless auth via a one-time 15-minute Mongo-backed token and SMTP (`MAIL_TRANSPORT`). Without mail delivery, the link is returned only in local development.
 - **QRZ.com API** — Optional callsign lookup and data caching. Disabled when `QRZ_USERNAME`/`QRZ_PASSWORD` are absent.
 
 ### `secureSign.js`

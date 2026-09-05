@@ -117,7 +117,7 @@ All secrets and instance-specific values are supplied via environment variables.
 |---|---|---|---|
 | `MONGODB_URI` | `conf.dburi` | Yes | MongoDB connection string |
 | `COOKIE_SESSION_KEY` | `conf.cookie_session_key` | Yes | Session cookie signing key |
-| `MAGIC_LINK_SECRET` | `conf.magic_link_secret` | Yes | JWT signing key for magic-link auth |
+| `MAGIC_LINK_SECRET` | `conf.magic_link_secret` | Yes | HMAC key for one-time magic-link token digests |
 | `BASE_URL` | `conf.base_url` | Yes (prod) | Public HTTP(S) origin for OAuth callbacks and absolute email links |
 | `MAIL_TRANSPORT` | `conf.mail_transport` | No | Set to `smtp` for delivery; otherwise development console mode |
 | `SMTP_HOST`, `SMTP_PORT` | `conf.smtp_host`, `conf.smtp_port` | No | Provider-neutral SMTP server |
@@ -138,7 +138,8 @@ All secrets and instance-specific values are supplied via environment variables.
 | `APP_NAME` | `conf.app_name` | No | Override display name |
 | `PORT` | (read directly) | No | HTTP port; defaults to 3000 |
 | `LOG_LEVEL` | (read by logger) | No | Production log level (error/warn/info/debug) |
-| `FORCE_HTTPS` | (read by server.js) | No | `true` to add x-forwarded-proto HTTPS redirect |
+| `FORCE_HTTPS` | (read by server.js) | No | Redirect cleartext requests to canonical `BASE_URL`; production use requires `TRUST_PROXY` |
+| `TRUST_PROXY` | (read by server.js) | No | Explicit proxy hop count/address/subnet; never enabled implicitly |
 | `HTTPS` | (read by server.js) | No | Dev only: `true` to serve over HTTPS with bundled cert |
 
 **`loglevel` vs `LOG_LEVEL`**: `loglevel` is a YAML key used only as a reference value in the config object. The production logger (`node-json-logger`) reads `process.env.LOG_LEVEL` directly; that env var is not overlaid via `configLib.js`. In development, `logger.js` uses a colorized console logger that ignores both.

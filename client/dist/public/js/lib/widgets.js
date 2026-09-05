@@ -694,7 +694,7 @@ export class FavoritesList extends HamLiveElement {
         heading.classList.add('favorite-card-heading');
         const titleLink = document.createElement('a');
         titleLink.classList.add('favorite-title');
-        titleLink.href = `/views/livenet/${id}`;
+        titleLink.href = `/views/livenet/${String(id)}`;
         titleLink.textContent = title;
         const actions = document.createElement('div');
         actions.classList.add('favorite-actions');
@@ -965,8 +965,10 @@ export class NetNotes extends LiveNetElement {
             logger.warn('Default element is not defined in render()');
             return;
         }
-        this.hasDataChanged('title', this.priorTitle, true) && this.updateTitle();
-        this.hasDataChanged('notes', this.priorNotes, true) && this.updateNotes();
+        if (this.hasDataChanged('title', this.priorTitle, true))
+            this.updateTitle();
+        if (this.hasDataChanged('notes', this.priorNotes, true))
+            this.updateNotes();
     }
     onConnected() {
         if (!this.defaultElement) {
@@ -2535,7 +2537,8 @@ export class StationTable extends LiveNetElement {
     createStationRow(callSign, isLastNonCheckedOutAttendee = false) {
         const stationRow = document.createElement('hl-stationrow');
         stationRow.callSign = callSign;
-        isLastNonCheckedOutAttendee && stationRow.classList.add('last-non-checkedout-attendee');
+        if (isLastNonCheckedOutAttendee)
+            stationRow.classList.add('last-non-checkedout-attendee');
         return stationRow;
     }
     didMyDataSegmentChange() {

@@ -115,7 +115,7 @@ test('Net Profile Overhaul Phase 4 signal reports and automatic lurker check-in'
             profile.restrictedSigReports = true;
             await profile.save();
             const denied = await report(participant.callSign);
-            assert.equal(denied.status, 500);
+            assert.equal(denied.status, 403);
             assert.match(denied.body.errorMessage, /restricted to NCS only/);
             assert.equal((await report(nco.callSign)).status, 200);
         });

@@ -18,8 +18,6 @@ import {
     NetInfo,
     FollowListNetInfo,
     NPID,
-    RstReportBase,
-    StrengthTone,
 } from '#@client/types/commonTypes.js';
 import {
     isEndPointResponseError,
@@ -852,7 +850,7 @@ export class FavoritesList extends HamLiveElement<FavoritesReactiveStore> {
 
         const titleLink = document.createElement('a');
         titleLink.classList.add('favorite-title');
-        titleLink.href = `/views/livenet/${id}`;
+        titleLink.href = `/views/livenet/${String(id)}`;
         titleLink.textContent = title;
 
         const actions = document.createElement('div');
@@ -1029,7 +1027,7 @@ export abstract class LiveNetElement
             throw new Error(`Invalid RST report: ${JSON.stringify(rstReport)} in ${this.constructor.name}`);
         }
 
-        await this.ia.sigReport(callSign, rstReport as RstReportBase | (RstReportBase & { t: StrengthTone }));
+        await this.ia.sigReport(callSign, rstReport);
     }
 }
 
@@ -1202,8 +1200,8 @@ export class NetNotes extends LiveNetElement {
             return;
         }
 
-        this.hasDataChanged('title', this.priorTitle, true) && this.updateTitle();
-        this.hasDataChanged('notes', this.priorNotes, true) && this.updateNotes();
+        if (this.hasDataChanged('title', this.priorTitle, true)) this.updateTitle();
+        if (this.hasDataChanged('notes', this.priorNotes, true)) this.updateNotes();
     }
 
     protected onConnected(): void {
@@ -2224,7 +2222,7 @@ export class NetControlButton extends NetControlMember {
         }
 
         if (!this.netControlPanelElement) {
-            this.netControlPanelElement = document.querySelector('hl-netcontrol-panel') as NetControlPanel;
+            this.netControlPanelElement = document.querySelector('hl-netcontrol-panel');
         }
 
         if (this.iAmCheckedInAdmin) {
@@ -3092,7 +3090,7 @@ export class StationTable extends LiveNetElement {
     private createStationRow(callSign: string, isLastNonCheckedOutAttendee = false): StationRow {
         const stationRow = document.createElement('hl-stationrow') as StationRow;
         stationRow.callSign = callSign;
-        isLastNonCheckedOutAttendee && stationRow.classList.add('last-non-checkedout-attendee');
+        if (isLastNonCheckedOutAttendee) stationRow.classList.add('last-non-checkedout-attendee');
         return stationRow;
     }
 

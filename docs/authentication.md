@@ -13,16 +13,18 @@ The implementation uses Passport.js and lives in `server/dist/routes/authRoutes.
 | Package | Role |
 |---|---|
 | `passport` | Core authentication framework |
-| `passport-magic-login` | Magic-link (JWT) email strategy |
 | `passport-google-oauth20` | Google OAuth2 strategy (optional) |
-| `cookie-session` | Stateless encrypted session cookie |
+| `express-session` | Opaque session-ID cookie and lifecycle |
+| `connect-mongo` | Persistent server-side session store |
 | `gravatar` | Default avatar URL for new accounts |
 
-There is no `passport-local`, no `bcrypt`, no `express-session`, and no `connect-mongo`.
+There is no local/password strategy.
 
 ## Magic-Link Authentication (primary)
 
-Magic-link sign-in is always registered. It is powered by `passport-magic-login` and uses a JWT signed with the `MAGIC_LINK_SECRET` environment variable.
+Magic-link sign-in uses an application-owned, one-time token store. The browser receives a 32-byte
+random token; MongoDB stores only an HMAC digest. Tokens expire after 15 minutes, are atomically
+consumed, and a new request invalidates the previous outstanding token for that identity.
 
 ### Flow
 
@@ -31,22 +33,22 @@ Magic-link sign-in is always registered. It is powered by `passport-magic-login`
    ↓
 2. POST /auth/magiclogin
    ↓
-3. Server generates a signed JWT and calls sendMagicLink()
+3. Server stores a short-lived token digest and calls sendMagicLink()
    ↓
 4. If SMTP is configured: email is sent through the configured SMTP relay
-   If not (local dev): link is printed to the server console
+   If not (local dev): the relative link is returned to the login page and is not logged
                        AND returned in the JSON response as devMagicLink
    ↓
 5. User opens the link
    ↓
-6. GET /auth/magiclogin/callback — Passport validates the JWT
+6. GET /auth/magiclogin/callback — server atomically consumes the token
    ↓
 7. If user exists: update lastLogin / lastAuthVia / photo
    If user is new: create UserProfile (newAccount:true, flexOptions:{option:{}})
    ↓
 8. Check currentUser.locked — deny (done(null, false)) if true
    ↓
-9. Redirect to /views/dashboard (if callSign set) or /views/myaccount (new user)
+9. Passport rotates the session ID, then redirects to the dashboard/account page
 ```
 
 ### Local development fallback
@@ -66,7 +68,7 @@ This allows full end-to-end testing with no email configuration required.
 | `conf.mail_transport` / `conf.smtp_host` | `MAIL_TRANSPORT` / `SMTP_HOST` | No (see fallback above) |
 | `conf.base_url` | `BASE_URL` | Yes (used to build the callback URL) |
 
-The magic-link JWT TTL is 30 days (set in `jwtOptions.expiresIn`).
+The token TTL is 15 minutes. Replay, replacement, expiry, malformed tokens, and locked accounts fail closed.
 
 ## Google OAuth2 (optional)
 
@@ -115,40 +117,44 @@ Note: the callback path is `/auth/google/redirect`, not `/auth/google/callback`.
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/auth/magiclogin` | Send magic-link email |
-| `GET` | `/auth/magiclogin/callback` | Validate JWT, establish session |
+| `GET` | `/auth/magiclogin/callback` | Consume one-time token, establish session |
 | `GET` | `/auth/google` | Begin Google OAuth2 (optional) |
 | `GET` | `/auth/google/redirect` | Google OAuth2 callback (optional) |
-| `GET` | `/auth/logout` | Log out (async, Passport 0.6 style) |
+| `POST` | `/auth/logout` | Destroy the server-side session and clear its cookie |
 
-There is no `POST /auth/logout`.
+`GET /auth/logout` is non-mutating and only redirects to the dashboard.
 
 ## Session Management
 
-Sessions use `cookie-session` — a stateless, signed cookie with no server-side store.
+Sessions use `express-session` with `connect-mongo`. The cookie contains only an opaque identifier;
+session state and revocation live in MongoDB.
 
 ```javascript
-app.use(cookieSession({
-    maxAge: 3.5 * 24 * 60 * 60 * 1000, // 3.5 days
-    keys: [conf.cookie_session_key]
+app.use(session({
+    name: 'hamlive.sid',
+    store: MongoStore.create({ client: mongoose.connection.getClient() }),
+    secret: conf.cookie_session_key,
+    rolling: true,
+    cookie: { httpOnly: true, sameSite: 'lax', secure: production, path: '/', maxAge: 12 * 60 * 60 * 1000 }
 }));
 ```
 
 Key details:
 
-- Single signing key: `conf.cookie_session_key` (env `COOKIE_SESSION_KEY`). There is no key rotation or secondary key.
-- Session lifetime: **3.5 days** (not 7).
-- The cookie is renewed on activity: `cookieSessionKeepAlive()` middleware refreshes it every 10 minutes of activity.
-- `cookieSessionStubs` provides `regenerate()` and `save()` shims so Passport works with `cookie-session`.
+- Session lifetime: 12 hours, rolling while authenticated and active, with server-side TTL cleanup.
+- Cookies are `HttpOnly`, `SameSite=Lax`, path `/`, and `Secure` in production.
+- Passport regenerates the session on login. Logout destroys it, so copied old IDs stop working.
+- Deserialization reloads the user and rejects accounts locked after the session was issued.
 
 ### Logout
 
 Logout uses Passport 0.6's async `req.logout(callback)` signature:
 
 ```javascript
-router.get('/logout', function (req, res, next) {
+router.post('/logout', function (req, res, next) {
     req.logout(function (err) {
         if (err) return next(err);
-        res.redirect('/views/dashboard');
+        req.session.destroy(destroyError => { /* clear hamlive.sid and redirect */ });
     });
 });
 ```
@@ -201,10 +207,12 @@ app.post('/api/admin/interactions', authCheck(REQ_LOGIN | REQ_NETOWNER), interac
 
 ## Security notes
 
-- The magic-link JWT is signed with `MAGIC_LINK_SECRET` (required). Use a strong random value (32+ bytes).
-- The session cookie is signed with `COOKIE_SESSION_KEY` (required). Use a strong random value (32+ bytes).
+- `MAGIC_LINK_SECRET` HMACs stored token/identity digests; it must be a unique strong random value.
+- `COOKIE_SESSION_KEY` authenticates the opaque session-ID cookie; it must be separate and strong.
 - `currentUser.locked` is checked in both strategy verify callbacks; locked accounts are denied without explanation.
-- There is no CSRF middleware (`csurf`), no rate limiting (`express-rate-limit`), and no `helmet` in the current codebase. Operators deploying to production should evaluate adding these at the reverse proxy or application layer.
+- Global same-origin/Fetch-Metadata mutation checks protect cookie-authenticated POST/PUT/PATCH/DELETE requests.
+- Mongo-backed IP and identity rate limits protect magic-login requests across restarts/instances.
+- Helmet supplies global browser security headers.
 
 ## See also
 

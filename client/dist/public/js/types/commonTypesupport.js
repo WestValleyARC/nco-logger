@@ -213,7 +213,7 @@ export const isRstReportBaseWithTone = (value) => {
     const t = parseInt(report.t ?? '');
     return isInRange(t, 1, 9);
 };
-export const isInteractionPayload = (value, isActionParams = (_) => true) => {
+export const isInteractionPayload = (value, isActionParams = (candidate) => candidate !== undefined || candidate === undefined) => {
     if (typeof value !== 'object' || value === null)
         return false;
     const payload = value;

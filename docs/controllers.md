@@ -149,7 +149,7 @@ The status argument is a **string key** from the `HttpStatus` enum (e.g., `'OK'`
 - `GET /api/data/userprofiles/` — Get the authenticated user's own profile (no `:id`; identity comes from the session)
 - `PATCH /api/data/userprofiles/:id` — Update profile
 - `DELETE /api/data/userprofiles/:id` — Flag account for deletion (or hard-delete if user has not consented to policy)
-- `GET /api/util/undeleteme` — Account recovery (clears the deletion flag)
+- `POST /api/util/undeleteme` — Account recovery (clears the deletion flag)
 
 **Note on per-user flex option overrides:** `userProfileController` enforces that only `email` and `chat` options may be overridden by users.
 

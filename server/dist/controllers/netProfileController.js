@@ -66,7 +66,7 @@ const netProfileList = async (req, res) => {
         logger.error(err.stack);
         return res.status(500).json({
             endpointVersion: '1.0',
-            errorMessage: err.message
+            errorMessage: 'Unable to list net profiles'
         });
     }
 };
@@ -99,7 +99,7 @@ const netProfileDetails = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             endpointVersion: '1.0',
-            errorMessage: err.message
+            errorMessage: 'Unable to load the net profile'
         });
         logger.error(err.stack);
     }
@@ -146,7 +146,7 @@ const netProfileUpdate = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             endpointVersion: '1.0',
-            errorMessage: err.message,
+            errorMessage: 'Unable to update the net profile',
             status: 500
         });
         logger.error(err.stack);
@@ -167,7 +167,7 @@ const netProfileDelete = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             endpointVersion: '1.0',
-            errorMessage: err.message
+            errorMessage: 'Unable to delete the net profile'
         });
         logger.error(err.stack);
     }
@@ -255,6 +255,7 @@ const netProfileRemoveCoOwner = async (req, res) => {
 };
 
 const netProfileCreatePost = async (req, res) => {
+    const session = await mongoose.connection.startSession();
     try {
         const { title, frequency, mode, restrictedSigReports, autoIn, modeDetails, notes } = req.body;
         const hasConnections = hasOwn(req.body, 'connections');
@@ -276,41 +277,28 @@ const netProfileCreatePost = async (req, res) => {
         if (!hasConnections) validateLegacyOperatingFields(operatingFields);
 
         if (req.user.myNets.length < res.locals.flexOpts['maxNetsPerUser']) {
-            const npresult = await netprofile.save();
-            res.json({ ...{ endpointVersion: '1.0' }, ...npresult.toObject() });
-            logger.info('NETPROFILE_Controller: Net profile saved: ' + npresult.toObject().title);
-
-            if (npresult) {
-                logger.info('NETPROFILE_Controller: Add owner for new net');
-                try {
-                    const upresult = await UserProfile.findOneAndUpdate(
-                        { _id: req.user._id },
-                        {
-                            $push: { myNets: npresult._id }
-                        }
-                    );
-
-                    logger.info(
-                        'NETPROFILE_Controller: User profile updated (+Net Owner): ' + upresult.toObject().callSign
-                    );
-                } catch (err) {
-                    res.status(500).json({
-                        endpointVersion: '1.0',
-                        errorMessage: err.message
-                    });
-                    logger.error(err.stack);
-                }
-            }
+            let npresult;
+            await session.withTransaction(async () => {
+                [npresult] = await NetProfile.create([netprofile.toObject()], { session });
+                const ownerUpdate = await UserProfile.updateOne(
+                    { _id: req.user._id }, { $addToSet: { myNets: npresult._id } }, { session }
+                );
+                if (ownerUpdate.matchedCount !== 1) throw new Error('Net owner account was not found');
+            });
+            logger.info('NETPROFILE_Controller: Net profile and owner relationship saved');
+            return res.json({ endpointVersion: '1.0', ...npresult.toObject() });
         } else {
             throw new Error('at max nets per user');
         }
     } catch (err) {
-        res.status(500).json({
+        logger.error(err.stack);
+        return res.status(500).json({
             endpointVersion: '1.0',
-            errorMessage: err.message,
+            errorMessage: 'Unable to create the net profile',
             status: 500
         });
-        logger.error(err.stack);
+    } finally {
+        await session.endSession();
     }
 };
 

@@ -34,3 +34,10 @@ export const getChangeStreamDb = (): Promise<Db> => {
 
     return databasePromise;
 };
+
+export const closeChangeStreamClient = async (): Promise<void> => {
+    const client = changeStreamClient;
+    databasePromise = null;
+    changeStreamClient = null;
+    if (client) await client.close();
+};

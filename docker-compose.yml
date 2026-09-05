@@ -20,19 +20,18 @@ services:
             target: runtime
             args:
                 APP_REVISION: ${APP_REVISION:-workspace}
-        image: westvalleyarc/nco-logger:dev
-        container_name: nco-logger-app
+        image: ${NCO_APP_IMAGE:-westvalleyarc/nco-logger:dev}
         restart: unless-stopped
         env_file:
-            - .env
+            - ${NCO_ENV_FILE:-.env}
         environment:
             NODE_ENV: production
             PORT: 3000
-            MONGODB_URI: mongodb://mongo:27017/hamlive?replicaSet=rs0&directConnection=true
+            MONGODB_URI: ${MONGODB_COMPOSE_URI:-mongodb://${MONGO_APP_USERNAME:?set MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}@mongo:27017/hamlive?authSource=hamlive&replicaSet=rs0&directConnection=true}
         ports:
             # Bind only to the host loopback interface. The production reverse
             # proxy can reach this port without exposing Node directly.
-            - '127.0.0.1:3000:3000'
+            - '${APP_BIND_IP:-127.0.0.1}:${APP_HOST_PORT:-3000}:3000'
         depends_on:
             mongo:
                 condition: service_healthy
@@ -41,6 +40,23 @@ services:
             - frontend
         volumes:
             - hamlive-chat-uploads:/app/data/chat-uploads
+        read_only: true
+        tmpfs:
+            - /tmp:mode=1777,size=64m
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        logging:
+            driver: json-file
+            options:
+                max-size: 10m
+                max-file: '5'
+        deploy:
+            resources:
+                limits:
+                    memory: 768m
+                    cpus: '1.5'
         healthcheck:
             test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
             interval: 30s
@@ -74,12 +90,13 @@ services:
         build:
             context: .
             dockerfile: Dockerfile.backup
-        image: westvalleyarc/nco-logger-backup:dev
+        image: ${NCO_BACKUP_IMAGE:-westvalleyarc/nco-logger-backup:dev}
         user: ${NCO_BACKUP_UID:-1000}:${NCO_BACKUP_GID:-1000}
         environment:
-            MONGODB_PRODUCTION_URI: ${MONGODB_COMPOSE_URI:-mongodb://mongo:27017/hamlive?replicaSet=rs0&directConnection=true}
+            MONGODB_PRODUCTION_URI: ${MONGODB_COMPOSE_URI:-mongodb://${MONGO_APP_USERNAME:?set MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}@mongo:27017/hamlive?authSource=hamlive&replicaSet=rs0&directConnection=true}
             MONGODB_DEVELOPMENT_URI: ${MONGODB_DEVELOPMENT_URI:-}
             HAMLIVE_BACKUP_DIR: /backups
+            HAMLIVE_UPLOAD_DIR: /uploads
         depends_on:
             mongo:
                 condition: service_healthy
@@ -87,24 +104,73 @@ services:
             - hamlive
         volumes:
             - ${NCO_BACKUP_DIR:-./backups}:/backups
+            - hamlive-chat-uploads:/uploads
         read_only: true
         tmpfs:
             - /tmp
         security_opt:
             - no-new-privileges:true
+        cap_drop:
+            - ALL
+
+    backup-scheduler:
+        profiles: ['scheduled-backup']
+        build:
+            context: .
+            dockerfile: Dockerfile.backup
+        image: ${NCO_BACKUP_IMAGE:-westvalleyarc/nco-logger-backup:dev}
+        entrypoint: ['/usr/local/bin/backup-scheduler']
+        restart: unless-stopped
+        user: ${NCO_BACKUP_UID:-1000}:${NCO_BACKUP_GID:-1000}
+        environment:
+            MONGODB_PRODUCTION_URI: ${MONGODB_COMPOSE_URI:-mongodb://${MONGO_APP_USERNAME:?set MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}@mongo:27017/hamlive?authSource=hamlive&replicaSet=rs0&directConnection=true}
+            HAMLIVE_BACKUP_DIR: /backups
+            HAMLIVE_UPLOAD_DIR: /uploads
+            NCO_BACKUP_INTERVAL_SECONDS: ${NCO_BACKUP_INTERVAL_SECONDS:-900}
+            NCO_BACKUP_RETENTION_DAYS: ${NCO_BACKUP_RETENTION_DAYS:-30}
+            NCO_BACKUP_S3_BUCKET: ${NCO_BACKUP_S3_BUCKET:-}
+            NCO_BACKUP_S3_PREFIX: ${NCO_BACKUP_S3_PREFIX:-hamlive}
+        depends_on:
+            mongo:
+                condition: service_healthy
+        networks:
+            - hamlive
+        volumes:
+            - ${NCO_BACKUP_DIR:-./backups}:/backups
+            - hamlive-chat-uploads:/uploads:ro
+        read_only: true
+        tmpfs:
+            - /tmp
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
+        logging:
+            driver: json-file
+            options:
+                max-size: 10m
+                max-file: '5'
 
     mongo:
-        image: mongo:7
-        container_name: nco-logger-mongo
+        image: mongo:7@sha256:b6421fd6d1c5ded6377b397d8983e2f82e2100dc5123332dcfda2065a472be5b
         restart: unless-stopped
-        command: ['--replSet', 'rs0', '--bind_ip_all']
+        entrypoint: ['/opt/hamlive/mongo-entrypoint.sh']
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set MONGO_ROOT_USERNAME}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}
+            MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?set MONGO_APP_USERNAME}
+            MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}
+            MONGO_REPLICA_KEY: ${MONGO_REPLICA_KEY:?set MONGO_REPLICA_KEY}
         volumes:
             - hamlive-mongo-data:/data/db
+            - mongo-config:/data/configdb
+            - ./scripts/docker/mongo-entrypoint.sh:/opt/hamlive/mongo-entrypoint.sh:ro
+            - ./scripts/docker/create-app-user.js:/docker-entrypoint-initdb.d/create-app-user.js:ro
         networks:
             - hamlive
         healthcheck:
             # Initiate the replica set once the node is up (no-op once initiated).
-            test: ['CMD-SHELL', "mongosh --quiet --eval \"try { quit(rs.status().ok ? 0 : 1) } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}); quit(1) }\""]
+            test: ['CMD-SHELL', "mongosh --quiet --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval \"try { quit(rs.status().ok ? 0 : 1) } catch (e) { try { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}) } catch (_) {} quit(1) }\""]
             interval: 10s
             timeout: 10s
             start_period: 20s
@@ -112,11 +178,12 @@ services:
 
 volumes:
     hamlive-mongo-data:
+    mongo-config:
     hamlive-chat-uploads:
 
 networks:
     hamlive:
         driver: bridge
     frontend:
-        external: true
-        name: westvalleyarc_frontend
+        external: ${FRONTEND_NETWORK_EXTERNAL:-true}
+        name: ${FRONTEND_NETWORK_NAME:-westvalleyarc_frontend}

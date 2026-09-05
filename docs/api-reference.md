@@ -274,7 +274,7 @@ returns `429`, a safe JSON error, and `Retry-After`.
 - **Query parameters:** `lat`, `lon`
 - **Response:** `{ endpointVersion: "1.0", ...locationData }`
 
-### GET /api/util/undeleteme
+### POST /api/util/undeleteme
 
 - **Auth:** REQ_LOGIN
 - **Description:** Recover (un-delete) the authenticated user's account if it was flagged for deletion.
@@ -322,7 +322,7 @@ Before you start coding, verify the following items to avoid common integration 
 
 - Cookies & CORS: If your client runs on a different origin, the server must enable CORS for your origin and allow credentials (Access-Control-Allow-Credentials: true). Use `fetch(..., { credentials: 'include' })` in browsers.
 - SSE credentials: Native EventSource does not send cookies across origins. Use same-origin SSE, a polyfill that supports credentials, or provide an SSE token via the initial HTTP envelope (`ssePath`).
-- CSRF & state-changing requests: Because auth is cookie-based, the server may require CSRF protection or SameSite cookie settings. Plan for token-based or same-origin flows for POST/PATCH/DELETE from browsers.
+- CSRF & state-changing requests: cookie-authenticated POST/PUT/PATCH/DELETE calls must carry valid same-origin Origin/Referer or Fetch Metadata context; cross-site requests are rejected.
 - Session cookie domain/path: If you expect cookies to be set for subdomains or via redirects, confirm the cookie domain/path and secure/sameSite settings with operators.
 - TTL/hash handling: Honor `ttlMs` and use `hash` (when present) to avoid unnecessary UI updates.
 - Time skew: Use `now` in envelopes to reconcile client/server clocks for timers and staleness checks.

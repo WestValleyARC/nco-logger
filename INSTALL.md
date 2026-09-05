@@ -13,7 +13,7 @@ This guide covers two paths:
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| **Node.js** | 18 LTS or newer | <https://nodejs.org> |
+| **Node.js** | 22 LTS | The supported range is recorded in `.nvmrc` and `package.json` |
 | **MongoDB** | 6 or newer (bundled `docker-compose.yml` uses `mongo:7`) | Local via Docker (recommended) or a managed database |
 | **Git** | any | to clone the repository |
 | **Docker Desktop** | optional | easiest way to run MongoDB locally |
@@ -38,8 +38,8 @@ This guide covers two paths:
 ## 1. Local test drive
 
 A complete, working instance with **no paid accounts**. Every external integration is optional and
-disables itself cleanly when its keys are absent. Email login still works because magic sign-in
-links are **printed to the server console**.
+disables itself cleanly when its keys are absent. Email login still works because the local login
+page displays the magic sign-in link without logging its token.
 
 ```bash
 git clone https://github.com/Constant-Digital-Holdings-LLC/hamlive-oss.git hamlive-oss
@@ -64,7 +64,7 @@ Now:
 1. Open **http://localhost:3000** (plain HTTP on localhost — no certificate warning).
 2. Enter any email address and submit the email sign-in form.
 3. Because email delivery isn't configured, the page shows a **"Click here to finish signing in →"**
-   button — click it. (The link is also printed in the `npm run dev` terminal if you prefer.)
+   button — click it. The token is deliberately not printed in the `npm run dev` terminal.
 4. You're logged in. Set your callsign on the account page and you can create and run a net.
 
 > Prefer HTTPS locally? Set `HTTPS=true` (and `BASE_URL=https://localhost:3000`) to serve dev over
@@ -72,13 +72,12 @@ Now:
 > for self-signed certs, which you can click through.
 
 **What's disabled in this mode** (all optional): Google sign-in is hidden, SMTP delivery is replaced
-by console delivery, and QRZ enrichment is skipped. Local text chat remains available.
+by an on-page development link, and QRZ enrichment is skipped. Local text chat remains available.
 
 ### MongoDB options
 
 You don't have to do anything — `npm run dev` starts a local MongoDB for you when none is running.
-If you'd rather manage MongoDB yourself (for example, to keep your data across app restarts), use
-any one of these and `npm run dev` will detect and use it:
+If you'd rather manage MongoDB yourself, use one of these approaches:
 
 **Bundled helper, separate terminal** (no Docker, no install, no sudo):
 
@@ -91,8 +90,14 @@ npm run dev              # terminal 2 — the app
 > Everything is lost when the process stops (Ctrl+C). The first run downloads a `mongod` binary,
 > which can take a minute.
 
-**Docker** (persistent data): `docker compose up -d` — uses the bundled `docker-compose.yml` (`mongo:7`,
-single-node replica set, named volume — data persists across restarts).
+**Docker** (persistent data): run the complete authenticated development stack, including the app:
+
+```bash
+docker compose -f docker-compose.yml -f compose.dev.yml up -d --build
+```
+
+This uses `mongo:7`, a single-node replica set, and named volumes. MongoDB intentionally has no
+host-published port, so a host-side `npm run dev` does not connect to this private database.
 
 **Native install** — install MongoDB Community Server and point the app at it:
 
@@ -109,11 +114,12 @@ single-node replica set, named volume — data persists across restarts).
 
 ### Stopping / resetting
 
-If you started MongoDB with `docker compose up -d`:
+If you started the Docker development stack:
 
 ```bash
-docker compose down          # stop MongoDB (data persists in the named volume)
-docker compose down -v       # stop MongoDB and delete all local data
+docker compose -f docker-compose.yml -f compose.dev.yml down     # data persists
+# Explicitly destructive; only for disposable local data:
+docker compose -f docker-compose.yml -f compose.dev.yml down -v
 ```
 
 If you are using the in-memory helper (`npm run mongo:dev`) or the auto-started MongoDB inside
@@ -134,7 +140,7 @@ and fill in the values below.
 | `NODE_ENV` | `production` for a hosted instance |
 | `BASE_URL` | Public URL of your instance, e.g. `https://nets.yourclub.org` |
 | `MONGODB_URI` | Connection string to your MongoDB |
-| `COOKIE_SESSION_KEY` | Long random string used to sign session cookies |
+| `COOKIE_SESSION_KEY` | Long random string used to authenticate the opaque session-ID cookie |
 | `MAGIC_LINK_SECRET` | Long random string used to sign email login tokens |
 | `PORT` | Port to listen on (your platform may set this) |
 
@@ -157,8 +163,8 @@ Each integration is independent — enable only what you want.
 | **Reverse geocoding** (Azure Maps) | <https://azure.microsoft.com/products/azure-maps> | `GEO_KEY` | Yes (limited) |
 
 Notes:
-- **Email:** without SMTP, login links are logged to the server console in development only. A
-  production instance never exposes the link and must configure mail delivery.
+- **Email:** without SMTP, the login page displays the link in development only without logging
+  its token. A production instance never exposes the link and must configure mail delivery.
 - **Google OAuth:** set the authorized redirect URI to `${BASE_URL}/auth/google/redirect`.
 - **Chat:** text, emoji, and image chat are local. Images are stored in the persistent
   `hamlive-chat-uploads` volume; PNG, JPEG, GIF, and WebP are supported.
@@ -211,10 +217,10 @@ The recommended self-hosted path runs both the application and its MongoDB
 replica set in Docker:
 
 ```bash
-cp .env.example .env       # first run only; replace all development secrets
-docker compose up -d --build
-docker compose ps
-docker compose logs -f app
+npm run setup              # creates .env with local-only generated secrets
+docker compose -f docker-compose.yml -f compose.dev.yml up -d --build
+docker compose -f docker-compose.yml -f compose.dev.yml ps
+docker compose -f docker-compose.yml -f compose.dev.yml logs -f app
 ```
 
 Open `http://localhost:3000`. MongoDB is reachable only on the private Compose
@@ -225,13 +231,23 @@ reverse proxy can expose it safely. Database data persists in the
 Stop the stack without deleting its database volume:
 
 ```bash
-docker compose down
+docker compose -f docker-compose.yml -f compose.dev.yml down
 ```
 
-For production set `NODE_ENV=production` and
-`BASE_URL=https://logger.westvalleyarc.com` in `.env`. Compose deliberately
-overrides only `NODE_ENV`, `PORT`, and the internal `MONGODB_URI`; integration
-credentials and generated secrets continue to come from `.env`.
+For production, set an organization-approved HTTPS `BASE_URL`, unique signing
+secrets, Mongo root/application credentials, and a replica key in the root
+`.env` or a deployment secret manager. Compose uses an explicitly supplied
+`MONGODB_COMPOSE_URI` when present; otherwise it constructs the private,
+authenticated service URI. Set `TRUST_PROXY` only to the actual proxy hop or
+subnet and use `FORCE_HTTPS=true` when that trusted proxy terminates TLS.
+Production startup rejects placeholder or short secrets, cleartext origins,
+unauthenticated Mongo URIs, and reused signing keys. Never commit a populated
+`.env`; restrict it to mode `0600`.
+
+The authenticated Mongo layout is incompatible with an old unauthenticated
+Compose data volume until an operator performs a reviewed migration. Back up
+the old volume first, restore it into a separate authenticated test project,
+validate count/index parity, and only then schedule the production cutover.
 
 Health endpoints are available at `/healthz` (Node process) and `/readyz`
 (Node plus MongoDB connectivity).
@@ -257,7 +273,8 @@ that use it, but it's optional; `npm start` works everywhere.
 In production the app listens on plain HTTP and expects **TLS to be terminated by your platform or a
 reverse proxy** (nginx, Caddy, a cloud load balancer, etc.). Point the proxy at the app's `PORT` and
 set `BASE_URL` to the public HTTPS URL. To force HTTP→HTTPS redirects at the app, set
-`FORCE_HTTPS=true` (uses the standard `x-forwarded-proto` header). If your proxy drops idle
+`TRUST_PROXY` to the proxy address/hop and `FORCE_HTTPS=true`. Forwarded headers
+are ignored unless a trusted proxy is explicitly configured. If your proxy drops idle
 connections sooner/later than ~55s, tune `SSE_IDLE_TIMEOUT_MS` so real-time keep-alives fit inside
 it. (In development the app serves plain HTTP on localhost by default — no certificate warning. Set
 `HTTPS=true` to serve dev over HTTPS with the bundled self-signed cert; `npm run gen-certs`
@@ -273,7 +290,8 @@ documents appropriate to your instance and jurisdiction before going live.
 
 A dedicated one-shot Compose service provides the source-built backup/restore CLI and pinned
 MongoDB Database Tools without adding administration tools to the web image. Run
-`docker compose run --rm backup backup --production`; archives persist in
+`docker compose --profile operations run --rm backup backup --production --require-uploads`;
+the database archive, upload archive, and integrity manifest persist in
 `${NCO_BACKUP_DIR:-./backups}` on the host (`/backups` in the operations container). See
 [docs/runbook.md](docs/runbook.md) for validation and safe restore procedures.
 
@@ -284,9 +302,9 @@ MongoDB Database Tools without adding administration tools to the web image. Run
 | Symptom | Fix |
 | --- | --- |
 | "Your connection is not private" / `ERR_CERT_AUTHORITY_INVALID` | You're on `https://localhost` with the self-signed dev cert. Use **http://localhost:3000** (the default), or keep HTTPS and click through the warning. |
-| `MongooseServerSelectionError` | MongoDB isn't running / `MONGODB_URI` is wrong. Start `docker compose up -d` or check the URI. With Docker, give it ~20s on first start to initiate the replica set. |
+| `MongooseServerSelectionError` | MongoDB isn't running / `MONGODB_URI` is wrong. Start the full development stack shown above or check the URI. With Docker, give it ~20s on first start to initiate the replica set. |
 | `$changeStream stage is only supported on replica sets` | Your MongoDB is a standalone, not a replica set. Use the bundled `docker compose` (already a replica set) or start native `mongod` with `--replSet` as shown above. |
-| No login email arrives | Expected in local mode — the link is printed to the server console. For hosted instances, configure SMTP and a domain sender in `EMAIL_FROM`. |
+| No login email arrives | Expected in local mode — the link appears on the login page and is not logged. For hosted instances, configure SMTP and a domain sender in `EMAIL_FROM`. |
 | Google button missing | Google OAuth isn't configured. Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. |
 | Chat is reconnecting | Confirm MongoDB is a replica set; local chat SSE uses change streams. |
 

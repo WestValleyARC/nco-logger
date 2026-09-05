@@ -90,7 +90,10 @@ class ResponseHandler {
         if (!HttpStatus[status]) {
             throw new Error(`Invalid status code: ${status}`);
         }
-        const response = this.prepareResponse({}, message);
+        const publicMessage = status === 'INTERNAL_SERVER_ERROR' || status === 'NOT_IMPLEMENTED'
+            ? 'The request could not be completed'
+            : message;
+        const response = this.prepareResponse({}, publicMessage);
         return res.status(HttpStatus[status]).json(response);
     }
 }
@@ -102,12 +105,13 @@ const handleRequest = async (res, callback, successMessage) => {
     const handleResponse = new ResponseHandler({ ttlMs: res.locals['flexOpts'].baseTtlMs });
     try {
         const result = await callback();
-        successMessage && logger_js_1.logger.info(successMessage);
+        if (successMessage)
+            logger_js_1.logger.info(successMessage);
         handleResponse.sendResponse(res, 'OK', result);
     }
     catch (err) {
         const errorMessage = err instanceof Error ? err.message : typeof err === 'string' ? err : 'An unknown error occurred';
-        handleResponse.sendError(res, 'INTERNAL_SERVER_ERROR', errorMessage);
+        handleResponse.sendError(res, 'INTERNAL_SERVER_ERROR', 'The request could not be completed');
         logger_js_1.logger.error(err instanceof Error ? err.stack : errorMessage);
     }
 };

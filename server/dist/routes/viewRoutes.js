@@ -9,6 +9,8 @@ const { canAccessScheduledPreparation } = require('../lib/scheduling/lifecycle')
 const { logger } = require('../lib/logger');
 const validator = require('validator');
 const { ContactFormMessage } = require('../lib/userNotification');
+const mongoose = require('mongoose');
+const { consumeRateLimit } = require('../lib/persistentRateLimit');
 
 const CONTACT_RECIPIENT = 'logger@westvalleyarc.com';
 const CONTACT_LIMITS = Object.freeze({ name: 100, callSign: 20, email: 254, subject: 150, message: 5000 });
@@ -39,7 +41,7 @@ const validateContactForm = body => {
     return { values, errors };
 };
 
-const contactRateLimitAllows = (key, now = Date.now()) => {
+const contactRateLimitAllowsInMemory = (key, now = Date.now()) => {
     if (contactRateLimits.size > 500) {
         for (const [storedKey, entry] of contactRateLimits) {
             if (now - entry.startedAt >= CONTACT_RATE_LIMIT_WINDOW_MS) contactRateLimits.delete(storedKey);
@@ -53,6 +55,15 @@ const contactRateLimitAllows = (key, now = Date.now()) => {
     if (current.count >= CONTACT_RATE_LIMIT_COUNT) return false;
     current.count++;
     return true;
+};
+
+const contactRateLimitAllows = async key => {
+    if (mongoose.connection.readyState !== 1) return contactRateLimitAllowsInMemory(key);
+    const result = await consumeRateLimit({
+        bucket: 'contact', subject: key, limit: CONTACT_RATE_LIMIT_COUNT,
+        windowMs: CONTACT_RATE_LIMIT_WINDOW_MS
+    });
+    return result.allowed;
 };
 
 router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
@@ -158,7 +169,7 @@ router.post('/contact', async (req, res) => {
     }));
     if (Object.keys(errors).length) return renderForm(400);
     const rateLimitKey = `${req.ip || 'unknown'}:${values.email.toLowerCase()}`;
-    if (!contactRateLimitAllows(rateLimitKey)) {
+    if (!(await contactRateLimitAllows(rateLimitKey))) {
         return renderForm(429, 'Too many messages have been submitted. Please try again later.');
     }
     try {

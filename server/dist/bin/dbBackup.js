@@ -1,25 +1,34 @@
 #!/usr/bin/env node
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-const readline = require('readline');
-const { spawn, spawnSync } = require('child_process');
-const yargs = require('yargs');
-const hideBin = require('yargs/helpers').hideBin;
-const YAML = require('yaml');
-const mongoose = require('mongoose');
-const PROFILES_PATH = path.join(os.homedir(), '.hamlive-backup.yaml');
-const DEFAULT_BACKUP_DIR = process.env.HAMLIVE_BACKUP_DIR || path.resolve(process.cwd(), 'backups');
+const node_path_1 = __importDefault(require("node:path"));
+const node_fs_1 = __importDefault(require("node:fs"));
+const node_os_1 = __importDefault(require("node:os"));
+const node_readline_1 = __importDefault(require("node:readline"));
+const node_crypto_1 = __importDefault(require("node:crypto"));
+const node_child_process_1 = require("node:child_process");
+const yargs_1 = __importDefault(require("yargs"));
+const helpers_1 = require("yargs/helpers");
+const yaml_1 = __importDefault(require("yaml"));
+const mongoose_1 = __importDefault(require("mongoose"));
+const optionString = (value) => typeof value === 'string' && value.length > 0 ? value : undefined;
+const optionBoolean = (value) => value === true;
+const errorMessage = (error) => error instanceof Error ? error.message : String(error);
+const PROFILES_PATH = node_path_1.default.join(node_os_1.default.homedir(), '.hamlive-backup.yaml');
+const DEFAULT_BACKUP_DIR = process.env['HAMLIVE_BACKUP_DIR'] || node_path_1.default.resolve(process.cwd(), 'backups');
+const DEFAULT_UPLOAD_DIR = process.env['HAMLIVE_UPLOAD_DIR'];
 function loadProfiles() {
-    if (!fs.existsSync(PROFILES_PATH))
+    if (!node_fs_1.default.existsSync(PROFILES_PATH))
         return {};
     try {
-        return YAML.parse(fs.readFileSync(PROFILES_PATH, 'utf8')) || {};
+        const parsed = yaml_1.default.parse(node_fs_1.default.readFileSync(PROFILES_PATH, 'utf8'));
+        return parsed && typeof parsed === 'object' ? parsed : {};
     }
     catch (err) {
-        console.error(`Failed to parse ${PROFILES_PATH}: ${err.message}`);
+        console.error(`Failed to parse ${PROFILES_PATH}: ${errorMessage(err)}`);
         process.exit(2);
     }
 }
@@ -28,26 +37,28 @@ function resolveUri(opts, role) {
     const profileKey = role === 'uri' ? 'profile' : `${role}-profile`;
     const envKey = role === 'uri' ? 'env' : `${role}-env`;
     const environmentKey = role === 'uri' ? 'environment' : `${role}-environment`;
-    if (opts[uriKey]) {
-        const uri = opts[uriKey];
-        return { uri, dbname: requireUriDbname(uri, `--${uriKey}`), environment: opts[environmentKey] || 'unclassified', origin: `--${uriKey}` };
+    const directUri = optionString(opts[uriKey]);
+    if (directUri) {
+        const environment = optionString(opts[environmentKey]);
+        return { uri: directUri, dbname: requireUriDbname(directUri, `--${uriKey}`), environment: environment || 'unclassified', origin: `--${uriKey}` };
     }
-    if (opts[profileKey]) {
+    const profileName = optionString(opts[profileKey]);
+    if (profileName) {
         const profiles = loadProfiles();
-        const p = profiles[opts[profileKey]];
+        const p = profiles[profileName];
         if (!p?.uri) {
-            console.error(`Profile "${opts[profileKey]}" not found in ${PROFILES_PATH}`);
+            console.error(`Profile "${profileName}" not found in ${PROFILES_PATH}`);
             process.exit(2);
         }
-        const dbname = requireUriDbname(p.uri, `profile:${opts[profileKey]}`);
-        assertDatabaseIdentity(p.dbname, dbname, `profile "${opts[profileKey]}"`);
-        return { uri: p.uri, dbname, environment: p.environment || 'unclassified', origin: `profile:${opts[profileKey]}` };
+        const dbname = requireUriDbname(p.uri, `profile:${profileName}`);
+        assertDatabaseIdentity(p.dbname, dbname, `profile "${profileName}"`);
+        return { uri: p.uri, dbname, environment: p.environment || 'unclassified', origin: `profile:${profileName}` };
     }
-    const env = opts[envKey] || (opts.production ? 'production' : 'development');
+    const env = (optionString(opts[envKey]) || (optionBoolean(opts['production']) ? 'production' : 'development'));
     if (!['production', 'development'].includes(env))
         throw new Error(`Unsupported environment "${env}"`);
     const variable = env === 'production' ? 'MONGODB_PRODUCTION_URI' : 'MONGODB_DEVELOPMENT_URI';
-    const uri = process.env[variable] || (env === 'production' ? process.env.MONGODB_URI : undefined);
+    const uri = process.env[variable] || (env === 'production' ? process.env['MONGODB_URI'] : undefined);
     if (!uri)
         throw new Error(`No ${variable} configured for ${env}; refusing to fall back to another environment`);
     return { uri, dbname: requireUriDbname(uri, variable), environment: env, origin: `environment:${env}` };
@@ -81,7 +92,10 @@ function hostsFromUri(uri) {
     const m = uri.match(/^mongodb(?:\+srv)?:\/\/(?:[^@]*@)?([^/?]+)/);
     if (!m)
         return [];
-    return m[1].split(',').map((h) => h.split(':')[0].toLowerCase()).sort();
+    const hosts = m[1];
+    if (!hosts)
+        return [];
+    return hosts.split(',').map((host) => host.split(':')[0]?.toLowerCase() || '').filter(Boolean).sort();
 }
 function sameCluster(a, b) {
     const ha = hostsFromUri(a), hb = hostsFromUri(b);
@@ -98,7 +112,16 @@ function timestamp() {
     return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
 }
 function ensureDir(dir) {
-    fs.mkdirSync(dir, { recursive: true });
+    node_fs_1.default.mkdirSync(dir, { recursive: true });
+}
+function sha256File(file) {
+    return node_crypto_1.default.createHash('sha256').update(node_fs_1.default.readFileSync(file)).digest('hex');
+}
+function companionFiles(archive) {
+    return { manifest: `${archive}.manifest.json`, uploads: `${archive}.uploads.tar.gz` };
+}
+function safeUploadArchiveEntries(output) {
+    return output.split(/\r?\n/).filter(Boolean).every(entry => !node_path_1.default.posix.isAbsolute(entry) && !entry.split('/').includes('..'));
 }
 function humanSize(bytes) {
     if (bytes < 1024)
@@ -110,7 +133,7 @@ function humanSize(bytes) {
     return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GiB`;
 }
 function which(bin) {
-    const r = spawnSync('which', [bin], { encoding: 'utf8' });
+    const r = (0, node_child_process_1.spawnSync)('which', [bin], { encoding: 'utf8' });
     return r.status === 0 ? r.stdout.trim() : null;
 }
 function requireTools(tools) {
@@ -123,7 +146,7 @@ function requireTools(tools) {
 }
 function runStreaming(cmd, args, opts = {}) {
     return new Promise((resolve, reject) => {
-        const child = spawn(cmd, args, { stdio: 'inherit', ...opts });
+        const child = (0, node_child_process_1.spawn)(cmd, args, { stdio: 'inherit', ...opts });
         child.on('error', reject);
         child.on('exit', (code) => {
             if (code === 0)
@@ -133,10 +156,18 @@ function runStreaming(cmd, args, opts = {}) {
         });
     });
 }
+function runCapture(cmd, args) {
+    const result = (0, node_child_process_1.spawnSync)(cmd, args, { encoding: 'utf8' });
+    if (result.status !== 0)
+        throw new Error(`${cmd} exited with code ${result.status}: ${result.stderr.trim()}`);
+    return result.stdout;
+}
 function runPiped(srcCmd, srcArgs, dstCmd, dstArgs) {
     return new Promise((resolve, reject) => {
-        const src = spawn(srcCmd, srcArgs, { stdio: ['ignore', 'pipe', 'inherit'] });
-        const dst = spawn(dstCmd, dstArgs, { stdio: ['pipe', 'inherit', 'inherit'] });
+        const src = (0, node_child_process_1.spawn)(srcCmd, srcArgs, { stdio: ['ignore', 'pipe', 'inherit'] });
+        const dst = (0, node_child_process_1.spawn)(dstCmd, dstArgs, { stdio: ['pipe', 'inherit', 'inherit'] });
+        if (!src.stdout || !dst.stdin)
+            return reject(new Error('Unable to create backup pipeline'));
         src.stdout.pipe(dst.stdin);
         let srcCode = null, dstCode = null;
         const finish = () => {
@@ -153,7 +184,7 @@ function runPiped(srcCmd, srcArgs, dstCmd, dstArgs) {
         dst.on('exit', (c) => { dstCode = c; finish(); });
     });
 }
-async function confirmTargetWrite(target, opts) {
+function confirmTargetWrite(target, opts) {
     if (target.environment === 'production') {
         if (opts['confirm-production'] === target.dbname)
             return;
@@ -166,7 +197,7 @@ async function confirmTargetWrite(target, opts) {
     throw new Error(`Refusing write to unclassified database "${target.dbname}"; classify it or pass --confirm-target "${target.dbname}"`);
 }
 async function promptYesNo(question) {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const rl = node_readline_1.default.createInterface({ input: process.stdin, output: process.stdout });
     return new Promise((resolve) => {
         rl.question(`${question} [y/N] `, (ans) => {
             rl.close();
@@ -179,75 +210,146 @@ async function cmdBackup(opts) {
     const { uri, dbname, origin } = resolveUri(opts, 'uri');
     const name = dbname || dbnameFromUri(uri) || 'unknown';
     const ts = timestamp();
-    const dir = opts.dir || DEFAULT_BACKUP_DIR;
+    const dir = optionString(opts['dir']) || DEFAULT_BACKUP_DIR;
     ensureDir(dir);
-    const file = path.join(dir, `${name}-${ts}.archive.gz`);
+    const file = node_path_1.default.join(dir, `${name}-${ts}.archive.gz`);
     const partial = `${file}.partial`;
     console.log(`Source     : ${origin} (db=${name})`);
     console.log(`Destination: ${file}`);
     const args = buildBackupArgs(uri, partial, opts);
     try {
         await runStreaming('mongodump', args);
-        fs.chmodSync(partial, 0o600);
-        fs.renameSync(partial, file);
+        node_fs_1.default.chmodSync(partial, 0o600);
+        node_fs_1.default.renameSync(partial, file);
     }
     catch (err) {
-        if (fs.existsSync(partial))
-            fs.unlinkSync(partial);
+        if (node_fs_1.default.existsSync(partial))
+            node_fs_1.default.unlinkSync(partial);
         throw err;
     }
-    const stat = fs.statSync(file);
+    const stat = node_fs_1.default.statSync(file);
     console.log(`Wrote ${humanSize(stat.size)} to ${file}`);
-    if (opts['s3-bucket']) {
+    const uploadDir = optionString(opts['upload-dir']) || DEFAULT_UPLOAD_DIR;
+    const companions = companionFiles(file);
+    if (uploadDir) {
+        requireTools(['tar']);
+        if (!node_fs_1.default.statSync(uploadDir, { throwIfNoEntry: false })?.isDirectory()) {
+            throw new Error(`Configured upload directory does not exist: ${uploadDir}`);
+        }
+        const uploadPartial = `${companions.uploads}.partial`;
+        const manifestPartial = `${companions.manifest}.partial`;
+        try {
+            await runStreaming('tar', ['-czf', uploadPartial, '-C', uploadDir, '.']);
+            node_fs_1.default.chmodSync(uploadPartial, 0o600);
+            node_fs_1.default.renameSync(uploadPartial, companions.uploads);
+            const manifest = {
+                schemaVersion: 1, complete: true, createdAt: new Date().toISOString(), database: name,
+                databaseArchive: node_path_1.default.basename(file), uploadsArchive: node_path_1.default.basename(companions.uploads),
+                sha256: { database: sha256File(file), uploads: sha256File(companions.uploads) }
+            };
+            node_fs_1.default.writeFileSync(manifestPartial, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
+            node_fs_1.default.renameSync(manifestPartial, companions.manifest);
+            console.log(`Wrote coordinated manifest ${companions.manifest}`);
+        }
+        catch (error) {
+            for (const incomplete of [uploadPartial, manifestPartial, companions.uploads, file]) {
+                if (node_fs_1.default.existsSync(incomplete))
+                    node_fs_1.default.unlinkSync(incomplete);
+            }
+            throw error;
+        }
+    }
+    else if (optionBoolean(opts['require-uploads'])) {
+        throw new Error('Upload backup is required but HAMLIVE_UPLOAD_DIR/--upload-dir is not configured');
+    }
+    const s3Bucket = optionString(opts['s3-bucket']);
+    if (s3Bucket) {
         requireTools(['aws']);
-        const s3key = `${opts['s3-prefix'] || 'hamlive'}/${path.basename(file)}`;
-        const s3uri = `s3://${opts['s3-bucket']}/${s3key}`;
+        const s3key = `${optionString(opts['s3-prefix']) || 'hamlive'}/${node_path_1.default.basename(file)}`;
+        const s3uri = `s3://${s3Bucket}/${s3key}`;
         console.log(`Uploading to ${s3uri}`);
         await runStreaming('aws', ['s3', 'cp', file, s3uri, '--sse', 'AES256']);
+        if (node_fs_1.default.existsSync(companions.manifest)) {
+            for (const companion of [companions.uploads, companions.manifest]) {
+                await runStreaming('aws', ['s3', 'cp', companion, `s3://${s3Bucket}/${optionString(opts['s3-prefix']) || 'hamlive'}/${node_path_1.default.basename(companion)}`, '--sse', 'AES256']);
+            }
+        }
     }
     console.log('backup: done');
 }
 async function cmdRestore(opts) {
     requireTools(['mongorestore']);
-    if (!opts.archive) {
+    const archive = optionString(opts['archive']);
+    if (!archive) {
         console.error('--archive <path> is required');
         process.exit(2);
     }
-    if (!fs.existsSync(opts.archive)) {
-        console.error(`Archive not found: ${opts.archive}`);
+    if (!node_fs_1.default.existsSync(archive)) {
+        console.error(`Archive not found: ${archive}`);
         process.exit(2);
     }
     const target = resolveUri(opts, 'uri');
     const { uri, dbname, origin } = target;
     const name = dbname || dbnameFromUri(uri) || 'unknown';
-    console.log(`Archive : ${opts.archive}`);
+    console.log(`Archive : ${archive}`);
     console.log(`Target  : ${origin} (db=${name})`);
-    await confirmTargetWrite(target, opts);
-    if (!opts.yes) {
+    confirmTargetWrite(target, opts);
+    if (!optionBoolean(opts['yes'])) {
         const ok = await promptYesNo(`Restore into ${name}? Existing data may be replaced.`);
         if (!ok) {
             console.log('aborted');
             process.exit(1);
         }
     }
+    let uploadRestore;
+    if (optionBoolean(opts['restore-uploads'])) {
+        const uploadDir = optionString(opts['upload-dir']) || DEFAULT_UPLOAD_DIR;
+        if (!uploadDir)
+            throw new Error('Upload restore requires HAMLIVE_UPLOAD_DIR or --upload-dir');
+        const companions = companionFiles(archive);
+        if (!node_fs_1.default.existsSync(companions.manifest) || !node_fs_1.default.existsSync(companions.uploads)) {
+            throw new Error('Coordinated upload archive or manifest is missing');
+        }
+        const manifest = JSON.parse(node_fs_1.default.readFileSync(companions.manifest, 'utf8'));
+        if (!manifest.complete || manifest.databaseArchive !== node_path_1.default.basename(archive) ||
+            manifest.uploadsArchive !== node_path_1.default.basename(companions.uploads) ||
+            manifest.sha256?.database !== sha256File(archive) || manifest.sha256?.uploads !== sha256File(companions.uploads)) {
+            throw new Error('Backup manifest validation failed');
+        }
+        ensureDir(uploadDir);
+        if (node_fs_1.default.readdirSync(uploadDir).length && !optionBoolean(opts['allow-non-empty-uploads'])) {
+            throw new Error('Upload restore target is not empty; refusing to merge without --allow-non-empty-uploads');
+        }
+        const entries = runCapture('tar', ['-tzf', companions.uploads]);
+        if (!safeUploadArchiveEntries(entries))
+            throw new Error('Upload archive contains an unsafe path');
+        uploadRestore = { dir: uploadDir, archive: companions.uploads };
+    }
     const remapArgs = [];
     let willRemap = false;
-    if (opts['ns-from'] && opts['ns-to']) {
-        remapArgs.push(`--nsFrom=${opts['ns-from']}`, `--nsTo=${opts['ns-to']}`);
+    const nsFrom = optionString(opts['ns-from']);
+    const nsTo = optionString(opts['ns-to']);
+    const archiveDbname = optionString(opts['archive-dbname']);
+    if (nsFrom && nsTo) {
+        remapArgs.push(`--nsFrom=${nsFrom}`, `--nsTo=${nsTo}`);
         willRemap = true;
     }
-    else if (opts['archive-dbname'] && opts['archive-dbname'] !== name) {
-        const from = `${opts['archive-dbname']}.*`;
+    else if (archiveDbname && archiveDbname !== name) {
+        const from = `${archiveDbname}.*`;
         const to = `${name}.*`;
         console.log(`Namespace remap: ${from} → ${to}`);
         remapArgs.push(`--nsFrom=${from}`, `--nsTo=${to}`);
         willRemap = true;
     }
-    const args = buildRestoreArgs(uri, opts.archive, remapArgs, opts);
-    if (willRemap && opts['oplog-replay']) {
+    const args = buildRestoreArgs(uri, archive, remapArgs, opts);
+    if (willRemap && optionBoolean(opts['oplog-replay'])) {
         console.log('Skipping --oplogReplay because namespaces differ.');
     }
     await runStreaming('mongorestore', args);
+    if (uploadRestore) {
+        await runStreaming('tar', ['-xzf', uploadRestore.archive, '-C', uploadRestore.dir, '--no-same-owner', '--no-same-permissions']);
+        console.log(`Restored coordinated uploads into ${uploadRestore.dir}`);
+    }
     console.log('restore: done');
 }
 async function cmdMigrate(opts) {
@@ -258,12 +360,13 @@ async function cmdMigrate(opts) {
     const tgtName = tgt.dbname || dbnameFromUri(tgt.uri) || 'unknown';
     console.log(`Source : ${src.origin} (db=${srcName})`);
     console.log(`Target : ${tgt.origin} (db=${tgtName})`);
-    console.log(`Mode   : ${opts.mode}`);
+    const mode = optionString(opts['mode']) || 'dump-restore';
+    console.log(`Mode   : ${mode}`);
     if (sameCluster(src.uri, tgt.uri)) {
         console.log('Note   : source and target appear to be on the same cluster (same hosts).');
     }
-    await confirmTargetWrite(tgt, opts);
-    if (!opts['allow-non-empty']) {
+    confirmTargetWrite(tgt, opts);
+    if (!optionBoolean(opts['allow-non-empty'])) {
         const counts = await collectionCounts(tgt.uri);
         const nonEmpty = Object.entries(counts).filter(([, n]) => n > 0);
         if (nonEmpty.length) {
@@ -272,19 +375,20 @@ async function cmdMigrate(opts) {
             process.exit(3);
         }
     }
-    if (!opts.yes) {
+    if (!optionBoolean(opts['yes'])) {
         const ok = await promptYesNo(`Migrate ${srcName} → ${tgtName}?`);
         if (!ok) {
             console.log('aborted');
             process.exit(1);
         }
     }
-    const dumpUri = withReadPref(src.uri, opts['read-preference'] || 'primaryPreferred');
+    const readPreference = optionString(opts['read-preference']) || 'primaryPreferred';
+    const dumpUri = withReadPref(src.uri, readPreference);
     const remap = srcName !== tgtName ? [`--nsFrom=${srcName}.*`, `--nsTo=${tgtName}.*`] : [];
     if (remap.length)
         console.log(`Namespace remap: ${srcName}.* → ${tgtName}.*`);
-    const useOplog = Boolean(opts.oplog) && !dbnameFromUri(src.uri) && remap.length === 0;
-    if (opts.oplog && !useOplog) {
+    const useOplog = optionBoolean(opts['oplog']) && !dbnameFromUri(src.uri) && remap.length === 0;
+    if (optionBoolean(opts['oplog']) && !useOplog) {
         const reasons = [];
         if (dbnameFromUri(src.uri))
             reasons.push('source URI scopes to a single DB');
@@ -293,33 +397,34 @@ async function cmdMigrate(opts) {
         console.log(`Skipping --oplog (${reasons.join('; ')}).`);
     }
     const restoreUri = remap.length ? stripDbnameFromUri(tgt.uri) : tgt.uri;
-    if (opts.mode === 'pipe') {
+    if (mode === 'pipe') {
         const { dumpArgs, restoreArgs } = buildMigrateArgs(dumpUri, restoreUri, undefined, remap, opts);
         await runPiped('mongodump', dumpArgs, 'mongorestore', restoreArgs);
     }
     else {
-        const dir = opts.dir || DEFAULT_BACKUP_DIR;
+        const dir = optionString(opts['dir']) || DEFAULT_BACKUP_DIR;
         ensureDir(dir);
-        const file = path.join(dir, `${srcName}-migrate-${timestamp()}.archive.gz`);
+        const file = node_path_1.default.join(dir, `${srcName}-migrate-${timestamp()}.archive.gz`);
         const { dumpArgs, restoreArgs } = buildMigrateArgs(dumpUri, restoreUri, file, remap, opts);
         await runStreaming('mongodump', dumpArgs);
-        console.log(`Dump  : ${file} (${humanSize(fs.statSync(file).size)})`);
+        console.log(`Dump  : ${file} (${humanSize(node_fs_1.default.statSync(file).size)})`);
         await runStreaming('mongorestore', restoreArgs);
     }
-    if (opts.verify) {
+    if (opts['verify'] !== false) {
         console.log('--- verifying ---');
-        await verifyParity(src.uri, tgt.uri, opts['read-preference'] || 'primaryPreferred');
+        await verifyParity(src.uri, tgt.uri, readPreference);
     }
     console.log('migrate: done');
 }
+const DISPOSABLE_SECURITY_COLLECTIONS = new Set(['sessions', 'magiclogintokens', 'ratelimits']);
 async function collectionCounts(uri) {
-    mongoose.set('strictQuery', true);
-    const conn = await mongoose.createConnection(uri, { maxPoolSize: 2 }).asPromise();
+    mongoose_1.default.set('strictQuery', true);
+    const conn = await mongoose_1.default.createConnection(uri, { maxPoolSize: 2 }).asPromise();
     try {
         const collections = await conn.db.listCollections().toArray();
         const counts = {};
         for (const c of collections) {
-            if (c.type !== 'collection')
+            if (c.type !== 'collection' || DISPOSABLE_SECURITY_COLLECTIONS.has(c.name))
                 continue;
             counts[c.name] = await conn.db.collection(c.name).countDocuments({});
         }
@@ -330,15 +435,18 @@ async function collectionCounts(uri) {
     }
 }
 async function collectionIndexes(uri) {
-    const conn = await mongoose.createConnection(uri, { maxPoolSize: 2 }).asPromise();
+    const conn = await mongoose_1.default.createConnection(uri, { maxPoolSize: 2 }).asPromise();
     try {
         const collections = await conn.db.listCollections().toArray();
         const result = {};
         for (const c of collections) {
-            if (c.type !== 'collection')
+            if (c.type !== 'collection' || DISPOSABLE_SECURITY_COLLECTIONS.has(c.name))
                 continue;
             const idx = await conn.db.collection(c.name).indexes();
-            result[c.name] = idx.map((i) => i.name).sort();
+            result[c.name] = idx.flatMap((index) => {
+                const name = index['name'];
+                return typeof name === 'string' ? [name] : [];
+            }).sort();
         }
         return result;
     }
@@ -380,18 +488,18 @@ async function cmdVerify(opts) {
     const tgt = resolveUri(opts, 'target');
     console.log(`Source : ${src.origin}`);
     console.log(`Target : ${tgt.origin}`);
-    await verifyParity(src.uri, tgt.uri, opts['read-preference'] || 'primaryPreferred');
+    await verifyParity(src.uri, tgt.uri, optionString(opts['read-preference']) || 'primaryPreferred');
 }
 async function cmdList(opts) {
-    const dir = opts.dir || DEFAULT_BACKUP_DIR;
-    if (fs.existsSync(dir)) {
-        const files = fs.readdirSync(dir)
+    const dir = optionString(opts['dir']) || DEFAULT_BACKUP_DIR;
+    if (node_fs_1.default.existsSync(dir)) {
+        const files = node_fs_1.default.readdirSync(dir)
             .filter((f) => f.endsWith('.archive.gz'))
             .map((f) => {
-            const s = fs.statSync(path.join(dir, f));
+            const s = node_fs_1.default.statSync(node_path_1.default.join(dir, f));
             return { name: f, size: s.size, mtime: s.mtime };
         })
-            .sort((a, b) => b.mtime - a.mtime);
+            .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
         console.log(`Local (${dir}):`);
         if (!files.length)
             console.log('  (none)');
@@ -402,28 +510,29 @@ async function cmdList(opts) {
     else {
         console.log(`Local (${dir}): directory does not exist`);
     }
-    if (opts['s3-bucket']) {
+    const s3Bucket = optionString(opts['s3-bucket']);
+    if (s3Bucket) {
         requireTools(['aws']);
-        const prefix = opts['s3-prefix'] || 'hamlive';
-        console.log(`\nS3 (s3://${opts['s3-bucket']}/${prefix}/):`);
-        await runStreaming('aws', ['s3', 'ls', `s3://${opts['s3-bucket']}/${prefix}/`, '--human-readable']);
+        const prefix = optionString(opts['s3-prefix']) || 'hamlive';
+        console.log(`\nS3 (s3://${s3Bucket}/${prefix}/):`);
+        await runStreaming('aws', ['s3', 'ls', `s3://${s3Bucket}/${prefix}/`, '--human-readable']);
     }
 }
 async function cmdPrune(opts) {
-    const dir = opts.dir || DEFAULT_BACKUP_DIR;
+    const dir = optionString(opts['dir']) || DEFAULT_BACKUP_DIR;
     const keepDays = Number(opts['keep-days']);
     if (!Number.isFinite(keepDays) || keepDays < 1) {
         console.error('--keep-days must be a positive integer');
         process.exit(2);
     }
-    if (!fs.existsSync(dir)) {
+    if (!node_fs_1.default.existsSync(dir)) {
         console.log(`No backup dir at ${dir}; nothing to prune.`);
         return;
     }
     const cutoff = Date.now() - keepDays * 86400 * 1000;
-    const victims = fs.readdirSync(dir)
+    const victims = node_fs_1.default.readdirSync(dir)
         .filter((f) => f.endsWith('.archive.gz'))
-        .map((f) => ({ name: f, full: path.join(dir, f), mtime: fs.statSync(path.join(dir, f)).mtime }))
+        .map((f) => ({ name: f, full: node_path_1.default.join(dir, f), mtime: node_fs_1.default.statSync(node_path_1.default.join(dir, f)).mtime }))
         .filter((f) => f.mtime.getTime() < cutoff);
     if (!victims.length) {
         console.log('Nothing to prune.');
@@ -432,19 +541,23 @@ async function cmdPrune(opts) {
     console.log(`Will delete ${victims.length} file(s) older than ${keepDays}d:`);
     for (const v of victims)
         console.log(`  ${v.mtime.toISOString()}  ${v.name}`);
-    if (opts['dry-run']) {
+    if (optionBoolean(opts['dry-run'])) {
         console.log('(dry-run; nothing deleted)');
         return;
     }
-    if (!opts.yes) {
+    if (!optionBoolean(opts['yes'])) {
         const ok = await promptYesNo('Proceed?');
         if (!ok) {
             console.log('aborted');
             return;
         }
     }
-    for (const v of victims)
-        fs.unlinkSync(v.full);
+    for (const v of victims) {
+        for (const file of [v.full, companionFiles(v.full).uploads, companionFiles(v.full).manifest]) {
+            if (node_fs_1.default.existsSync(file))
+                node_fs_1.default.unlinkSync(file);
+        }
+    }
     console.log(`Deleted ${victims.length} file(s).`);
 }
 const commonConnectionOpts = {
@@ -467,7 +580,7 @@ const sourceTargetOpts = {
     'read-preference': { choices: ['primaryPreferred', 'secondary'], default: 'primaryPreferred' }
 };
 function configureCli(args) {
-    return yargs(args)
+    void (0, yargs_1.default)(args)
         .scriptName('dbBackup')
         .usage('$0 <command> [options]')
         .command('backup', 'dump a database to a gzipped archive', (y) => y.options({
@@ -475,6 +588,8 @@ function configureCli(args) {
         'collection': { type: 'array', describe: 'limit dump to specific collection(s)' },
         'no-oplog': { type: 'boolean', default: false, describe: 'skip --oplog (use for non-replica-set)' },
         'read-preference': { choices: ['primaryPreferred', 'secondary'], default: 'primaryPreferred' },
+        'upload-dir': { type: 'string', describe: 'upload directory to include in the coordinated backup' },
+        'require-uploads': { type: 'boolean', default: false, describe: 'fail if upload backup is not configured' },
         's3-bucket': { type: 'string' },
         's3-prefix': { type: 'string', default: 'hamlive' }
     }), (a) => run(cmdBackup, a))
@@ -484,6 +599,9 @@ function configureCli(args) {
         'archive-dbname': { type: 'string', describe: 'dbname inside the archive (auto-remaps to target if different); e.g. hamlive-prod' },
         'drop': { type: 'boolean', default: false, describe: 'drop collections before restore' },
         'oplog-replay': { type: 'boolean', default: false },
+        'restore-uploads': { type: 'boolean', default: false, describe: 'restore matching uploads after manifest verification' },
+        'upload-dir': { type: 'string', describe: 'empty upload target directory' },
+        'allow-non-empty-uploads': { type: 'boolean', default: false, describe: 'explicitly permit merging upload files' },
         'ns-from': { type: 'string', describe: 'remap namespace from (e.g. hamlive-prod.*); overrides --archive-dbname' },
         'ns-to': { type: 'string', describe: 'remap namespace to (e.g. hamlive-staging.*)' },
         'confirm-production': { type: 'string', describe: 'required dbname when target is prod' },
@@ -522,36 +640,44 @@ function configureCli(args) {
         .parse();
 }
 if (require.main === module)
-    configureCli(hideBin(process.argv));
+    configureCli((0, helpers_1.hideBin)(process.argv));
 function buildBackupArgs(uri, archive, opts = {}) {
-    const args = [`--uri=${withReadPref(uri, opts['read-preference'] || 'primaryPreferred')}`, `--archive=${archive}`, '--gzip'];
-    if (!opts['no-oplog'] && !dbnameFromUri(uri))
+    const args = [`--uri=${withReadPref(uri, optionString(opts['read-preference']) || 'primaryPreferred')}`, `--archive=${archive}`, '--gzip'];
+    for (const collection of DISPOSABLE_SECURITY_COLLECTIONS) {
+        args.push(`--excludeCollection=${collection}`);
+    }
+    if (!optionBoolean(opts['no-oplog']) && !dbnameFromUri(uri))
         args.push('--oplog');
-    if (opts.collection) {
-        for (const collection of [].concat(opts.collection))
-            args.push('--collection', collection);
+    const collections = opts['collection'];
+    if (collections) {
+        const values = Array.isArray(collections) ? collections : [collections];
+        for (const collection of values) {
+            const name = optionString(collection);
+            if (name)
+                args.push('--collection', name);
+        }
     }
     return args;
 }
 function buildRestoreArgs(uri, archive, remapArgs = [], opts = {}) {
     const restoreUri = remapArgs.length ? stripDbnameFromUri(uri) : uri;
     const args = [`--uri=${restoreUri}`, `--archive=${archive}`, '--gzip', ...remapArgs];
-    if (opts.drop)
+    if (optionBoolean(opts['drop']))
         args.push('--drop');
-    if (opts['oplog-replay'] && remapArgs.length === 0)
+    if (optionBoolean(opts['oplog-replay']) && remapArgs.length === 0)
         args.push('--oplogReplay');
     return args;
 }
 function buildMigrateArgs(sourceUri, targetUri, archive, remapArgs = [], opts = {}) {
     const archiveArg = archive ? `--archive=${archive}` : '--archive';
-    const useOplog = Boolean(opts.oplog) && !dbnameFromUri(sourceUri) && remapArgs.length === 0;
+    const useOplog = optionBoolean(opts['oplog']) && !dbnameFromUri(sourceUri) && remapArgs.length === 0;
     const dumpArgs = [`--uri=${sourceUri}`, archiveArg, '--gzip'];
     const restoreArgs = [`--uri=${targetUri}`, archiveArg, '--gzip', ...remapArgs];
     if (useOplog)
         dumpArgs.push('--oplog');
-    if (opts.drop)
+    if (optionBoolean(opts['drop']))
         restoreArgs.push('--drop');
-    if (useOplog && opts['oplog-replay'])
+    if (useOplog && optionBoolean(opts['oplog-replay']))
         restoreArgs.push('--oplogReplay');
     return { dumpArgs, restoreArgs, useOplog };
 }
@@ -559,7 +685,7 @@ function run(fn, argv) {
     Promise.resolve(fn(argv))
         .then(() => process.exit(process.exitCode || 0))
         .catch((err) => {
-        console.error(err.stack || err.message || err);
+        console.error(err instanceof Error ? err.stack || err.message : String(err));
         process.exit(1);
     });
 }
@@ -573,6 +699,9 @@ module.exports = {
     dbnameFromUri,
     requireUriDbname,
     resolveUri,
+    companionFiles,
+    safeUploadArchiveEntries,
+    sha256File,
     verificationSourceUri: (uri, readPreference = 'primaryPreferred') => withReadPref(uri, readPreference),
     withReadPref
 };

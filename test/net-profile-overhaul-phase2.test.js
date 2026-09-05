@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
 const { createTestDatabase } = require('./helpers/testDatabase');
 
 test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
-    const testDatabase = await createTestDatabase({ databaseName: 'net_profile_overhaul_phase2_test' });
+    const testDatabase = await createTestDatabase({ databaseName: 'net_profile_overhaul_phase2_test', replicaSet: true });
     await mongoose.connect(testDatabase.uri);
     const NetProfile = require('../server/dist/models/netProfile').getNetProfile();
     const UserProfile = require('../server/dist/models/userProfile').getUserProfile();

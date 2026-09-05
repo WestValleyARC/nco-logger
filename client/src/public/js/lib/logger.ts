@@ -27,9 +27,14 @@ const logLevelStyles: { [key in LogLevel]: string } = {
 };
 
 // Define a function to format the arguments for logging. If an argument is an object, it is left as is. Otherwise, it is converted to a string.
-const formatArgs = (args: unknown[]): unknown[] => {
-    return args.map(arg => (typeof arg === 'object' ? arg : String(arg)));
+const primitiveString = (arg: unknown): string => {
+    if (arg === null) return 'null';
+    if (arg === undefined) return 'undefined';
+    if (typeof arg === 'string') return arg;
+    if (typeof arg === 'number' || typeof arg === 'boolean' || typeof arg === 'bigint' || typeof arg === 'symbol') return String(arg);
+    return JSON.stringify(arg, null, 2) ?? '[unserializable value]';
 };
+const formatArgs = (args: unknown[]): unknown[] => args.map(arg => typeof arg === 'object' ? arg : primitiveString(arg));
 
 // Define a function to determine if a log should be made based on the server's log level. If the server's log level is 'debug', all logs are allowed.
 // If the server's log level is 'info', only 'info', 'warn', and 'error' logs are allowed.
@@ -49,7 +54,7 @@ const formatLogMessage = (args: unknown[], filename: string, level: LogLevel) =>
             if (arg instanceof Error) {
                 return `${arg.name}: ${arg.message}\n${arg.stack}`;
             }
-            return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg;
+            return primitiveString(arg);
         })
         .join(' ');
 

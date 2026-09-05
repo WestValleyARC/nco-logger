@@ -36,7 +36,7 @@ Ham.Live is a Node.js + Express web application with a no-bundler, reactive clie
 
 - **Backend**: Node.js with Express.js
 - **Database**: MongoDB with Mongoose ODM
-- **Authentication**: magic-link email (primary) + optional Google OAuth, signed `cookie-session` cookies
+- **Authentication**: one-time magic-link email (primary) + optional Google OAuth, with Mongo-backed opaque sessions
 - **Real-time**: Server-Sent Events with polling fallback
 - **Frontend**: TypeScript ES modules, Custom Elements, and reactive stores (no bundler)
 

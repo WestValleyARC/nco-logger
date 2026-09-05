@@ -8,6 +8,7 @@ const NetProfile = require('../models/netProfile').getNetProfile(null);
 const LiveNet = require('../models/liveNet').getLiveNet(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const { canAccessScheduledPreparation } = require('../lib/scheduling/lifecycle');
+const { logger } = require('../lib/logger');
 realtimeClients.init(genLiveNetDetails);
 router.use('/:id', authCheck(REQ_CALLSIGN));
 router.use('/:id', async (req, res, next) => {
@@ -19,7 +20,8 @@ router.use('/:id', async (req, res, next) => {
         if (canAccessScheduledPreparation({ netProfile, liveNet, occurrence, user: req.user })) return next();
         return res.status(403).json({ endpointVersion: '1.0', errorMessage: 'Scheduled net is not on the air' });
     } catch (error) {
-        return res.status(500).json({ endpointVersion: '1.0', errorMessage: error.message });
+        logger.error(`Live-net SSE authorization failed: ${error.message}`);
+        return res.status(500).json({ endpointVersion: '1.0', errorMessage: 'Live-net stream unavailable' });
     }
 });
 router.use('/:id', realtimeClients.middleware());
