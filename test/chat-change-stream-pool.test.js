@@ -5,7 +5,10 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const path = require('node:path');
+const mongoose = require('mongoose');
+const { BSON, ObjectId } = require('mongodb');
 const { openChatChangeStream } = require('../server/dist/lib/localChat');
+const { toChangeStreamObjectId } = require('../server/dist/lib/changeStreamClient');
 
 const root = path.resolve(__dirname, '..');
 
@@ -43,6 +46,30 @@ const open = (db, events = []) => openChatChangeStream({
     liveNet: 'live-net-id',
     currentUser: 'user-id',
     ...callbacks(events)
+});
+
+test('Mongoose ObjectIds are converted at the MongoDB-driver change-stream boundary', () => {
+    const mongooseId = new mongoose.Types.ObjectId();
+    const changeStreamId = toChangeStreamObjectId(mongooseId);
+    const db = new FakeDb();
+
+    assert.throws(() => BSON.serialize({ id: mongooseId }), /Unsupported BSON version/);
+    assert.doesNotThrow(() => BSON.serialize({ id: changeStreamId }));
+    assert.ok(changeStreamId instanceof ObjectId);
+    assert.equal(changeStreamId.toHexString(), mongooseId.toHexString());
+    assert.notEqual(changeStreamId.constructor, mongooseId.constructor);
+
+    openChatChangeStream({
+        db,
+        netProfile: changeStreamId,
+        liveNet: toChangeStreamObjectId(new mongoose.Types.ObjectId()),
+        currentUser: toChangeStreamObjectId(new mongoose.Types.ObjectId()),
+        ...callbacks([])
+    });
+    const filterValues = db.calls[0].pipeline[0].$match.$or.map(filter => Object.values(filter)[1]);
+    assert.equal(filterValues.length, 4);
+    assert.ok(filterValues.every(value => value instanceof ObjectId));
+    assert.doesNotThrow(() => BSON.serialize({ pipeline: db.calls[0].pipeline }));
 });
 
 test('multiple chat SSE clients share one database and allocate one filtered stream each', () => {

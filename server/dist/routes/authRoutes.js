@@ -122,8 +122,15 @@ if (googleAuthEnabled) {
             return done(error);
         }
     }));
-    router.get('/google/redirect', passport.authenticate('google', { failureRedirect: '/views/login' }), (req, res) => {
-        res.redirect(req.user?.callSign ? '/views/dashboard' : '/views/myaccount');
+    router.get('/google/redirect', (req, res, next) => {
+        passport.authenticate('google', (error, user) => {
+            if (error) return next(error);
+            if (!user) return res.redirect('/views/login');
+            return req.logIn(user, loginError => {
+                if (loginError) return next(loginError);
+                return res.redirect(user.callSign ? '/views/dashboard' : '/views/myaccount');
+            });
+        })(req, res, next);
     });
     router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 } else {

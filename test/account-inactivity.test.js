@@ -5,6 +5,7 @@ const FlagAccountsTask = require('../server/dist/lib/backgroundTasks/flagAccount
 const { processInactiveAccount } = FlagAccountsTask;
 const { clearInactivityDeletionOnLogin } = require('../server/dist/lib/accountInactivity');
 const { flagAccountForDeletion } = require('../server/dist/lib/sharedNetOps');
+const { userProfileSchema } = require('../server/dist/models/userProfile');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-09-01T12:00:00.000Z');
@@ -22,6 +23,12 @@ const account = overrides => ({
     deletionReason: null,
     async save() { this.saved = true; return this; },
     ...overrides
+});
+
+test('cleared inactivity deletion reason remains valid when the user is saved later', () => {
+    const deletionReason = userProfileSchema.path('deletionReason');
+    assert.equal(deletionReason.enumValues.includes(null), true);
+    assert.equal(deletionReason.doValidateSync(null, {}), undefined);
 });
 
 test('account inactive for less than three years is untouched', async () => {

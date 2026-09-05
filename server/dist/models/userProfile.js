@@ -77,7 +77,7 @@ const userProfileSchema = new Schema(
         inactivityWarningSentAt: { type: Date, default: null },
         deletionReason: {
             type: String,
-            enum: ['manual', 'inactivity', 'missing-consent'],
+            enum: ['manual', 'inactivity', 'missing-consent', null],
             default: null
         },
         email: {

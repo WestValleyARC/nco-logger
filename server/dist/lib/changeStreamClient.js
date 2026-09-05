@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.closeChangeStreamClient = exports.getChangeStreamDb = void 0;
+exports.closeChangeStreamClient = exports.getChangeStreamDb = exports.toChangeStreamObjectId = void 0;
 const mongodb_1 = require("mongodb");
 const configLib_js_1 = require("#@server/lib/configLib.js");
 const resolvedDbName = (() => {
@@ -14,6 +14,8 @@ const resolvedDbName = (() => {
 })();
 let changeStreamClient = null;
 let databasePromise = null;
+const toChangeStreamObjectId = (value) => new mongodb_1.ObjectId(value.toString());
+exports.toChangeStreamObjectId = toChangeStreamObjectId;
 const getChangeStreamClient = () => {
     changeStreamClient ??= new mongodb_1.MongoClient(configLib_js_1.conf.dburi, {
         maxPoolSize: configLib_js_1.conf.change_stream_poolsize
