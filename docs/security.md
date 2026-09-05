@@ -16,8 +16,11 @@ This document covers security considerations for Ham.Live REST endpoints, authen
 
 ### Transport security
 
-- HTTPS/TLS is enforced in production via the optional `FORCE_HTTPS=true` environment variable, which adds an `x-forwarded-proto` redirect middleware. This is appropriate when deploying behind a TLS-terminating reverse proxy or platform (Render, Fly, Railway, nginx, Caddy, etc.). Leave it off if TLS is terminated upstream before the Node process.
-- No `helmet` middleware is currently installed. Operators should evaluate adding security headers (CSP, HSTS, etc.) at the reverse proxy or application layer.
+- Production requires a canonical HTTPS `BASE_URL`. `FORCE_HTTPS` is supported only with explicit
+  `TRUST_PROXY`, and redirects use the canonical origin rather than forwarded Host data.
+- Helmet applies CSP, frame restrictions, `nosniff`, Referrer-Policy, Permissions-Policy, and
+  production HSTS. The CSP temporarily permits existing inline script/style markup; removing that
+  compatibility allowance remains incremental hardening work.
 
 ### Endpoint endorsements and token generation
 
@@ -35,13 +38,17 @@ This document covers security considerations for Ham.Live REST endpoints, authen
 
 Secrets are overlaid onto the config at startup by `configLib.js` reading from environment variables. See [Runtime Configuration](runtime-config.md) and `INSTALL.md` for the full list.
 
-### Magic-link JWT security
+### Magic-link security
 
-Magic-link sign-in tokens are JWTs signed with `MAGIC_LINK_SECRET`. This key must be a strong random value (32+ bytes). Without it the application will not be able to generate or validate sign-in links. The JWT TTL is 30 days.
+Magic links contain a high-entropy random token with a 15-minute lifetime. MongoDB stores only an
+HMAC digest, consumption is atomic, replay fails, and issuing a replacement invalidates the prior
+token for that email identity.
 
 ### Session cookie security
 
-Sessions use `cookie-session` with a single signing key (`COOKIE_SESSION_KEY`). The cookie lifetime is 3.5 days and is renewed on activity. There is no key rotation mechanism; rotating the key invalidates all active sessions. See [Authentication](authentication.md) for details.
+Sessions use an opaque `hamlive.sid` cookie and a MongoDB-backed `express-session` store. They have
+a rolling 12-hour bound, rotate after authentication, can be revoked/destroyed, and use explicit
+HttpOnly/SameSite/path settings plus Secure in production.
 
 ## Error Handling and Logging
 
@@ -87,8 +94,8 @@ Sessions use `cookie-session` with a single signing key (`COOKIE_SESSION_KEY`). 
 
 ### Session storage
 
-- Uses `cookie-session` for session management (stateless encrypted cookies — no server-side session store).
-- Session cookie is renewed every 10 minutes of activity via `cookieSessionKeepAlive()` middleware.
+- Uses `express-session` with `connect-mongo` for revocable server-side state and TTL cleanup.
+- Locked accounts are rechecked during every Passport deserialization.
 
 ### Client state & reconciliation
 

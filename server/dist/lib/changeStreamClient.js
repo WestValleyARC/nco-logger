@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getChangeStreamDb = void 0;
+exports.closeChangeStreamClient = exports.getChangeStreamDb = void 0;
 const mongodb_1 = require("mongodb");
 const configLib_js_1 = require("#@server/lib/configLib.js");
 const resolvedDbName = (() => {
@@ -32,3 +32,11 @@ const getChangeStreamDb = () => {
     return databasePromise;
 };
 exports.getChangeStreamDb = getChangeStreamDb;
+const closeChangeStreamClient = async () => {
+    const client = changeStreamClient;
+    databasePromise = null;
+    changeStreamClient = null;
+    if (client)
+        await client.close();
+};
+exports.closeChangeStreamClient = closeChangeStreamClient;

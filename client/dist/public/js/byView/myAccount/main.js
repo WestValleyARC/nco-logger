@@ -173,7 +173,8 @@ userProfileApi.index().then(userProfile => {
                         userProfileFormState.mesg('error', 'deleted');
 
                         setTimeout(() => {
-                            window.location.replace('/logout');
+                            fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' })
+                                .finally(() => window.location.replace('/views/dashboard'));
                         }, 3500);
                     })
                     .catch(error => {

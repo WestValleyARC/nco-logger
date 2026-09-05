@@ -2,7 +2,7 @@
 
 import SSE from 'express-sse-ts';
 import { type NextFunction, type Request, type Response, type RequestHandler } from 'express';
-import { ChangeStreamDocument, Collection, ObjectId } from 'mongodb';
+import { ChangeStream, ChangeStreamDocument, Collection, ObjectId } from 'mongodb';
 import { logger } from '#@server/lib/logger.js';
 import { getChangeStreamDb } from '#@server/lib/changeStreamClient.js';
 import { FlexOptions } from '#@client/types/commonTypes.js';
@@ -30,6 +30,9 @@ export class RealtimeClients {
     private middlewareMap = new Map<string, SSEItems>();
     private pushStates = new Map<string, PushState>();
     private dataGenerator: null | typeof genLiveNetDetails = null;
+    private changeStream: ChangeStream | null = null;
+    private pushTimer: NodeJS.Timeout | null = null;
+    private stopped = false;
 
     async init(dataGenerator: typeof genLiveNetDetails) {
         this.dataGenerator = dataGenerator;
@@ -38,15 +41,19 @@ export class RealtimeClients {
             const collection = (await getChangeStreamDb()).collection('stationinteractions');
 
             let changeStream = this.createChangeStream(collection);
+            this.changeStream = changeStream;
 
             let retryDelay = 1000; // Start with a delay of 1 second
 
             changeStream.on('error', error => {
                 logger.error('RTC: Error in MongoDB change stream: ' + error.toString());
                 // Wait for a while before trying to reconnect
+                if (this.stopped) return;
                 setTimeout(() => {
+                    if (this.stopped) return;
                     // Then try to reconnect the change stream
                     changeStream = this.createChangeStream(collection);
+                    this.changeStream = changeStream;
                     // Double the delay for the next retry
                     retryDelay *= 2;
                 }, retryDelay);
@@ -89,10 +96,11 @@ export class RealtimeClients {
                         } = sseItem;
 
                         pushIntervalMs = Math.max(awayInMs * (1 - AWAY_BUFFER_PCT / 100), PUSH_INTERVAL_FLOOR_MS); // 80% of awayInMs or 10s, whichever is greater
-                        pushIntervalMs > SSE_IDLE_TIMEOUT_MS &&
+                        if (pushIntervalMs > SSE_IDLE_TIMEOUT_MS) {
                             logger.error(
                                 `pushIntervalMs (${pushIntervalMs}) exceeds the SSE idle timeout (${SSE_IDLE_TIMEOUT_MS}ms), risking proxy/load-balancer disconnects.`
                             );
+                        }
 
                         if (lastPush === null || Date.now() - lastPush + LOOP_EXEC_TIME_MS > pushIntervalMs) {
                             logger.info(
@@ -108,7 +116,7 @@ export class RealtimeClients {
                     });
                 }
 
-                setTimeout(schedulePush, pushIntervalMs);
+                if (!this.stopped) this.pushTimer = setTimeout(schedulePush, pushIntervalMs);
             };
 
             schedulePush();
@@ -264,6 +272,15 @@ export class RealtimeClients {
         }
 
         this.middlewareMap.delete(npid);
+    }
+
+    async shutdown(): Promise<void> {
+        this.stopped = true;
+        if (this.pushTimer) clearTimeout(this.pushTimer);
+        this.pushTimer = null;
+        for (const npid of [...this.middlewareMap.keys()]) this.close(npid);
+        if (this.changeStream) await this.changeStream.close();
+        this.changeStream = null;
     }
     middleware() {
         return (req: Request, res: Response, next: NextFunction) => {

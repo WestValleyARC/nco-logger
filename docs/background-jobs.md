@@ -85,7 +85,7 @@ Flags stale or non-consenting accounts for deletion.
 Performs hard deletion of accounts previously flagged by `flagAccounts`.
 
 - Reads the `PendingAccountDelete` task queue
-- Verifies `flaggedForDeletion` is still set (users can un-flag themselves via `GET /api/util/undeleteme`)
+- Verifies `flaggedForDeletion` is still set (users can un-flag themselves via `POST /api/util/undeleteme`)
 - Calls `sharedNetOps.delNet()` for each net the user owns, then deletes the account
 
 ### `processUnfollowJobs` — `processUnfollowJobs.js`

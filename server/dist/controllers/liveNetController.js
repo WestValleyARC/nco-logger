@@ -217,7 +217,7 @@ const liveNetList = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             endpointVersion: '1.0',
-            errorMessage: err.message
+            errorMessage: 'Unable to update the live net'
         });
         logger.error(err.stack);
     }
@@ -310,7 +310,7 @@ const liveNetCreatePost = async (req, res) => {
         logger.error(err.stack);
         res.status(500).json({
             endpointVersion: '1.0',
-            errorMessage: err.message
+            errorMessage: 'Unable to load the live net'
         });
     }
 };

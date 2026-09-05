@@ -7,6 +7,8 @@ const { isFollowListResponse } = require('../types/commonTypesupport');
 const helpers = require('../lib/controllers/followHelpers');
 const NetProfile = require('../models/netProfile').getNetProfile(null);
 const { loadProfileSchedulingSummaries } = require('../lib/scheduling/profileSummary');
+const mongoose = require('mongoose');
+const UserProfile = require('../models/userProfile').getUserProfile(null);
 
 // Handles the REST endpoint for creating a follow request
 const followCreatePost = (req, res) => {
@@ -15,33 +17,26 @@ const followCreatePost = (req, res) => {
         async () => {
             const id = req.params.id;
             if (req.body?.follow) {
-                // Find the net profile by ID
-                const npresult = await helpers.findNetProfile(id);
-                if (!npresult) throw new Error(`could not find npid ${id} for fav request`);
-
-                // Check if the user is already following the net
-                if (helpers.isAlreadyFollowing(npresult, req.user._id)) {
-                    throw new Error(`user ${req.user._id} already follows net ${id}`);
-                }
-
-                // Check if the net can have more followers
-                if (!helpers.canFollowMoreNets(npresult, res.locals.flexOpts.maxFollowersPerNet)) {
-                    throw new Error(`user ${req.user._id} cant follow net ${id} due to net at max followers`);
-                }
-
-                // Check if the user can follow more nets
-                if (!helpers.canUserFollowMore(req.user, res.locals.flexOpts.maxFollowingPerUser)) {
-                    throw new Error(`user ${req.user._id} cant follow net ${id} due to user at max following`);
-                }
-
-                // Update the net profile to add the user as a follower
-                if (!(await helpers.updateNetProfileFollowers(npresult, req.user._id))) {
-                    throw new Error(`Could not update followers array in netprofile ${npresult.id}`);
-                }
-
-                // Update the user profile to add the net to the user's following list
-                if (!(await helpers.updateUserProfileFollowing(req.user, npresult._id))) {
-                    throw new Error(`Could not update following array in userprofile ${req.user.id}`);
+                const session = await mongoose.connection.startSession();
+                try {
+                    await session.withTransaction(async () => {
+                        const npresult = await NetProfile.findById(id).session(session);
+                        const user = await UserProfile.findById(req.user._id).session(session);
+                        if (!npresult || !user) throw new Error('Follow relationship target was not found');
+                        if (npresult.followers.some(value => String(value) === String(user._id))) return;
+                        if (!helpers.canFollowMoreNets(npresult, res.locals.flexOpts.maxFollowersPerNet)) {
+                            throw new Error('This net has reached its follower limit');
+                        }
+                        if (!helpers.canUserFollowMore(user, res.locals.flexOpts.maxFollowingPerUser)) {
+                            throw new Error('This account has reached its followed-net limit');
+                        }
+                        await Promise.all([
+                            NetProfile.updateOne({ _id: id }, { $addToSet: { followers: user._id } }, { session }),
+                            UserProfile.updateOne({ _id: user._id }, { $addToSet: { following: npresult._id } }, { session })
+                        ]);
+                    });
+                } finally {
+                    await session.endSession();
                 }
 
                 return { message: `${req.user._id} following ${id}` };

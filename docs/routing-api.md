@@ -104,7 +104,7 @@ mutation permissions are derived server-side.
 
 ### Utility Domain (`/api/util/`)
 
-- `GET /api/util/undeleteme` — Restore a soft-deleted user account (requires `REQ_LOGIN`)
+- `POST /api/util/undeleteme` — Restore a soft-deleted user account (requires `REQ_LOGIN` and same-origin mutation context)
 - `GET /api/util/resolvelocation?lat=&lon=` — Reverse geocode a coordinate pair (requires `REQ_LOGIN`; disabled when `GEO_KEY` is not configured; intentionally excluded from `publicEndpoints()` listing)
 - `GET /api/util/notifications/pending` — Retrieve active, non-dismissed system notifications for the user (requires `REQ_LOGIN`)
 - `POST /api/util/notifications/:notificationId/dismiss` — Dismiss a notification (requires `REQ_LOGIN`)
@@ -260,7 +260,9 @@ async function adminCommandProcessor(req, res) {
 
 ## Error Handling Strategy
 
-All route handlers rely on `handleRequest()` or `ResponseHandler` for consistent error formatting. There is no four-argument global Express error handler. Unmatched routes fall through to a catch-all that renders the 404 view:
+Route handlers use `handleRequest()` or `ResponseHandler` for consistent error formatting, and a
+final four-argument Express handler sanitizes uncaught async/controller failures. Unmatched routes
+fall through to a catch-all that renders the 404 view:
 
 ```javascript
 app.use((req, res) => {

@@ -334,7 +334,7 @@ export const isRstReportBaseWithTone = (value: unknown): value is RstReportBase 
 
 export const isInteractionPayload = <T = DefaultInteractionParams>(
     value: unknown,
-    isActionParams: (value: unknown) => value is T = (_: unknown): _ is T => true
+    isActionParams: (value: unknown) => value is T = (candidate: unknown): candidate is T => candidate !== undefined || candidate === undefined
 ): value is InteractionPayload<T> => {
     if (typeof value !== 'object' || value === null) return false;
 
@@ -374,7 +374,7 @@ const isSystemNotificationMessage = (value: unknown): boolean => {
     if (!isObject(value)) {
         return false;
     }
-    const obj = value as Record<string, unknown>;
+    const obj = value;
     return (
         'notifications' in obj &&
         Array.isArray(obj['notifications']) &&

@@ -28,11 +28,39 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Build
         run: npm run build
 
       - name: Test
         run: npm test
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+
+      - name: Audit all dependencies
+        run: npm audit
+
+      - name: Generate isolated CI configuration
+        run: |
+          npm run setup
+          sed -i 's|^BASE_URL=.*|BASE_URL=https://logger.example.test|' .env
+
+      - name: Validate Compose configuration
+        run: docker compose --profile operations --profile scheduled-backup config --quiet
+
+      - name: Build production images
+        run: |
+          docker build --tag nco-logger-ci .
+          docker build --file Dockerfile.backup --tag nco-logger-backup-ci .
+
+      - name: Authenticated Compose and recovery integration
+        env:
+          NCO_APP_IMAGE: nco-logger-ci
+          NCO_BACKUP_IMAGE: nco-logger-backup-ci
+        run: ./scripts/ci/production-recovery-integration.sh
 
       - name: Verify generated artifacts
         run: git diff --exit-code

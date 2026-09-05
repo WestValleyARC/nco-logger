@@ -11,9 +11,18 @@ const logLevelStyles = {
     info: 'color: white;',
     debug: 'color: cyan;'
 };
-const formatArgs = (args) => {
-    return args.map(arg => (typeof arg === 'object' ? arg : String(arg)));
+const primitiveString = (arg) => {
+    if (arg === null)
+        return 'null';
+    if (arg === undefined)
+        return 'undefined';
+    if (typeof arg === 'string')
+        return arg;
+    if (typeof arg === 'number' || typeof arg === 'boolean' || typeof arg === 'bigint' || typeof arg === 'symbol')
+        return String(arg);
+    return JSON.stringify(arg, null, 2) ?? '[unserializable value]';
 };
+const formatArgs = (args) => args.map(arg => typeof arg === 'object' ? arg : primitiveString(arg));
 const shouldLog = (level) => {
     return serverInfo && (serverInfo.logLevel === 'debug' || (serverInfo.logLevel === 'info' && level !== 'debug'));
 };
@@ -26,7 +35,7 @@ const formatLogMessage = (args, filename, level) => {
         if (arg instanceof Error) {
             return `${arg.name}: ${arg.message}\n${arg.stack}`;
         }
-        return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg;
+        return primitiveString(arg);
     })
         .join(' ');
     return [styledFilename + otherArgs, filenameStyle, messageStyle];

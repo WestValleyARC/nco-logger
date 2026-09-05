@@ -13,16 +13,25 @@ class RealtimeClients {
     middlewareMap = new Map();
     pushStates = new Map();
     dataGenerator = null;
+    changeStream = null;
+    pushTimer = null;
+    stopped = false;
     async init(dataGenerator) {
         this.dataGenerator = dataGenerator;
         try {
             const collection = (await (0, changeStreamClient_js_1.getChangeStreamDb)()).collection('stationinteractions');
             let changeStream = this.createChangeStream(collection);
+            this.changeStream = changeStream;
             let retryDelay = 1000;
             changeStream.on('error', error => {
                 logger_js_1.logger.error('RTC: Error in MongoDB change stream: ' + error.toString());
+                if (this.stopped)
+                    return;
                 setTimeout(() => {
+                    if (this.stopped)
+                        return;
                     changeStream = this.createChangeStream(collection);
+                    this.changeStream = changeStream;
                     retryDelay *= 2;
                 }, retryDelay);
             });
@@ -38,8 +47,9 @@ class RealtimeClients {
                     this.middlewareMap.forEach((sseItem, npid) => {
                         const { flexOpts: { awayInMs }, lastPush } = sseItem;
                         pushIntervalMs = Math.max(awayInMs * (1 - AWAY_BUFFER_PCT / 100), PUSH_INTERVAL_FLOOR_MS);
-                        pushIntervalMs > SSE_IDLE_TIMEOUT_MS &&
+                        if (pushIntervalMs > SSE_IDLE_TIMEOUT_MS) {
                             logger_js_1.logger.error(`pushIntervalMs (${pushIntervalMs}) exceeds the SSE idle timeout (${SSE_IDLE_TIMEOUT_MS}ms), risking proxy/load-balancer disconnects.`);
+                        }
                         if (lastPush === null || Date.now() - lastPush + LOOP_EXEC_TIME_MS > pushIntervalMs) {
                             logger_js_1.logger.info(`RTC(${dynoId}): Starting presence push (every ${pushIntervalMs / 1000}s) to all clients of npid ${npid}`);
                             this.push(npid, false).catch((error) => {
@@ -48,7 +58,8 @@ class RealtimeClients {
                         }
                     });
                 }
-                setTimeout(schedulePush, pushIntervalMs);
+                if (!this.stopped)
+                    this.pushTimer = setTimeout(schedulePush, pushIntervalMs);
             };
             schedulePush();
         }
@@ -163,6 +174,17 @@ class RealtimeClients {
             logger_js_1.logger.info(`RTC(${dynoId}): Cleaning up SSE items for net ${npid}`);
         }
         this.middlewareMap.delete(npid);
+    }
+    async shutdown() {
+        this.stopped = true;
+        if (this.pushTimer)
+            clearTimeout(this.pushTimer);
+        this.pushTimer = null;
+        for (const npid of [...this.middlewareMap.keys()])
+            this.close(npid);
+        if (this.changeStream)
+            await this.changeStream.close();
+        this.changeStream = null;
     }
     middleware() {
         return (req, res, next) => {

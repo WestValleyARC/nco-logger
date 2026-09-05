@@ -6,7 +6,7 @@ This Postman collection is designed for **internal testing and development** of 
 
 Most Ham.Live API endpoints require authentication via session cookies. Since the app uses Google OAuth (which requires browser redirects), you must manually obtain session cookies.
 
-The session cookie is named **`session`** (the default name used by the `cookie-session` npm package, keyed by `conf.cookie_session_key`). Its value is base64url-encoded JSON containing the Passport session.
+The session cookie is named **`hamlive.sid`**. It is an opaque identifier; Passport state remains in the server-side MongoDB session store.
 
 ## Setup Instructions
 
@@ -88,7 +88,7 @@ The following table summarises the endpoints included in the collection. See [AP
 | PATCH  | `/api/data/userprofiles/:id`                    | Update own profile                        |
 | DELETE | `/api/data/userprofiles/:id`                    | Delete own account                        |
 | GET    | `/api/util/resolvelocation`                     | Resolve lat/lon to location string        |
-| GET    | `/api/util/undeleteme`                          | Recover a flagged-for-deletion account    |
+| POST   | `/api/util/undeleteme`                          | Recover a flagged-for-deletion account    |
 | GET    | `/api/util/notifications/pending`               | Fetch unseen system notifications         |
 | POST   | `/api/util/notifications/:notificationId/dismiss` | Dismiss a notification                  |
 
@@ -121,7 +121,7 @@ The following table summarises the endpoints included in the collection. See [AP
 
 **401/403 Errors:**
 
-- Check that your session cookie is correctly set and the name is `session`
+- Check that your session cookie is correctly set and the name is `hamlive.sid`
 - Verify the cookie domain matches your `baseUrl`
 - Re-authenticate if the session expired
 

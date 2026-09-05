@@ -6,6 +6,8 @@ const passport = require('passport');
 const responseTime = require('response-time');
 const express = require('express');
 const app = express();
+const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -14,9 +16,7 @@ const {
     addServerInfo,
     populate,
     flexOpts,
-    publicEndpoints,
-    cookieSessionKeepAlive,
-    cookieSessionStubs
+    publicEndpoints
 } = require('./lib/serverUtils');
 const mongoose = require('mongoose');
 const authRoutes = require('./routes/authRoutes');
@@ -33,7 +33,6 @@ const stationInteractionRoutes = require('./routes/stationInteractionRoutes');
 const ncoLoggerRoutes = require('./routes/ncoLoggerRoutes');
 const utilRoutes = require('./routes/utilRoutes');
 const viewRoutes = require('./routes/viewRoutes');
-const cookieSession = require('cookie-session');
 const dailyDispatch = require('./lib/dailyProcessingDispatch');
 const UserProfile = require('./models/userProfile').getUserProfile(null);
 const { getNetProfile, removeLegacyTitleUniqueIndex } = require('./models/netProfile');
@@ -45,12 +44,12 @@ const { startSchedulingWorker } = require('./lib/scheduling/worker');
 const { apiNotFound } = require('./lib/apiNotFound');
 const PORT = process.env['PORT'] ?? 3000;
 const { verifyTransport } = require('./lib/userNotification');
+const { parseBoolean, trustedProxySetting, validateRuntimeConfig } = require('./lib/runtimeSecurity');
+const { createRequestSecurity, errorHandler } = require('./lib/httpSecurity');
+const { closeChangeStreamClient } = require('./lib/changeStreamClient');
+const { realtimeClients } = require('./lib/realtimeClients');
 
-const validateRuntimeConfig = () => {
-    const production = process.env.NODE_ENV === 'production';
-    const required = ['BASE_URL', 'MONGODB_URI', 'COOKIE_SESSION_KEY', 'MAGIC_LINK_SECRET'];
-    const missing = production ? required.filter(name => !process.env[name]) : [];
-    if (missing.length) logger.error(`Missing required production configuration: ${missing.join(', ')}`);
+const reportServices = () => {
     const smtpEnabled = conf.mail_transport === 'smtp' && Boolean(conf.smtp_host);
     logger.info(
         `Services: SMTP ${smtpEnabled ? 'enabled' : 'disabled'}; QRZ ${
@@ -59,10 +58,10 @@ const validateRuntimeConfig = () => {
             conf.google_client_id && conf.google_client_secret ? 'enabled' : 'disabled'
         }; ads disabled; analytics disabled`
     );
-    if (missing.length) throw new Error('Required production configuration is missing');
 };
 
 validateRuntimeConfig();
+reportServices();
 void verifyTransport();
 
 // In development we serve plain HTTP on localhost by default — browsers treat
@@ -84,52 +83,59 @@ const sslOptions = useHttps
 // FORCE_HTTPS=true. Relies on the standard x-forwarded-proto header, so it is
 // platform-neutral. Leave it off if you terminate TLS in front of the app or
 // run plain HTTP on a trusted network.
-if (process.env['FORCE_HTTPS'] === 'true') {
-    app.use((req, res, next) => {
-        const proto = req.headers['x-forwarded-proto'];
-        if (proto && proto !== 'https') {
-            return res.redirect(301, `https://${req.headers.host}${req.url}`);
-        }
-        next();
-    });
-}
+const production = process.env.NODE_ENV === 'production';
+app.set('trust proxy', trustedProxySetting(process.env.TRUST_PROXY));
+const requestSecurity = createRequestSecurity({
+    baseUrl: conf.base_url,
+    production,
+    forceHttpsEnabled: parseBoolean(process.env.FORCE_HTTPS)
+});
+app.use(requestSecurity.headers);
 
 mongoose.set('strictQuery', true);
-mongoose
-    .connect(conf.dburi, {
-        maxPoolSize: conf.realtime_mongoose_poolsize
-    })
-    .then(async () => {
+let httpServer;
+let stopSchedulingWorker = () => {};
+let shuttingDown = false;
+
+const start = async () => {
+    try {
+        await mongoose.connect(conf.dburi, { maxPoolSize: conf.realtime_mongoose_poolsize });
         await Promise.all([NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init()]);
         await removeLegacyTitleUniqueIndex(NetProfile);
         logger.info('Connected to db (realtime pool)');
         if (useHttps) {
-            https.createServer(sslOptions, app).listen(PORT);
+            httpServer = https.createServer(sslOptions, app).listen(PORT);
         } else {
-            app.listen(PORT);
+            httpServer = app.listen(PORT);
         }
-        startSchedulingWorker();
+        stopSchedulingWorker = startSchedulingWorker();
         const scheme = useHttps ? 'https' : 'http';
         logger.info(`${conf.applogname} listening on ${scheme}://localhost:${PORT}`);
-    })
-    .catch(error => {
-        logger.error(error);
-    });
+    } catch (error) {
+        logger.error('Application startup failed', error);
+        process.exitCode = 1;
+        setImmediate(() => process.exit(1));
+    }
+};
 
+const sessionStore = MongoStore.create({ mongoUrl: conf.dburi, collectionName: 'sessions', ttl: 12 * 60 * 60 });
 app.use(
-    cookieSession({
-        maxAge: 3.5 * 24 * 60 * 60 * 1000, // 3.5 days
-        keys: [conf.cookie_session_key],
+    session({
+        name: 'hamlive.sid',
+        secret: conf.cookie_session_key,
+        store: sessionStore,
+        resave: false,
+        saveUninitialized: false,
+        rolling: true,
+        cookie: {
+        maxAge: 12 * 60 * 60 * 1000,
         sameSite: 'lax',
-        httpOnly: true
+        httpOnly: true,
+        secure: production,
+        path: '/'
+        }
     })
 );
-
-//Renew cookie session on every 10 minutes of activity
-app.use(cookieSessionKeepAlive());
-
-//Stubs for regenerate() and save() to make passport work with cookie-session
-app.use(cookieSessionStubs);
 
 //Passport Init:
 app.use(passport.initialize());
@@ -143,9 +149,9 @@ passport.serializeUser((user, done) => {
     done(null, user.id);
 });
 passport.deserializeUser((id, done) => {
-    UserProfile.findById(id).then(user => {
-        done(null, user);
-    });
+    UserProfile.findById(id)
+        .then(user => done(null, user && !user.locked ? user : false))
+        .catch(done);
 });
 
 app.use(flexOpts);
@@ -168,6 +174,10 @@ app.get('/readyz', (_req, res) => {
         assetVersion: res.locals.serverInfo?.server?.appAssetVersion || 'unknown'
     });
 });
+
+app.use(requestSecurity.hostGuard);
+app.use(requestSecurity.forceHttps);
+app.use(requestSecurity.csrfProtection);
 
 app.use(express.static(path.join(__dirname, '../../client/dist/public'), {
     maxAge: 7200000,
@@ -212,7 +222,7 @@ app.get('/login', (_req, res) => {
     res.redirect('/views/login');
 });
 app.get('/logout', (_req, res) => {
-    res.redirect('/auth/logout');
+    res.redirect('/views/dashboard');
 });
 
 app.use('/api', apiNotFound);
@@ -220,3 +230,30 @@ app.use('/api', apiNotFound);
 app.use((req, res) => {
     if (!res.headersSent) return res.status(404).render('404', populate(req, res, { VIEW: '404' }));
 });
+
+app.use(errorHandler);
+
+const shutdown = signal => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info(`Shutdown initiated (${signal})`);
+    stopSchedulingWorker();
+    const deadline = setTimeout(() => {
+        logger.error('Graceful shutdown deadline exceeded');
+        process.exit(1);
+    }, 10000);
+    deadline.unref();
+    const closeHttp = httpServer
+        ? new Promise(resolve => httpServer.close(resolve))
+        : Promise.resolve();
+    Promise.allSettled([closeHttp, realtimeClients.shutdown(), closeChangeStreamClient(), sessionStore.close(), mongoose.disconnect()]).then(results => {
+        clearTimeout(deadline);
+        const failed = results.some(result => result.status === 'rejected');
+        if (failed) logger.error('One or more shutdown operations failed');
+        process.exit(failed ? 1 : 0);
+    });
+};
+
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));
+void start();

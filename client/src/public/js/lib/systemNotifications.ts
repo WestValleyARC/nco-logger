@@ -83,10 +83,11 @@ export class SystemNotificationManager {
         // Setup dismiss handlers (both "Got it" button and X close button)
         const dismissBtns = modal.querySelectorAll('[data-dismiss-notification]');
         dismissBtns.forEach(btn => {
-            btn.addEventListener('click', async () => {
-                await this.dismissNotification(notification.notificationId);
-                bsModal.hide();
-                setTimeout(() => this.removeModal(), 300); // Wait for animation
+            btn.addEventListener('click', () => {
+                void this.dismissNotification(notification.notificationId).then(() => {
+                    bsModal.hide();
+                    setTimeout(() => this.removeModal(), 300); // Wait for animation
+                });
             });
         });
 
@@ -183,8 +184,8 @@ export class SystemNotificationManager {
         if (!dismissed) return false;
 
         try {
-            const dismissedList: string[] = JSON.parse(dismissed);
-            return Array.isArray(dismissedList) && dismissedList.includes(notificationId);
+            const parsed: unknown = JSON.parse(dismissed);
+            return Array.isArray(parsed) && parsed.every(value => typeof value === 'string') && parsed.includes(notificationId);
         } catch (error) {
             logger.error('Failed to parse dismissed notifications from localStorage:', error);
             return false;
@@ -197,7 +198,8 @@ export class SystemNotificationManager {
     private markDismissedLocally(notificationId: string): void {
         try {
             const dismissed = localStorage.getItem(SystemNotificationManager.DISMISSED_KEY);
-            const dismissedList: string[] = dismissed ? JSON.parse(dismissed) : [];
+            const parsed: unknown = dismissed ? JSON.parse(dismissed) : [];
+            const dismissedList = Array.isArray(parsed) && parsed.every(value => typeof value === 'string') ? parsed : [];
 
             if (!Array.isArray(dismissedList)) {
                 localStorage.setItem(SystemNotificationManager.DISMISSED_KEY, JSON.stringify([notificationId]));

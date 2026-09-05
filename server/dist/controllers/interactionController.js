@@ -493,8 +493,8 @@ async function stationEventProcessor(req, res) {
             throw new Error(`no such client-executable action:${action}`);
         }
     } catch (err) {
-        // Send a 500 status response with the error message
-        handleResponse.sendError(res, 'INTERNAL_SERVER_ERROR', err.message);
+        const authorizationFailure = err.message === 'sigReports are restricted to NCS only';
+        handleResponse.sendError(res, authorizationFailure ? 'FORBIDDEN' : 'INTERNAL_SERVER_ERROR', err.message);
 
         // Log the error stack
         logger.error(err.stack);
