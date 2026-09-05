@@ -334,8 +334,8 @@ export class ChatWidget extends HTMLElement {
                     <div class="chat-recipient-selector">
                         <button class="chat-recipient-toggle" type="button" aria-haspopup="menu" aria-expanded="false">To: Everyone (Public) ▾</button>
                         <div class="chat-recipient-menu" role="menu" aria-label="Choose chat recipient" hidden></div>
+                        <span class="chat-private-unread" role="status" aria-live="polite" hidden></span>
                     </div>
-                    <span class="chat-private-unread" role="status" aria-live="polite" hidden></span>
                     <button class="chat-ignore-button" type="button" hidden>Ignore private messages</button>
                 </div>
                 <div class="chat-pinned-strip" aria-label="Pinned public messages" hidden></div>

@@ -85,7 +85,11 @@ body {
 
 .chat-recipient-selector {
     position: relative;
+    display: flex;
     min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .chat-recipient-toggle,
@@ -100,6 +104,7 @@ body {
 }
 
 .chat-recipient-toggle {
+    min-width: 0;
     max-width: min(20rem, 65vw);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -202,6 +207,13 @@ body {
     font-size: 0.68rem;
     font-weight: 700;
     white-space: nowrap;
+}
+
+.chat-private-unread {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .chat-ignore-button {
@@ -480,11 +492,20 @@ body {
 }
 
 .chat-typing-indicator {
+    display: block;
     min-height: 1.25em;
     margin: 0 0 0.2rem 0.25rem;
+    overflow: hidden;
     color: var(--bs-secondary-color, #8b949e);
     font-size: 0.78rem;
     font-style: italic;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-typing-indicator[hidden] {
+    visibility: hidden;
 }
 
 #local-chat-message {
@@ -816,6 +837,33 @@ body {
     .chat-lightbox-card {
         width: calc(100vw - 1rem);
         height: calc(100vh - 1rem);
+    }
+}
+
+@media (max-width: 520px) {
+    .chat-conversation-bar,
+    .chat-recipient-selector {
+        flex-wrap: wrap;
+    }
+
+    .chat-recipient-selector {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .chat-recipient-toggle {
+        flex: 1 1 100%;
+        width: 100%;
+        max-width: 100%;
+        min-height: 44px;
+    }
+
+    .chat-private-unread {
+        flex: 0 1 auto;
+    }
+
+    .chat-ignore-button {
+        min-height: 44px;
     }
 }
 
