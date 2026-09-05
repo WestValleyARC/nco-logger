@@ -1,6 +1,6 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 
-import { Db, MongoClient } from 'mongodb';
+import { Db, MongoClient, ObjectId } from 'mongodb';
 import { conf } from '#@server/lib/configLib.js';
 
 const resolvedDbName = (() => {
@@ -14,6 +14,9 @@ const resolvedDbName = (() => {
 
 let changeStreamClient: MongoClient | null = null;
 let databasePromise: Promise<Db> | null = null;
+
+export const toChangeStreamObjectId = (value: string | { toString(): string }): ObjectId =>
+    new ObjectId(value.toString());
 
 const getChangeStreamClient = (): MongoClient => {
     changeStreamClient ??= new MongoClient(conf.dburi, {

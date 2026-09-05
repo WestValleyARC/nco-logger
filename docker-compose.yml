@@ -36,8 +36,10 @@ services:
             mongo:
                 condition: service_healthy
         networks:
-            - hamlive
-            - frontend
+            hamlive:
+            frontend:
+                aliases:
+                    - nco-logger-app
         volumes:
             - hamlive-chat-uploads:/app/data/chat-uploads
         read_only: true

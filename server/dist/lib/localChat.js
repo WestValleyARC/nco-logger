@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { conf } = require('./configLib');
-const { getChangeStreamDb } = require('./changeStreamClient');
+const { getChangeStreamDb, toChangeStreamObjectId } = require('./changeStreamClient');
 const { logger } = require('./logger');
 const { getLiveNet } = require('../models/liveNet');
 const { getStationInteraction } = require('../models/stationInteraction');
@@ -1074,8 +1074,9 @@ const streamEvents = async (req, res) => {
             ignoredUserIds,
             writeEvent
         });
-        const netProfile = new mongoose.Types.ObjectId(req.params.id);
-        const currentUserObjectId = new mongoose.Types.ObjectId(userId);
+        const netProfile = toChangeStreamObjectId(req.params.id);
+        const liveNet = toChangeStreamObjectId(access.liveNet._id);
+        const currentUserObjectId = toChangeStreamObjectId(userId);
         const sendRecipients = async () => {
             try {
                 const recipients = await listRecipientsForAccess({
@@ -1094,7 +1095,7 @@ const streamEvents = async (req, res) => {
         chatChangeSubscription = openChatChangeStream({
             db: changeStreamDb,
             netProfile,
-            liveNet: access.liveNet._id,
+            liveNet,
             currentUser: currentUserObjectId,
             onMessage: fullDocument => {
                 const message = chatEventForViewer(fullDocument, access.role, userId, ignoredUserIds);
