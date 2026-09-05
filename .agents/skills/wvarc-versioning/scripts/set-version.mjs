@@ -38,6 +38,30 @@ async function replaceOne(path, pattern, replacement, label) {
     await writeFile(path, input.replace(pattern, replacement));
 }
 
+async function assertOne(path, pattern, label) {
+    const input = await readFile(path, 'utf8');
+    const matches = input.match(new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`)) || [];
+    if (matches.length !== 1) throw new Error(`${label} marker count was ${matches.length}, expected 1`);
+}
+
+async function assertDynamicAssetVersioning() {
+    await assertOne(
+        paths.mainSource,
+        /const LOGGER_ASSET_VERSION = new URL\(import\.meta\.url\)\.searchParams\.get\('v'\) \|\| 'unversioned';/,
+        'Logger asset fingerprint source'
+    );
+    await assertOne(
+        paths.liveNetView,
+        /\/css\/nco-logger\.css\?v=<%= server\.appAssetVersion %>/,
+        'Logger stylesheet asset fingerprint'
+    );
+    await assertOne(
+        paths.liveNetView,
+        /\/js\/byView\/<%= VIEW %>\/main\.js\?v=<%= server\.appAssetVersion %>/,
+        'Logger module asset fingerprint'
+    );
+}
+
 function capturedVersion(input, pattern, label) {
     const match = input.match(pattern);
     if (!match?.[1]) throw new Error(`${label} marker is missing`);
@@ -58,14 +82,7 @@ async function setVersion(version) {
     await writeFile(paths.packageLock, `${JSON.stringify(packageLock, null, 4)}\n`);
 
     await replaceOne(paths.loggerSource, /const VERSION = "[^"]+";/, `const VERSION = "${version}";`, 'Logger UI');
-    await replaceOne(paths.mainSource, /const LOGGER_ASSET_VERSION = '[^']+';/, `const LOGGER_ASSET_VERSION = '${version}';`, 'Logger asset');
-
-    const view = await readFile(paths.liveNetView, 'utf8');
-    const updatedView = view
-        .replace(/(\/css\/nco-logger\.css\?v=)[^"']+/, `$1${version}`)
-        .replace(/(\/js\/byView\/<%= VIEW %>\/main\.js\?v=)[^"']+/, `$1${version}`);
-    if (updatedView === view) throw new Error('Live-net asset version markers were not updated');
-    await writeFile(paths.liveNetView, updatedView);
+    await assertDynamicAssetVersioning();
 
     console.log(`Set WVARC application version to ${version}. Run npm run build, then run this script with --check.`);
 }
@@ -82,16 +99,15 @@ async function checkVersion() {
 
     const loggerSource = await readFile(paths.loggerSource, 'utf8');
     const loggerDist = await readFile(paths.loggerDist, 'utf8');
-    const mainSource = await readFile(paths.mainSource, 'utf8');
-    const mainDist = await readFile(paths.mainDist, 'utf8');
-    const view = await readFile(paths.liveNetView, 'utf8');
+    await assertDynamicAssetVersioning();
+    await assertOne(
+        paths.mainDist,
+        /const LOGGER_ASSET_VERSION = new URL\(import\.meta\.url\)\.searchParams\.get\('v'\) \|\| 'unversioned';/,
+        'Logger generated asset fingerprint'
+    );
     values.push(
         ['Logger source version', capturedVersion(loggerSource, /const VERSION = "([^"]+)";/, 'Logger source')],
-        ['Logger generated version', capturedVersion(loggerDist, /const VERSION = "([^"]+)";/, 'Logger generated output')],
-        ['Asset source version', capturedVersion(mainSource, /const LOGGER_ASSET_VERSION = '([^']+)'/, 'Asset source')],
-        ['Asset generated version', capturedVersion(mainDist, /const LOGGER_ASSET_VERSION = '([^']+)'/, 'Asset generated output')],
-        ['Logger stylesheet cache version', capturedVersion(view, /\/css\/nco-logger\.css\?v=([^"']+)/, 'Logger stylesheet cache')],
-        ['Logger module cache version', capturedVersion(view, /\/js\/byView\/<%= VIEW %>\/main\.js\?v=([^"']+)/, 'Logger module cache')]
+        ['Logger generated version', capturedVersion(loggerDist, /const VERSION = "([^"]+)";/, 'Logger generated output')]
     );
 
     const drift = values.filter(([, value]) => value !== expected);

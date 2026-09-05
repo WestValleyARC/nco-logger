@@ -9,7 +9,7 @@ Treat `package.json` as the canonical application version. Keep these derived ma
 
 - the root package and root package-lock versions;
 - the NCO Logger version shown in the live-net UI;
-- the live-net module and stylesheet cache keys;
+- the live-net module and stylesheet cache-key plumbing (derived from the deployed asset fingerprint);
 - generated files under `client/dist/`.
 
 Use [scripts/set-version.mjs](scripts/set-version.mjs) to set or check the version. Run it from any directory inside the repository:
@@ -35,7 +35,8 @@ Do not change unrelated version-like values: dependency versions, API `endpointV
 
 1. Inspect the working tree and preserve unrelated changes.
 2. Set the requested version with `set-version.mjs`.
-3. Run `npm run build` so tracked `client/dist/` artifacts inherit the version.
+3. Run `npm run build` so tracked `client/dist/` artifacts inherit the version. Live-net cache keys
+   remain derived from `server.appAssetVersion`; do not replace them with hard-coded release strings.
 4. Run `set-version.mjs --check` to detect drift.
 5. Run the project tests and inspect the final diff for unrelated version changes.
 6. Report the version, validation results, and any intentionally untouched version markers.
