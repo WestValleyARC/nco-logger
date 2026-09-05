@@ -82,9 +82,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         phonePortrait: Object.freeze({
             gridVersion: LAYOUT_GRID_VERSION,
             items: {
-                controls: { x: 0, y: 0, w: 24, h: 6 }, active: { x: 0, y: 6, w: 24, h: 14 },
-                chat: { x: 0, y: 20, w: 24, h: 14 }, lurkers: { x: 0, y: 34, w: 24, h: 5 },
-                checkedOut: { x: 0, y: 39, w: 24, h: 5 }
+                controls: { x: 0, y: 0, w: 24, h: 7 }, active: { x: 0, y: 7, w: 24, h: 14 },
+                chat: { x: 0, y: 21, w: 24, h: 14 }, lurkers: { x: 0, y: 35, w: 24, h: 5 },
+                checkedOut: { x: 0, y: 40, w: 24, h: 5 }
             }, collapsed: {}
         }),
         phoneLandscape: Object.freeze({
@@ -124,6 +124,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
     let latestNetConnections = [];
     let currentUserRole = "netuser";
     let currentLayoutContext = "desktop";
+    let lastLayoutViewportWidth = 0;
     let defaultModuleLayoutPending = false;
     let local = {
         order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
@@ -257,7 +258,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         const { width, height } = layoutViewport();
         return classifyLoggerLayout(width, height);
     };
-    const layoutRows = (context = currentLayoutContext) => context === "phonePortrait" ? 44
+    const layoutRows = (context = currentLayoutContext) => context === "phonePortrait" ? 45
         : context === "phoneLandscape" || context === "tabletPortrait" ? 24 : GRID_ROWS;
     const layoutContextLabel = context => context === "desktop" ? "Desktop"
         : `${context.startsWith("phone") ? "Phone" : "Tablet"} — ${context.endsWith("Portrait") ? "Portrait" : "Landscape"}`;
@@ -860,7 +861,18 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
     }
     function handleWindowResize() {
         window.requestAnimationFrame(() => {
-            switchLayoutContext(layoutContext());
+            const viewport = layoutViewport();
+            let nextContext = classifyLoggerLayout(viewport.width, viewport.height);
+            const heightOnlyPhoneResize = currentLayoutContext.startsWith("phone")
+                && nextContext.startsWith("phone")
+                && lastLayoutViewportWidth > 0
+                && Math.abs(viewport.width - lastLayoutViewportWidth) <= 2;
+            if (heightOnlyPhoneResize) {
+                const currentOrientation = currentLayoutContext.endsWith("Portrait") ? "Portrait" : "Landscape";
+                nextContext = `phone${currentOrientation}`;
+            }
+            lastLayoutViewportWidth = viewport.width;
+            switchLayoutContext(nextContext);
             applyModuleLayout();
             positionNativeChat();
         });
@@ -3601,6 +3613,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
             };
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
+        if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
+            const previousBottom = items.controls.y + items.controls.h;
+            const addedRows = 7 - items.controls.h;
+            items.controls.h = 7;
+            MODULE_IDS.filter(id => id !== "controls" && items[id].y >= previousBottom).forEach(id => {
+                items[id].y = Math.min(maximumRows - items[id].h, items[id].y + addedRows);
+            });
+        }
         return {
             gridVersion: LAYOUT_GRID_VERSION,
             responsiveLayoutVersion: LOGGER_RESPONSIVE_LAYOUT_VERSION,
@@ -3834,7 +3854,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         const item = layout.items[id];
         item.w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
         item.x = Math.min(item.x, GRID_COLUMNS - item.w);
-        item.h = Math.min(layoutRows() - item.y, Math.max(MIN_MODULE_ROWS[id], item.h + heightDelta));
+        const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 7 : MIN_MODULE_ROWS[id];
+        item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
         const resolved = tryResolveGridLayout(layout, id);
         if (!resolved)
             return;
@@ -3989,11 +4010,15 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         }
         if (resizing.edge.includes("n")) {
             const bottomEdge = resizing.startItem.y + resizing.startItem.h;
-            item.h = Math.min(bottomEdge, Math.max(MIN_MODULE_ROWS[resizing.moduleId], resizing.startItem.h - rowDelta));
+            const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
+                ? 7 : MIN_MODULE_ROWS[resizing.moduleId];
+            item.h = Math.min(bottomEdge, Math.max(minimumRows, resizing.startItem.h - rowDelta));
             item.y = bottomEdge - item.h;
         }
         else if (resizing.edge.includes("s")) {
-            item.h = Math.min(layoutRows() - item.y, Math.max(MIN_MODULE_ROWS[resizing.moduleId], resizing.startItem.h + rowDelta));
+            const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
+                ? 7 : MIN_MODULE_ROWS[resizing.moduleId];
+            item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, resizing.startItem.h + rowDelta));
         }
         const resolved = tryResolveGridLayout(layout, resizing.moduleId);
         if (!resolved)
@@ -5160,6 +5185,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
             }
         }
         currentLayoutContext = layoutContext();
+        lastLayoutViewportWidth = layoutViewport().width;
         if (!local.responsiveLayouts.desktop && Object.keys(local.moduleLayout).length) {
             local.responsiveLayouts.desktop = local.moduleLayout;
         }

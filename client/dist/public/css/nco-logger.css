@@ -1792,12 +1792,24 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-body {
   height: auto;
-  min-height: calc(100dvh - 35px);
+  min-height: calc(100dvh - 44px - env(safe-area-inset-top));
   grid-template-rows: auto auto;
+  padding-top: calc(47px + env(safe-area-inset-top));
+  padding-bottom: calc(50px + env(safe-area-inset-bottom));
   overflow: visible;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] { grid-template-rows: auto auto; }
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] > header {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  right: 0;
+  left: 0;
+  min-height: calc(44px + env(safe-area-inset-top));
+  padding-top: calc(2px + env(safe-area-inset-top));
+}
 
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]),
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #nco-logger-root,
@@ -1813,10 +1825,6 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
   min-height: 0;
   grid-template-rows: repeat(var(--nch-grid-rows), 26px);
   overflow: visible;
-}
-
-#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-module {
-  margin-bottom: 3px;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] :is(.nch-module-content, .nch-module-header) {
@@ -1835,29 +1843,31 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-fixed-status-bar {
-  position: sticky;
-  z-index: 70;
+  position: fixed;
+  z-index: 90;
+  right: 0;
   bottom: 0;
+  left: 0;
   height: auto;
-  min-height: 58px;
+  min-height: 50px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: minmax(21px, auto) auto;
-  gap: 3px 8px;
-  padding: 4px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  grid-template-rows: minmax(18px, auto) auto;
+  gap: 1px 8px;
+  margin: 0;
+  padding: 2px max(7px, env(safe-area-inset-right)) max(2px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-status {
   width: 100%;
   height: auto;
-  min-height: 21px;
+  min-height: 18px;
   overflow: hidden;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode {
   min-width: 0;
-  width: 100%;
-  justify-self: stretch;
-  text-align: center;
+  justify-self: end;
+  text-align: right;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode::after {

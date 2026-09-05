@@ -133,32 +133,37 @@ test('typing indicator uses a distinct wrapping region that collapses when idle'
 test('responsive logger keeps independent orientation layouts and touch-safe controls', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
-    assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0[\s\S]*active: \{ x: 0, y: 6[\s\S]*chat: \{ x: 0, y: 20/);
+    assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0, w: 24, h: 7[\s\S]*active: \{ x: 0, y: 7[\s\S]*chat: \{ x: 0, y: 21/);
     assert.match(source, /phoneLandscape:[\s\S]*active: \{ x: 8, y: 0, w: 16/);
     assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
     assert.match(source, /currentUserRole === "netuser"[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
     assert.match(source, /responsiveLayouts:\s*local\.responsiveLayouts/);
     assert.match(source, /hasCanonicalReadOnlyTop\(local\.moduleLayout\)[\s\S]*normalizeModuleLayout\(defaultModuleLayoutForMode\(\)\)/);
     assert.doesNotMatch(source, /hasCanonicalReadOnlyTop\(local\.moduleLayout\)[\s\S]{0,100}normalizeModuleLayout\(DEFAULT_MODULE_LAYOUT\)/);
-    assert.match(source, /switchLayoutContext\(layoutContext\(\)\)/);
+    assert.match(source, /const heightOnlyPhoneResize = currentLayoutContext\.startsWith\("phone"\)[\s\S]*Math\.abs\(viewport\.width - lastLayoutViewportWidth\) <= 2[\s\S]*nextContext = `phone\$\{currentOrientation\}`[\s\S]*switchLayoutContext\(nextContext\)/);
+    assert.match(source, /const layoutViewport = \(\) => \(\{[\s\S]*document\.documentElement\.clientWidth \|\| window\.innerWidth[\s\S]*document\.documentElement\.clientHeight \|\| window\.innerHeight/);
     assert.match(source, /Reset Portrait Layout[\s\S]*Reset Landscape Layout/);
     assert.match(source, /Reset only the \$\{layoutContextLabel\(targetContext\)\}/);
     assert.match(source, /netcontrol:\s*"NCO Mode"[\s\S]*netlogger:\s*"Logger Mode"[\s\S]*netrelay:\s*"Relay Mode"[\s\S]*\|\| "Viewer Mode"/);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 26px\)[^}]*overflow:\s*visible/s);
+    assert.doesNotMatch(css, /\[data-layout-context\^="phone"\] \.nch-module\s*\{[^}]*margin/s);
     assert.match(css, /\[data-layout-context\^="phone"\] :is\(\.nch-module-content, \.nch-module-header\)\s*\{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-y/s);
     assert.match(css, /:has\(#netcontrol-ncs-helper\[data-layout-context\^="phone"\]\) > hl-chat\.nch-chat-floating\s*\{[^}]*position:\s*absolute !important/s);
     assert.match(css, /hl-chat\.nch-chat-docked :is\(\.chat-messages, \.nch-private-messages, \.nch-pinned-chat-strip\)\s*\{[^}]*overscroll-behavior-y:\s*auto !important[^}]*touch-action:\s*pan-y/s);
     assert.match(source, /const followsDocument = currentLayoutContext\.startsWith\("phone"\)[\s\S]*rect\.top \+ \(followsDocument \? window\.scrollY : 0\)/);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.nch-module-header\s*\{[^}]*min-height:\s*32px/s);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*height:\s*auto[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*grid-template-rows:\s*minmax\(21px, auto\) auto/s);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode\s*\{[^}]*justify-self:\s*stretch[^}]*text-align:\s*center/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] > header\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*100[^}]*top:\s*0[^}]*right:\s*0[^}]*left:\s*0[^}]*safe-area-inset-top/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-body\s*\{[^}]*padding-top:\s*calc\(47px \+ env\(safe-area-inset-top\)\)[^}]*padding-bottom:\s*calc\(50px \+ env\(safe-area-inset-bottom\)\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*position:\s*fixed[^}]*right:\s*0[^}]*bottom:\s*0[^}]*left:\s*0[^}]*min-height:\s*50px[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*grid-template-rows:\s*minmax\(18px, auto\) auto/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode\s*\{[^}]*justify-self:\s*end[^}]*text-align:\s*right/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode::after\s*\{[^}]*content:\s*none/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(112px, 128px\) minmax\(0, 1fr\)/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row-text\s*\{[^}]*flex-direction:\s*column[^}]*overflow:\s*visible/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section :is\(\.nch-role-badge, \.nch-tag\)\s*\{[^}]*flex:\s*0 0 auto/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-module\s*\{[^}]*margin-bottom:\s*3px/s);
+    assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 7[\s\S]*items\.controls\.h = 7[\s\S]*items\[id\]\.y \+ addedRows/);
+    assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 7 : MIN_MODULE_ROWS\[id\]/);
 });
 
 test('357x741 is phone portrait and cannot retain an unstamped desktop layout', async () => {
