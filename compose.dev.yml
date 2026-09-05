@@ -3,4 +3,4 @@ services:
     app:
         environment:
             NODE_ENV: development
-            BASE_URL: http://localhost:3000
+            BASE_URL: ${DEV_BASE_URL:-http://localhost:3000}
