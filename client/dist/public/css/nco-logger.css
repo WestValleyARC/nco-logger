@@ -1834,6 +1834,98 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   position: sticky;
   z-index: 70;
   bottom: 0;
+  height: auto;
+  min-height: 58px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(21px, auto) auto;
+  gap: 3px 8px;
+  padding: 4px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-status {
+  width: 100%;
+  height: auto;
+  min-height: 21px;
+  overflow: hidden;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode {
+  min-width: 0;
+  justify-self: end;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card {
+  display: grid;
+  width: 100%;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card > span {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  gap: 1px;
+  padding: 0 3px;
+  line-height: 1.05;
+  text-align: center;
+  white-space: normal;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card > span + span {
+  padding-left: 3px;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card small {
+  max-width: none;
+  overflow: visible;
+  font-size: calc(9px + var(--nch-font-adjust, 0px));
+  line-height: 1.05;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-entry-controls {
+  padding-bottom: 9px;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row {
+  grid-template-columns: 18px minmax(112px, 128px) minmax(0, 1fr);
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row-info {
+  min-width: 0;
+  align-items: stretch;
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row-text {
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-meta {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-status-tags {
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section :is(.nch-role-badge, .nch-tag) {
+  flex: 0 0 auto;
 }
 
 @media (hover: none), (pointer: coarse) {

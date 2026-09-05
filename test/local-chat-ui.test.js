@@ -149,6 +149,12 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(css, /hl-chat\.nch-chat-docked :is\(\.chat-messages, \.nch-private-messages, \.nch-pinned-chat-strip\)\s*\{[^}]*overscroll-behavior-y:\s*auto !important[^}]*touch-action:\s*pan-y/s);
     assert.match(source, /const followsDocument = currentLayoutContext\.startsWith\("phone"\)[\s\S]*rect\.top \+ \(followsDocument \? window\.scrollY : 0\)/);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.nch-module-header\s*\{[^}]*min-height:\s*32px/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*height:\s*auto[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto[^}]*grid-template-rows:\s*minmax\(21px, auto\) auto/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(112px, 128px\) minmax\(0, 1fr\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row-text\s*\{[^}]*flex-direction:\s*column[^}]*overflow:\s*visible/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section :is\(\.nch-role-badge, \.nch-tag\)\s*\{[^}]*flex:\s*0 0 auto/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
 });
 
 test('357x741 is phone portrait and cannot retain an unstamped desktop layout', async () => {
