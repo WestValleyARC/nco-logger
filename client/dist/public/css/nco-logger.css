@@ -1815,6 +1815,10 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
   overflow: visible;
 }
 
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-module {
+  margin-bottom: 3px;
+}
+
 #netcontrol-ncs-helper[data-layout-context^="phone"] :is(.nch-module-content, .nch-module-header) {
   overscroll-behavior-y: auto;
   touch-action: pan-y;
@@ -1836,7 +1840,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   bottom: 0;
   height: auto;
   min-height: 58px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: minmax(21px, auto) auto;
   gap: 3px 8px;
   padding: 4px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
@@ -1851,7 +1855,13 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode {
   min-width: 0;
-  justify-self: end;
+  width: 100%;
+  justify-self: stretch;
+  text-align: center;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode::after {
+  content: none;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card {
