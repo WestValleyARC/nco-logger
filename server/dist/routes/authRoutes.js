@@ -84,6 +84,8 @@ router.post('/magiclogin', async (req, res, next) => {
     }
 });
 
+router.head('/magiclogin/callback', (_req, res) => res.status(204).end());
+
 router.get('/magiclogin/callback', async (req, res, next) => {
     try {
         const record = await consumeMagicLoginToken({ token: req.query.token });
