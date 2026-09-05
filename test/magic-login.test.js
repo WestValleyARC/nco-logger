@@ -27,7 +27,7 @@ const request = (server, { method = 'GET', path, body = '', cookie = '' }) => ne
     req.end(body);
 });
 
-test('magic login is one-time, rotates the session, logs out, and rejects a locked user', async t => {
+test('magic login HEAD is inert while GET remains one-time and authenticates', async t => {
     const originalNodeEnv = process.env.NODE_ENV;
     const originalConf = { base_url: conf.base_url, mail_transport: conf.mail_transport, smtp_host: conf.smtp_host };
     const originalFindOneAndUpdate = UserProfile.findOneAndUpdate;
@@ -36,8 +36,11 @@ test('magic login is one-time, rotates the session, logs out, and rejects a lock
     const originals = { issue: magicModule.issueMagicLoginToken, consume: magicModule.consumeMagicLoginToken, revoke: magicModule.revokeMagicLoginToken, rate: rateModule.consumeRateLimit };
     let usable = true;
     let locked = false;
+    let consumeCalls = 0;
+    let profileUpdateCalls = 0;
     magicModule.issueMagicLoginToken = async () => 'test-one-time-token';
     magicModule.consumeMagicLoginToken = async ({ token }) => {
+        consumeCalls += 1;
         if (token !== 'test-one-time-token' || !usable) return null;
         usable = false;
         return { destination: 'operator@example.com' };
@@ -48,10 +51,17 @@ test('magic login is one-time, rotates the session, logs out, and rejects a lock
     conf.base_url = 'http://localhost:3000';
     conf.mail_transport = 'console';
     conf.smtp_host = '';
-    UserProfile.findOneAndUpdate = async () => ({ id: 'test-user-id', _id: 'test-user-id', callSign: 'W1ABC', locked });
+    UserProfile.findOneAndUpdate = async () => {
+        profileUpdateCalls += 1;
+        return { id: 'test-user-id', _id: 'test-user-id', callSign: 'W1ABC', locked };
+    };
 
     for (const modulePath of ['../server/dist/lib/userNotification', '../server/dist/routes/authRoutes']) delete require.cache[require.resolve(modulePath)];
     const authRoutes = require('../server/dist/routes/authRoutes');
+    const headRouteIndex = authRoutes.stack.findIndex(layer => layer.route?.path === '/magiclogin/callback' && layer.route.methods.head);
+    const getRouteIndex = authRoutes.stack.findIndex(layer => layer.route?.path === '/magiclogin/callback' && layer.route.methods.get);
+    assert.ok(headRouteIndex >= 0, 'an explicit magic-login HEAD route must exist');
+    assert.ok(headRouteIndex < getRouteIndex, 'the HEAD route must be registered before the GET route');
     passport.serializeUser((user, done) => done(null, user.id));
     passport.deserializeUser((id, done) => done(null, locked ? false : { id, callSign: 'W1ABC' }));
     const app = express();
@@ -79,15 +89,36 @@ test('magic login is one-time, rotates the session, logs out, and rejects a lock
     assert.equal(payload.devMagicLink, '/auth/magiclogin/callback?token=test-one-time-token');
     const preauth = await request(server, { path: '/preauth' });
     const oldCookie = preauth.headers['set-cookie'].map(value => value.split(';', 1)[0]).join('; ');
+
+    const validHead = await request(server, { method: 'HEAD', path: payload.devMagicLink, cookie: oldCookie });
+    const invalidHead = await request(server, { method: 'HEAD', path: '/auth/magiclogin/callback?token=invalid-token', cookie: oldCookie });
+    const comparableHeadResponse = response => {
+        const { date: _date, ...headers } = response.headers;
+        return { status: response.status, headers, body: response.body };
+    };
+    assert.deepEqual(comparableHeadResponse(validHead), comparableHeadResponse(invalidHead));
+    assert.equal(validHead.status, 204);
+    assert.equal(validHead.body, '');
+    assert.equal(validHead.headers['set-cookie'], undefined);
+    assert.equal(consumeCalls, 0);
+    assert.equal(profileUpdateCalls, 0);
+    assert.equal(usable, true);
+    assert.deepEqual(JSON.parse((await request(server, { path: '/views/dashboard', cookie: oldCookie })).body), { authenticated: false, marker: 'before-login' });
+
     const callback = await request(server, { path: payload.devMagicLink, cookie: oldCookie });
     assert.equal(callback.status, 302);
     assert.equal(callback.headers.location, '/views/dashboard');
+    assert.equal(consumeCalls, 1);
+    assert.equal(profileUpdateCalls, 1);
+    assert.equal(usable, false);
     const cookie = callback.headers['set-cookie'].map(value => value.split(';', 1)[0]).join('; ');
     assert.match(cookie, /^connect\.sid=/);
     assert.notEqual(cookie, oldCookie);
     assert.deepEqual(JSON.parse((await request(server, { path: '/views/dashboard', cookie })).body), { authenticated: true, marker: null });
     assert.deepEqual(JSON.parse((await request(server, { path: '/views/dashboard', cookie: oldCookie })).body), { authenticated: false, marker: null });
     assert.equal((await request(server, { path: payload.devMagicLink })).headers.location, '/views/login?error=invalid-link');
+    assert.equal(consumeCalls, 2);
+    assert.equal(profileUpdateCalls, 1);
     locked = true;
     assert.deepEqual(JSON.parse((await request(server, { path: '/views/dashboard', cookie })).body), { authenticated: false, marker: null });
     locked = false;
