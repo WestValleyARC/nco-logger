@@ -144,6 +144,10 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /Reset Portrait Layout[\s\S]*Reset Landscape Layout/);
     assert.match(source, /Reset only the \$\{layoutContextLabel\(targetContext\)\}/);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 26px\)[^}]*overflow:\s*visible/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] :is\(\.nch-module-content, \.nch-module-header\)\s*\{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-y/s);
+    assert.match(css, /:has\(#netcontrol-ncs-helper\[data-layout-context\^="phone"\]\) > hl-chat\.nch-chat-floating\s*\{[^}]*position:\s*absolute !important/s);
+    assert.match(css, /hl-chat\.nch-chat-docked :is\(\.chat-messages, \.nch-private-messages, \.nch-pinned-chat-strip\)\s*\{[^}]*overscroll-behavior-y:\s*auto !important[^}]*touch-action:\s*pan-y/s);
+    assert.match(source, /const followsDocument = currentLayoutContext\.startsWith\("phone"\)[\s\S]*rect\.top \+ \(followsDocument \? window\.scrollY : 0\)/);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.nch-module-header\s*\{[^}]*min-height:\s*32px/s);
 });
 

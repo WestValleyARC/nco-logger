@@ -1815,6 +1815,21 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
   overflow: visible;
 }
 
+#netcontrol-ncs-helper[data-layout-context^="phone"] :is(.nch-module-content, .nch-module-header) {
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+}
+
+body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) > hl-chat.nch-chat-floating {
+  position: absolute !important;
+}
+
+body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
+  hl-chat.nch-chat-docked :is(.chat-messages, .nch-private-messages, .nch-pinned-chat-strip) {
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y;
+}
+
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-fixed-status-bar {
   position: sticky;
   z-index: 70;

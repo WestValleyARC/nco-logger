@@ -835,8 +835,11 @@ import {
     const slot = panel?.querySelector("[data-role='chat-slot']");
     if (!chat || !slot || !chat.classList.contains("nch-chat-floating")) return;
     const rect = slot.getBoundingClientRect();
-    chat.style.setProperty("--nch-chat-left", `${Math.round(rect.left + 2)}px`);
-    chat.style.setProperty("--nch-chat-top", `${Math.round(rect.top + 2)}px`);
+    const followsDocument = currentLayoutContext.startsWith("phone");
+    const documentLeft = rect.left + (followsDocument ? window.scrollX : 0);
+    const documentTop = rect.top + (followsDocument ? window.scrollY : 0);
+    chat.style.setProperty("--nch-chat-left", `${Math.round(documentLeft + 2)}px`);
+    chat.style.setProperty("--nch-chat-top", `${Math.round(documentTop + 2)}px`);
     chat.style.setProperty("--nch-chat-width", `${Math.max(0, Math.round(rect.width - 4))}px`);
     chat.style.setProperty("--nch-chat-height", `${Math.max(0, Math.round(rect.height - 4))}px`);
     syncNativeChatVisibility();
