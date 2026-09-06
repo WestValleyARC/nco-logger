@@ -565,6 +565,14 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
   justify-content: flex-start;
 }
 
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-entry-controls {
+  padding-bottom: 9px;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-net-actions {
+  margin-top: 3px;
+}
+
 #netcontrol-ncs-helper .nch-viewer-host { position: absolute; z-index: 100; inset: 0; background: #171c21; }
 #netcontrol-ncs-helper .nch-viewer-host[hidden] { display: none !important; }
 #netcontrol-ncs-helper .nch-viewer-shell { display: flex; height: 100%; min-height: 0; flex-direction: column; color: #eef7f8; }
