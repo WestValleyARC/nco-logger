@@ -105,6 +105,10 @@ test('Scheduling Owner UI Phase 1 uses the existing schedule API contract', asyn
         assert.match(css, /:root\[data-theme='light'\] \.net-manager-page :is\(\.owned-net-card, \.app-option-card, \.coowner-row, \.connection-card\)\s*\{[^}]*var\(--app-surface-raised\)/s);
         assert.match(css, /:root\[data-theme='light'\] \.net-manager-page \.app-input\s*\{[^}]*var\(--app-control-bg\)/s);
         assert.match(css, /:root\[data-theme='light'\] \.net-manager-page \.app-modal \.modal-content\s*\{[^}]*var\(--app-surface-raised\)/s);
+        assert.match(css, /:root\[data-theme='light'\] body\.net-manager-page\s*\{[^}]*--app-muted:\s*#40545f[^}]*--app-control-border:\s*#586f7a/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page :is\(\.owned-net-status\.is-live, \.schedule-occurrence\.is-live \.schedule-occurrence-status\)\s*\{[^}]*color:\s*#7d3900[^}]*background:\s*rgba\(173, 86, 8, 0\.16\)/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page \.owned-net-start\.is-live\s*\{[^}]*border-color:\s*#ad5608/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page \.net-manager-header-tower\s*\{[^}]*opacity:\s*0\.82/s);
         assert.match(client, /ncoLogger:appearancechange/);
         assert.match(client, /body\.style\.backgroundColor = isLight \? '#ffffff' : '#222f3e'/);
     });

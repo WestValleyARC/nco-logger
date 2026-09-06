@@ -121,10 +121,21 @@
     display: block !important;
 }
 
-/* Match the painted height of the approved light logo to the dark navigation artwork. */
+/* Balance the measured alpha bounds and align their centers without changing the layout box. */
 :root[data-theme='light'] .app-navbar .app-theme-logo-light {
-    transform: scale(1.115);
-    transform-origin: left center;
+    transform: translate(0.04923%, 4.87357%) scale(1.06923);
+    transform-origin: center center;
+}
+
+/* The landing logo uses a fixed-height box, so its equivalent measured y-offset differs slightly. */
+:root[data-theme='light'] .app-navbar .landing-brand-logo.app-theme-logo-light {
+    transform: translate(0.04923%, 4.8228%) scale(1.06923);
+}
+
+/* Footer variants share a canvas; align their measured painted bounds independently. */
+:root[data-theme='light'] .landing-footer .app-theme-logo-light {
+    transform: translate(0.41456%, 1.05528%) scale(1.00425);
+    transform-origin: center center;
 }
 
 .app-navbar .nav-link {
@@ -4970,10 +4981,25 @@
 
 /* My Nets has a deliberately richer surface hierarchy than the basic site views. */
 :root[data-theme='light'] body.net-manager-page {
+    --app-border: rgba(20, 76, 92, 0.3);
+    --app-border-strong: rgba(5, 101, 128, 0.68);
+    --app-muted: #40545f;
+    --app-cyan: #056b85;
+    --app-orange: #934500;
+    --app-card-border: rgba(20, 76, 92, 0.38);
+    --app-divider: rgba(20, 76, 92, 0.32);
+    --app-divider-soft: rgba(20, 76, 92, 0.22);
+    --app-interactive-border: rgba(5, 101, 128, 0.78);
+    --app-subtle-bg: rgba(5, 107, 133, 0.1);
+    --app-control-border: #586f7a;
     background:
         radial-gradient(circle at 14% 8%, rgba(8, 117, 144, 0.09), transparent 32rem),
         radial-gradient(circle at 88% 20%, rgba(163, 77, 0, 0.05), transparent 26rem),
         var(--app-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .net-manager-header-tower {
+    opacity: 0.82;
 }
 
 :root[data-theme='light'] .net-manager-page .net-manager-hero {
@@ -5003,8 +5029,39 @@
 }
 
 :root[data-theme='light'] .net-manager-page .owned-net-card.is-live {
-    border-color: rgba(163, 77, 0, 0.46);
-    background: linear-gradient(135deg, rgba(163, 77, 0, 0.09), var(--app-surface-raised) 55%);
+    border-color: #ad5608;
+    background: linear-gradient(135deg, rgba(173, 86, 8, 0.12), var(--app-surface-raised) 55%);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-card.is-preparing {
+    border-color: rgba(5, 107, 133, 0.72);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-status.is-live, .schedule-occurrence.is-live .schedule-occurrence-status) {
+    color: #7d3900;
+    background: rgba(173, 86, 8, 0.16);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-start.is-live {
+    color: #8a4000;
+    border-color: #ad5608;
+    background: rgba(173, 86, 8, 0.13);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-start.is-live:hover {
+    color: #ffffff;
+    background: #934500;
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-status.is-preparing, .schedule-occurrence.is-preparing .schedule-occurrence-status, .schedule-occurrence.is-override .schedule-occurrence-status) {
+    color: #045b71;
+    background: rgba(5, 107, 133, 0.14);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-start:not(.is-live), .owned-net-start.is-preparing) {
+    color: #045b71;
+    border-color: rgba(5, 107, 133, 0.72);
+    background: rgba(5, 107, 133, 0.1);
 }
 
 :root[data-theme='light'] .net-manager-page :is(.owned-net-actions, .app-form-actions, .schedule-occurrences) {
@@ -5017,6 +5074,10 @@
 
 :root[data-theme='light'] .net-manager-page :is(.owned-net-schedule, .form-status, .legacy-connection-notice) {
     background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-schedule {
+    border-left-color: #087590;
 }
 
 :root[data-theme='light'] .net-manager-page :is(.app-field > label, .app-options-fieldset > legend) {
@@ -5062,8 +5123,8 @@
 }
 
 :root[data-theme='light'] .net-manager-page .app-button-secondary {
-    color: var(--app-link);
-    border-color: var(--app-border-strong);
+    color: #045b71;
+    border-color: rgba(5, 107, 133, 0.72);
     background: var(--app-subtle-bg);
 }
 
@@ -5071,6 +5132,17 @@
     color: var(--app-link-hover);
     border-color: var(--app-cyan);
     background: rgba(8, 117, 144, 0.12);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-primary {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ad5608, #934500);
+    box-shadow: 0 0.65rem 1.5rem rgba(125, 57, 0, 0.16);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-primary:is(:hover, :focus-visible) {
+    color: #ffffff;
+    background: linear-gradient(135deg, #934500, #7d3900);
 }
 
 :root[data-theme='light'] .net-manager-page :is(.connection-drag-handle, .connection-order-button):is(:hover, :focus-visible) {

@@ -136,8 +136,9 @@ test('desktop navigation and complete logo presentation remain compact and singl
     assert.match(landingCss, /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-navbar \.navbar-nav\s*\{[^}]*flex-wrap:\s*nowrap/s);
     assert.match(landingCss, /\.app-brand-logo\s*\{[^}]*height:\s*auto[^}]*max-height:\s*4\.75rem/s);
     assert.match(landingCss, /\.landing-footer-brand > a,[\s\S]*\.landing-footer-brand img\s*\{[^}]*width:\s*min\(17\.5rem, 100%\)[^}]*height:\s*auto/s);
-    assert.match(landingCss, /:root\[data-theme='light'\] \.app-navbar \.app-theme-logo-light\s*\{[^}]*transform:\s*scale\(1\.115\)[^}]*transform-origin:\s*left center/s);
-    assert.doesNotMatch(landingCss, /\.landing-footer[^{}]*\.app-theme-logo-light\s*\{[^}]*transform:/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-navbar \.app-theme-logo-light\s*\{[^}]*transform:\s*translate\(0\.04923%, 4\.87357%\) scale\(1\.06923\)[^}]*transform-origin:\s*center center/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-navbar \.landing-brand-logo\.app-theme-logo-light\s*\{[^}]*transform:\s*translate\(0\.04923%, 4\.8228%\) scale\(1\.06923\)/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.landing-footer \.app-theme-logo-light\s*\{[^}]*transform:\s*translate\(0\.41456%, 1\.05528%\) scale\(1\.00425\)[^}]*transform-origin:\s*center center/s);
     assert.match(landingCss, /@media \(max-width: 991\.98px\)[\s\S]*\.app-theme-toggle\s*\{[^}]*width:\s*fit-content[^}]*min-height:\s*2\.75rem[^}]*gap:\s*\.5rem/s);
 });
 
