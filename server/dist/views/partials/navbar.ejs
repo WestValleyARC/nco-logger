@@ -46,17 +46,6 @@
             Guide
           </a>
         </li>
-        <li class="nav-item app-theme-item" role="none">
-          <label class="app-theme-control">
-            <i class="bi bi-circle-half" aria-hidden="true"></i>
-            <span>Theme</span>
-            <select data-appearance-control aria-label="Color theme">
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </label>
-        </li>
         <% if (user.isLoggedIn) { %>
         <li class="nav-item" role="none">
           <a href="/views/myaccount" class="nav-link" role="menuitem" tabindex="0">
@@ -75,6 +64,15 @@
           </a>
         </li>
         <% } %>
+        <li class="nav-item app-theme-item" role="none">
+          <label class="app-theme-toggle" title="Toggle light or dark theme">
+            <i class="bi bi-sun-fill" aria-hidden="true"></i>
+            <input type="checkbox" data-appearance-control role="switch" aria-label="Use dark theme" />
+            <span class="app-theme-toggle-track" aria-hidden="true"></span>
+            <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+            <span class="app-theme-state" data-appearance-label>Dark</span>
+          </label>
+        </li>
       </ul>
     </div>
   </div>

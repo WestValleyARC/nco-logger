@@ -18,6 +18,7 @@ const legacyFavoriteClient = read('client/dist/public/js/lib/old__clientUtils.js
 const waitingPage = read('server/dist/views/netNotRunning.ejs');
 const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
+const loggerLightCss = read('client/dist/public/css/nco-logger-light.css');
 const appearanceClient = read('client/dist/public/js/lib/appearance.js');
 const themeControlClient = read('client/src/public/js/lib/themeControl.js');
 const heroTimeClient = read('client/dist/public/js/lib/heroTime.js');
@@ -99,19 +100,37 @@ test('Appearance remains responsible only for the application color theme', () =
 });
 
 test('the shared navigation owns the single theme preference control', () => {
-    assert.match(navbar, /data-appearance-control[\s\S]*System[\s\S]*Light[\s\S]*Dark/);
+    assert.match(navbar, /type="checkbox" data-appearance-control role="switch"/);
+    assert.doesNotMatch(navbar, /<select[^>]*data-appearance-control|<option value="system">/);
+    assert.ok(navbar.indexOf('data-appearance-control') > navbar.indexOf('Log out'));
     assert.match(navbar, /themeControl\.js\?v=<%= server\.appAssetVersion %>/);
     assert.doesNotMatch(myAccount, /name="appearance"|id="appearance-settings"/);
     assert.match(themeControlClient, /window\.ncoLoggerAppearance/);
-    assert.match(themeControlClient, /appearanceManager\.setAppearance\(control\.value\)/);
+    assert.match(themeControlClient, /appearanceManager\.setAppearance\(control\.checked \? 'dark' : 'light'\)/);
+    assert.match(themeControlClient, /appearance === 'system' \? `System preference currently resolves to \$\{theme\}`/);
     assert.match(themeControlClient, /ncoLogger:appearancechange/);
-    assert.match(landingCss, /:root\[data-theme='light'\] \.app-navbar\s*\{[^}]*background:\s*rgba\(247, 250, 251, \.97\) !important/s);
-    assert.match(landingCss, /:root\[data-theme='light'\] \.app-footer,[\s\S]*background:\s*#e4edef !important/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-navbar\s*\{[^}]*background:\s*rgba\(247, 250, 251, \.97\) !important/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-footer\s*\{[^}]*background:\s*#e4edef !important/s);
 });
 
 test('phone dashboard hero reserves a readable copy region and exposes the final artwork', () => {
-    assert.match(landingCss, /@media \(max-width: 767\.98px\)[\s\S]*\.landing-page \.landing-hero\s*\{[^}]*padding-bottom:\s*clamp\(13rem, 48vw, 16rem\)[^}]*background-position:\s*right bottom[^}]*background-size:\s*auto 58%/s);
-    assert.match(landingCss, /@media \(max-width: 991\.98px\) and \(orientation: landscape\) and \(max-height: 575px\)[\s\S]*background-position:\s*right center[^}]*background-size:\s*auto 100%/s);
+    assert.match(landingCss, /@media \(max-width: 767\.98px\)[\s\S]*--landing-mobile-art-height:\s*clamp\(15\.5rem, 72vw, 17\.5rem\)[^}]*padding-bottom:\s*calc\(var\(--landing-mobile-art-height\) \+ \.75rem\)[^}]*background-position:\s*right bottom[^}]*background-size:\s*auto var\(--landing-mobile-art-height\)/s);
+    assert.match(landingCss, /@media \(max-width: 991\.98px\) and \(orientation: landscape\) and \(max-height: 575px\)[\s\S]*background-position:\s*right bottom[^}]*background-size:\s*auto min\(100%, 25rem\)/s);
+});
+
+test('desktop navigation and complete logo presentation remain compact and single-line', () => {
+    assert.match(landingCss, /\.app-navbar \.nav-link\s*\{[^}]*white-space:\s*nowrap/s);
+    assert.match(landingCss, /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-navbar \.navbar-nav\s*\{[^}]*flex-wrap:\s*nowrap/s);
+    assert.match(landingCss, /\.app-brand-logo\s*\{[^}]*height:\s*auto[^}]*max-height:\s*4\.75rem/s);
+    assert.match(landingCss, /\.landing-footer-brand > a,[\s\S]*\.landing-footer-brand img\s*\{[^}]*width:\s*min\(17\.5rem, 100%\)[^}]*height:\s*auto/s);
+});
+
+test('Logger light appearance keeps intentional chrome and compact-control contrast', () => {
+    assert.match(loggerLightCss, /\.nch-tray-title\s*\{[^}]*color:\s*#0e202a[^}]*background:\s*#f4f8f9/s);
+    assert.match(loggerLightCss, /#netcontrol-ncs-helper > header\s*\{[^}]*color:\s*#f4f8f9[^}]*background:\s*linear-gradient\(135deg, #183844, #102934\)/s);
+    assert.match(loggerLightCss, /\.chat-message-actions-toggle\s*\{[^}]*color:\s*#174e5d[^}]*background:\s*#f2f7f9/s);
+    assert.match(loggerLightCss, /\.chat-icon-control\s*\{[^}]*color:\s*#174e5d !important[^}]*background:\s*#f2f7f9 !important/s);
+    assert.match(loggerLightCss, /\.nch-fixed-status-bar\s*\{[^}]*color:\s*#eef9fb[^}]*background:\s*#071722/s);
 });
 
 test('landing page contains exactly the four approved feature cards', () => {

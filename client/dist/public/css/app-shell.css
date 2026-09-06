@@ -92,18 +92,19 @@
 .app-navbar .navbar-brand {
     display: inline-flex;
     align-items: center;
-    margin-right: 2rem;
+    margin-right: clamp(.85rem, 1.4vw, 1.35rem);
     padding: 0;
 }
 
 .app-navbar-brand {
-    width: clamp(13rem, 20vw, 17rem);
+    width: clamp(13.5rem, 17vw, 15.5rem);
 }
 
 .app-brand-logo {
     display: block;
     width: 100%;
-    height: 4.1rem;
+    height: auto;
+    max-height: 4.75rem;
     object-fit: contain;
     object-position: left center;
 }
@@ -116,6 +117,7 @@
     font-weight: 600;
     letter-spacing: 0.015em;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .app-navbar .nav-link:hover,
@@ -3889,7 +3891,8 @@
 
 .landing-footer-brand > a,
 .landing-footer-brand img {
-    width: 14.5rem;
+    width: min(17.5rem, 100%);
+    height: auto;
 }
 
 .landing-footer-brand small {
@@ -3969,17 +3972,18 @@
 
 @media (max-width: 767.98px) {
     .landing-page .landing-hero {
-        min-height: 39rem;
+        --landing-mobile-art-height: clamp(15.5rem, 72vw, 17.5rem);
+        min-height: 42rem;
         align-items: flex-start;
-        padding-top: 3.5rem;
-        padding-bottom: clamp(13rem, 48vw, 16rem);
+        padding-top: 2.65rem;
+        padding-bottom: calc(var(--landing-mobile-art-height) + .75rem);
         background-position: right bottom;
-        background-size: auto 58%;
+        background-size: auto var(--landing-mobile-art-height);
     }
 
     .landing-page .landing-hero::before {
         background:
-            linear-gradient(180deg, rgba(3, 11, 18, .97) 0%, rgba(3, 11, 18, .9) 46%, rgba(3, 11, 18, .42) 72%, rgba(3, 11, 18, .12) 100%),
+            linear-gradient(180deg, rgba(3, 11, 18, .98) 0%, rgba(3, 11, 18, .94) 47%, rgba(3, 11, 18, .34) 66%, rgba(3, 11, 18, .06) 100%),
             linear-gradient(90deg, rgba(3, 11, 18, .78), rgba(3, 11, 18, .08));
     }
 
@@ -4010,8 +4014,8 @@
         min-height: 26rem;
         align-items: center;
         padding: 1.75rem 0;
-        background-position: right center;
-        background-size: auto 100%;
+        background-position: right bottom;
+        background-size: auto min(100%, 25rem);
     }
 
     .landing-page .landing-hero-copy {
@@ -4032,12 +4036,13 @@
 
 @media (max-width: 575.98px) {
     .landing-navbar-brand {
-        width: 12rem;
+        width: 13.25rem;
     }
 
     .landing-brand-logo {
         width: 100%;
-        height: 3.6rem;
+        height: auto;
+        max-height: 4.25rem;
     }
 
     .landing-navbar-brand small {
@@ -4096,21 +4101,26 @@
     }
 
     .landing-navbar-brand {
-        width: clamp(16rem, 20vw, 17.5rem);
+        width: clamp(14rem, 17vw, 15.75rem);
     }
 
     .landing-brand-logo {
-        height: 4.25rem;
+        height: auto;
+        max-height: 4.75rem;
     }
 
     .landing-page .landing-navbar .navbar-nav {
-        gap: clamp(0.75rem, 1.6vw, 1.3rem);
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: clamp(.1rem, .45vw, .4rem);
     }
 
     .landing-page .landing-navbar .nav-link {
         color: #f8fafb !important;
-        font-size: 1.05rem;
+        padding-inline: clamp(.45rem, .75vw, .7rem) !important;
+        font-size: .98rem;
         font-weight: 600;
+        white-space: nowrap;
     }
 
     .landing-page .landing-hero {
@@ -5601,94 +5611,134 @@
     background: #050d14 !important;
 }
 
-/* Shared theme control and contained light-chrome experiment. */
+/* Shared two-state theme control and contained website light chrome. */
 .app-theme-item {
     display: flex;
     align-items: center;
+    flex: 0 0 auto;
 }
 
-.app-theme-control {
+.app-theme-toggle {
     display: inline-flex;
-    gap: .45rem;
+    gap: .35rem;
     align-items: center;
-    min-height: 2.55rem;
-    margin: 0 .25rem;
-    padding: .25rem .35rem .25rem .65rem;
+    min-height: 2.4rem;
+    margin-left: .35rem;
+    padding: .25rem .45rem;
     color: #f4f5f2;
     border: 1px solid rgba(116, 198, 212, .3);
-    border-radius: .45rem;
-    font-size: .78rem;
+    border-radius: 999px;
+    font-size: .72rem;
     font-weight: 650;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
-.app-theme-control select {
-    min-height: 1.95rem;
-    padding: .18rem 1.75rem .18rem .45rem;
-    color: #f4f5f2;
-    border: 1px solid rgba(116, 198, 212, .38);
-    border-radius: .35rem;
-    background-color: #101a21;
-    font: inherit;
+.app-theme-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
 }
 
-:root[data-theme='light'] .app-navbar {
+.app-theme-toggle-track {
+    position: relative;
+    width: 2rem;
+    height: 1.1rem;
+    background: #465963;
+    border: 1px solid #7d9ba5;
+    border-radius: 999px;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.app-theme-toggle-track::after {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: .75rem;
+    height: .75rem;
+    content: '';
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+    transition: transform .15s ease;
+}
+
+.app-theme-toggle input:checked + .app-theme-toggle-track {
+    background: #087590;
+    border-color: #74c6d4;
+}
+
+.app-theme-toggle input:checked + .app-theme-toggle-track::after {
+    transform: translateX(.88rem);
+}
+
+.app-theme-toggle input:focus-visible + .app-theme-toggle-track {
+    outline: 2px solid #00c8f0;
+    outline-offset: 2px;
+}
+
+.app-theme-state {
+    min-width: 2.1rem;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar {
     border-bottom-color: rgba(27, 81, 96, .22);
     background: rgba(247, 250, 251, .97) !important;
     box-shadow: 0 .45rem 1.4rem rgba(18, 45, 57, .1);
 }
 
-:root[data-theme='light'] .app-navbar .nav-link {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .nav-link {
     color: #18313d !important;
 }
 
-:root[data-theme='light'] .app-navbar .nav-link:is(:hover, :focus-visible) {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .nav-link:is(:hover, :focus-visible) {
     color: #056b85 !important;
 }
 
-:root[data-theme='light'] .app-navbar .navbar-toggler {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .navbar-toggler {
     border-color: rgba(27, 81, 96, .38);
 }
 
-:root[data-theme='light'] .app-navbar .navbar-toggler-icon {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .navbar-toggler-icon {
     filter: invert(1) grayscale(1);
 }
 
-:root[data-theme='light'] .app-theme-control {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-theme-toggle {
     color: #18313d;
     border-color: rgba(27, 81, 96, .28);
     background: rgba(8, 117, 144, .05);
 }
 
-:root[data-theme='light'] .app-theme-control select {
-    color: #18313d;
-    border-color: rgba(27, 81, 96, .34);
-    background-color: #fff;
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-theme-toggle-track {
+    background: #d5e1e5;
+    border-color: #718993;
 }
 
-:root[data-theme='light'] .app-footer,
-:root[data-theme='light'] :is(.landing-page, .public-directory-page) .landing-footer {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer {
     color: #52636d;
     border-top-color: rgba(27, 81, 96, .2);
     background: #e4edef !important;
 }
 
-:root[data-theme='light'] .app-footer :is(p, small) {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(p, small) {
     color: #52636d;
 }
 
-:root[data-theme='light'] .app-footer :is(a, .landing-footer-link, .landing-footer-bottom a) {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(a, .landing-footer-link, .landing-footer-bottom a) {
     color: #174f60;
 }
 
-:root[data-theme='light'] .app-footer :is(a, .landing-footer-link, .landing-footer-bottom a):is(:hover, :focus-visible) {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(a, .landing-footer-link, .landing-footer-bottom a):is(:hover, :focus-visible) {
     color: #873c00;
 }
 
-:root[data-theme='light'] .app-footer .landing-footer-column h2 {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer .landing-footer-column h2 {
     color: #056b85;
 }
 
-:root[data-theme='light'] .app-footer :is(.landing-footer-brand, .landing-footer-column, .landing-footer-bottom) {
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(.landing-footer-brand, .landing-footer-column, .landing-footer-bottom) {
     border-color: rgba(27, 81, 96, .2);
 }
 
@@ -5697,7 +5747,7 @@
         align-items: stretch;
     }
 
-    .app-theme-control {
+    .app-theme-toggle {
         justify-content: space-between;
         width: 100%;
         margin: .35rem 0 .15rem;
