@@ -1,7 +1,7 @@
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
 import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, isQrzNameFresh, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
 import { formatConnectionLines } from "../../lib/publicSchedule.js";
-import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYOUT_VERSION } from "../../lib/loggerResponsive.js";
+import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shouldResetLegacyLoggerLayout, LOGGER_RESPONSIVE_LAYOUT_VERSION, LOGGER_ROLE_LAYOUT_VERSION } from "../../lib/loggerResponsive.js";
 (() => {
     "use strict";
     const POLL_MS = 3000;
@@ -105,6 +105,40 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         }),
         tabletLandscape: DEFAULT_MODULE_LAYOUT
     });
+    const VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS = Object.freeze({
+        phonePortrait: Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                active: { x: 0, y: 0, w: 24, h: 14 }, chat: { x: 0, y: 14, w: 24, h: 14 },
+                lurkers: { x: 0, y: 28, w: 24, h: 5 }, checkedOut: { x: 0, y: 33, w: 24, h: 5 },
+                controls: { x: 0, y: 38, w: 24, h: 7 }
+            }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+        }),
+        phoneLandscape: Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                controls: { x: 0, y: 0, w: 8, h: 8 }, chat: { x: 0, y: 8, w: 8, h: 16 },
+                active: { x: 8, y: 0, w: 16, h: 16 }, lurkers: { x: 8, y: 16, w: 8, h: 8 },
+                checkedOut: { x: 16, y: 16, w: 8, h: 8 }
+            }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+        }),
+        tabletPortrait: Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                chat: { x: 0, y: 0, w: 10, h: 24 }, active: { x: 10, y: 0, w: 14, h: 24 },
+                lurkers: { x: 0, y: 0, w: 9, h: 5 }, controls: { x: 9, y: 0, w: 6, h: 5 },
+                checkedOut: { x: 15, y: 0, w: 9, h: 5 }
+            }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+        }),
+        tabletLandscape: Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                chat: { x: 0, y: 0, w: 8, h: 20 }, active: { x: 8, y: 0, w: 16, h: 20 },
+                lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 4 },
+                checkedOut: { x: 14, y: 0, w: 10, h: 4 }
+            }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+        })
+    });
     const DEFAULT_AVATAR = "/img/nco-logger-default-avatar.svg";
     const appearanceManager = window.ncoLoggerAppearance;
     const npid = location.pathname.split("/")[3] || "";
@@ -123,12 +157,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
     let latestNetFrequency = "";
     let latestNetConnections = [];
     let currentUserRole = "netuser";
+    let layoutRoleResolved = false;
     let currentLayoutContext = "desktop";
     let lastLayoutViewportWidth = 0;
-    let defaultModuleLayoutPending = false;
     let local = {
         order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
-        hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {}, responsiveLayouts: {},
+        hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {}, responsiveLayouts: {}, roleResponsiveLayouts: {},
         helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0
     };
     let dragging = null;
@@ -291,6 +325,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
             responsiveLayouts: layout.responsiveLayouts && typeof layout.responsiveLayouts === "object"
                 ? layout.responsiveLayouts
                 : saved.responsiveLayouts,
+            roleResponsiveLayouts: layout.roleResponsiveLayouts && typeof layout.roleResponsiveLayouts === "object"
+                ? layout.roleResponsiveLayouts
+                : saved.roleResponsiveLayouts,
+            layoutRoleStorageVersion: Number(layout.layoutRoleStorageVersion || saved.layoutRoleStorageVersion) || 0,
             helperFontPreset: normalizeFontPreset(layout.helperFontPreset || saved.helperFontPreset),
             chatFontPreset: normalizeFontPreset(layout.chatFontPreset || saved.chatFontPreset),
             helpFontPreset: normalizeFontPreset(layout.helpFontPreset || saved.helpFontPreset),
@@ -299,13 +337,16 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
     }));
     const storageSet = () => {
         saveActiveLayoutContext();
+        const activeLayouts = layoutRoleResolved ? roleLayoutBucket() : (local.responsiveLayouts || {});
         return browserStorage.set({
             [stateKey]: local,
             [layoutKey]: {
                 paneSizes: local.paneSizes || {},
                 collapsedSections: local.collapsedSections || {},
-                moduleLayout: local.responsiveLayouts?.desktop || local.moduleLayout || {},
-                responsiveLayouts: local.responsiveLayouts || {},
+                moduleLayout: activeLayouts.desktop || local.moduleLayout || {},
+                responsiveLayouts: activeLayouts,
+                roleResponsiveLayouts: local.roleResponsiveLayouts || {},
+                layoutRoleStorageVersion: LOGGER_ROLE_LAYOUT_VERSION,
                 helperFontPreset: normalizeFontPreset(local.helperFontPreset),
                 chatFontPreset: normalizeFontPreset(local.chatFontPreset),
                 helpFontPreset: normalizeFontPreset(local.helpFontPreset)
@@ -2071,7 +2112,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
                     return { ...station, role: "netcontrol", level: 0 };
                 return station;
             });
-            currentUserRole = "netlogger";
+            activateLayoutRole("netlogger", currentUserRole);
+            storageSet();
             stopSync();
             applyRoleUi();
             renderQueue();
@@ -3721,42 +3763,79 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         normalized.items.checkedOut = { x: 12, y: 0, w: 12, h: 4 };
         return normalized;
     }
-    function rawDefaultModuleLayoutForMode() {
-        let defaults = currentLayoutContext === "desktop"
-            ? (currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT)
-            : RESPONSIVE_DEFAULT_MODULE_LAYOUTS[currentLayoutContext] || DEFAULT_MODULE_LAYOUT;
-        if (currentUserRole === "netuser" && currentLayoutContext !== "desktop") {
-            const viewerItems = currentLayoutContext === "phonePortrait"
-                ? {
-                    ...defaults.items,
-                    active: { x: 0, y: 0, w: 24, h: 14 }, chat: { x: 0, y: 14, w: 24, h: 14 },
-                    lurkers: { x: 0, y: 28, w: 24, h: 5 }, checkedOut: { x: 0, y: 33, w: 24, h: 5 }
-                }
-                : defaults.items;
-            defaults = {
-                ...defaults,
-                items: viewerItems,
-                collapsed: { ...defaults.collapsed, controls: true, lurkers: true, checkedOut: true }
-            };
+    function rawDefaultModuleLayoutFor(role = currentUserRole, context = currentLayoutContext) {
+        if (loggerLayoutRole(role) === "viewer") {
+            return context === "desktop"
+                ? VIEWER_DEFAULT_MODULE_LAYOUT
+                : VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[context] || VIEWER_DEFAULT_MODULE_LAYOUT;
         }
-        return defaults;
+        return context === "desktop"
+            ? DEFAULT_MODULE_LAYOUT
+            : RESPONSIVE_DEFAULT_MODULE_LAYOUTS[context] || DEFAULT_MODULE_LAYOUT;
+    }
+    function rawDefaultModuleLayoutForMode() {
+        return rawDefaultModuleLayoutFor();
     }
     function defaultModuleLayoutForMode() {
         return canonicalizeReadOnlyTop(rawDefaultModuleLayoutForMode(), true);
     }
-    function saveActiveLayoutContext() {
-        local.responsiveLayouts = local.responsiveLayouts && typeof local.responsiveLayouts === "object"
-            ? local.responsiveLayouts : {};
-        local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
-        local.responsiveLayouts[currentLayoutContext] = local.moduleLayout;
+    function roleLayoutBucket(role = currentUserRole) {
+        local.roleResponsiveLayouts = local.roleResponsiveLayouts && typeof local.roleResponsiveLayouts === "object"
+            ? local.roleResponsiveLayouts : {};
+        const roleKey = loggerLayoutRole(role);
+        const bucket = local.roleResponsiveLayouts[roleKey];
+        if (!bucket || typeof bucket !== "object")
+            local.roleResponsiveLayouts[roleKey] = {};
+        return local.roleResponsiveLayouts[roleKey];
     }
-    function savedLayoutForContext(context) {
-        const candidate = context === "desktop"
+    function saveActiveLayoutContext(role = currentUserRole) {
+        if (!layoutRoleResolved)
+            return;
+        local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
+        roleLayoutBucket(role)[currentLayoutContext] = local.moduleLayout;
+    }
+    function legacyLayoutForContext(context) {
+        return context === "desktop"
             ? (local.responsiveLayouts?.desktop || local.moduleLayout)
             : local.responsiveLayouts?.[context];
+    }
+    function inheritedViewerLayoutForContext(context) {
+        if (!["tabletPortrait", "tabletLandscape"].includes(context))
+            return rawDefaultModuleLayoutFor("netuser", context);
+        const inherited = rawDefaultModuleLayoutFor("netcontrol", context);
+        return { ...inherited, collapsed: { controls: true, lurkers: true, checkedOut: true } };
+    }
+    function legacyLayoutShouldResetForRole(candidate, role, context) {
+        return shouldResetLegacyLoggerLayout(candidate, role, rawDefaultModuleLayoutFor("netcontrol", context), rawDefaultModuleLayoutFor("netuser", context), inheritedViewerLayoutForContext(context));
+    }
+    function migrateLegacyLayoutsForRole(role = currentUserRole) {
+        const bucket = roleLayoutBucket(role);
+        if (local.layoutRoleStorageVersion >= LOGGER_ROLE_LAYOUT_VERSION || Object.keys(bucket).length)
+            return bucket;
+        ["desktop", "tabletPortrait", "tabletLandscape", "phonePortrait", "phoneLandscape"].forEach(context => {
+            const candidate = legacyLayoutForContext(context);
+            if (!candidate || typeof candidate !== "object" || legacyLayoutShouldResetForRole(candidate, role, context))
+                return;
+            if (context !== "desktop" && !isCurrentResponsiveLayout(candidate, context))
+                return;
+            bucket[context] = candidate;
+        });
+        local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
+        return bucket;
+    }
+    function savedLayoutForContext(context, role = currentUserRole) {
+        const candidate = roleLayoutBucket(role)[context];
         if (!candidate || typeof candidate !== "object")
             return null;
         return context === "desktop" || isCurrentResponsiveLayout(candidate, context) ? candidate : null;
+    }
+    function activateLayoutRole(role, previousRole = "") {
+        if (layoutRoleResolved && previousRole)
+            saveActiveLayoutContext(previousRole);
+        currentUserRole = role || "netuser";
+        layoutRoleResolved = true;
+        migrateLegacyLayoutsForRole(currentUserRole);
+        local.moduleLayout = normalizeModuleLayout(savedLayoutForContext(currentLayoutContext) || defaultModuleLayoutForMode());
     }
     function switchLayoutContext(nextContext) {
         if (!nextContext || nextContext === currentLayoutContext)
@@ -3771,13 +3850,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         lockBackgroundScroll();
         storageSet();
         return true;
-    }
-    function hasCanonicalReadOnlyTop(layout) {
-        const normalized = normalizeModuleLayout(layout);
-        const lurkers = normalized.items.lurkers;
-        const checkedOut = normalized.items.checkedOut;
-        return lurkers.x === 0 && lurkers.y === 0 && lurkers.w === 12 && lurkers.h === 4
-            && checkedOut.x === 12 && checkedOut.y === 0 && checkedOut.w === 12 && checkedOut.h === 4;
     }
     function renderGridLayout(layout, draggingId = "") {
         const dashboard = panel?.querySelector("[data-role='dashboard']");
@@ -4634,6 +4706,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
                     paneSizes: { ...local.paneSizes }, collapsedSections: { ...local.collapsedSections },
                     moduleLayout: normalizeModuleLayout(),
                     responsiveLayouts: { ...local.responsiveLayouts },
+                    roleResponsiveLayouts: { ...local.roleResponsiveLayouts },
+                    layoutRoleStorageVersion: LOGGER_ROLE_LAYOUT_VERSION,
                     helperFontPreset: normalizeFontPreset(local.helperFontPreset),
                     chatFontPreset: normalizeFontPreset(local.chatFontPreset),
                     helpFontPreset: normalizeFontPreset(local.helpFontPreset),
@@ -4922,7 +4996,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
             currentLayoutContext = targetContext;
             const resetLayout = resolveGridLayout(defaultModuleLayoutForMode());
             currentLayoutContext = priorContext;
-            local.responsiveLayouts[targetContext] = resetLayout;
+            roleLayoutBucket()[targetContext] = resetLayout;
             if (targetContext === currentLayoutContext)
                 local.moduleLayout = resetLayout;
             storageSet();
@@ -5056,11 +5130,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
                 : null;
             if (focusedNote)
                 noteDrafts.set(focusedNote.call, focusedNote.value);
-            const previousRole = currentUserRole;
-            currentUserRole = me.role || "netuser";
-            if (defaultModuleLayoutPending) {
-                local.moduleLayout = resolveGridLayout(defaultModuleLayoutForMode());
-                defaultModuleLayoutPending = false;
+            const previousRole = layoutRoleResolved ? currentUserRole : "";
+            const nextRole = me.role || "netuser";
+            if (!layoutRoleResolved || previousRole !== nextRole) {
+                activateLayoutRole(nextRole, previousRole);
                 storageSet();
             }
             const serverLoggerState = data.loggerState;
@@ -5076,14 +5149,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
             const nextRenderSignature = remoteRenderSignature(latestStations, latestNetTitle, currentUserRole);
             const remoteUiChanged = nextRenderSignature !== lastRemoteRenderSignature;
             lastRemoteRenderSignature = nextRenderSignature;
-            if (!["netcontrol", "netlogger"].includes(previousRole) && canManageStations()) {
-                local.moduleLayout = hasCanonicalReadOnlyTop(local.moduleLayout)
-                    ? normalizeModuleLayout(defaultModuleLayoutForMode())
-                    : normalizeModuleLayout(local.moduleLayout);
-                local.moduleLayout.collapsed.controls = false;
-                local.moduleLayout = resolveGridLayout(local.moduleLayout, "controls");
-                storageSet();
-            }
             const panelWasMissing = !panel;
             addPanel();
             const netTitle = panel.querySelector("[data-role='net-title'] a");
@@ -5158,9 +5223,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
             }
             return [[call, migrated]];
         }));
-        const savedModuleLayout = saved.moduleLayout && typeof saved.moduleLayout === "object" ? saved.moduleLayout : {};
-        const savedCollapsedSections = saved.collapsedSections && typeof saved.collapsedSections === "object"
-            ? saved.collapsedSections : {};
         local = {
             order: Array.isArray(saved.order) ? saved.order : [],
             checkedOutOrder: Array.isArray(saved.checkedOutOrder) ? saved.checkedOutOrder : [],
@@ -5173,6 +5235,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
             collapsedSections: saved.collapsedSections && typeof saved.collapsedSections === "object" ? saved.collapsedSections : {},
             moduleLayout: saved.moduleLayout && typeof saved.moduleLayout === "object" ? saved.moduleLayout : {},
             responsiveLayouts: saved.responsiveLayouts && typeof saved.responsiveLayouts === "object" ? saved.responsiveLayouts : {},
+            roleResponsiveLayouts: saved.roleResponsiveLayouts && typeof saved.roleResponsiveLayouts === "object" ? saved.roleResponsiveLayouts : {},
+            layoutRoleStorageVersion: Number(saved.layoutRoleStorageVersion) || 0,
             helperFontPreset: normalizeFontPreset(saved.helperFontPreset),
             chatFontPreset: normalizeFontPreset(saved.chatFontPreset),
             helpFontPreset: normalizeFontPreset(saved.helpFontPreset),
@@ -5189,14 +5253,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, LOGGER_RESPONSIVE_LAYO
         if (!local.responsiveLayouts.desktop && Object.keys(local.moduleLayout).length) {
             local.responsiveLayouts.desktop = local.moduleLayout;
         }
-        const savedContextLayout = savedLayoutForContext(currentLayoutContext);
-        defaultModuleLayoutPending = currentLayoutContext === "desktop"
-            ? !Object.keys(savedModuleLayout).length && !Object.keys(savedCollapsedSections).length
-            : !savedContextLayout;
-        local.moduleLayout = normalizeModuleLayout(savedContextLayout || defaultModuleLayoutForMode());
+        local.moduleLayout = normalizeModuleLayout(defaultModuleLayoutForMode());
         storeSharedProfiles();
-        if (!defaultModuleLayoutPending)
-            storageSet();
         local.hiddenCalls.forEach(call => hiddenCalls.add(call));
         await refresh();
         pollTimer = window.setInterval(() => scheduleRefresh(), POLL_MS);

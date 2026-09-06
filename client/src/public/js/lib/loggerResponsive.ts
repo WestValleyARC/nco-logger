@@ -1,4 +1,5 @@
 export const LOGGER_RESPONSIVE_LAYOUT_VERSION = 1;
+export const LOGGER_ROLE_LAYOUT_VERSION = 1;
 
 export type LoggerLayoutContext =
   | 'phonePortrait'
@@ -6,6 +7,49 @@ export type LoggerLayoutContext =
   | 'tabletPortrait'
   | 'tabletLandscape'
   | 'desktop';
+
+export type LoggerLayoutRole = 'nco' | 'logger' | 'relay' | 'viewer';
+
+export function loggerLayoutRole(role: string): LoggerLayoutRole {
+    if (role === 'netcontrol') return 'nco';
+    if (role === 'netlogger') return 'logger';
+    if (role === 'netrelay') return 'relay';
+    return 'viewer';
+}
+
+export function isSameLoggerModuleLayout(value: unknown, expected: unknown): boolean {
+    if (!value || typeof value !== 'object' || !expected || typeof expected !== 'object') return false;
+    const valueLayout = value as Record<string, unknown>;
+    const expectedLayout = expected as Record<string, unknown>;
+    const valueItems = valueLayout['items'];
+    const expectedItems = expectedLayout['items'];
+    if (!valueItems || typeof valueItems !== 'object' || !expectedItems || typeof expectedItems !== 'object') return false;
+    const leftItems = valueItems as Record<string, unknown>;
+    const rightItems = expectedItems as Record<string, unknown>;
+    const leftCollapsed = valueLayout['collapsed'] && typeof valueLayout['collapsed'] === 'object'
+        ? valueLayout['collapsed'] as Record<string, unknown> : {};
+    const rightCollapsed = expectedLayout['collapsed'] && typeof expectedLayout['collapsed'] === 'object'
+        ? expectedLayout['collapsed'] as Record<string, unknown> : {};
+    return ['controls', 'active', 'chat', 'lurkers', 'checkedOut'].every(id => {
+        const left = leftItems[id];
+        const right = rightItems[id];
+        if (!left || typeof left !== 'object' || !right || typeof right !== 'object') return false;
+        const leftGeometry = left as Record<string, unknown>;
+        const rightGeometry = right as Record<string, unknown>;
+        return ['x', 'y', 'w', 'h'].every(key => Number(leftGeometry[key]) === Number(rightGeometry[key]))
+            && Boolean(leftCollapsed[id]) === Boolean(rightCollapsed[id]);
+    });
+}
+
+export function shouldResetLegacyLoggerLayout(value: unknown, role: string, operatorDefault: unknown,
+    viewerDefault: unknown, inheritedViewerDefault: unknown = viewerDefault): boolean {
+    if (loggerLayoutRole(role) === 'viewer') {
+        return isSameLoggerModuleLayout(value, operatorDefault)
+            || isSameLoggerModuleLayout(value, inheritedViewerDefault);
+    }
+    return isSameLoggerModuleLayout(value, viewerDefault)
+        || isSameLoggerModuleLayout(value, inheritedViewerDefault);
+}
 
 export function classifyLoggerLayout(width: number, height: number): LoggerLayoutContext {
     const viewportWidth = Number.isFinite(width) && width > 0 ? Math.round(width) : 0;

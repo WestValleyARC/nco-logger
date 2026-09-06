@@ -16,7 +16,8 @@ test('successful handoff immediately keeps the former NCO open in Logger mode', 
         /if \(desiredRole === "netcontrol"\) \{[\s\S]*?\n    \}\n    return true;/
     )?.[0] || '';
 
-    assert.match(transition, /currentUserRole = "netlogger";/);
+    assert.match(transition, /activateLayoutRole\("netlogger", currentUserRole\);/);
+    assert.match(transition, /storageSet\(\);/);
     assert.match(transition, /stationCall === ownCall[^\n]*role: "netlogger", level: 1/);
     assert.match(transition, /stationCall === call[^\n]*role: "netcontrol", level: 0/);
     assert.match(transition, /applyRoleUi\(\);/);

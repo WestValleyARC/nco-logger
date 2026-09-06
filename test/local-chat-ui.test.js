@@ -51,14 +51,56 @@ test('chat URL rendering uses inert text nodes and preserves Unicode around link
     ]);
 });
 
-test('Viewer defaults to Chat left and Active Log right while compatible saved layouts take precedence', () => {
+test('Viewer defaults and saved layouts are isolated by role and responsive context', () => {
     for (const file of ['client/src/public/js/byView/liveNet/ncoLogger.js', 'client/dist/public/js/byView/liveNet/ncoLogger.js']) {
         const source = read(file);
         assert.match(source, /VIEWER_DEFAULT_MODULE_LAYOUT[\s\S]*chat:\s*\{ x: 0, y: 0, w: 12, h: 20 \}[\s\S]*active:\s*\{ x: 12, y: 0, w: 12, h: 20 \}[\s\S]*collapsed:\s*\{ lurkers: true, checkedOut: true \}/);
-        assert.match(source, /currentUserRole === "netuser" \? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT/g);
-        assert.match(source, /const savedContextLayout = savedLayoutForContext\(currentLayoutContext\)[\s\S]*defaultModuleLayoutPending = currentLayoutContext === "desktop"[\s\S]*: !savedContextLayout/);
+        assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait:[\s\S]*active:\s*\{ x: 0, y: 0, w: 24, h: 14 \}[\s\S]*chat:\s*\{ x: 0, y: 14, w: 24, h: 14 \}/);
+        assert.match(source, /tabletPortrait:[\s\S]*chat:\s*\{ x: 0, y: 0, w: 10, h: 24 \}[\s\S]*active:\s*\{ x: 10, y: 0, w: 14, h: 24 \}/);
+        assert.match(source, /tabletLandscape:[\s\S]*chat:\s*\{ x: 0, y: 0, w: 8, h: 20 \}[\s\S]*active:\s*\{ x: 8, y: 0, w: 16, h: 20 \}/);
+        assert.match(source, /roleResponsiveLayouts:\s*local\.roleResponsiveLayouts/);
+        assert.match(source, /function activateLayoutRole\(role, previousRole = ""\)[\s\S]*saveActiveLayoutContext\(previousRole\)[\s\S]*savedLayoutForContext\(currentLayoutContext\) \|\| defaultModuleLayoutForMode\(\)/);
+        assert.match(source, /const previousRole = layoutRoleResolved \? currentUserRole : "";[\s\S]*if \(!layoutRoleResolved \|\| previousRole !== nextRole\)[\s\S]*activateLayoutRole\(nextRole, previousRole\)/);
+        assert.match(source, /if \(desiredRole === "netcontrol"\)[\s\S]*activateLayoutRole\("netlogger", currentUserRole\);[\s\S]*storageSet\(\);/);
+        assert.match(source, /legacyLayoutShouldResetForRole[\s\S]*shouldResetLegacyLoggerLayout/);
         assert.match(source, /isCurrentResponsiveLayout\(candidate, context\)/);
     }
+});
+
+test('role layout migration rejects known cross-role defaults without erasing customization', async () => {
+    const { loggerLayoutRole, shouldResetLegacyLoggerLayout, LOGGER_ROLE_LAYOUT_VERSION } = await loadLoggerResponsive();
+    assert.equal(LOGGER_ROLE_LAYOUT_VERSION, 1);
+    assert.equal(loggerLayoutRole('netcontrol'), 'nco');
+    assert.equal(loggerLayoutRole('netlogger'), 'logger');
+    assert.equal(loggerLayoutRole('netrelay'), 'relay');
+    assert.equal(loggerLayoutRole('netuser'), 'viewer');
+    const operatorDefault = {
+        items: {
+            controls: { x: 10, y: 0, w: 4, h: 4 }, active: { x: 8, y: 4, w: 16, h: 16 },
+            chat: { x: 0, y: 4, w: 8, h: 16 }, lurkers: { x: 0, y: 0, w: 10, h: 4 },
+            checkedOut: { x: 14, y: 0, w: 10, h: 4 }
+        }, collapsed: {}
+    };
+    const viewerDefault = {
+        items: {
+            controls: { x: 10, y: 0, w: 4, h: 4 }, active: { x: 12, y: 0, w: 12, h: 20 },
+            chat: { x: 0, y: 0, w: 12, h: 20 }, lurkers: { x: 0, y: 0, w: 12, h: 4 },
+            checkedOut: { x: 12, y: 0, w: 12, h: 4 }
+        }, collapsed: { lurkers: true, checkedOut: true }
+    };
+    const customized = structuredClone(operatorDefault);
+    customized.items.chat.w = 9;
+    const inheritedViewerDefault = structuredClone(operatorDefault);
+    inheritedViewerDefault.collapsed = { controls: true, lurkers: true, checkedOut: true };
+    assert.equal(shouldResetLegacyLoggerLayout(operatorDefault, 'netuser', operatorDefault, viewerDefault), true);
+    assert.equal(shouldResetLegacyLoggerLayout(viewerDefault, 'netcontrol', operatorDefault, viewerDefault), true);
+    assert.equal(shouldResetLegacyLoggerLayout(
+        inheritedViewerDefault, 'netuser', operatorDefault, viewerDefault, inheritedViewerDefault
+    ), true);
+    assert.equal(shouldResetLegacyLoggerLayout(
+        inheritedViewerDefault, 'netlogger', operatorDefault, viewerDefault, inheritedViewerDefault
+    ), true);
+    assert.equal(shouldResetLegacyLoggerLayout(customized, 'netuser', operatorDefault, viewerDefault), false);
 });
 
 test('modern Logger menu styling is not replaced by the optional metallic paint layer', () => {
@@ -146,10 +188,9 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0, w: 24, h: 7[\s\S]*active: \{ x: 0, y: 7[\s\S]*chat: \{ x: 0, y: 21/);
     assert.match(source, /phoneLandscape:[\s\S]*active: \{ x: 8, y: 0, w: 16/);
     assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
-    assert.match(source, /currentUserRole === "netuser"[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
-    assert.match(source, /responsiveLayouts:\s*local\.responsiveLayouts/);
-    assert.match(source, /hasCanonicalReadOnlyTop\(local\.moduleLayout\)[\s\S]*normalizeModuleLayout\(defaultModuleLayoutForMode\(\)\)/);
-    assert.doesNotMatch(source, /hasCanonicalReadOnlyTop\(local\.moduleLayout\)[\s\S]{0,100}normalizeModuleLayout\(DEFAULT_MODULE_LAYOUT\)/);
+    assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
+    assert.match(source, /roleResponsiveLayouts:\s*local\.roleResponsiveLayouts/);
+    assert.doesNotMatch(source, /hasCanonicalReadOnlyTop/);
     assert.match(source, /const heightOnlyPhoneResize = currentLayoutContext\.startsWith\("phone"\)[\s\S]*Math\.abs\(viewport\.width - lastLayoutViewportWidth\) <= 2[\s\S]*nextContext = `phone\$\{currentOrientation\}`[\s\S]*switchLayoutContext\(nextContext\)/);
     assert.match(source, /const layoutViewport = \(\) => \(\{[\s\S]*document\.documentElement\.clientWidth \|\| window\.innerWidth[\s\S]*document\.documentElement\.clientHeight \|\| window\.innerHeight/);
     assert.match(source, /Reset Portrait Layout[\s\S]*Reset Landscape Layout/);
