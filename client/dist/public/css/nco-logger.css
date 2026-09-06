@@ -233,7 +233,6 @@ body.nch-moving-module { cursor: grabbing !important; user-select: none !importa
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned .nch-detail,
 #netcontrol-ncs-helper .nch-row.nch-highlighted:focus-within button.nch-note-preview,
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned button.nch-note-preview { color: #211805; }
-#netcontrol-ncs-helper .nch-row.nch-selected-next { border-color: #ff3fbf; box-shadow: 0 0 0 2px rgba(255, 63, 191, .82), 0 0 14px rgba(255, 63, 191, .32); }
 #netcontrol-ncs-helper .nch-drag { align-self: stretch; display: inline-flex; align-items: center; justify-content: center; cursor: grab; color: #9adbe4; user-select: none; }
 #netcontrol-ncs-helper .nch-drag:active { cursor: grabbing; }
 #netcontrol-ncs-helper .nch-drag-locked { cursor: default; color: #6f7c84; }
@@ -1098,11 +1097,6 @@ hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send {
 #netcontrol-ncs-helper .nch-row.nch-lurker-row.nch-actions-pinned {
   background: #132631;
   border-color: rgba(0, 200, 240, .48);
-}
-
-#netcontrol-ncs-helper .nch-row.nch-selected-next {
-  border-color: var(--nch-skin-cyan);
-  box-shadow: inset 3px 0 0 var(--nch-skin-cyan);
 }
 
 #netcontrol-ncs-helper .nch-drag {
