@@ -192,6 +192,8 @@ import {
     helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0
   };
   let dragging = null;
+  let touchRowDrag = null;
+  let suppressStationRowClickUntil = 0;
   let resizing = null;
   let modulePointerDrag = null;
   let editingNoteCall = "";
@@ -2985,6 +2987,86 @@ import {
     );
   }
 
+  const TOUCH_ROW_DRAG_HOLD_MS = 360;
+  const TOUCH_ROW_DRAG_CANCEL_PX = 12;
+
+  function touchRowDragCandidate(target) {
+    if (!usesTouchStationInteractions() || !canManageStations()) return null;
+    if (target.closest("button, input, select, textarea, a, [contenteditable='true'], .nch-row-actions, .nch-inline-actions")) return null;
+    const row = target.closest("[data-role='active'] .nch-row[draggable='true'][data-group='order']");
+    return row?.dataset.pinned === "true" ? null : row;
+  }
+
+  function clearTouchRowDrag() {
+    if (!touchRowDrag) return;
+    clearTimeout(touchRowDrag.holdTimer);
+    if (touchRowDrag.started) {
+      touchRowDrag.row?.classList.remove("nch-dragging");
+    }
+    clearDropIndicators();
+    dragging = null;
+    touchRowDrag = null;
+  }
+
+  function startTouchRowDrag() {
+    if (!touchRowDrag || touchRowDrag.started) return;
+    const row = panel?.querySelector(`[data-role='active'] .nch-row[data-call='${CSS.escape(touchRowDrag.call)}'][draggable='true']`);
+    if (!row) return clearTouchRowDrag();
+    touchRowDrag.row = row;
+    touchRowDrag.started = true;
+    dragging = { call: touchRowDrag.call, group: touchRowDrag.group };
+    row.classList.add("nch-dragging");
+  }
+
+  function updateStationDropTarget(row, clientY) {
+    if (!row || !dragging || row.dataset.group !== dragging.group || row.dataset.call === dragging.call) return false;
+    clearDropIndicators();
+    const box = row.getBoundingClientRect();
+    const after = row.dataset.pinned === "true" || clientY > box.top + box.height / 2;
+    row.classList.add(after ? "nch-drop-after" : "nch-drop-before");
+    dragging.after = after;
+    const scroller = row.closest("[data-role='checked-out'], [data-role='active'], [data-role='lurkers']");
+    const scrollerBox = scroller?.getBoundingClientRect();
+    if (scrollerBox && clientY < scrollerBox.top + 36) scroller.scrollTop -= 20;
+    if (scrollerBox && clientY > scrollerBox.bottom - 36) scroller.scrollTop += 20;
+    if (touchRowDrag) touchRowDrag.targetCall = normalizeCall(row.dataset.call);
+    return true;
+  }
+
+  function touchRowDragPoint(event) {
+    return [...event.changedTouches, ...event.touches].find(touch => touch.identifier === touchRowDrag?.touchId);
+  }
+
+  function updateTouchRowDrag(event) {
+    if (!touchRowDrag) return false;
+    const touch = touchRowDragPoint(event);
+    if (!touch) return false;
+    const distance = Math.hypot(touch.clientX - touchRowDrag.startX, touch.clientY - touchRowDrag.startY);
+    if (!touchRowDrag.started) {
+      if (distance >= TOUCH_ROW_DRAG_CANCEL_PX) clearTouchRowDrag();
+      return false;
+    }
+    event.preventDefault();
+    const row = document.elementFromPoint(touch.clientX, touch.clientY)?.closest?.("[data-role='active'] .nch-row[data-group='order']");
+    updateStationDropTarget(row, touch.clientY);
+    return true;
+  }
+
+  function finishTouchRowDrag(event, cancelled = false) {
+    if (!touchRowDrag || !touchRowDragPoint(event)) return false;
+    const completed = touchRowDrag.started;
+    const targetCall = touchRowDrag.targetCall;
+    const group = touchRowDrag.group;
+    const after = Boolean(dragging?.after);
+    if (completed) {
+      event.preventDefault();
+      suppressStationRowClickUntil = performance.now() + 500;
+      if (!cancelled && targetCall) moveDragged(targetCall, group, after);
+    }
+    clearTouchRowDrag();
+    return completed;
+  }
+
   function moveDragged(targetCall, targetGroup, after = false) {
     if (!canManageStations()) {
       setStatus("Only the NCO or Logger can reorder the log.", "warning");
@@ -4288,6 +4370,12 @@ import {
     syncAppearanceSwitch();
 
     panel.addEventListener("click", async event => {
+      const suppressedRowClick = event.target.closest?.("[data-role='active'] .nch-row[data-group='order']");
+      if (suppressedRowClick && performance.now() < suppressStationRowClickUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (event.target.closest?.("[data-close-station-actions]")) {
         const call = pinnedActionCall;
         clearPinnedStationAction(call);
@@ -4827,6 +4915,7 @@ import {
       }
     });
     panel.addEventListener("dragstart", event => {
+      if (usesTouchStationInteractions()) return event.preventDefault();
       if (!canManageStations()) return event.preventDefault();
       const row = event.target.closest(".nch-row[draggable='true']");
       if (!row || event.target.closest("button, input, select, textarea, a")) return event.preventDefault();
@@ -4838,16 +4927,8 @@ import {
     });
     panel.addEventListener("dragover", event => {
       const row = event.target.closest(".nch-row");
-      if (!row || !dragging || row.dataset.group !== dragging.group || row.dataset.call === dragging.call) return;
+      if (!row || !updateStationDropTarget(row, event.clientY)) return;
       event.preventDefault();
-      clearDropIndicators();
-      const after = row.dataset.pinned === "true" || event.clientY > row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
-      row.classList.add(after ? "nch-drop-after" : "nch-drop-before");
-      dragging.after = after;
-      const scroller = row.closest("[data-role='checked-out'], [data-role='active'], [data-role='lurkers']");
-      const box = scroller?.getBoundingClientRect();
-      if (box && event.clientY < box.top + 36) scroller.scrollTop -= 20;
-      if (box && event.clientY > box.bottom - 36) scroller.scrollTop += 20;
     });
     panel.addEventListener("drop", event => {
       if (!canManageStations()) return;
@@ -4862,6 +4943,25 @@ import {
       clearDropIndicators();
       dragging = null;
     });
+    panel.addEventListener("touchstart", event => {
+      if (event.touches.length !== 1) {
+        if (touchRowDrag) clearTouchRowDrag();
+        return;
+      }
+      if (touchRowDrag) return;
+      const row = touchRowDragCandidate(event.target);
+      if (!row) return;
+      const touch = event.changedTouches[0];
+      touchRowDrag = {
+        call: normalizeCall(row.dataset.call), group: row.dataset.group,
+        row, touchId: touch.identifier, startX: touch.clientX, startY: touch.clientY,
+        started: false, targetCall: "", holdTimer: 0
+      };
+      touchRowDrag.holdTimer = window.setTimeout(startTouchRowDrag, TOUCH_ROW_DRAG_HOLD_MS);
+    }, { passive: true });
+    panel.addEventListener("touchmove", updateTouchRowDrag, { passive: false });
+    panel.addEventListener("touchend", event => finishTouchRowDrag(event), { passive: false });
+    panel.addEventListener("touchcancel", event => finishTouchRowDrag(event, true), { passive: false });
     panel.addEventListener("pointerdown", event => {
       const moduleResizer = event.target.closest("[data-resize-module]");
       if (moduleResizer && !currentLayoutContext.startsWith("phone")) {
@@ -4908,6 +5008,9 @@ import {
       if (resizing?.pointerId === event.pointerId) stopResizing(event, true);
       else if (modulePointerDrag?.pointerId === event.pointerId) cancelModulePointerDrag(event);
     });
+    panel.addEventListener("scroll", () => {
+      if (touchRowDrag && !touchRowDrag.started) clearTouchRowDrag();
+    }, true);
     panel.addEventListener("dblclick", event => {
       const moduleResizer = event.target.closest("[data-resize-module]");
       const id = moduleResizer?.dataset.resizeModule;

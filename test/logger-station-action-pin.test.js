@@ -69,6 +69,21 @@ test('tablet active rows reserve the action track and grow only when wrapped tag
     assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"/);
 });
 
+test('phone and tablet Active Log rows share intentional hold-to-reorder behavior', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(source, /const TOUCH_ROW_DRAG_HOLD_MS = 360/);
+    assert.match(source, /const TOUCH_ROW_DRAG_CANCEL_PX = 12/);
+    assert.match(source, /function touchRowDragCandidate\(target\)[\s\S]*usesTouchStationInteractions\(\)[\s\S]*canManageStations\(\)[\s\S]*button, input, select, textarea, a[\s\S]*\[data-role='active'\] \.nch-row\[draggable='true'\]\[data-group='order'\][\s\S]*dataset\.pinned === "true"/);
+    assert.match(source, /panel\.addEventListener\("touchstart"[\s\S]*event\.touches\.length !== 1[\s\S]*touchRowDragCandidate\(event\.target\)[\s\S]*setTimeout\(startTouchRowDrag, TOUCH_ROW_DRAG_HOLD_MS\)/);
+    assert.match(source, /function updateTouchRowDrag\(event\)[\s\S]*distance >= TOUCH_ROW_DRAG_CANCEL_PX[\s\S]*clearTouchRowDrag\(\)[\s\S]*event\.preventDefault\(\)[\s\S]*elementFromPoint[\s\S]*updateStationDropTarget/);
+    assert.match(source, /panel\.addEventListener\("touchmove", updateTouchRowDrag, \{ passive: false \}\)/);
+    assert.match(source, /function updateStationDropTarget\(row, clientY\)[\s\S]*const box = row\.getBoundingClientRect\(\)[\s\S]*box\.height \/ 2[\s\S]*nch-drop-after[\s\S]*scrollTop/);
+    assert.match(source, /function finishTouchRowDrag\(event, cancelled = false\)[\s\S]*if \(completed\)[\s\S]*suppressStationRowClickUntil = performance\.now\(\) \+ 500[\s\S]*moveDragged\(targetCall, group, after\)/);
+    assert.match(source, /suppressedRowClick[\s\S]*performance\.now\(\) < suppressStationRowClickUntil[\s\S]*event\.preventDefault\(\)[\s\S]*return/);
+    assert.match(source, /if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
+    assert.match(source, /panel\.addEventListener\("dragstart"[\s\S]*usesTouchStationInteractions\(\)[\s\S]*event\.preventDefault\(\)[\s\S]*event\.dataTransfer\.effectAllowed = "move"/);
+});
+
 test('phone and tablet station actions render in one visual-viewport modal with complete dismissal', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
