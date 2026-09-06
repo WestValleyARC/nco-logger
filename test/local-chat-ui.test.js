@@ -61,6 +61,16 @@ test('Viewer defaults to Chat left and Active Log right while compatible saved l
     }
 });
 
+test('modern Logger menu styling is not replaced by the optional metallic paint layer', () => {
+    const loggerCss = read('client/dist/public/css/nco-logger.css');
+    const metallicCss = read('client/dist/public/css/nco-logger-metallic.css');
+    assert.match(loggerCss, /\.nch-header-menu-popover\s*\{[^}]*gap:\s*1px[^}]*background:\s*#07111a[^}]*border-radius:\s*4px/s);
+    assert.match(loggerCss, /\.nch-modules-menu-panel > button\[data-toggle-module\] small::after\s*\{[^}]*border-radius:\s*50%[^}]*transition:/s);
+    assert.match(loggerCss, /button\[data-toggle-module\]\[aria-pressed="true"\] small::after\s*\{[^}]*transform:\s*translateX\(14px\)/s);
+    assert.doesNotMatch(metallicCss, /\.nch-header-menu-popover/);
+    assert.doesNotMatch(metallicCss, /\.nch-header-menu > summary/);
+});
+
 test('emoji picker provides all requested categories and a substantial searchable set', async () => {
     const { CHAT_EMOJI_CATEGORIES, filterChatEmoji } = await loadEmoji();
     assert.deepEqual(
