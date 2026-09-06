@@ -14,7 +14,7 @@ import {
   "use strict";
 
   const POLL_MS = 3000;
-  const VERSION = "1.1.0-beta.3";
+  const VERSION = "1.1.0-beta.4";
   const QRZ_NAME_VERSION = 3;
   const BUG_REPORT_URL = `mailto:ke7wil@gmail.com?subject=${encodeURIComponent(`WVARC NCO Logger Bug Report - ${VERSION}`)}&body=${encodeURIComponent(`Version: ${VERSION}\nLogger mode: \nWhat happened?\n\nWhat did you expect?\n\nSteps to reproduce:\n`)}`;
   const NOTE_MAX = 60;
