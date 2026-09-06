@@ -1897,22 +1897,65 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
 }
 
 #netcontrol-ncs-helper .nch-station-action-panel .nch-tray-title {
-  grid-template-columns: 22px minmax(0, 1fr) 22px 28px;
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  grid-template-columns: 0 minmax(0, 1fr) 36px 36px;
+  gap: 6px;
+  padding: 2px 0 6px;
+  background: #07131c;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel .nch-tray-title > :is(button.nch-tray-help, button.nch-tray-close) {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  align-self: center;
+  padding: 0;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  line-height: 1;
 }
 
 #netcontrol-ncs-helper .nch-station-action-panel button.nch-tray-close {
   grid-column: 4;
-  width: 28px;
-  min-width: 28px;
-  min-height: 28px;
   padding: 0;
   color: #fff;
   background: #8e2834;
   border-color: #ff9da7;
-  border-radius: 50%;
   font-size: 20px;
   font-weight: 800;
-  line-height: 1;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel .nch-tray-group > span > button {
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+  text-align: center;
+  text-wrap: balance;
+}
+
+@media (max-width: 400px) {
+  #netcontrol-ncs-helper .nch-station-action-panel > .nch-row-actions.nch-active-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #netcontrol-ncs-helper .nch-station-action-panel .nch-tray-group {
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+
+  #netcontrol-ncs-helper .nch-station-action-panel :is(.nch-management-actions, .nch-status-actions, .nch-attention-actions) > span {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 126px), 1fr));
+  }
+
+  #netcontrol-ncs-helper .nch-station-action-panel .nch-role-actions > span {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) > hl-chat.nch-chat-floating {
@@ -2108,7 +2151,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
     max-height: calc(100dvh - 54px - env(safe-area-inset-bottom));
   }
 
-  #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-station-action-panel :is(.nch-row-actions, .nch-inline-actions) button {
+  #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-station-action-panel :is(.nch-row-actions, .nch-inline-actions) button:not(.nch-tray-help):not(.nch-tray-close) {
     min-height: 44px;
   }
 }
