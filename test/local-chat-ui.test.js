@@ -221,6 +221,7 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(css, /@container \(max-width: 190px\)[\s\S]*\[data-layout-context="tabletLandscape"\] \.nch-controls-pane \.nch-quick-checkin\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
     assert.match(css, /\[data-layout-context="tabletLandscape"\] \.nch-controls-pane \.nch-entry-controls\s*\{[^}]*justify-content:\s*flex-start/s);
     assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-controls-pane \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-controls-pane \.nch-net-actions\s*\{[^}]*transform:\s*translateY\(-4px\)/s);
     assert.match(css, /\[data-layout-context="tabletLandscape"\] \.nch-controls-pane \.nch-net-actions\s*\{[^}]*margin-top:\s*3px/s);
     assert.match(css, /#netcontrol-ncs-helper\[data-layout-context\^="phone"\]\s*\{[^}]*z-index:\s*auto[^}]*grid-template-rows:\s*auto auto/s);
     assert.doesNotMatch(css, /\[data-layout-context\^="phone"\] \.nch-module\s*\{[^}]*margin/s);

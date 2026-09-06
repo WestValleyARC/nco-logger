@@ -569,6 +569,10 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
   padding-bottom: 9px;
 }
 
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-net-actions {
+  transform: translateY(-4px);
+}
+
 #netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-net-actions {
   margin-top: 3px;
 }
