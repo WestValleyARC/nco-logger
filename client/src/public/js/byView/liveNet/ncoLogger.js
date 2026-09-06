@@ -4042,7 +4042,7 @@ import {
     panel.innerHTML = `
       <header>
         <a class="nch-helper-brand" href="/views/dashboard" aria-label="Return to the live nets page" title="Back to Live Nets">
-          <span class="nch-helper-title-line"><img class="nch-helper-logo" src="/img/NCO_Logger_Logo_compact.png" alt="NCO Logger"></span>
+          <span class="nch-helper-title-line"><img class="nch-helper-logo app-theme-logo-dark" src="/img/NCO_Logger_Logo_compact.png" alt="NCO Logger"><img class="nch-helper-logo app-theme-logo-light" src="/img/NCO_Logger_Logo_compact_Light_Mode.png" alt="" aria-hidden="true"></span>
           <small data-role="helper-version">Version ${escapeHtml(VERSION)}</small>
         </a>
         <div class="nch-net-title" data-role="net-title">

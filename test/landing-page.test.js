@@ -21,11 +21,14 @@ const landingCss = read('client/dist/public/css/app-shell.css');
 const loggerLightCss = read('client/dist/public/css/nco-logger-light.css');
 const appearanceClient = read('client/dist/public/js/lib/appearance.js');
 const themeControlClient = read('client/src/public/js/lib/themeControl.js');
+const loggerClient = read('client/src/public/js/byView/liveNet/ncoLogger.js');
 const heroTimeClient = read('client/dist/public/js/lib/heroTime.js');
 const head = read('server/dist/views/partials/head.ejs');
 const serverUtils = read('server/dist/lib/serverUtils.js');
 const dayHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-phoenix-day-final.png');
 const nightHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-phoenix-night-final.png');
+const lightLogoPath = path.join(root, 'client/dist/public/img/NCO_Logger_Logo_Light_Mode.png');
+const compactLightLogoPath = path.join(root, 'client/dist/public/img/NCO_Logger_Logo_compact_Light_Mode.png');
 const { getCheckInCounts } = require('../server/dist/controllers/liveNetController');
 
 test('landing hero uses the approved copy, actions, logo identity, and tower artwork', () => {
@@ -38,7 +41,12 @@ test('landing hero uses the approved copy, actions, logo identity, and tower art
     assert.match(dashboard, /href="#net-schedule"/);
     assert.match(landingCss, /\.landing-page \.landing-hero\s*\{[\s\S]*background-image:\s*var\(--app-dashboard-hero-image\)/);
     assert.match(navbar, /src="\/img\/NCO_Logger_Logo_navbar\.png"/);
+    assert.match(navbar, /src="\/img\/NCO_Logger_Logo_Light_Mode\.png"/);
     assert.match(navbar, /alt="NCO Logger by WVARC"/);
+    assert.match(footer, /NCO_Logger_Logo\.png[\s\S]*NCO_Logger_Logo_Light_Mode\.png/);
+    assert.match(loggerClient, /NCO_Logger_Logo_compact\.png[\s\S]*NCO_Logger_Logo_compact_Light_Mode\.png/);
+    assert.ok(fs.statSync(lightLogoPath).size > 100000);
+    assert.ok(fs.statSync(compactLightLogoPath).size > 100000);
     assert.ok(fs.statSync(dayHeroPath).size > 100000);
     assert.ok(fs.statSync(dayHeroPath).size < 5000000);
     assert.ok(fs.statSync(nightHeroPath).size > 100000);
@@ -107,8 +115,13 @@ test('the shared navigation owns the single theme preference control', () => {
     assert.doesNotMatch(myAccount, /name="appearance"|id="appearance-settings"/);
     assert.match(themeControlClient, /window\.ncoLoggerAppearance/);
     assert.match(themeControlClient, /appearanceManager\.setAppearance\(control\.checked \? 'dark' : 'light'\)/);
-    assert.match(themeControlClient, /appearance === 'system' \? `System preference currently resolves to \$\{theme\}`/);
+    assert.match(themeControlClient, /appearance === 'system' \? ' from system preference' : ''/);
+    assert.match(themeControlClient, /control\.setAttribute\('aria-label', `\$\{current\} theme active\$\{source\}\. Switch to \$\{target\} theme\.`\)/);
     assert.match(themeControlClient, /ncoLogger:appearancechange/);
+    assert.doesNotMatch(navbar, /data-appearance-label|class="app-theme-state"/);
+    assert.match(landingCss, /\.app-theme-logo-light\s*\{\s*display:\s*none !important/);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-theme-logo-dark\s*\{\s*display:\s*none !important/);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-theme-logo-light\s*\{\s*display:\s*block !important/);
     assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-navbar\s*\{[^}]*background:\s*rgba\(247, 250, 251, \.97\) !important/s);
     assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-footer\s*\{[^}]*background:\s*#e4edef !important/s);
 });

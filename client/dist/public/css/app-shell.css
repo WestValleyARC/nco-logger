@@ -109,6 +109,18 @@
     object-position: left center;
 }
 
+.app-theme-logo-light {
+    display: none !important;
+}
+
+:root[data-theme='light'] .app-theme-logo-dark {
+    display: none !important;
+}
+
+:root[data-theme='light'] .app-theme-logo-light {
+    display: block !important;
+}
+
 .app-navbar .nav-link {
     position: relative;
     padding: 0.65rem 0.85rem !important;
@@ -5677,10 +5689,6 @@
 .app-theme-toggle input:focus-visible + .app-theme-toggle-track {
     outline: 2px solid #00c8f0;
     outline-offset: 2px;
-}
-
-.app-theme-state {
-    min-width: 2.1rem;
 }
 
 :root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar {

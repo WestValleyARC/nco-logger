@@ -11,11 +11,11 @@
             control.checked = theme === 'dark';
             control.setAttribute('aria-checked', String(control.checked));
             control.dataset.resolvedTheme = theme;
-            const label = control.closest('.app-theme-toggle')?.querySelector('[data-appearance-label]');
-            if (label)
-                label.textContent = theme === 'dark' ? 'Dark' : 'Light';
-            const description = appearance === 'system' ? `System preference currently resolves to ${theme}` : `${theme} theme selected`;
-            control.closest('.app-theme-toggle')?.setAttribute('title', `${description}. Toggle theme.`);
+            const current = theme === 'dark' ? 'Dark' : 'Light';
+            const target = theme === 'dark' ? 'light' : 'dark';
+            const source = appearance === 'system' ? ' from system preference' : '';
+            control.setAttribute('aria-label', `${current} theme active${source}. Switch to ${target} theme.`);
+            control.closest('.app-theme-toggle')?.setAttribute('title', `${current} theme active${source}. Switch to ${target} theme.`);
         });
     };
     controls.forEach(control => {
