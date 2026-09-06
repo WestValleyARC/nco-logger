@@ -217,6 +217,7 @@ import {
   let stationTransitionBaseline = null;
   let selectedNextCall = "";
   let pinnedActionCall = "";
+  let touchInlineActionCall = "";
   let scrollActiveAfterRender = false;
   let updateCheckInFlight = false;
   let latestAvailableVersion = "";
@@ -2737,7 +2738,7 @@ import {
     const isNco = station.role === "netcontrol";
     const manager = canManageStations();
     const busy = busyCalls.has(call);
-    const roleClass = ` nch-role-${details.specialGuest ? "specialGuest" : station.role || "netuser"}${station.checkedState === true && call === selectedNextCall ? " nch-selected-next" : ""}${!usesTouchStationInteractions() && pinnedActionCall === call ? " nch-actions-pinned" : ""}`;
+    const roleClass = ` nch-role-${details.specialGuest ? "specialGuest" : station.role || "netuser"}${station.checkedState === true && call === selectedNextCall ? " nch-selected-next" : ""}${station.checkedState !== true && usesTouchStationInteractions() && touchInlineActionCall === call ? " nch-touch-actions-open" : ""}${!usesTouchStationInteractions() && pinnedActionCall === call ? " nch-actions-pinned" : ""}`;
     const avatarTitle = details.qrzPhoto
       ? `QRZ photo for ${call}`
       : details.qrzPhotoChecked
@@ -2838,6 +2839,7 @@ import {
     if (focusedNote) noteDrafts.set(focusedNote.call, focusedNote.value);
     const visibleStations = latestStations.filter(s => !hiddenCalls.has(normalizeCall(s.callSign)));
     if (pinnedActionCall && !visibleStations.some(s => normalizeCall(s.callSign) === pinnedActionCall)) pinnedActionCall = "";
+    if (touchInlineActionCall && !visibleStations.some(s => normalizeCall(s.callSign) === touchInlineActionCall && s.checkedState !== true)) touchInlineActionCall = "";
     panel.classList.toggle("nch-has-pinned-actions", Boolean(pinnedActionCall));
     const checkedOut = ordered(visibleStations.filter(s => s.checkedState === false), "checkedOutOrder");
     const activeRaw = visibleStations.filter(s => s.checkedState === true);
@@ -4325,7 +4327,15 @@ import {
         const station = latestStations.find(item => normalizeCall(item.callSign) === normalizeCall(clickedRow.dataset.call));
         if (station?.checkedState !== true) {
           if (pinnedActionCall) clearPinnedStationAction(pinnedActionCall);
-          clickedRow.focus({ preventScroll: true });
+          const call = normalizeCall(clickedRow.dataset.call);
+          const closing = touchInlineActionCall === call;
+          touchInlineActionCall = closing ? "" : call;
+          panel.querySelectorAll(".nch-touch-actions-open").forEach(row => row.classList.remove("nch-touch-actions-open"));
+          if (closing) clickedRow.blur();
+          else {
+            clickedRow.classList.add("nch-touch-actions-open");
+            clickedRow.focus({ preventScroll: true });
+          }
           return;
         }
       }

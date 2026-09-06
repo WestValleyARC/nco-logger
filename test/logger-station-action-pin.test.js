@@ -39,22 +39,30 @@ test('phone and tablet station actions use the dedicated operator-only touch tog
     assert.doesNotMatch(source, /if \(clickedRow && !clickedInteractive && touchStationActions\) \{\s*const call = normalizeCall\(clickedRow\.dataset\.call\);\s*pinnedActionCall = pinnedActionCall === call/);
 });
 
-test('tablet touch rows keep active selection while lurker and checked-out taps reveal inline actions', () => {
+test('touch rows deterministically toggle lurker and checked-out inline actions', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
-    assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*station\?\.checkedState !== true[\s\S]*clickedRow\.focus\(\{ preventScroll: true \}\)[\s\S]*if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
+    assert.match(source, /let touchInlineActionCall = ""/);
+    assert.match(source, /station\.checkedState !== true && usesTouchStationInteractions\(\) && touchInlineActionCall === call \? " nch-touch-actions-open"/);
+    assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*station\?\.checkedState !== true[\s\S]*const closing = touchInlineActionCall === call[\s\S]*touchInlineActionCall = closing \? "" : call[\s\S]*querySelectorAll\("\.nch-touch-actions-open"\)[\s\S]*if \(closing\) clickedRow\.blur\(\)[\s\S]*classList\.add\("nch-touch-actions-open"\)[\s\S]*clickedRow\.focus\(\{ preventScroll: true \}\)[\s\S]*if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
+    assert.match(source, /const clickedInteractive = event\.target\.closest\?\.\("button, input,[^"]+\.nch-row-actions"\)[\s\S]*if \(clickedRow && !clickedInteractive && touchStationActions\)/);
     assert.match(source, /panel\.addEventListener\("contextmenu"[\s\S]*if \(usesTouchStationInteractions\(\)\) \{\s*event\.preventDefault\(\);\s*return;\s*\}/);
     assert.match(source, /\$\{usesTouchStationInteractions\(\) \? "" : stationActionTray/);
-    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-checked-out:not\(:focus-within\) button\.nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
+    assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\)[\s\S]*:is\(\.nch-row\.nch-checked-out, \.nch-lurker-row\)\.nch-touch-actions-open \.nch-inline-actions\s*\{\s*display:\s*inline-flex/s);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-checked-out:not\(\.nch-touch-actions-open\) button\.nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
     assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\][^{]*nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
 });
 
-test('tablet portrait active rows reserve a fixed action track and keep tags ahead of identity text', () => {
+test('tablet active rows reserve the action track and grow only when wrapped tags need it', () => {
     const css = read('client/dist/public/css/nco-logger.css');
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(css, /\[data-layout-context\^="tablet"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*20px minmax\(112px, 136px\) minmax\(0, 1fr\) 36px/s);
     assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(96px, 112px\) minmax\(0, 1fr\) 36px/s);
-    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-meta\s*\{[^}]*overflow:\s*hidden[^}]*flex:\s*1 1 0/s);
-    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-status-tags\s*\{[^}]*max-width:\s*none[^}]*flex:\s*0 0 auto[^}]*flex-wrap:\s*nowrap/s);
-    assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\][^{]*nch-active-section \.nch-row\s*\{[^}]*36px/s);
+    assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) \.nch-active-section \.nch-row-text\s*\{[^}]*flex-direction:\s*column[^}]*overflow:\s*visible/s);
+    assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) \.nch-active-section \.nch-status-tags\s*\{[^}]*max-width:\s*100%[^}]*flex:\s*0 0 auto[^}]*flex-wrap:\s*wrap[^}]*overflow:\s*visible/s);
+    assert.doesNotMatch(css.match(/\[data-layout-context\^="tablet"\] \.nch-active-section \.nch-row\s*\{[^}]*\}/s)?.[0] || '', /height:/);
+    assert.match(source, /station\.checkedState === true && call === selectedNextCall \? " nch-selected-next"/);
+    assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"/);
 });
 
 test('phone and tablet station actions render in one visual-viewport modal with complete dismissal', () => {
