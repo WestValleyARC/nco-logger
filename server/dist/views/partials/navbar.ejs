@@ -46,6 +46,17 @@
             Guide
           </a>
         </li>
+        <li class="nav-item app-theme-item" role="none">
+          <label class="app-theme-control">
+            <i class="bi bi-circle-half" aria-hidden="true"></i>
+            <span>Theme</span>
+            <select data-appearance-control aria-label="Color theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+        </li>
         <% if (user.isLoggedIn) { %>
         <li class="nav-item" role="none">
           <a href="/views/myaccount" class="nav-link" role="menuitem" tabindex="0">
@@ -68,4 +79,5 @@
     </div>
   </div>
 </nav>
+<script src="/js/lib/themeControl.js?v=<%= server.appAssetVersion %>" defer></script>
 <!--End: navbar.ejs-->

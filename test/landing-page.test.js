@@ -11,6 +11,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 const dashboard = read('server/dist/views/dashboard.ejs');
 const navbar = read('server/dist/views/partials/navbar.ejs');
 const footer = read('server/dist/views/partials/footer.ejs');
+const myAccount = read('server/dist/views/myAccount.ejs');
 const dashboardClient = read('client/dist/public/js/byView/dashboard/main.js');
 const favoriteWidgets = read('client/src/public/js/lib/widgets.ts');
 const legacyFavoriteClient = read('client/dist/public/js/lib/old__clientUtils.js');
@@ -18,6 +19,7 @@ const waitingPage = read('server/dist/views/netNotRunning.ejs');
 const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
 const appearanceClient = read('client/dist/public/js/lib/appearance.js');
+const themeControlClient = read('client/src/public/js/lib/themeControl.js');
 const heroTimeClient = read('client/dist/public/js/lib/heroTime.js');
 const head = read('server/dist/views/partials/head.ejs');
 const serverUtils = read('server/dist/lib/serverUtils.js');
@@ -94,6 +96,22 @@ test('Appearance remains responsible only for the application color theme', () =
     assert.match(appearanceClient, /if \(appearance === 'system'\)\s+applyAppearance\(appearance\)/);
     assert.match(appearanceClient, /systemDarkMode\.addEventListener\('change', handleSystemChange\)/);
     assert.match(head, /Blocking by design:[\s\S]*<script src="\/js\/lib\/appearance\.js\?v=<%= server\.appAssetVersion %>"><\/script>/);
+});
+
+test('the shared navigation owns the single theme preference control', () => {
+    assert.match(navbar, /data-appearance-control[\s\S]*System[\s\S]*Light[\s\S]*Dark/);
+    assert.match(navbar, /themeControl\.js\?v=<%= server\.appAssetVersion %>/);
+    assert.doesNotMatch(myAccount, /name="appearance"|id="appearance-settings"/);
+    assert.match(themeControlClient, /window\.ncoLoggerAppearance/);
+    assert.match(themeControlClient, /appearanceManager\.setAppearance\(control\.value\)/);
+    assert.match(themeControlClient, /ncoLogger:appearancechange/);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-navbar\s*\{[^}]*background:\s*rgba\(247, 250, 251, \.97\) !important/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-footer,[\s\S]*background:\s*#e4edef !important/s);
+});
+
+test('phone dashboard hero reserves a readable copy region and exposes the final artwork', () => {
+    assert.match(landingCss, /@media \(max-width: 767\.98px\)[\s\S]*\.landing-page \.landing-hero\s*\{[^}]*padding-bottom:\s*clamp\(13rem, 48vw, 16rem\)[^}]*background-position:\s*right bottom[^}]*background-size:\s*auto 58%/s);
+    assert.match(landingCss, /@media \(max-width: 991\.98px\) and \(orientation: landscape\) and \(max-height: 575px\)[\s\S]*background-position:\s*right center[^}]*background-size:\s*auto 100%/s);
 });
 
 test('landing page contains exactly the four approved feature cards', () => {
