@@ -67,6 +67,9 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
             assert.match(client, /Move .* connection down/);
             assert.match(client, /moveUp\.disabled = index === 0/);
             assert.match(client, /moveDown\.disabled = index === connectionRows\.length - 1/);
+            assert.match(client, /const revealCreatedConnection = index =>[\s\S]*scrollIntoView\(\{ behavior: 'smooth', block: 'center', inline: 'nearest' \}\)[\s\S]*}, 1600\)/);
+            assert.match(client, /getElementById\('add_connection'\)[\s\S]*renderConnections\(\);\s*revealCreatedConnection\(connectionRows\.length - 1\)/);
+            assert.doesNotMatch(client.match(/const renderConnections = \(\) => \{[\s\S]*?\n\};/)?.[0] || '', /revealCreatedConnection/);
             assert.doesNotMatch(client, /^\s*Legacy:/m);
         });
 

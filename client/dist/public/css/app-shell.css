@@ -953,6 +953,31 @@
     }
 }
 
+/* Feedback for an explicitly added structured connection. */
+.connection-card {
+    scroll-margin-block: 20vh;
+    transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
+}
+
+.connection-card.is-newly-created {
+    border-color: rgba(116, 198, 212, .92);
+    background: rgba(21, 69, 79, .72);
+    box-shadow: 0 0 0 3px rgba(116, 198, 212, .16), 0 .7rem 1.8rem rgba(0, 0, 0, .18);
+}
+
+:root[data-theme='light'] .connection-card.is-newly-created {
+    border-color: rgba(5, 107, 133, .8);
+    background: rgba(8, 117, 144, .11);
+    box-shadow: 0 0 0 3px rgba(8, 117, 144, .12), 0 .7rem 1.8rem rgba(18, 45, 57, .12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .connection-card {
+        scroll-behavior: auto;
+        transition: none;
+    }
+}
+
 @media (max-width: 575.98px) {
     .landing-kicker {
         gap: 0.45rem;
