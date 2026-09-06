@@ -57,6 +57,18 @@ test('touch rows deterministically toggle lurker and checked-out inline actions'
     assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\][^{]*nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
 });
 
+test('desktop clicks persistently toggle lurker and checked-out actions without replacing hover', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    const css = read('client/dist/public/css/nco-logger.css');
+    assert.match(source, /function toggleDesktopInlineActions\(row\)[\s\S]*usesTouchStationInteractions\(\)[\s\S]*!canManageStations\(\)[\s\S]*station\?\.checkedState === true[\s\S]*const closing = pinnedActionCall === call[\s\S]*clearPinnedStationAction\(pinnedActionCall\)[\s\S]*if \(!closing\) pinnedActionCall = call[\s\S]*renderQueue\(\)/);
+    assert.match(source, /const clickedInteractive = event\.target\.closest\?\.\("button, input, textarea, select, a, \[contenteditable='true'\], \.nch-drag, \.nch-row-actions"\)/);
+    assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*if \(clickedRow && !clickedInteractive && toggleDesktopInlineActions\(clickedRow\)\) return;[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call/);
+    assert.match(source, /function syncStationActionModal\(\)[\s\S]*const touchInteractions = usesTouchStationInteractions\(\)[\s\S]*if \(!touchInteractions\)\s*\{[\s\S]*modal\.hidden = true[\s\S]*\} else if \(!allowed\)\s*\{[\s\S]*pinnedActionCall = ""/);
+    assert.match(css, /:is\(\.nch-row\.nch-checked-out, \.nch-lurker-row\):is\(:hover, :focus-within, \.nch-actions-pinned\) \.nch-row-text\s*\{\s*display:\s*none/);
+    assert.match(css, /:is\(\.nch-row\.nch-checked-out, \.nch-lurker-row\):is\(:hover, :focus-within, \.nch-actions-pinned\) \.nch-inline-actions\s*\{\s*display:\s*inline-flex/);
+    assert.match(source, /station\.checkedState !== true && usesTouchStationInteractions\(\) && touchInlineActionCall === call \? " nch-touch-actions-open"/);
+});
+
 test('tablet active rows reserve the action track and grow only when wrapped tags need it', () => {
     const css = read('client/dist/public/css/nco-logger.css');
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
@@ -108,7 +120,7 @@ test('phone and tablet station actions render in one visual-viewport modal with 
     assert.doesNotMatch(source.match(/function syncStationActionModal\(\) \{[\s\S]*?\n  \}/)?.[0] || '', /scrollTop|scrollIntoView/);
     assert.match(source, /const viewport = window\.visualViewport;[\s\S]*viewport\?\.offsetLeft[\s\S]*viewport\?\.offsetTop[\s\S]*viewport\?\.width[\s\S]*viewport\?\.height/);
     assert.match(source, /window\.visualViewport\?\.addEventListener\("scroll", positionStationActionModal\)/);
-    assert.match(source, /const allowed = usesTouchStationInteractions\(\) && station\?\.checkedState === true/);
+    assert.match(source, /const touchInteractions = usesTouchStationInteractions\(\);[\s\S]*const allowed = touchInteractions && station\?\.checkedState === true/);
     assert.match(css, /\.nch-station-action-modal\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*2147483000[^}]*place-items:\s*center[^}]*safe-area-inset/s);
     assert.match(css, /\.nch-station-action-panel\s*\{[^}]*width:\s*min\(34rem, 100%\)[^}]*max-height:\s*100%[^}]*overflow:\s*hidden/s);
     assert.match(css, /\.nch-station-action-panel \.nch-tray-title\s*\{[^}]*position:\s*sticky[^}]*grid-template-columns:\s*78px minmax\(0, 1fr\) 36px 36px[^}]*gap:\s*6px/s);

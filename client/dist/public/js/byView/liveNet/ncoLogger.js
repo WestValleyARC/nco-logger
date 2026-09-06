@@ -2913,9 +2913,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         if (!modal)
             return;
         const station = latestStations.find(item => normalizeCall(item.callSign) === pinnedActionCall);
-        const allowed = usesTouchStationInteractions() && station?.checkedState === true
+        const touchInteractions = usesTouchStationInteractions();
+        const allowed = touchInteractions && station?.checkedState === true
             && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
-        if (!allowed) {
+        if (!touchInteractions) {
+            modal.hidden = true;
+            modal.replaceChildren();
+        }
+        else if (!allowed) {
             pinnedActionCall = "";
             modal.hidden = true;
             modal.replaceChildren();
@@ -3114,6 +3119,22 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         if (focused instanceof HTMLElement && openRows.some(row => row.contains(focused)))
             focused.blur();
         return Boolean(call || openRows.length);
+    }
+    function toggleDesktopInlineActions(row) {
+        if (usesTouchStationInteractions() || !canManageStations())
+            return false;
+        const call = normalizeCall(row?.dataset.call);
+        const station = latestStations.find(item => normalizeCall(item.callSign) === call);
+        if (!call || station?.checkedState === true)
+            return false;
+        const closing = pinnedActionCall === call;
+        if (pinnedActionCall)
+            clearPinnedStationAction(pinnedActionCall);
+        if (!closing)
+            pinnedActionCall = call;
+        renderQueue();
+        setStatus(closing ? `${call} actions closed.` : `${call} actions opened.`, "success");
+        return true;
     }
     function clearDropIndicators() {
         panel?.querySelectorAll(".nch-drop-before, .nch-drop-after").forEach(row => row.classList.remove("nch-drop-before", "nch-drop-after"));
@@ -4626,6 +4647,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                     return;
                 }
             }
+            if (clickedRow && !clickedInteractive && toggleDesktopInlineActions(clickedRow))
+                return;
             if (clickedRow && !clickedInteractive && canManageStations()) {
                 const call = normalizeCall(clickedRow.dataset.call);
                 if (pinnedActionCall && pinnedActionCall !== call)
