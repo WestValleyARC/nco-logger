@@ -88,6 +88,7 @@ body.nco-logger-page > :is(#local-chat-container, hl-chat.nch-chat-staging):not(
 #netcontrol-ncs-helper .nch-entry-controls::-webkit-scrollbar { width: 0; height: 0; }
 #netcontrol-ncs-helper .nch-admin-only[hidden] { display: none !important; }
 #netcontrol-ncs-helper .nch-resize-zone { position: absolute; z-index: 6; display: block; touch-action: none; background: transparent; opacity: 0; }
+#netcontrol-ncs-helper .nch-resize-zone[hidden] { display: none !important; pointer-events: none !important; }
 #netcontrol-ncs-helper .nch-resize-zone:hover,
 #netcontrol-ncs-helper .nch-resize-zone:focus { background: rgba(141, 227, 238, .38); opacity: 1; outline: 0; }
 #netcontrol-ncs-helper .nch-resize-n { z-index: 7; top: 0; left: 11px; right: 11px; height: 4px; cursor: ns-resize; }
@@ -1847,6 +1848,73 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
   touch-action: pan-y;
 }
 
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-resize-zone {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+#netcontrol-ncs-helper .nch-station-action-modal {
+  position: fixed;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#netcontrol-ncs-helper .nch-station-action-modal[hidden] { display: none !important; }
+
+#netcontrol-ncs-helper .nch-station-action-backdrop {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: rgba(0, 0, 0, .58);
+  pointer-events: auto;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: min(34rem, 100%);
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel > .nch-row-actions {
+  position: static;
+  display: grid;
+  width: 100%;
+  max-height: 100%;
+  padding: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 12px;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel .nch-tray-title {
+  grid-template-columns: 22px minmax(0, 1fr) 22px 28px;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel button.nch-tray-close {
+  grid-column: 4;
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  color: #fff;
+  background: #8e2834;
+  border-color: #ff9da7;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) > hl-chat.nch-chat-floating {
   position: absolute !important;
   z-index: 70 !important;
@@ -2040,47 +2108,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
     max-height: calc(100dvh - 54px - env(safe-area-inset-bottom));
   }
 
-  #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-row.nch-actions-pinned::after {
-    position: fixed;
-    z-index: 199;
-    inset: 0;
-    content: "";
-    background: rgba(0, 0, 0, .48);
-  }
-
-  #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-row.nch-actions-pinned > .nch-row-actions {
-    position: fixed;
-    z-index: 200;
-    right: max(8px, env(safe-area-inset-right));
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: max(8px, env(safe-area-inset-left));
-    display: grid;
-    width: auto;
-    max-height: min(72dvh, 34rem);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 10px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    border-radius: 12px;
-  }
-
-  #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-row.nch-actions-pinned > .nch-inline-actions {
-    position: fixed;
-    z-index: 200;
-    right: max(8px, env(safe-area-inset-right));
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: max(8px, env(safe-area-inset-left));
-    display: flex;
-    width: auto;
-    min-height: 60px;
-    justify-content: center;
-    padding: 10px;
-    background: var(--nch-skin-surface-raised);
-    border: 1px solid var(--nch-skin-cyan);
-    border-radius: 12px;
-  }
-
-  #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-row.nch-actions-pinned :is(.nch-row-actions, .nch-inline-actions) button {
+  #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-station-action-panel :is(.nch-row-actions, .nch-inline-actions) button {
     min-height: 44px;
   }
 }

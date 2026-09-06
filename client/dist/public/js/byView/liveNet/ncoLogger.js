@@ -916,12 +916,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
             switchLayoutContext(nextContext);
             applyModuleLayout();
             positionNativeChat();
+            syncStationActionModal();
+            positionStationActionModal();
         });
     }
     function syncNativeChatVisibility() {
         const modalOpen = panel && (panel.querySelector("[data-module='chat']")?.hidden ||
             panel.querySelector("[data-role='private-selector']")?.open ||
-            [...panel.querySelectorAll("[data-role='photo-viewer'], [data-role='edit-modal'], [data-role='close-confirm'], [data-role='help-modal'], [data-role='commands-modal'], [data-role='update-modal'], [data-role='viewer-host']")]
+            [...panel.querySelectorAll("[data-role='photo-viewer'], [data-role='edit-modal'], [data-role='close-confirm'], [data-role='help-modal'], [data-role='commands-modal'], [data-role='update-modal'], [data-role='viewer-host'], [data-role='station-action-modal']")]
                 .some(element => !element.hidden));
         nativeChat()?.classList.toggle("nch-chat-suspended", Boolean(modalOpen));
     }
@@ -2369,7 +2371,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         }
         return "";
     }
-    function stationActionTray(station, details, call, busy) {
+    function stationActionTray(station, details, call, busy, modal = false) {
         const manager = canManageStations();
         const active = station.checkedState === true;
         const checkedOut = station.checkedState === false;
@@ -2429,8 +2431,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         const orderedGroups = active
             ? [managementGroup, statusGroup, attentionGroup, roleGroup]
             : [managementGroup];
+        const pinControl = !modal && pinnedActionCall === call
+            ? `<button class="nch-tray-unpin" data-unpin-controls="${escapeHtml(call)}" aria-label="Unpin controls" title="Unpin controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5c0 1.1-.9 2-2 2v2h5v7l1 2 1-2v-7h5v-2c-1.1 0-2-.9-2-2Z"></path></svg></button>`
+            : "";
+        const closeControl = modal
+            ? `<button class="nch-tray-close" data-close-station-actions aria-label="Close station actions" title="Close station actions">×</button>`
+            : "";
         return `<span class="nch-row-actions nch-active-actions" aria-label="Controls for ${escapeHtml(call)}">
-      <strong class="nch-tray-title"><span>Controls for ${escapeHtml(call)}</span>${pinnedActionCall === call ? `<button class="nch-tray-unpin" data-unpin-controls="${escapeHtml(call)}" aria-label="Unpin controls" title="Unpin controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5c0 1.1-.9 2-2 2v2h5v7l1 2 1-2v-7h5v-2c-1.1 0-2-.9-2-2Z"></path></svg></button>` : ""}<button class="nch-tray-help" data-role="commands-help" aria-label="Commands and shortcuts" title="Commands and shortcuts">?</button></strong>
+      <strong class="nch-tray-title"><span>Controls for ${escapeHtml(call)}</span>${pinControl}<button class="nch-tray-help" data-role="commands-help" aria-label="Commands and shortcuts" title="Commands and shortcuts">?</button>${closeControl}</strong>
       ${orderedGroups.join("")}
     </span>`;
     }
@@ -2440,8 +2448,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
             && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
         if (!touchActions || station.checkedState !== true)
             return "";
-        const open = pinnedActionCall === call;
-        return `<button class="nch-station-action-toggle${open ? " is-open" : ""}" data-station-actions="${escapeHtml(call)}" aria-label="${open ? "Close" : "Open"} station actions for ${escapeHtml(call)}" aria-expanded="${open ? "true" : "false"}" title="Station actions">
+        return `<button class="nch-station-action-toggle" data-station-actions="${escapeHtml(call)}" aria-label="Open station actions for ${escapeHtml(call)}" aria-expanded="false" title="Station actions">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"></path></svg>
     </button>`;
     }
@@ -2832,7 +2839,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         const isNco = station.role === "netcontrol";
         const manager = canManageStations();
         const busy = busyCalls.has(call);
-        const roleClass = ` nch-role-${details.specialGuest ? "specialGuest" : station.role || "netuser"}${station.checkedState === true && call === selectedNextCall ? " nch-selected-next" : ""}${pinnedActionCall === call ? " nch-actions-pinned" : ""}`;
+        const roleClass = ` nch-role-${details.specialGuest ? "specialGuest" : station.role || "netuser"}${station.checkedState === true && call === selectedNextCall ? " nch-selected-next" : ""}${!currentLayoutContext.startsWith("phone") && pinnedActionCall === call ? " nch-actions-pinned" : ""}`;
         const avatarTitle = details.qrzPhoto
             ? `QRZ photo for ${call}`
             : details.qrzPhotoChecked
@@ -2863,8 +2870,53 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span><span class="nch-hand-slot">${hand}</span></div>
         <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
         ${stationActionToggle(station, call)}
-        ${stationActionTray(station, details, call, busy)}
+        ${currentLayoutContext.startsWith("phone") ? "" : stationActionTray(station, details, call, busy)}
       </div>`;
+    }
+    function positionStationActionModal() {
+        const modal = panel?.querySelector("[data-role='station-action-modal']");
+        if (!modal || modal.hidden)
+            return;
+        const viewport = window.visualViewport;
+        const left = viewport?.offsetLeft || 0;
+        const top = viewport?.offsetTop || 0;
+        const width = viewport?.width || document.documentElement.clientWidth || window.innerWidth;
+        const height = viewport?.height || document.documentElement.clientHeight || window.innerHeight;
+        Object.assign(modal.style, {
+            left: `${Math.round(left)}px`, top: `${Math.round(top)}px`, width: `${Math.round(width)}px`, height: `${Math.round(height)}px`
+        });
+    }
+    function syncStationActionModal() {
+        const modal = panel?.querySelector("[data-role='station-action-modal']");
+        if (!modal)
+            return;
+        const station = latestStations.find(item => normalizeCall(item.callSign) === pinnedActionCall);
+        const allowed = currentLayoutContext.startsWith("phone") && station?.checkedState === true
+            && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
+        if (!allowed) {
+            pinnedActionCall = "";
+            modal.hidden = true;
+            modal.replaceChildren();
+        }
+        else {
+            const call = normalizeCall(station.callSign);
+            modal.innerHTML = `<div class="nch-station-action-backdrop" data-close-station-actions aria-hidden="true"></div>
+        <div class="nch-station-action-panel" data-call="${escapeHtml(call)}" role="dialog" aria-modal="true" aria-label="Station actions for ${escapeHtml(call)}">
+          ${stationActionTray(station, detailsFor(call), call, busyCalls.has(call), true)}
+        </div>`;
+            modal.hidden = false;
+            positionStationActionModal();
+        }
+        panel.classList.toggle("nch-has-pinned-actions", Boolean(pinnedActionCall));
+        panel.querySelectorAll(".nch-row[data-call]").forEach(row => {
+            const open = normalizeCall(row.dataset.call) === pinnedActionCall;
+            row.classList.toggle("nch-actions-pinned", open);
+            const toggle = row.querySelector("[data-station-actions]");
+            toggle?.classList.toggle("is-open", open);
+            toggle?.setAttribute("aria-expanded", String(open));
+            toggle?.setAttribute("aria-label", `${open ? "Close" : "Open"} station actions for ${normalizeCall(row.dataset.call)}`);
+        });
+        syncNativeChatVisibility();
     }
     function updateStationGroup(element, html) {
         if (!element || renderedStationGroupHtml.get(element) === html)
@@ -2919,6 +2971,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         const activeList = panel.querySelector("[data-role='active']");
         const activeHtml = displayedActive.map(s => stationRow(s, "order")).join("") || `<p class="nch-empty">None</p>`;
         updateStationGroup(activeList, activeHtml);
+        syncStationActionModal();
         if (scrollActiveAfterRender) {
             scrollActiveAfterRender = false;
             requestAnimationFrame(() => { activeList.scrollTop = activeList.scrollHeight; });
@@ -3025,6 +3078,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         clearActionOrientationRows();
         panel?.classList.remove("nch-has-pinned-actions");
         panel?.querySelector(`[data-call='${CSS.escape(normalizedCall)}']`)?.classList.remove("nch-actions-pinned");
+        syncStationActionModal();
         return true;
     }
     function clearDropIndicators() {
@@ -3863,15 +3917,33 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         storageSet();
         return true;
     }
+    function visiblePhonePortraitLayout(layout) {
+        if (currentLayoutContext !== "phonePortrait")
+            return { layout, rows: layoutRows() };
+        const rendered = {
+            ...layout,
+            items: Object.fromEntries(MODULE_IDS.map(id => [id, { ...layout.items[id] }]))
+        };
+        const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id])
+            .sort((left, right) => layout.items[left].y - layout.items[right].y
+            || layout.items[left].x - layout.items[right].x || MODULE_IDS.indexOf(left) - MODULE_IDS.indexOf(right));
+        let nextRow = 0;
+        visible.forEach(id => {
+            rendered.items[id].y = nextRow;
+            nextRow += rendered.items[id].h;
+        });
+        return { layout: rendered, rows: Math.max(1, nextRow) };
+    }
     function renderGridLayout(layout, draggingId = "") {
         const dashboard = panel?.querySelector("[data-role='dashboard']");
         if (!dashboard)
             return;
+        const rendered = visiblePhonePortraitLayout(layout);
         MODULE_IDS.forEach(id => {
             const module = dashboard.querySelector(`[data-module='${id}']`);
             if (!module)
                 return;
-            const item = layout.items[id];
+            const item = rendered.layout.items[id];
             module.style.gridColumn = `${item.x + 1} / span ${item.w}`;
             module.style.gridRow = `${item.y + 1} / span ${item.h}`;
             module.style.setProperty("--nch-module-columns", String(item.w));
@@ -3879,13 +3951,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
             module.classList.toggle("nch-grid-source", id === draggingId);
             module.classList.toggle("nch-read-only-top", !moduleAvailable("controls") && (id === "lurkers" || id === "checkedOut") && item.y === 0);
         });
-        dashboard.style.setProperty("--nch-grid-rows", String(layoutRows()));
+        dashboard.style.setProperty("--nch-grid-rows", String(rendered.rows));
         dashboard.style.setProperty("--nch-grid-gap", `${GRID_GAP}px`);
         window.requestAnimationFrame(positionNativeChat);
     }
     function applyModuleLayout() {
         if (!panel)
             return;
+        syncModuleResizeAvailability();
         if (modulePointerDrag?.started) {
             renderGridLayout(modulePointerDrag.previewLayout || modulePointerDrag.originalLayout, modulePointerDrag.moduleId);
             return;
@@ -3932,7 +4005,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         storageSet();
     }
     function resizeModuleBy(id, widthDelta, heightDelta) {
-        if (!MODULE_IDS.includes(id))
+        if (currentLayoutContext.startsWith("phone") || !MODULE_IDS.includes(id))
             return;
         const layout = normalizeModuleLayout();
         const item = layout.items[id];
@@ -4122,8 +4195,20 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         applyModuleLayout();
         storageSet();
     }
+    function syncModuleResizeAvailability() {
+        const enabled = !currentLayoutContext.startsWith("phone");
+        if (!enabled && resizing)
+            stopResizing(null, true);
+        panel?.querySelectorAll("[data-resize-module]").forEach(handle => {
+            handle.hidden = !enabled;
+            handle.setAttribute("aria-hidden", String(!enabled || handle.dataset.resizeEdge !== "se"));
+            if (handle.dataset.resizeEdge === "se")
+                handle.tabIndex = enabled ? 0 : -1;
+        });
+    }
     function moduleResizeZones(id) {
-        return ["n", "e", "s", "w", "ne", "nw", "se", "sw"].map(edge => `<span class="nch-resize-zone nch-resize-${edge}" data-resize-module="${id}" data-resize-edge="${edge}"${edge === "se" ? ` role="separator" tabindex="0" aria-label="Resize ${escapeHtml(MODULE_LABELS[id])}"` : ' aria-hidden="true"'}></span>`).join("");
+        const disabled = currentLayoutContext.startsWith("phone");
+        return ["n", "e", "s", "w", "ne", "nw", "se", "sw"].map(edge => `<span class="nch-resize-zone nch-resize-${edge}" data-resize-module="${id}" data-resize-edge="${edge}"${disabled ? " hidden" : ""}${edge === "se" ? ` role="separator" tabindex="${disabled ? "-1" : "0"}" aria-label="Resize ${escapeHtml(MODULE_LABELS[id])}"` : ' aria-hidden="true"'}></span>`).join("");
     }
     function addPanel() {
         if (panel?.dataset.renderedRole === currentUserRole)
@@ -4242,6 +4327,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
             <span><strong data-role="recheck-count">0</strong><small>Rechecks</small></span>
           </div>
         </div>
+        <div class="nch-station-action-modal" data-role="station-action-modal" hidden></div>
         <div class="nch-edit-modal" data-role="edit-modal" hidden>
           <div class="nch-edit-card">
             <h3>Edit Station Information</h3>
@@ -4344,6 +4430,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         dockNativeChat();
         syncAppearanceSwitch();
         panel.addEventListener("click", async (event) => {
+            if (event.target.closest?.("[data-close-station-actions]")) {
+                const call = pinnedActionCall;
+                clearPinnedStationAction(call);
+                setStatus(call ? `${call} actions closed.` : "", "success");
+                return;
+            }
             if (event.target.matches?.("[data-role='photo-viewer']")) {
                 closePhotoViewer();
                 return;
@@ -4373,14 +4465,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
             if (stationActionButton && touchStationActions) {
                 const call = normalizeCall(stationActionButton.dataset.stationActions);
                 pinnedActionCall = pinnedActionCall === call ? "" : call;
-                renderQueue();
+                syncStationActionModal();
                 setStatus(pinnedActionCall ? `${call} actions opened.` : `${call} actions closed.`, "success");
                 return;
             }
             if (clickedRow && !clickedInteractive && touchStationActions && pinnedActionCall === normalizeCall(clickedRow.dataset.call)) {
                 const call = normalizeCall(clickedRow.dataset.call);
                 pinnedActionCall = "";
-                renderQueue();
+                syncStationActionModal();
                 setStatus(`${call} actions closed.`, "success");
                 return;
             }
@@ -4452,6 +4544,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
             const stationActionRow = target.closest(".nch-row-actions, .nch-inline-actions")?.closest(".nch-row[data-call]");
             if (stationActionRow && target.dataset.role !== "commands-help") {
                 clearPinnedStationAction(stationActionRow.dataset.call);
+            }
+            const stationActionModal = target.closest("[data-role='station-action-modal']");
+            if (stationActionModal && target.dataset.role !== "commands-help") {
+                clearPinnedStationAction(pinnedActionCall);
             }
             if (target.dataset.viewPhoto) {
                 const call = normalizeCall(target.dataset.viewPhoto);
@@ -4539,7 +4635,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
                 const call = normalizeCall(target.dataset.specialGuest);
                 setSpecialGuest(call);
             }
-            const rowCall = normalizeCall(target.dataset.call || target.closest(".nch-row")?.dataset.call);
+            const rowCall = normalizeCall(target.dataset.call || target.closest(".nch-row, .nch-station-action-panel")?.dataset.call);
             if (target.dataset.setTag)
                 await setRowTag(rowCall, target.dataset.setTag);
             if (target.dataset.setRole)
@@ -4846,8 +4942,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
                 return;
             }
             if (event.key === "Escape" && pinnedActionCall) {
-                pinnedActionCall = "";
-                renderQueue();
+                clearPinnedStationAction(pinnedActionCall);
                 return;
             }
             if (event.key === "Escape" && !panel.querySelector("[data-role='update-modal']")?.hidden) {
@@ -4877,12 +4972,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
                 renderQueue();
             }
             const moduleResizer = event.target.closest("[data-resize-module]");
-            if (moduleResizer && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+            if (!currentLayoutContext.startsWith("phone") && moduleResizer && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
                 event.preventDefault();
                 const id = moduleResizer.dataset.resizeModule;
                 resizeModuleBy(id, event.key === "ArrowLeft" ? -1 : 1, 0);
             }
-            if (moduleResizer && ["ArrowUp", "ArrowDown"].includes(event.key)) {
+            if (!currentLayoutContext.startsWith("phone") && moduleResizer && ["ArrowUp", "ArrowDown"].includes(event.key)) {
                 event.preventDefault();
                 const id = moduleResizer.dataset.resizeModule;
                 resizeModuleBy(id, 0, event.key === "ArrowUp" ? -1 : 1);
@@ -4939,7 +5034,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         });
         panel.addEventListener("pointerdown", event => {
             const moduleResizer = event.target.closest("[data-resize-module]");
-            if (moduleResizer) {
+            if (moduleResizer && !currentLayoutContext.startsWith("phone")) {
                 event.preventDefault();
                 const moduleId = moduleResizer.dataset.resizeModule;
                 const layout = normalizeModuleLayout();
@@ -4997,7 +5092,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         panel.addEventListener("dblclick", event => {
             const moduleResizer = event.target.closest("[data-resize-module]");
             const id = moduleResizer?.dataset.resizeModule;
-            if (!id)
+            if (!id || currentLayoutContext.startsWith("phone"))
                 return;
             const layout = normalizeModuleLayout();
             layout.items[id] = { ...defaultModuleLayoutForMode().items[id] };
@@ -5213,6 +5308,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
     const relayStorageGet = () => new Promise(resolve => browserStorage.get([relayTokenKey], resolve));
     window.addEventListener("resize", handleWindowResize);
     window.visualViewport?.addEventListener("resize", handleWindowResize);
+    window.visualViewport?.addEventListener("scroll", positionStationActionModal);
     window.addEventListener("keydown", handleActionHotkey, true);
     window.addEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
     Promise.all([relayStorageGet(), storageGet()]).then(async ([relayData, saved]) => {
@@ -5291,6 +5387,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
         pollTimer = null;
         window.removeEventListener("resize", handleWindowResize);
         window.visualViewport?.removeEventListener("resize", handleWindowResize);
+        window.visualViewport?.removeEventListener("scroll", positionStationActionModal);
         window.removeEventListener("keydown", handleActionHotkey, true);
         window.removeEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
         stopSync();

@@ -231,7 +231,7 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row-text\s*\{[^}]*flex-direction:\s*column[^}]*overflow:\s*visible/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section :is\(\.nch-role-badge, \.nch-tag\)\s*\{[^}]*flex:\s*0 0 auto/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
-    assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"[\s\S]*aria-expanded="\$\{open \? "true" : "false"\}"/);
+    assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"[^>]*aria-expanded="false"/);
     assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)[\s\S]*pinnedActionCall = pinnedActionCall === call \? "" : call/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 7[\s\S]*items\.controls\.h = 7[\s\S]*items\[id\]\.y \+ addedRows/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 7 : MIN_MODULE_ROWS\[id\]/);
@@ -273,6 +273,15 @@ test('357x741 is phone portrait and cannot retain an unstamped desktop layout', 
         items: Object.fromEntries(['controls', 'active', 'chat', 'lurkers', 'checkedOut']
             .map((id, index) => [id, { x: 0, y: index * 5, w: 24, h: 5 }]))
     }, context), true);
+});
+
+test('phone portrait document height is derived only from visible modules', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(source, /function visiblePhonePortraitLayout\(layout\)[\s\S]*currentLayoutContext !== "phonePortrait"[\s\S]*MODULE_IDS\.filter\(id => moduleAvailable\(id\) && !layout\.collapsed\[id\]\)/);
+    assert.match(source, /visible\.forEach\(id => \{\s*rendered\.items\[id\]\.y = nextRow;\s*nextRow \+= rendered\.items\[id\]\.h/);
+    assert.match(source, /return \{ layout: rendered, rows: Math\.max\(1, nextRow\) \}/);
+    assert.match(source, /const rendered = visiblePhonePortraitLayout\(layout\)[\s\S]*--nch-grid-rows", String\(rendered\.rows\)/);
+    assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait:[\s\S]*active: \{ x: 0, y: 0, w: 24, h: 14 \}[\s\S]*chat: \{ x: 0, y: 14, w: 24, h: 14 \}[\s\S]*collapsed: \{ controls: true, lurkers: true, checkedOut: true \}/);
 });
 
 test('private unread shortcut opens one sender directly and lists multiple senders', () => {
