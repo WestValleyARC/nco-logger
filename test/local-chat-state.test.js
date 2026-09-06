@@ -91,6 +91,22 @@ test('chat overlays clamp to safe visual viewport edges at phone widths', async 
     assert.ok(zoomed.top >= 48 && zoomed.top + 260 <= 532);
 });
 
+test('chat overlays prefer below their anchor and flip above at a bounded bottom edge', async () => {
+    const { fitChatOverlayToViewport } = await loadState();
+    const common = {
+        viewportLeft: 100, viewportTop: 200, viewportWidth: 300, viewportHeight: 240,
+        insetLeft: 4, insetRight: 4, insetTop: 4, insetBottom: 4,
+        anchorLeft: 250, anchorRight: 350, preferredWidth: 130, overlayHeight: 40,
+        alignEnd: true, gap: 4
+    };
+    const below = fitChatOverlayToViewport({ ...common, anchorTop: 250, anchorBottom: 280 });
+    assert.equal(below.top, 284);
+    const above = fitChatOverlayToViewport({ ...common, anchorTop: 405, anchorBottom: 435 });
+    assert.equal(above.top, 361);
+    assert.ok(above.left >= 104 && above.left + above.width <= 396);
+    assert.ok(above.top >= 204 && above.top + 40 <= 436);
+});
+
 test('latest-message detection preserves deterministic ordering for incremental appends', async () => {
     const { isLatestChatMessage } = await loadState();
     const messages = new Map([

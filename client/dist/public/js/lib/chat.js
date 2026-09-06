@@ -142,6 +142,7 @@ export class ChatWidget extends HTMLElement {
     messageScrollHeight = 0;
     keepBottomOnImageLoad = true;
     initialScrollGate = new InitialChatScrollGate();
+    resizeObserver = null;
     maxMessageChars = 2000;
     maxUploadBytes = 5 * 1024 * 1024;
     imageMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -257,6 +258,11 @@ export class ChatWidget extends HTMLElement {
         if (optionsMenu?.open && optionsPanel && optionsToggle) {
             this.positionTransientOverlay(optionsPanel, optionsToggle, 190, true);
         }
+        this.querySelectorAll('.chat-quick-reactions:not([hidden])').forEach(menu => {
+            const controls = menu.closest('.chat-message-actions');
+            if (controls)
+                this.positionQuickReactions(menu, controls);
+        });
     }
     handleMessageScroll = () => {
         this.closeMessageActions();
@@ -327,7 +333,13 @@ export class ChatWidget extends HTMLElement {
                     <div class="chat-emoji-picker" role="dialog" aria-label="Emoji picker" hidden>
                         <label class="visually-hidden" for="local-chat-emoji-search">Search emoji</label>
                         <input id="local-chat-emoji-search" class="form-control form-control-sm chat-emoji-search" type="search" placeholder="Search emoji" autocomplete="off">
-                        <div class="chat-emoji-tabs" role="group" aria-label="Emoji categories"></div>
+                        <div class="chat-emoji-category-nav">
+                            <div class="chat-emoji-category-heading">
+                                <span id="local-chat-emoji-categories-label">Categories</span>
+                                <strong class="chat-emoji-category-name" aria-live="polite"></strong>
+                            </div>
+                            <div class="chat-emoji-tabs" role="group" aria-labelledby="local-chat-emoji-categories-label"></div>
+                        </div>
                         <div class="chat-emoji-grid" role="group" aria-label="Available emoji"></div>
                         <div class="chat-emoji-empty text-muted" role="status" hidden>No emoji found</div>
                     </div>
@@ -437,6 +449,10 @@ export class ChatWidget extends HTMLElement {
         window.visualViewport?.addEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('scroll', this.handleWindowResize);
         window.visualViewport?.addEventListener('scroll', this.handleWindowResize);
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = typeof ResizeObserver === 'undefined' ? null
+            : new ResizeObserver(() => this.handleWindowResize());
+        this.resizeObserver?.observe(this);
         this.clearConnectionRetry();
         this.eventStream.close();
         this.connectionAbort?.abort();
@@ -454,6 +470,8 @@ export class ChatWidget extends HTMLElement {
         window.removeEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('scroll', this.handleWindowResize);
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = null;
         this.closeLightbox(false);
         this.clearConnectionRetry();
         this.connectionAbort?.abort();
@@ -480,7 +498,7 @@ export class ChatWidget extends HTMLElement {
             button.className = 'chat-emoji-tab';
             button.textContent = category.icon;
             button.title = category.label;
-            button.setAttribute('aria-label', category.label);
+            button.setAttribute('aria-label', `Show ${category.label} category`);
             button.addEventListener('click', () => {
                 this.emojiCategory = category.id;
                 search.value = '';
@@ -495,8 +513,13 @@ export class ChatWidget extends HTMLElement {
         const grid = this.querySelector('.chat-emoji-grid');
         const search = this.querySelector('.chat-emoji-search');
         const empty = this.querySelector('.chat-emoji-empty');
-        if (!grid || !search || !empty)
+        const categoryName = this.querySelector('.chat-emoji-category-name');
+        if (!grid || !search || !empty || !categoryName)
             return;
+        const selectedCategory = CHAT_EMOJI_CATEGORIES.find(category => category.id === this.emojiCategory);
+        categoryName.textContent = selectedCategory?.label || '';
+        grid.setAttribute('aria-label', search.value.trim() ? 'Emoji search results'
+            : `${selectedCategory?.label || 'Available'} emoji`);
         const matches = filterChatEmoji(this.emojiCategory, search.value);
         grid.replaceChildren();
         matches.forEach(entry => {
@@ -511,7 +534,7 @@ export class ChatWidget extends HTMLElement {
         });
         empty.hidden = matches.length > 0;
         this.querySelectorAll('.chat-emoji-tab').forEach((button, index) => {
-            const active = CHAT_EMOJI_CATEGORIES[index]?.id === this.emojiCategory && !search.value.trim();
+            const active = CHAT_EMOJI_CATEGORIES[index]?.id === this.emojiCategory;
             button.setAttribute('aria-pressed', String(active));
             button.classList.toggle('active', active);
         });
@@ -1864,6 +1887,8 @@ export class ChatWidget extends HTMLElement {
                 if (menu) {
                     menu.hidden = !menu.hidden;
                     reactionButton.setAttribute('aria-expanded', String(!menu.hidden));
+                    if (!menu.hidden)
+                        this.positionQuickReactions(menu, controls);
                 }
             }, true);
             reactionButton.setAttribute('aria-haspopup', 'true');
@@ -1906,6 +1931,37 @@ export class ChatWidget extends HTMLElement {
         if (message.canBan)
             addAction('⛔', 'Ban author of', 'chat-action-ban', () => void this.banAuthor(message));
         row.append(toggle, controls);
+    }
+    positionQuickReactions(menu, controls) {
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport?.offsetLeft || 0;
+        const viewportTop = viewport?.offsetTop || 0;
+        const viewportRight = viewportLeft + (viewport?.width || window.innerWidth);
+        const viewportBottom = viewportTop + (viewport?.height || window.innerHeight);
+        const chatRect = this.getBoundingClientRect();
+        const visibleLeft = Math.max(viewportLeft, chatRect.left);
+        const visibleTop = Math.max(viewportTop, chatRect.top);
+        const visibleRight = Math.min(viewportRight, chatRect.right);
+        const visibleBottom = Math.min(viewportBottom, chatRect.bottom);
+        if (visibleRight <= visibleLeft || visibleBottom <= visibleTop)
+            return;
+        menu.style.position = 'fixed';
+        menu.style.width = 'max-content';
+        menu.style.right = 'auto';
+        menu.style.bottom = 'auto';
+        const anchorRect = controls.getBoundingClientRect();
+        const fitted = fitChatOverlayToViewport({
+            viewportLeft: visibleLeft, viewportTop: visibleTop,
+            viewportWidth: visibleRight - visibleLeft, viewportHeight: visibleBottom - visibleTop,
+            insetLeft: 4, insetRight: 4, insetTop: 4, insetBottom: 4,
+            anchorLeft: anchorRect.left, anchorRight: anchorRect.right,
+            anchorTop: anchorRect.top, anchorBottom: anchorRect.bottom,
+            preferredWidth: menu.offsetWidth, overlayHeight: menu.offsetHeight, alignEnd: true, gap: 4
+        });
+        menu.style.width = `${fitted.width}px`;
+        menu.style.left = `${fitted.left}px`;
+        menu.style.top = `${fitted.top}px`;
+        menu.classList.toggle('is-above', fitted.top < anchorRect.top);
     }
     toggleMessageActions(messageId, row) {
         const open = this.openMessageActionsId !== messageId;
