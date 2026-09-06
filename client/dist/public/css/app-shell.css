@@ -121,6 +121,12 @@
     display: block !important;
 }
 
+/* Compensate for the approved light navigation PNG's larger transparent vertical bounds. */
+:root[data-theme='light'] .app-navbar .app-theme-logo-light {
+    transform: scale(1.07);
+    transform-origin: left center;
+}
+
 .app-navbar .nav-link {
     position: relative;
     padding: 0.65rem 0.85rem !important;
@@ -5752,12 +5758,14 @@
 
 @media (max-width: 991.98px) {
     .app-theme-item {
-        align-items: stretch;
+        align-items: center;
     }
 
     .app-theme-toggle {
-        justify-content: space-between;
-        width: 100%;
-        margin: .35rem 0 .15rem;
+        justify-content: flex-start;
+        width: fit-content;
+        min-height: 2.75rem;
+        gap: .5rem;
+        margin: .35rem 0 .15rem .4rem;
     }
 }
