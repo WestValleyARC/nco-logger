@@ -80,7 +80,9 @@ test('public and private chat recipients share one stable control structure', ()
 });
 
 test('role layout migration rejects known cross-role defaults without erasing customization', async () => {
-    const { loggerLayoutRole, shouldResetLegacyLoggerLayout, LOGGER_ROLE_LAYOUT_VERSION } = await loadLoggerResponsive();
+    const {
+        isSameLoggerModuleLayout, loggerLayoutRole, shouldResetLegacyLoggerLayout, LOGGER_ROLE_LAYOUT_VERSION
+    } = await loadLoggerResponsive();
     assert.equal(LOGGER_ROLE_LAYOUT_VERSION, 1);
     assert.equal(loggerLayoutRole('netcontrol'), 'nco');
     assert.equal(loggerLayoutRole('netlogger'), 'logger');
@@ -102,6 +104,8 @@ test('role layout migration rejects known cross-role defaults without erasing cu
     };
     const customized = structuredClone(operatorDefault);
     customized.items.chat.w = 9;
+    assert.equal(isSameLoggerModuleLayout(operatorDefault, structuredClone(operatorDefault)), true);
+    assert.equal(isSameLoggerModuleLayout(customized, operatorDefault), false);
     const inheritedViewerDefault = structuredClone(operatorDefault);
     inheritedViewerDefault.collapsed = { controls: true, lurkers: true, checkedOut: true };
     assert.equal(shouldResetLegacyLoggerLayout(operatorDefault, 'netuser', operatorDefault, viewerDefault), true);
@@ -201,9 +205,10 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /phoneLandscape:[\s\S]*active: \{ x: 8, y: 0, w: 16/);
     assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
     assert.doesNotMatch(source, /NCO_TABLET_PORTRAIT_DEFAULT_MODULE_LAYOUT/);
-    assert.match(source, /NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT[\s\S]*controls: \{ x: 10, y: 0, w: 4, h: 7 \}[\s\S]*chat: \{ x: 0, y: 4, w: 8, h: 16 \}[\s\S]*active: \{ x: 8, y: 7, w: 16, h: 13 \}/);
+    assert.match(source, /PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT[\s\S]*controls: \{ x: 10, y: 0, w: 4, h: 7 \}[\s\S]*chat: \{ x: 0, y: 4, w: 8, h: 16 \}[\s\S]*active: \{ x: 8, y: 7, w: 16, h: 13 \}/);
+    assert.match(source, /NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT[\s\S]*lurkers: \{ x: 0, y: 0, w: 10, h: 5 \}[\s\S]*controls: \{ x: 10, y: 0, w: 4, h: 5 \}[\s\S]*checkedOut: \{ x: 14, y: 0, w: 10, h: 5 \}[\s\S]*chat: \{ x: 0, y: 5, w: 8, h: 15 \}[\s\S]*active: \{ x: 8, y: 5, w: 16, h: 15 \}/);
     assert.match(source, /loggerLayoutRole\(role\) === "nco" && context === "tabletLandscape"[\s\S]*return NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
-    assert.match(source, /loggerLayoutRole\(role\) === "nco" && isSameLoggerModuleLayout\(bucket\.tabletLandscape, DEFAULT_MODULE_LAYOUT\)[\s\S]*bucket\.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
+    assert.match(source, /loggerLayoutRole\(role\) === "nco"[\s\S]*\[DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT\][\s\S]*isSameLoggerModuleLayout\(bucket\.tabletLandscape, previousDefault\)[\s\S]*bucket\.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
     assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
     assert.match(source, /roleResponsiveLayouts:\s*local\.roleResponsiveLayouts/);
     assert.doesNotMatch(source, /hasCanonicalReadOnlyTop/);
@@ -213,6 +218,8 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /Reset only the \$\{layoutContextLabel\(targetContext\)\}/);
     assert.match(source, /netcontrol:\s*"NCO Mode"[\s\S]*netlogger:\s*"Logger Mode"[\s\S]*netrelay:\s*"Relay Mode"[\s\S]*\|\| "Viewer Mode"/);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 26px\)[^}]*overflow:\s*visible/s);
+    assert.match(css, /@container \(max-width: 190px\)[\s\S]*\[data-layout-context="tabletLandscape"\] \.nch-controls-pane \.nch-quick-checkin\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
+    assert.match(css, /\[data-layout-context="tabletLandscape"\] \.nch-controls-pane \.nch-entry-controls\s*\{[^}]*justify-content:\s*flex-start/s);
     assert.match(css, /#netcontrol-ncs-helper\[data-layout-context\^="phone"\]\s*\{[^}]*z-index:\s*auto[^}]*grid-template-rows:\s*auto auto/s);
     assert.doesNotMatch(css, /\[data-layout-context\^="phone"\] \.nch-module\s*\{[^}]*margin/s);
     assert.match(css, /\[data-layout-context\^="phone"\] :is\(\.nch-module-content, \.nch-module-header\)\s*\{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-y/s);

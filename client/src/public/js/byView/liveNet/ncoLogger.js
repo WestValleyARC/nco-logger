@@ -113,12 +113,20 @@ import {
     }),
     tabletLandscape: DEFAULT_MODULE_LAYOUT
   });
-  const NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
+  const PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
     gridVersion: LAYOUT_GRID_VERSION,
     items: {
       lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 7 },
       checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
       active: { x: 8, y: 7, w: 16, h: 13 }
+    }, collapsed: {}
+  });
+  const NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
+    gridVersion: LAYOUT_GRID_VERSION,
+    items: {
+      lurkers: { x: 0, y: 0, w: 10, h: 5 }, controls: { x: 10, y: 0, w: 4, h: 5 },
+      checkedOut: { x: 14, y: 0, w: 10, h: 5 }, chat: { x: 0, y: 5, w: 8, h: 15 },
+      active: { x: 8, y: 5, w: 16, h: 15 }
     }, collapsed: {}
   });
   const VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS = Object.freeze({
@@ -3728,7 +3736,10 @@ import {
       });
       local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
     }
-    if (loggerLayoutRole(role) === "nco" && isSameLoggerModuleLayout(bucket.tabletLandscape, DEFAULT_MODULE_LAYOUT)) {
+    const ncoTabletLandscapeDefaultNeedsCorrection = loggerLayoutRole(role) === "nco"
+      && [DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT]
+        .some(previousDefault => isSameLoggerModuleLayout(bucket.tabletLandscape, previousDefault));
+    if (ncoTabletLandscapeDefaultNeedsCorrection) {
       bucket.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT;
     }
     return bucket;

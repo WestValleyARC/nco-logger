@@ -556,6 +556,13 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
   #netcontrol-ncs-helper .nch-module-header small { display: none; }
   #netcontrol-ncs-helper .nch-call-hint { font-size: 0; }
   #netcontrol-ncs-helper .nch-call-hint::after { content: "Press ENTER"; font-size: calc(9px + var(--nch-font-adjust, 0px)); }
+  #netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-quick-checkin {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-entry-controls {
+  justify-content: flex-start;
 }
 
 #netcontrol-ncs-helper .nch-viewer-host { position: absolute; z-index: 100; inset: 0; background: #171c21; }
