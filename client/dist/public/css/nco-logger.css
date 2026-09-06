@@ -1900,7 +1900,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
   position: sticky;
   z-index: 3;
   top: 0;
-  grid-template-columns: 0 minmax(0, 1fr) 36px 36px;
+  grid-template-columns: 78px minmax(0, 1fr) 36px 36px;
   gap: 6px;
   padding: 2px 0 6px;
   background: #07131c;

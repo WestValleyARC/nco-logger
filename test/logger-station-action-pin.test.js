@@ -53,7 +53,7 @@ test('phone station actions render in one visual-viewport modal with complete di
     assert.match(source, /window\.visualViewport\?\.addEventListener\("scroll", positionStationActionModal\)/);
     assert.match(css, /\.nch-station-action-modal\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*2147483000[^}]*place-items:\s*center[^}]*safe-area-inset/s);
     assert.match(css, /\.nch-station-action-panel\s*\{[^}]*width:\s*min\(34rem, 100%\)[^}]*max-height:\s*100%[^}]*overflow:\s*hidden/s);
-    assert.match(css, /\.nch-station-action-panel \.nch-tray-title\s*\{[^}]*position:\s*sticky[^}]*grid-template-columns:\s*0 minmax\(0, 1fr\) 36px 36px[^}]*gap:\s*6px/s);
+    assert.match(css, /\.nch-station-action-panel \.nch-tray-title\s*\{[^}]*position:\s*sticky[^}]*grid-template-columns:\s*78px minmax\(0, 1fr\) 36px 36px[^}]*gap:\s*6px/s);
     assert.match(css, /\.nch-station-action-panel \.nch-tray-title > :is\(button\.nch-tray-help, button\.nch-tray-close\)\s*\{[^}]*width:\s*36px[^}]*height:\s*36px[^}]*min-width:\s*36px[^}]*min-height:\s*36px[^}]*aspect-ratio:\s*1[^}]*border-radius:\s*50%/s);
     assert.match(css, /@media \(max-width: 400px\)[\s\S]*\.nch-station-action-panel > \.nch-row-actions\.nch-active-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s);
     assert.match(css, /\.nch-station-action-panel :is\(\.nch-management-actions, \.nch-status-actions, \.nch-attention-actions\) > span\s*\{[^}]*repeat\(auto-fit, minmax\(min\(100%, 126px\), 1fr\)\)/s);
