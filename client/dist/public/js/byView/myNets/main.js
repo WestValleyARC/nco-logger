@@ -2,6 +2,14 @@
 
 'use strict';
 
+const syncNotesEditorAppearance = editor => {
+    const isLight = document.documentElement.dataset.theme === 'light';
+    const body = editor.getBody();
+    if (!body) return;
+    body.style.backgroundColor = isLight ? '#ffffff' : '#222f3e';
+    body.style.color = isLight ? '#14242d' : '#ffffff';
+};
+
 tinymce.init({
     selector: 'textarea#input_notes',
     skin_url: '/tinymce/skins/hl',
@@ -11,7 +19,15 @@ tinymce.init({
     menubar: '',
     promotion: false,
     statusbar: false,
+    setup: editor => {
+        editor.on('init', () => syncNotesEditorAppearance(editor));
+    },
     max_height: 235
+});
+
+window.addEventListener('ncoLogger:appearancechange', () => {
+    const editor = tinymce.get('input_notes');
+    if (editor) syncNotesEditorAppearance(editor);
 });
 
 import { HttpClient, FormState } from '#@client/lib/old__clientUtils.js';

@@ -121,9 +121,9 @@
     display: block !important;
 }
 
-/* Compensate for the approved light navigation PNG's larger transparent vertical bounds. */
+/* Match the painted height of the approved light logo to the dark navigation artwork. */
 :root[data-theme='light'] .app-navbar .app-theme-logo-light {
-    transform: scale(1.07);
+    transform: scale(1.115);
     transform-origin: left center;
 }
 
@@ -4927,7 +4927,7 @@
 }
 
 /* Appearance Phase 2: light shared shell and basic pages. */
-:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page) {
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.public-directory-page) {
     --app-bg: #edf2f4;
     --app-surface: #f7fafb;
     --app-surface-raised: #ffffff;
@@ -4966,6 +4966,189 @@
     --app-danger-text: #9d2936;
     --app-danger-bg: #fff1f2;
     --app-danger-border: #c55560;
+}
+
+/* My Nets has a deliberately richer surface hierarchy than the basic site views. */
+:root[data-theme='light'] body.net-manager-page {
+    background:
+        radial-gradient(circle at 14% 8%, rgba(8, 117, 144, 0.09), transparent 32rem),
+        radial-gradient(circle at 88% 20%, rgba(163, 77, 0, 0.05), transparent 26rem),
+        var(--app-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .net-manager-hero {
+    border-bottom-color: var(--app-border);
+    background:
+        radial-gradient(circle at 20% 25%, rgba(8, 117, 144, 0.1), transparent 28rem),
+        linear-gradient(110deg, rgba(255, 255, 255, 0.78), rgba(224, 236, 240, 0.58) 62%, transparent);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.workspace-title, .panel-heading h2) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.app-panel, .owned-nets-panel, #formContainerNetProfile) {
+    border-color: var(--app-card-border);
+    background: var(--app-panel-background);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-card, .app-option-card, .coowner-row, .connection-card) {
+    border-color: var(--app-card-border);
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-card:hover, .app-option-card:hover) {
+    border-color: var(--app-interactive-border);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-card.is-live {
+    border-color: rgba(163, 77, 0, 0.46);
+    background: linear-gradient(135deg, rgba(163, 77, 0, 0.09), var(--app-surface-raised) 55%);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-actions, .app-form-actions, .schedule-occurrences) {
+    border-color: var(--app-divider);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-status, .schedule-occurrence-status) {
+    background: var(--app-status-bg);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-schedule, .form-status, .legacy-connection-notice) {
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.app-field > label, .app-options-fieldset > legend) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] .net-manager-page .app-input {
+    color: var(--app-text) !important;
+    border-color: var(--app-control-border);
+    background-color: var(--app-control-bg) !important;
+}
+
+:root[data-theme='light'] .net-manager-page .app-input::placeholder,
+:root[data-theme='light'] .net-manager-page :is(.app-field > small, .app-option-card small) {
+    color: var(--app-control-placeholder);
+    opacity: 1;
+}
+
+:root[data-theme='light'] .net-manager-page .app-input:focus {
+    border-color: var(--app-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(8, 117, 144, 0.18);
+}
+
+:root[data-theme='light'] .net-manager-page .app-input:disabled {
+    color: var(--app-control-disabled-text) !important;
+    border-color: var(--app-border);
+    background-color: var(--app-control-disabled-bg) !important;
+}
+
+:root[data-theme='light'] .net-manager-page .app-select option {
+    color: var(--app-text);
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .net-manager-page .app-option-card .form-check-input {
+    border-color: var(--app-control-border);
+    background-color: var(--app-control-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .app-option-card .form-check-input:checked {
+    border-color: var(--app-cyan);
+    background-color: var(--app-cyan);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-secondary {
+    color: var(--app-link);
+    border-color: var(--app-border-strong);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-secondary:is(:hover, :focus-visible) {
+    color: var(--app-link-hover);
+    border-color: var(--app-cyan);
+    background: rgba(8, 117, 144, 0.12);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.connection-drag-handle, .connection-order-button):is(:hover, :focus-visible) {
+    border-color: var(--app-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .net-editor-panel .tox-tinymce {
+    border-color: var(--app-control-border);
+    background: var(--app-control-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .net-editor-panel .tox-tinymce:focus-within {
+    border-color: var(--app-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(8, 117, 144, 0.18);
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-editor-header, .tox-toolbar-overlord, .tox-toolbar, .tox-toolbar__primary, .tox-toolbar__overflow) {
+    color: var(--app-text);
+    border-color: var(--app-border);
+    background-color: #edf3f5 !important;
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-tbtn, .tox-tbtn svg) {
+    color: var(--app-text);
+    fill: currentColor;
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-tbtn:hover, .tox-tbtn:focus, .tox-tbtn--enabled, .tox-tbtn--enabled:hover) {
+    background: rgba(8, 117, 144, 0.14);
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-edit-area, .tox-edit-area__iframe) {
+    background: var(--app-control-bg) !important;
+}
+
+:root[data-theme='light'] .net-manager-page .app-modal .modal-content {
+    color: var(--app-text);
+    border-color: var(--app-border-strong);
+    background: var(--app-surface-raised);
+    box-shadow: 0 1.5rem 4rem rgba(18, 45, 57, 0.22);
+}
+
+:root[data-theme='light'] .net-manager-page .app-modal .btn-close-white {
+    filter: none;
+}
+
+:root[data-theme='light'] .net-manager-page .schedule-editor-body {
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.schedule-recurrence-fields, .schedule-occurrence) {
+    border-color: var(--app-card-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .schedule-weekdays span {
+    color: var(--app-muted);
+    border-color: var(--app-control-border);
+    background: var(--app-control-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .schedule-weekdays input:checked + span {
+    color: #ffffff;
+    border-color: var(--app-cyan);
+    background: var(--app-cyan);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-danger {
+    color: var(--app-danger-text);
+    border-color: var(--app-danger-border);
+    background: var(--app-danger-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-danger:is(:hover, :focus-visible) {
+    color: #ffffff;
+    border-color: #9d2936;
+    background: #9d2936;
 }
 
 :root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)

@@ -96,4 +96,16 @@ test('Scheduling Owner UI Phase 1 uses the existing schedule API contract', asyn
         assert.match(css, /\.schedule-weekdays/);
         assert.match(css, /@media \(max-width: 575\.98px\)[\s\S]*\.schedule-editor-actions/);
     });
+
+    await t.test('My Nets uses complete light surfaces and synchronizes the notes editor', () => {
+        assert.match(css, /:root\[data-theme='light'\] body\.app-page:not\(\.landing-page\):not\(\.public-directory-page\)\s*\{/);
+        assert.match(css, /:root\[data-theme='light'\] body\.net-manager-page\s*\{[^}]*var\(--app-bg\)/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page \.net-manager-hero\s*\{[^}]*rgba\(255, 255, 255, 0\.78\)/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page :is\(\.app-panel, \.owned-nets-panel, #formContainerNetProfile\)\s*\{[^}]*var\(--app-panel-background\)/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page :is\(\.owned-net-card, \.app-option-card, \.coowner-row, \.connection-card\)\s*\{[^}]*var\(--app-surface-raised\)/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page \.app-input\s*\{[^}]*var\(--app-control-bg\)/s);
+        assert.match(css, /:root\[data-theme='light'\] \.net-manager-page \.app-modal \.modal-content\s*\{[^}]*var\(--app-surface-raised\)/s);
+        assert.match(client, /ncoLogger:appearancechange/);
+        assert.match(client, /body\.style\.backgroundColor = isLight \? '#ffffff' : '#222f3e'/);
+    });
 });
