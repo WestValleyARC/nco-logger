@@ -249,6 +249,7 @@ body.nch-moving-module { cursor: grabbing !important; user-select: none !importa
 #netcontrol-ncs-helper .nch-avatar { width: 34px; height: 34px; flex: 0 0 34px; object-fit: cover; border: 1px solid #9de9f4; border-radius: 50%; }
 #netcontrol-ncs-helper button.nch-avatar-button { display: inline-flex; width: 34px; height: 34px; flex: 0 0 34px; padding: 0; background: transparent; border: 0; border-radius: 50%; }
 #netcontrol-ncs-helper button.nch-avatar-button:hover { outline: 3px solid #efbf62; }
+#netcontrol-ncs-helper button.nch-station-action-toggle { display: none; }
 #netcontrol-ncs-helper .nch-lurker-row { grid-template-columns: 15px 96px minmax(62px, 1fr) auto; min-height: 29px; gap: 2px; margin: 1px 0; padding: 1px 2px; font-size: calc(10px + var(--nch-font-adjust, 0px)); }
 #netcontrol-ncs-helper :is(.nch-lurker-row, .nch-row.nch-checked-out) .nch-avatar,
 #netcontrol-ncs-helper :is(.nch-lurker-row, .nch-row.nch-checked-out) button.nch-avatar-button { width: 20px; height: 20px; flex-basis: 20px; }
@@ -1939,7 +1940,39 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row {
-  grid-template-columns: 18px minmax(112px, 128px) minmax(0, 1fr);
+  grid-template-columns: 18px minmax(112px, 128px) minmax(0, 1fr) 36px;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] button.nch-station-action-toggle {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  color: #bdeef5;
+  background: rgba(7, 19, 28, .72);
+  border: 1px solid #497582;
+  border-radius: 7px;
+  touch-action: manipulation;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] button.nch-station-action-toggle:is(:active, :focus-visible, .is-open) {
+  color: #07131c;
+  background: #8dd9e4;
+  border-color: #d8fbff;
+  outline: none;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] button.nch-station-action-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row-info {

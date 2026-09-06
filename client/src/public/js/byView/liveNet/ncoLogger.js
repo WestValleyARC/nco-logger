@@ -2345,6 +2345,17 @@ import {
     </span>`;
   }
 
+  function stationActionToggle(station, call) {
+    const touchActions = currentLayoutContext.startsWith("phone")
+      && window.matchMedia("(hover: none), (pointer: coarse)").matches
+      && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
+    if (!touchActions || station.checkedState !== true) return "";
+    const open = pinnedActionCall === call;
+    return `<button class="nch-station-action-toggle${open ? " is-open" : ""}" data-station-actions="${escapeHtml(call)}" aria-label="${open ? "Close" : "Open"} station actions for ${escapeHtml(call)}" aria-expanded="${open ? "true" : "false"}" title="Station actions">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"></path></svg>
+    </button>`;
+  }
+
   const HOTKEY_ACTIONS = Object.freeze({
     KeyO: ".nch-checkout-btn",
     KeyN: ".nch-needed-next",
@@ -2728,6 +2739,7 @@ import {
         ${dragHandle}
         <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span><span class="nch-hand-slot">${hand}</span></div>
         <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
+        ${stationActionToggle(station, call)}
         ${stationActionTray(station, details, call, busy)}
       </div>`;
   }
@@ -4171,14 +4183,22 @@ import {
       }
       const clickedRow = event.target.closest?.(".nch-row[data-call]");
       const clickedInteractive = event.target.closest?.("button, input, textarea, select, a, [contenteditable='true'], .nch-drag, .nch-row-actions");
-      const touchStationActions = currentLayoutContext !== "desktop"
+      const touchStationActions = currentLayoutContext.startsWith("phone")
         && window.matchMedia("(hover: none), (pointer: coarse)").matches
         && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
-      if (clickedRow && !clickedInteractive && touchStationActions) {
-        const call = normalizeCall(clickedRow.dataset.call);
+      const stationActionButton = event.target.closest?.("[data-station-actions]");
+      if (stationActionButton && touchStationActions) {
+        const call = normalizeCall(stationActionButton.dataset.stationActions);
         pinnedActionCall = pinnedActionCall === call ? "" : call;
         renderQueue();
         setStatus(pinnedActionCall ? `${call} actions opened.` : `${call} actions closed.`, "success");
+        return;
+      }
+      if (clickedRow && !clickedInteractive && touchStationActions && pinnedActionCall === normalizeCall(clickedRow.dataset.call)) {
+        const call = normalizeCall(clickedRow.dataset.call);
+        pinnedActionCall = "";
+        renderQueue();
+        setStatus(`${call} actions closed.`, "success");
         return;
       }
       if (clickedRow && !clickedInteractive && canManageStations()) {

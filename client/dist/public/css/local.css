@@ -104,11 +104,27 @@ body {
 }
 
 .chat-recipient-toggle {
+    display: grid;
     min-width: 0;
     max-width: min(20rem, 65vw);
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.35rem;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.chat-recipient-toggle-label {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.chat-recipient-toggle-indicator {
+    width: 0.75rem;
+    flex: 0 0 0.75rem;
+    text-align: center;
 }
 
 .chat-recipient-toggle:hover,
@@ -271,7 +287,6 @@ body {
     border-color: #ff7482;
 }
 
-hl-chat.chat-private-active .chat-recipient-toggle,
 hl-chat.chat-private-active .chat-form {
     border-color: var(--chat-accent-bright);
 }
@@ -923,6 +938,7 @@ hl-chat.chat-private-active .chat-form {
         flex: 1 1 100%;
         width: 100%;
         max-width: 100%;
+        height: 44px;
         min-height: 44px;
     }
 

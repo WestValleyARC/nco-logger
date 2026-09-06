@@ -56,6 +56,7 @@ test('Viewer defaults and saved layouts are isolated by role and responsive cont
         const source = read(file);
         assert.match(source, /VIEWER_DEFAULT_MODULE_LAYOUT[\s\S]*chat:\s*\{ x: 0, y: 0, w: 12, h: 20 \}[\s\S]*active:\s*\{ x: 12, y: 0, w: 12, h: 20 \}[\s\S]*collapsed:\s*\{ lurkers: true, checkedOut: true \}/);
         assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait:[\s\S]*active:\s*\{ x: 0, y: 0, w: 24, h: 14 \}[\s\S]*chat:\s*\{ x: 0, y: 14, w: 24, h: 14 \}/);
+        assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait:[\s\S]*collapsed:\s*\{ controls: true, lurkers: true, checkedOut: true \}/);
         assert.match(source, /tabletPortrait:[\s\S]*chat:\s*\{ x: 0, y: 0, w: 10, h: 24 \}[\s\S]*active:\s*\{ x: 10, y: 0, w: 14, h: 24 \}/);
         assert.match(source, /tabletLandscape:[\s\S]*chat:\s*\{ x: 0, y: 0, w: 8, h: 20 \}[\s\S]*active:\s*\{ x: 8, y: 0, w: 16, h: 20 \}/);
         assert.match(source, /roleResponsiveLayouts:\s*local\.roleResponsiveLayouts/);
@@ -65,6 +66,17 @@ test('Viewer defaults and saved layouts are isolated by role and responsive cont
         assert.match(source, /legacyLayoutShouldResetForRole[\s\S]*shouldResetLegacyLoggerLayout/);
         assert.match(source, /isCurrentResponsiveLayout\(candidate, context\)/);
     }
+});
+
+test('public and private chat recipients share one stable control structure', () => {
+    const source = read('client/src/public/js/lib/chat.ts');
+    const css = read('client/dist/public/css/local.css');
+    assert.match(source, /chat-recipient-toggle-label[\s\S]*chat-recipient-toggle-indicator/);
+    assert.match(source, /toggleLabel\.textContent = selected[\s\S]*To: \$\{selected\.callSign\} \(Private\)[\s\S]*To: Everyone \(Public\)/);
+    assert.match(css, /\.chat-recipient-toggle\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto[^}]*box-sizing:\s*border-box[^}]*text-align:\s*left/s);
+    assert.match(css, /\.chat-recipient-toggle-label\s*\{[^}]*overflow:\s*hidden[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap/s);
+    assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.chat-recipient-toggle\s*\{[^}]*width:\s*100%[^}]*height:\s*44px[^}]*min-height:\s*44px/s);
+    assert.doesNotMatch(css, /chat-private-active \.chat-recipient-toggle/);
 });
 
 test('role layout migration rejects known cross-role defaults without erasing customization', async () => {
@@ -214,10 +226,13 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode\s*\{[^}]*justify-self:\s*end[^}]*text-align:\s*right/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode::after\s*\{[^}]*content:\s*none/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(112px, 128px\) minmax\(0, 1fr\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(112px, 128px\) minmax\(0, 1fr\) 36px/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] button\.nch-station-action-toggle\s*\{[^}]*width:\s*36px[^}]*height:\s*36px[^}]*touch-action:\s*manipulation/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section \.nch-row-text\s*\{[^}]*flex-direction:\s*column[^}]*overflow:\s*visible/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-active-section :is\(\.nch-role-badge, \.nch-tag\)\s*\{[^}]*flex:\s*0 0 auto/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
+    assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"[\s\S]*aria-expanded="\$\{open \? "true" : "false"\}"/);
+    assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)[\s\S]*pinnedActionCall = pinnedActionCall === call \? "" : call/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 7[\s\S]*items\.controls\.h = 7[\s\S]*items\[id\]\.y \+ addedRows/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 7 : MIN_MODULE_ROWS\[id\]/);
 });
@@ -459,8 +474,8 @@ test('native server-backed pins are not hidden or replaced by NCO helper normali
 test('private chat keeps recipient, presence, unread, and ignore state inside the Chat module', () => {
     const source = read('client/src/public/js/lib/chat.ts');
     const css = read('client/dist/public/css/local.css');
-    assert.match(source, /To: Everyone \(Public\) ▾/);
-    assert.match(source, /To: \$\{selected\.callSign\} \(Private\) ▾/);
+    assert.match(source, /chat-recipient-toggle-label">To: Everyone \(Public\)/);
+    assert.match(source, /To: \$\{selected\.callSign\} \(Private\)/);
     assert.match(source, /Message \$\{selected\.callSign\} privately…/);
     assert.match(source, /Message the net…/);
     assert.match(source, /chat-recipient-unread/);

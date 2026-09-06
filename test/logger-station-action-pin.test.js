@@ -28,3 +28,12 @@ test('shared action trays cover active, checked-out, and lurker station actions'
     assert.match(source, /class="nch-inline-actions"/);
     assert.match(source, /class="nch-row-actions nch-active-actions"/);
 });
+
+test('phone station actions use a dedicated operator-only touch toggle', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(source, /function stationActionToggle\(station, call\)[\s\S]*currentLayoutContext\.startsWith\("phone"\)[\s\S]*\["netcontrol", "netlogger", "netrelay"\]\.includes\(currentUserRole\)/);
+    assert.match(source, /if \(!touchActions \|\| station\.checkedState !== true\) return ""/);
+    assert.match(source, /data-station-actions=/);
+    assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)/);
+    assert.doesNotMatch(source, /if \(clickedRow && !clickedInteractive && touchStationActions\) \{\s*const call = normalizeCall\(clickedRow\.dataset\.call\);\s*pinnedActionCall = pinnedActionCall === call/);
+});

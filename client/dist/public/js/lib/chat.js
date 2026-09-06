@@ -308,7 +308,7 @@ export class ChatWidget extends HTMLElement {
                 </div>
                 <div class="chat-conversation-bar">
                     <div class="chat-recipient-selector">
-                        <button class="chat-recipient-toggle" type="button" aria-haspopup="menu" aria-expanded="false">To: Everyone (Public) ▾</button>
+                        <button class="chat-recipient-toggle" type="button" aria-haspopup="menu" aria-expanded="false"><span class="chat-recipient-toggle-label">To: Everyone (Public)</span><span class="chat-recipient-toggle-indicator" aria-hidden="true">▾</span></button>
                         <div class="chat-recipient-menu" role="menu" aria-label="Choose chat recipient" hidden></div>
                         <button class="chat-private-unread" type="button" aria-haspopup="menu" aria-expanded="false" aria-live="polite" hidden></button>
                         <div class="chat-unread-menu" role="menu" aria-label="Unread private conversations" hidden></div>
@@ -607,8 +607,11 @@ export class ChatWidget extends HTMLElement {
         this.recipients.forEach(recipient => addChoice(this.recipientLabel(recipient), recipient.userId, recipient));
         const selected = this.selectedRecipientId ? this.recipients.get(this.selectedRecipientId) : null;
         this.classList.toggle('chat-private-active', Boolean(selected));
-        toggle.textContent = selected
-            ? `To: ${selected.callSign} (Private) ▾` : 'To: Everyone (Public) ▾';
+        const toggleLabel = toggle.querySelector('.chat-recipient-toggle-label');
+        if (toggleLabel) {
+            toggleLabel.textContent = selected
+                ? `To: ${selected.callSign} (Private)` : 'To: Everyone (Public)';
+        }
         toggle.setAttribute('aria-label', selected
             ? `Chat recipient: ${this.recipientLabel(selected)}, ${selected.presenceLabel}`
             : 'Chat recipient: Everyone');
