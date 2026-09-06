@@ -1785,7 +1785,7 @@ export class ChatWidget extends HTMLElement {
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'chat-message-actions-toggle';
-        toggle.textContent = '⋯';
+        toggle.textContent = '☺';
         toggle.title = 'Message actions';
         toggle.setAttribute('aria-label', `Show actions for message from ${message.callSign}`);
         toggle.setAttribute('aria-expanded', String(this.openMessageActionsId === message.id));
@@ -1869,14 +1869,19 @@ export class ChatWidget extends HTMLElement {
         this.querySelectorAll('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
         this.openMessageActionsId = messageId;
         row.classList.add('is-actions-open');
-        row.querySelector('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'true');
+        const toggle = row.querySelector('.chat-message-actions-toggle');
+        toggle?.setAttribute('aria-expanded', 'true');
+        toggle?.setAttribute('aria-label', 'Hide message actions');
     }
     closeMessageActions(returnFocus = false) {
         const messageId = this.openMessageActionsId;
         this.openMessageActionsId = null;
         this.querySelectorAll('.chat-message.is-actions-open').forEach(row => {
             row.classList.remove('is-actions-open');
-            row.querySelector('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'false');
+            const toggle = row.querySelector('.chat-message-actions-toggle');
+            toggle?.setAttribute('aria-expanded', 'false');
+            const callSign = row.querySelector('.chat-message-author')?.textContent || 'sender';
+            toggle?.setAttribute('aria-label', `Show actions for message from ${callSign}`);
             row.querySelectorAll('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
             row.querySelectorAll('.chat-action-react').forEach(button => {
                 button.setAttribute('aria-expanded', 'false');

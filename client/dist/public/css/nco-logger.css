@@ -1800,7 +1800,10 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
   overflow: visible;
 }
 
-#netcontrol-ncs-helper[data-layout-context^="phone"] { grid-template-rows: auto auto; }
+#netcontrol-ncs-helper[data-layout-context^="phone"] {
+  z-index: auto;
+  grid-template-rows: auto auto;
+}
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] > header {
   position: fixed;
@@ -1835,6 +1838,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
 
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) > hl-chat.nch-chat-floating {
   position: absolute !important;
+  z-index: 70 !important;
 }
 
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])

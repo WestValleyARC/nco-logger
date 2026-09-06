@@ -966,6 +966,13 @@ hl-chat.chat-private-active .chat-form {
         line-height: 1;
     }
 
+    .chat-message.is-actions-open > .chat-message-actions-toggle {
+        color: #132328;
+        background: var(--chat-accent-bright);
+        border-color: #d7f8ff;
+        box-shadow: 0 0 0 2px rgba(116, 198, 212, 0.2);
+    }
+
     .chat-message-action,
     .chat-quick-reactions button {
         min-width: 2rem;

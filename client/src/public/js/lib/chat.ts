@@ -1751,7 +1751,7 @@ export class ChatWidget extends HTMLElement {
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'chat-message-actions-toggle';
-        toggle.textContent = '⋯';
+        toggle.textContent = '☺';
         toggle.title = 'Message actions';
         toggle.setAttribute('aria-label', `Show actions for message from ${message.callSign}`);
         toggle.setAttribute('aria-expanded', String(this.openMessageActionsId === message.id));
@@ -1832,7 +1832,9 @@ export class ChatWidget extends HTMLElement {
         this.querySelectorAll<HTMLElement>('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
         this.openMessageActionsId = messageId;
         row.classList.add('is-actions-open');
-        row.querySelector<HTMLButtonElement>('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'true');
+        const toggle = row.querySelector<HTMLButtonElement>('.chat-message-actions-toggle');
+        toggle?.setAttribute('aria-expanded', 'true');
+        toggle?.setAttribute('aria-label', 'Hide message actions');
     }
 
     private closeMessageActions(returnFocus = false): void {
@@ -1840,7 +1842,10 @@ export class ChatWidget extends HTMLElement {
         this.openMessageActionsId = null;
         this.querySelectorAll<HTMLElement>('.chat-message.is-actions-open').forEach(row => {
             row.classList.remove('is-actions-open');
-            row.querySelector<HTMLButtonElement>('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'false');
+            const toggle = row.querySelector<HTMLButtonElement>('.chat-message-actions-toggle');
+            toggle?.setAttribute('aria-expanded', 'false');
+            const callSign = row.querySelector<HTMLElement>('.chat-message-author')?.textContent || 'sender';
+            toggle?.setAttribute('aria-label', `Show actions for message from ${callSign}`);
             row.querySelectorAll<HTMLElement>('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
             row.querySelectorAll<HTMLButtonElement>('.chat-action-react').forEach(button => {
                 button.setAttribute('aria-expanded', 'false');

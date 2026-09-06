@@ -146,15 +146,17 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /Reset only the \$\{layoutContextLabel\(targetContext\)\}/);
     assert.match(source, /netcontrol:\s*"NCO Mode"[\s\S]*netlogger:\s*"Logger Mode"[\s\S]*netrelay:\s*"Relay Mode"[\s\S]*\|\| "Viewer Mode"/);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 26px\)[^}]*overflow:\s*visible/s);
+    assert.match(css, /#netcontrol-ncs-helper\[data-layout-context\^="phone"\]\s*\{[^}]*z-index:\s*auto[^}]*grid-template-rows:\s*auto auto/s);
     assert.doesNotMatch(css, /\[data-layout-context\^="phone"\] \.nch-module\s*\{[^}]*margin/s);
     assert.match(css, /\[data-layout-context\^="phone"\] :is\(\.nch-module-content, \.nch-module-header\)\s*\{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-y/s);
-    assert.match(css, /:has\(#netcontrol-ncs-helper\[data-layout-context\^="phone"\]\) > hl-chat\.nch-chat-floating\s*\{[^}]*position:\s*absolute !important/s);
+    assert.match(css, /:has\(#netcontrol-ncs-helper\[data-layout-context\^="phone"\]\) > hl-chat\.nch-chat-floating\s*\{[^}]*position:\s*absolute !important[^}]*z-index:\s*70 !important/s);
     assert.match(css, /hl-chat\.nch-chat-docked :is\(\.chat-messages, \.nch-private-messages, \.nch-pinned-chat-strip\)\s*\{[^}]*overscroll-behavior-y:\s*auto !important[^}]*touch-action:\s*pan-y/s);
     assert.match(source, /const followsDocument = currentLayoutContext\.startsWith\("phone"\)[\s\S]*rect\.top \+ \(followsDocument \? window\.scrollY : 0\)/);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.nch-module-header\s*\{[^}]*min-height:\s*32px/s);
     assert.match(css, /\[data-layout-context\^="phone"\] > header\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*100[^}]*top:\s*0[^}]*right:\s*0[^}]*left:\s*0[^}]*safe-area-inset-top/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-body\s*\{[^}]*--nch-phone-footer-height:\s*40px[^}]*padding-top:\s*calc\(47px \+ env\(safe-area-inset-top\)\)[^}]*padding-bottom:\s*calc\(var\(--nch-phone-footer-height\) \+ env\(safe-area-inset-bottom\)\)/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*position:\s*fixed[^}]*right:\s*0[^}]*bottom:\s*0[^}]*left:\s*0[^}]*height:\s*calc\(var\(--nch-phone-footer-height, 40px\) \+ env\(safe-area-inset-bottom\)\)[^}]*min-height:\s*0[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*grid-template-rows:\s*17px minmax\(0, 1fr\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*z-index:\s*90/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card strong\s*\{[^}]*font-size:\s*calc\(12px \+ var\(--nch-font-adjust, 0px\)\)/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card small\s*\{[^}]*font-size:\s*calc\(8px \+ var\(--nch-font-adjust, 0px\)\)/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode\s*\{[^}]*justify-self:\s*end[^}]*text-align:\s*right/s);
@@ -336,12 +338,16 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message-actions\s*\{[^}]*visibility:\s*hidden[^}]*opacity:\s*0[^}]*pointer-events:\s*none[\s\S]*\.chat-message\.is-actions-open \.chat-message-actions\s*\{[^}]*visibility:\s*visible[^}]*opacity:\s*1[^}]*pointer-events:\s*auto/s);
     assert.match(css, /\.chat-message-actions-toggle\s*\{\s*display:\s*none/);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message-actions-toggle\s*\{[^}]*display:\s*inline-flex[^}]*width:\s*2rem[^}]*height:\s*2rem/s);
+    assert.match(css, /\.chat-message\.is-actions-open > \.chat-message-actions-toggle\s*\{[^}]*background:\s*var\(--chat-accent-bright\)[^}]*box-shadow:/s);
     assert.match(source, /openMessageActionsId:\s*string \| null = null/);
     assert.match(source, /document\.addEventListener\('scroll', this\.handleDocumentScroll, \{ capture: true, passive: true \}\)/);
     assert.match(source, /if \(!actionTarget\) this\.closeMessageActions\(\)/);
     assert.match(source, /if \(this\.openMessageActionsId\)[\s\S]*this\.closeMessageActions\(true\)/);
     assert.match(source, /toggle\.addEventListener\('click', \(\) => this\.toggleMessageActions\(message\.id, row\)\)/);
-    assert.match(source, /private toggleMessageActions\([\s\S]*this\.closeMessageActions\(\)[\s\S]*this\.openMessageActionsId = messageId/);
+    assert.match(source, /toggle\.textContent = '☺'/);
+    assert.doesNotMatch(source, /toggle\.textContent = '⋯'/);
+    assert.match(source, /private toggleMessageActions\([\s\S]*const open = this\.openMessageActionsId !== messageId;[\s\S]*this\.closeMessageActions\(\);[\s\S]*if \(!open\) return;[\s\S]*this\.openMessageActionsId = messageId/);
+    assert.match(source, /toggle\?\.setAttribute\('aria-label', 'Hide message actions'\)/);
     assert.match(source, /if \(!keepOpen\) this\.closeMessageActions\(\)[\s\S]*action\(\)/);
 });
 
