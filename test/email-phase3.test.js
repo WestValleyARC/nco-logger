@@ -57,6 +57,7 @@ test('scheduled reminder is branded and includes actual time, policy wording, pr
     });
     assert.match(email.body.html, /NCO_Logger_Logo_compact\.png/);
     assert.match(email.body.text, /approximately 10 minutes/);
+    assert.match(email.body.text, /Scheduled Test Net is scheduled to begin on Tuesday, January 1, 2030 at 7:00 PM UTC\./);
     assert.match(email.body.text, /Tuesday, January 1, 2030 at 7:00 PM UTC/);
     assert.match(email.body.text, /published schedule/);
     assert.match(email.body.text, /because you follow this net/);
@@ -107,6 +108,7 @@ test('auto-close notice is branded, owner-specific, and uses mandatory operation
     assert.equal(email.body.attachments.length, 2);
     const csv = email.body.attachments[0].content.toString();
     assert.match(csv, /Net Close Date/);
+    assert.doesNotMatch(csv, /Highlighted/);
     assert.doesNotMatch(csv, /URL/);
     assert.match(email.body.attachments[1].content.toString(), /Captured auto-close chat/);
     let sent;

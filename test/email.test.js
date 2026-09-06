@@ -24,6 +24,7 @@ test('net-close attachments include CSV and local chat text', () => {
     const csv = attachments[0].content.toString();
     assert.match(csv, /W1ABC/);
     assert.match(csv, /Net Close Date/);
+    assert.doesNotMatch(csv, /Highlighted/);
     assert.match(csv, /2026-08-28T13:00:00.000Z/);
     assert.doesNotMatch(csv, /URL/);
     assert.match(attachments[1].content.toString(), /Local message/);
