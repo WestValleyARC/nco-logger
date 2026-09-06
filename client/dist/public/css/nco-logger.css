@@ -2085,7 +2085,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 }
 
 #netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-row {
-  grid-template-columns: 18px minmax(96px, 112px) minmax(0, 1fr) 36px;
+  grid-template-columns: 18px minmax(112px, 128px) minmax(0, 1fr) 36px;
 }
 
 #netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) button.nch-station-action-toggle {

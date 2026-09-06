@@ -61,12 +61,23 @@ test('tablet active rows reserve the action track and grow only when wrapped tag
     const css = read('client/dist/public/css/nco-logger.css');
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     assert.match(css, /\[data-layout-context\^="tablet"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*20px minmax\(112px, 136px\) minmax\(0, 1fr\) 36px/s);
-    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(96px, 112px\) minmax\(0, 1fr\) 36px/s);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(112px, 128px\) minmax\(0, 1fr\) 36px/s);
     assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) \.nch-active-section \.nch-row-text\s*\{[^}]*flex-direction:\s*column[^}]*overflow:\s*visible/s);
     assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) \.nch-active-section \.nch-status-tags\s*\{[^}]*max-width:\s*100%[^}]*flex:\s*0 0 auto[^}]*flex-wrap:\s*wrap[^}]*overflow:\s*visible/s);
     assert.doesNotMatch(css.match(/\[data-layout-context\^="tablet"\] \.nch-active-section \.nch-row\s*\{[^}]*\}/s)?.[0] || '', /height:/);
     assert.match(source, /station\.checkedState === true && call === selectedNextCall \? " nch-selected-next"/);
     assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"/);
+});
+
+test('tablet portrait reserves unclipped space for representative six-character callsigns', () => {
+    const css = read('client/dist/public/css/nco-logger.css');
+    const portraitRule = css.match(/\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-row\s*\{[^}]*\}/s)?.[0] || '';
+    assert.match(portraitRule, /minmax\(112px, 128px\)/);
+    assert.match(portraitRule, /minmax\(0, 1fr\) 36px/);
+    const usableCallsignWidth = 128 - 2 - 6 - 34 - 17 - (2 * 3);
+    assert.equal(usableCallsignWidth, 63, 'KD7NHM and KD8JKK receive a 63px unclipped callsign block');
+    assert.match(css, /\.nch-call-block\s*\{[^}]*min-width:\s*0[^}]*flex:\s*1 1 auto/s);
+    assert.match(css, /\.nch-row-info[^{]*\{[^}]*min-width:\s*0/s);
 });
 
 test('phone and tablet Active Log rows share intentional hold-to-reorder behavior', () => {
