@@ -135,9 +135,19 @@ test('emoji picker provides all requested categories and a substantial searchabl
         CHAT_EMOJI_CATEGORIES.map(category => category.id),
         ['smileys', 'people', 'nature', 'food', 'activities', 'travel', 'objects', 'symbols', 'flags']
     );
-    assert.ok(CHAT_EMOJI_CATEGORIES.flatMap(category => category.emoji).length >= 250);
+    assert.deepEqual(CHAT_EMOJI_CATEGORIES.map(category => category.label), [
+        'Smileys & Emotion', 'People & Body', 'Animals & Nature', 'Food & Drink', 'Activities',
+        'Travel & Places', 'Objects', 'Symbols', 'Flags'
+    ]);
+    const catalog = CHAT_EMOJI_CATEGORIES.flatMap(category => category.emoji);
+    assert.ok(catalog.length >= 1100 && catalog.length <= 1200);
+    assert.equal(new Set(catalog.map(entry => entry.emoji)).size, catalog.length);
+    const required = ['📻', '🎙️', '🎧', '📡', '🛰️', '📞', '☎️', '📱', '🔊', '🔇', '🔔', '🚨',
+        '⚠️', '🆘', '🔋', '🔌', '💻', '🖥️', '⌨️', '🗼', '🌐', '📶', '⚡', '🛜'];
+    for (const emoji of required) assert.ok(catalog.some(entry => entry.emoji === emoji), `missing ${emoji}`);
     assert.ok(filterChatEmoji('smileys', 'radio').some(entry => entry.emoji === '📻'));
     assert.ok(filterChatEmoji('smileys', 'emergency').some(entry => entry.emoji === '🆘'));
+    assert.ok(filterChatEmoji('smileys', 'wifi').some(entry => entry.emoji === '🛜'));
     assert.ok(filterChatEmoji('food', '').every(entry =>
         CHAT_EMOJI_CATEGORIES.find(category => category.id === 'food').emoji.includes(entry)
     ));
@@ -176,7 +186,7 @@ test('composer controls and text retain the intended accessible styling', () => 
     assert.match(css, /\.chat-icon-control:focus-visible/);
     assert.match(css, /\.chat-icon-control\s*\{[^}]*width:\s*auto[^}]*min-width:\s*0[^}]*font-size:\s*1\.35rem/s);
     assert.match(css, /\.chat-form\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto auto[^}]*gap:\s*0\.5rem !important[^}]*align-items:\s*stretch/s);
-    assert.match(css, /\.chat-emoji-tab\s*\{[^}]*font-size:\s*1\.35rem/s);
+    assert.match(css, /\.chat-emoji-tab\s*\{[^}]*background:\s*rgba\(116, 198, 212, 0\.06\)[^}]*border-color:\s*rgba\(116, 198, 212, 0\.22\)[^}]*font-size:\s*1\.05rem/s);
     assert.match(css, /\.chat-emoji-search::placeholder\s*\{[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-send-btn\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);
     assert.match(css, /@media \(max-width: 520px\), \(max-height: 520px\)/);
@@ -189,13 +199,39 @@ test('composer controls and text retain the intended accessible styling', () => 
     assert.doesNotMatch(source, />Download<\/button>/);
 });
 
-test('typing indicator uses a distinct wrapping region that collapses when idle', () => {
+test('typing indicator reserves stable space at the composer boundary when idle', () => {
     const css = read('client/dist/public/css/local.css');
     const source = read('client/src/public/js/lib/chat.ts');
     assert.match(source, /chat-composer-wrap[\s\S]*chat-typing-indicator[\s\S]*chat-form/);
-    assert.match(css, /\.chat-typing-indicator\s*\{[^}]*display:\s*block[^}]*overflow-wrap:\s*anywhere[^}]*white-space:\s*normal/s);
-    assert.match(css, /\.chat-typing-indicator\[hidden\]\s*\{[^}]*display:\s*none/s);
+    assert.match(css, /\.chat-typing-indicator\s*\{[^}]*display:\s*block[^}]*height:\s*2\.5em[^}]*min-height:\s*2\.5em[^}]*overflow-wrap:\s*anywhere[^}]*white-space:\s*normal/s);
+    assert.match(css, /\.chat-typing-indicator\[hidden\]\s*\{[^}]*display:\s*block[^}]*visibility:\s*hidden/s);
     assert.doesNotMatch(css, /\.chat-typing-indicator\s*\{[^}]*position:\s*(?:absolute|fixed)/s);
+});
+
+test('emoji categories are labeled navigation controls separated from insertion choices', () => {
+    const css = read('client/dist/public/css/local.css');
+    const source = read('client/src/public/js/lib/chat.ts');
+    assert.match(source, /local-chat-emoji-categories-label">Categories/);
+    assert.match(source, /chat-emoji-category-name[^>]*aria-live="polite"/);
+    assert.match(source, /chat-emoji-tabs" role="group" aria-labelledby="local-chat-emoji-categories-label"/);
+    assert.match(source, /button\.setAttribute\('aria-label', `Show \$\{category\.label\} category`\)/);
+    assert.match(source, /button\.setAttribute\('aria-pressed', String\(active\)\)/);
+    assert.match(source, /grid\.setAttribute\('aria-label', search\.value\.trim\(\) \? 'Emoji search results'/);
+    assert.match(css, /\.chat-emoji-category-nav\s*\{[^}]*border-bottom:/s);
+    assert.doesNotMatch(source, /chat-emoji-tab[\s\S]{0,800}insertEmoji\(/);
+});
+
+test('quick reactions are fitted to the visible Chat module when opened and resized', () => {
+    const css = read('client/dist/public/css/local.css');
+    const source = read('client/src/public/js/lib/chat.ts');
+    assert.match(source, /if \(!menu\.hidden\) this\.positionQuickReactions\(menu, controls\)/);
+    assert.match(source, /positionOpenTransientOverlays[\s\S]*chat-quick-reactions:not\(\[hidden\]\)[\s\S]*positionQuickReactions/);
+    assert.match(source, /new ResizeObserver\(\(\) => this\.handleWindowResize\(\)\)[\s\S]*resizeObserver\?\.observe\(this\)/);
+    assert.match(source, /visibleLeft = Math\.max\(viewportLeft, chatRect\.left\)/);
+    assert.match(source, /visibleBottom = Math\.min\(viewportBottom, chatRect\.bottom\)/);
+    assert.match(source, /fitChatOverlayToViewport\(\{[\s\S]*preferredWidth: menu\.offsetWidth[\s\S]*alignEnd: true, gap: 4/);
+    assert.match(source, /\['👍', '❤️', '😂', '😮'\]\.forEach\(emoji =>/);
+    assert.match(css, /\.chat-quick-reactions\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*6/s);
 });
 
 test('responsive logger keeps independent orientation layouts and touch-safe controls', () => {

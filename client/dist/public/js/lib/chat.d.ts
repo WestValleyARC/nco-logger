@@ -44,6 +44,7 @@ export declare class ChatWidget extends HTMLElement {
     private messageScrollHeight;
     private keepBottomOnImageLoad;
     private initialScrollGate;
+    private resizeObserver;
     private maxMessageChars;
     private maxUploadBytes;
     private imageMimeTypes;
@@ -116,6 +117,7 @@ export declare class ChatWidget extends HTMLElement {
     private appendReplyReference;
     private appendReactions;
     private appendMessageActions;
+    private positionQuickReactions;
     private toggleMessageActions;
     private closeMessageActions;
     private safeAttachmentUrl;

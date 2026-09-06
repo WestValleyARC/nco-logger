@@ -810,13 +810,37 @@
   color: #607680 !important;
 }
 
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-category-nav {
+  border-color: #9bb1b9 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-category-heading {
+  color: #174e5d !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-category-name {
+  color: #526771 !important;
+}
+
 :root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-emoji-tab, .chat-emoji-choice) {
   color: #14242d !important;
   background: transparent !important;
   border-color: transparent !important;
 }
 
-:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-emoji-tab:hover, .chat-emoji-tab.active, .chat-emoji-choice:hover, .chat-emoji-tab:focus-visible, .chat-emoji-choice:focus-visible) {
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-tab {
+  background: #f2f7f9 !important;
+  border-color: #b1c2c8 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-tab.active {
+  color: #ffffff !important;
+  background: #087188 !important;
+  border-color: #04586c !important;
+  box-shadow: inset 0 -2px 0 #ffffff !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-emoji-tab:hover, .chat-emoji-choice:hover, .chat-emoji-tab:focus-visible, .chat-emoji-choice:focus-visible) {
   background: #e2f0f3 !important;
   border-color: #6394a1 !important;
   outline-color: #087188 !important;

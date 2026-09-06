@@ -1,6 +1,7 @@
 export interface ChatEmojiEntry {
     emoji: string;
     name: string;
+    keywords: string[];
 }
 export interface ChatEmojiCategory {
     id: string;
