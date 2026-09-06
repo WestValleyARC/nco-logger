@@ -29,16 +29,24 @@ test('shared action trays cover active, checked-out, and lurker station actions'
     assert.match(source, /class="nch-row-actions nch-active-actions"/);
 });
 
-test('phone station actions use a dedicated operator-only touch toggle', () => {
+test('phone and tablet station actions use the dedicated operator-only touch toggle', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
-    assert.match(source, /function stationActionToggle\(station, call\)[\s\S]*currentLayoutContext\.startsWith\("phone"\)[\s\S]*\["netcontrol", "netlogger", "netrelay"\]\.includes\(currentUserRole\)/);
+    assert.match(source, /function usesTouchStationInteractions\(\)[\s\S]*currentLayoutContext\.startsWith\("phone"\) \|\| currentLayoutContext\.startsWith\("tablet"\)[\s\S]*\(hover: none\), \(pointer: coarse\)/);
+    assert.match(source, /function stationActionToggle\(station, call\)[\s\S]*usesTouchStationInteractions\(\)[\s\S]*\["netcontrol", "netlogger", "netrelay"\]\.includes\(currentUserRole\)/);
     assert.match(source, /if \(!touchActions \|\| station\.checkedState !== true\) return ""/);
     assert.match(source, /data-station-actions=/);
     assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)/);
     assert.doesNotMatch(source, /if \(clickedRow && !clickedInteractive && touchStationActions\) \{\s*const call = normalizeCall\(clickedRow\.dataset\.call\);\s*pinnedActionCall = pinnedActionCall === call/);
 });
 
-test('phone station actions render in one visual-viewport modal with complete dismissal', () => {
+test('tablet touch rows keep active selection while lurker and checked-out taps reveal inline actions', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*station\?\.checkedState !== true[\s\S]*clickedRow\.focus\(\{ preventScroll: true \}\)[\s\S]*if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
+    assert.match(source, /panel\.addEventListener\("contextmenu"[\s\S]*if \(usesTouchStationInteractions\(\)\) \{\s*event\.preventDefault\(\);\s*return;\s*\}/);
+    assert.match(source, /\$\{usesTouchStationInteractions\(\) \? "" : stationActionTray/);
+});
+
+test('phone and tablet station actions render in one visual-viewport modal with complete dismissal', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
     assert.match(source, /data-role="station-action-modal" hidden/);
@@ -51,6 +59,7 @@ test('phone station actions render in one visual-viewport modal with complete di
     assert.doesNotMatch(source.match(/function syncStationActionModal\(\) \{[\s\S]*?\n  \}/)?.[0] || '', /scrollTop|scrollIntoView/);
     assert.match(source, /const viewport = window\.visualViewport;[\s\S]*viewport\?\.offsetLeft[\s\S]*viewport\?\.offsetTop[\s\S]*viewport\?\.width[\s\S]*viewport\?\.height/);
     assert.match(source, /window\.visualViewport\?\.addEventListener\("scroll", positionStationActionModal\)/);
+    assert.match(source, /const allowed = usesTouchStationInteractions\(\) && station\?\.checkedState === true/);
     assert.match(css, /\.nch-station-action-modal\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*2147483000[^}]*place-items:\s*center[^}]*safe-area-inset/s);
     assert.match(css, /\.nch-station-action-panel\s*\{[^}]*width:\s*min\(34rem, 100%\)[^}]*max-height:\s*100%[^}]*overflow:\s*hidden/s);
     assert.match(css, /\.nch-station-action-panel \.nch-tray-title\s*\{[^}]*position:\s*sticky[^}]*grid-template-columns:\s*78px minmax\(0, 1fr\) 36px 36px[^}]*gap:\s*6px/s);
@@ -59,6 +68,7 @@ test('phone station actions render in one visual-viewport modal with complete di
     assert.match(css, /\.nch-station-action-panel :is\(\.nch-management-actions, \.nch-status-actions, \.nch-attention-actions\) > span\s*\{[^}]*repeat\(auto-fit, minmax\(min\(100%, 126px\), 1fr\)\)/s);
     assert.match(css, /\.nch-station-action-panel \.nch-role-actions > span\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
     assert.match(css, /button:not\(\.nch-tray-help\):not\(\.nch-tray-close\)\s*\{\s*min-height:\s*44px/s);
+    assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) button\.nch-station-action-toggle\s*\{[^}]*display:\s*inline-flex[^}]*width:\s*36px[^}]*height:\s*36px/s);
 });
 
 test('phone module resize handles are absent and every resize path is guarded', () => {
