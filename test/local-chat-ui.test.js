@@ -153,8 +153,10 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /const followsDocument = currentLayoutContext\.startsWith\("phone"\)[\s\S]*rect\.top \+ \(followsDocument \? window\.scrollY : 0\)/);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.nch-module-header\s*\{[^}]*min-height:\s*32px/s);
     assert.match(css, /\[data-layout-context\^="phone"\] > header\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*100[^}]*top:\s*0[^}]*right:\s*0[^}]*left:\s*0[^}]*safe-area-inset-top/s);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-body\s*\{[^}]*padding-top:\s*calc\(47px \+ env\(safe-area-inset-top\)\)[^}]*padding-bottom:\s*calc\(50px \+ env\(safe-area-inset-bottom\)\)/s);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*position:\s*fixed[^}]*right:\s*0[^}]*bottom:\s*0[^}]*left:\s*0[^}]*min-height:\s*50px[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*grid-template-rows:\s*minmax\(18px, auto\) auto/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-body\s*\{[^}]*--nch-phone-footer-height:\s*40px[^}]*padding-top:\s*calc\(47px \+ env\(safe-area-inset-top\)\)[^}]*padding-bottom:\s*calc\(var\(--nch-phone-footer-height\) \+ env\(safe-area-inset-bottom\)\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*position:\s*fixed[^}]*right:\s*0[^}]*bottom:\s*0[^}]*left:\s*0[^}]*height:\s*calc\(var\(--nch-phone-footer-height, 40px\) \+ env\(safe-area-inset-bottom\)\)[^}]*min-height:\s*0[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*grid-template-rows:\s*17px minmax\(0, 1fr\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card strong\s*\{[^}]*font-size:\s*calc\(12px \+ var\(--nch-font-adjust, 0px\)\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card small\s*\{[^}]*font-size:\s*calc\(8px \+ var\(--nch-font-adjust, 0px\)\)/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode\s*\{[^}]*justify-self:\s*end[^}]*text-align:\s*right/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode::after\s*\{[^}]*content:\s*none/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
@@ -312,7 +314,7 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(source, /Original message unavailable/);
     assert.match(css, /\.chat-message-actions\s*\{[^}]*position:\s*absolute[^}]*opacity:\s*0/s);
     assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message-actions/);
-    assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message\s*\{[^}]*padding-bottom:\s*2\.35rem/s);
+    assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message\.is-actions-open\s*\{[^}]*padding-bottom:\s*2\.35rem/s);
     assert.match(css, /\.chat-action-private\s*\{[^}]*color:\s*#f7c8ff[^}]*font-size:\s*1\.25rem[^}]*font-weight:\s*700[^}]*text-shadow:/s);
     assert.match(css, /\.chat-message-action-icon\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center[^}]*justify-content:\s*center[^}]*line-height:\s*1/s);
     assert.match(css, /\.chat-action-private \.chat-message-action-icon\s*\{[^}]*transform:\s*translateY\(-0\.25em\)/s);
@@ -330,7 +332,17 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(css, /\.chat-header-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto minmax\(0, 1fr\)/s);
     assert.match(css, /\.chat-clear-button\s*\{[^}]*grid-column:\s*2[^}]*justify-self:\s*center[^}]*color:\s*#ff5263/s);
     assert.doesNotMatch(source, /has-pin-action/);
-    assert.match(css, /\.chat-message:hover \.chat-message-actions,[\s\S]*opacity:\s*1[\s\S]*pointer-events:\s*auto/s);
+    assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*\.chat-message:hover \.chat-message-actions,[\s\S]*opacity:\s*1[\s\S]*pointer-events:\s*auto/s);
+    assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message-actions\s*\{[^}]*visibility:\s*hidden[^}]*opacity:\s*0[^}]*pointer-events:\s*none[\s\S]*\.chat-message\.is-actions-open \.chat-message-actions\s*\{[^}]*visibility:\s*visible[^}]*opacity:\s*1[^}]*pointer-events:\s*auto/s);
+    assert.match(css, /\.chat-message-actions-toggle\s*\{\s*display:\s*none/);
+    assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.chat-message-actions-toggle\s*\{[^}]*display:\s*inline-flex[^}]*width:\s*2rem[^}]*height:\s*2rem/s);
+    assert.match(source, /openMessageActionsId:\s*string \| null = null/);
+    assert.match(source, /document\.addEventListener\('scroll', this\.handleDocumentScroll, \{ capture: true, passive: true \}\)/);
+    assert.match(source, /if \(!actionTarget\) this\.closeMessageActions\(\)/);
+    assert.match(source, /if \(this\.openMessageActionsId\)[\s\S]*this\.closeMessageActions\(true\)/);
+    assert.match(source, /toggle\.addEventListener\('click', \(\) => this\.toggleMessageActions\(message\.id, row\)\)/);
+    assert.match(source, /private toggleMessageActions\([\s\S]*this\.closeMessageActions\(\)[\s\S]*this\.openMessageActionsId = messageId/);
+    assert.match(source, /if \(!keepOpen\) this\.closeMessageActions\(\)[\s\S]*action\(\)/);
 });
 
 test('native server-backed pins are not hidden or replaced by NCO helper normalization', () => {

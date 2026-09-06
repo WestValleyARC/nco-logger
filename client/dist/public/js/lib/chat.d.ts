@@ -31,6 +31,7 @@ export declare class ChatWidget extends HTMLElement {
     private editDraft;
     private savingEdit;
     private replyingToId;
+    private openMessageActionsId;
     private viewerRole;
     private suspended;
     private emojiCategory;
@@ -49,6 +50,7 @@ export declare class ChatWidget extends HTMLElement {
     private get messages();
     private readonly handleDocumentPointerDown;
     private readonly handleDocumentKeyDown;
+    private readonly handleDocumentScroll;
     private readonly handleWindowResize;
     private readonly handleMessageScroll;
     private readonly handleMessageImageLoad;
@@ -112,6 +114,8 @@ export declare class ChatWidget extends HTMLElement {
     private appendReplyReference;
     private appendReactions;
     private appendMessageActions;
+    private toggleMessageActions;
+    private closeMessageActions;
     private safeAttachmentUrl;
     private openLightbox;
     private closeLightbox;

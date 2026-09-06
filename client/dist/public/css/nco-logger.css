@@ -1791,11 +1791,12 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-body {
+  --nch-phone-footer-height: 40px;
   height: auto;
   min-height: calc(100dvh - 44px - env(safe-area-inset-top));
   grid-template-rows: auto auto;
   padding-top: calc(47px + env(safe-area-inset-top));
-  padding-bottom: calc(50px + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--nch-phone-footer-height) + env(safe-area-inset-bottom));
   overflow: visible;
 }
 
@@ -1848,19 +1849,19 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   right: 0;
   bottom: 0;
   left: 0;
-  height: auto;
-  min-height: 50px;
+  height: calc(var(--nch-phone-footer-height, 40px) + env(safe-area-inset-bottom));
+  min-height: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: minmax(18px, auto) auto;
-  gap: 1px 8px;
+  grid-template-rows: 17px minmax(0, 1fr);
+  gap: 0 8px;
   margin: 0;
-  padding: 2px max(7px, env(safe-area-inset-right)) max(2px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  padding: 1px max(7px, env(safe-area-inset-right)) calc(1px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-status {
   width: 100%;
   height: auto;
-  min-height: 18px;
+  min-height: 17px;
   overflow: hidden;
 }
 
@@ -1887,7 +1888,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   min-width: 0;
   grid-template-rows: auto auto;
   justify-items: center;
-  gap: 1px;
+  gap: 0;
   padding: 0 3px;
   line-height: 1.05;
   text-align: center;
@@ -1898,11 +1899,15 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-left: 3px;
 }
 
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card strong {
+  font-size: calc(12px + var(--nch-font-adjust, 0px));
+}
+
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card small {
   max-width: none;
   overflow: visible;
-  font-size: calc(9px + var(--nch-font-adjust, 0px));
-  line-height: 1.05;
+  font-size: calc(8px + var(--nch-font-adjust, 0px));
+  line-height: 1;
   text-overflow: clip;
   white-space: normal;
 }

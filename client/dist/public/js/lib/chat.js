@@ -129,6 +129,7 @@ export class ChatWidget extends HTMLElement {
     editDraft = '';
     savingEdit = false;
     replyingToId = null;
+    openMessageActionsId = null;
     viewerRole = 'netuser';
     suspended = false;
     emojiCategory = CHAT_EMOJI_CATEGORIES[0]?.id ?? '';
@@ -158,6 +159,10 @@ export class ChatWidget extends HTMLElement {
         const target = event.target;
         if (!(target instanceof Node))
             return;
+        const actionTarget = target instanceof Element
+            ? target.closest('.chat-message-actions, .chat-message-actions-toggle') : null;
+        if (!actionTarget)
+            this.closeMessageActions();
         const picker = this.querySelector('.chat-emoji-picker');
         const toggle = this.querySelector('.chat-emoji-button');
         if (picker && !picker.hidden && !picker.contains(target) && !toggle?.contains(target)) {
@@ -217,7 +222,15 @@ export class ChatWidget extends HTMLElement {
             event.preventDefault();
             this.toggleUnreadMenu(false);
             this.querySelector('.chat-private-unread')?.focus();
+            return;
         }
+        if (this.openMessageActionsId) {
+            event.preventDefault();
+            this.closeMessageActions(true);
+        }
+    };
+    handleDocumentScroll = () => {
+        this.closeMessageActions();
     };
     handleWindowResize = () => {
         const picker = this.querySelector('.chat-emoji-picker');
@@ -226,6 +239,7 @@ export class ChatWidget extends HTMLElement {
         this.updatePinnedTextOverflow();
     };
     handleMessageScroll = () => {
+        this.closeMessageActions();
         this.keepBottomOnImageLoad = this.isNearBottom();
         if (this.keepBottomOnImageLoad)
             this.showNewMessages(false);
@@ -386,8 +400,10 @@ export class ChatWidget extends HTMLElement {
         this.populateEmojiPicker();
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
+        document.removeEventListener('scroll', this.handleDocumentScroll, true);
         document.addEventListener('pointerdown', this.handleDocumentPointerDown);
         document.addEventListener('keydown', this.handleDocumentKeyDown);
+        document.addEventListener('scroll', this.handleDocumentScroll, { capture: true, passive: true });
         window.removeEventListener('resize', this.handleWindowResize);
         window.addEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('resize', this.handleWindowResize);
@@ -405,6 +421,7 @@ export class ChatWidget extends HTMLElement {
         this.removeEventListener('nch-chat-layout-ready', this.handleInitialLayoutReady);
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
+        document.removeEventListener('scroll', this.handleDocumentScroll, true);
         window.removeEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('resize', this.handleWindowResize);
         this.closeLightbox(false);
@@ -476,6 +493,7 @@ export class ChatWidget extends HTMLElement {
             return;
         const open = force ?? menu.hidden;
         if (open) {
+            this.closeMessageActions();
             this.toggleUnreadMenu(false);
             this.toggleEmojiPicker(false);
             this.querySelectorAll('.chat-quick-reactions').forEach(reactions => { reactions.hidden = true; });
@@ -494,6 +512,7 @@ export class ChatWidget extends HTMLElement {
         menu.hidden = !open;
         toggle.setAttribute('aria-expanded', String(open));
         if (open) {
+            this.closeMessageActions();
             this.toggleRecipientMenu(false);
             this.toggleEmojiPicker(false);
             menu.querySelector('button')?.focus();
@@ -607,6 +626,7 @@ export class ChatWidget extends HTMLElement {
     async switchConversation(recipientId, focusComposer = false) {
         if (recipientId && !this.recipients.has(recipientId))
             return;
+        this.closeMessageActions();
         if (recipientId !== this.selectedRecipientId)
             this.stopTyping();
         const container = this.querySelector('.chat-messages');
@@ -710,6 +730,7 @@ export class ChatWidget extends HTMLElement {
         picker.hidden = !open;
         button.setAttribute('aria-expanded', String(open));
         if (open) {
+            this.closeMessageActions();
             this.toggleRecipientMenu(false);
             this.toggleUnreadMenu(false);
             this.querySelectorAll('.chat-quick-reactions').forEach(reactions => { reactions.hidden = true; });
@@ -1631,6 +1652,7 @@ export class ChatWidget extends HTMLElement {
         row.className = `chat-message border-bottom py-1${message.pinned ? ' chat-message-pinned' : ''}`;
         row.dataset['messageId'] = message.id;
         row.dataset['renderKey'] = renderKey;
+        row.classList.toggle('is-actions-open', this.openMessageActionsId === message.id);
         const heading = document.createElement('div');
         const author = document.createElement('strong');
         author.className = 'chat-message-author';
@@ -1759,7 +1781,16 @@ export class ChatWidget extends HTMLElement {
             return;
         const controls = document.createElement('div');
         controls.className = 'chat-message-actions';
-        const addAction = (icon, label, className, action) => {
+        controls.setAttribute('aria-label', `Actions for message from ${message.callSign}`);
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'chat-message-actions-toggle';
+        toggle.textContent = '⋯';
+        toggle.title = 'Message actions';
+        toggle.setAttribute('aria-label', `Show actions for message from ${message.callSign}`);
+        toggle.setAttribute('aria-expanded', String(this.openMessageActionsId === message.id));
+        toggle.addEventListener('click', () => this.toggleMessageActions(message.id, row));
+        const addAction = (icon, label, className, action, keepOpen = false) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = `chat-message-action ${className}`;
@@ -1770,7 +1801,11 @@ export class ChatWidget extends HTMLElement {
             button.append(iconElement);
             button.title = label;
             button.setAttribute('aria-label', `${label} message from ${message.callSign}`);
-            button.addEventListener('click', action);
+            button.addEventListener('click', () => {
+                if (!keepOpen)
+                    this.closeMessageActions();
+                action();
+            });
             controls.append(button);
             return button;
         };
@@ -1781,7 +1816,7 @@ export class ChatWidget extends HTMLElement {
                     menu.hidden = !menu.hidden;
                     reactionButton.setAttribute('aria-expanded', String(!menu.hidden));
                 }
-            });
+            }, true);
             reactionButton.setAttribute('aria-haspopup', 'true');
             reactionButton.setAttribute('aria-expanded', 'false');
             const menu = document.createElement('div');
@@ -1797,6 +1832,7 @@ export class ChatWidget extends HTMLElement {
                 button.addEventListener('click', () => {
                     menu.hidden = true;
                     reactionButton.setAttribute('aria-expanded', 'false');
+                    this.closeMessageActions();
                     void this.toggleReaction(message, emoji);
                 });
                 menu.append(button);
@@ -1820,7 +1856,35 @@ export class ChatWidget extends HTMLElement {
             addAction('📌', message.pinned ? 'Unpin' : 'Pin', 'chat-action-pin', () => void this.togglePin(message));
         if (message.canBan)
             addAction('⛔', 'Ban author of', 'chat-action-ban', () => void this.banAuthor(message));
-        row.append(controls);
+        row.append(toggle, controls);
+    }
+    toggleMessageActions(messageId, row) {
+        const open = this.openMessageActionsId !== messageId;
+        this.closeMessageActions();
+        if (!open)
+            return;
+        this.toggleEmojiPicker(false);
+        this.toggleRecipientMenu(false);
+        this.toggleUnreadMenu(false);
+        this.querySelectorAll('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
+        this.openMessageActionsId = messageId;
+        row.classList.add('is-actions-open');
+        row.querySelector('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'true');
+    }
+    closeMessageActions(returnFocus = false) {
+        const messageId = this.openMessageActionsId;
+        this.openMessageActionsId = null;
+        this.querySelectorAll('.chat-message.is-actions-open').forEach(row => {
+            row.classList.remove('is-actions-open');
+            row.querySelector('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'false');
+            row.querySelectorAll('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
+            row.querySelectorAll('.chat-action-react').forEach(button => {
+                button.setAttribute('aria-expanded', 'false');
+            });
+        });
+        if (returnFocus && messageId) {
+            this.querySelector(`[data-message-id="${CSS.escape(messageId)}"] .chat-message-actions-toggle`)?.focus();
+        }
     }
     safeAttachmentUrl(message) {
         if (!message.attachment)

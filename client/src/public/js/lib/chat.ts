@@ -202,6 +202,7 @@ export class ChatWidget extends HTMLElement {
     private editDraft = '';
     private savingEdit = false;
     private replyingToId: string | null = null;
+    private openMessageActionsId: string | null = null;
     private viewerRole: ChatHistoryResponse['viewerRole'] = 'netuser';
     private suspended = false;
     private emojiCategory = CHAT_EMOJI_CATEGORIES[0]?.id ?? '';
@@ -231,6 +232,9 @@ export class ChatWidget extends HTMLElement {
     private readonly handleDocumentPointerDown = (event: PointerEvent): void => {
         const target = event.target;
         if (!(target instanceof Node)) return;
+        const actionTarget = target instanceof Element
+            ? target.closest('.chat-message-actions, .chat-message-actions-toggle') : null;
+        if (!actionTarget) this.closeMessageActions();
         const picker = this.querySelector<HTMLElement>('.chat-emoji-picker');
         const toggle = this.querySelector<HTMLButtonElement>('.chat-emoji-button');
         if (picker && !picker.hidden && !picker.contains(target) && !toggle?.contains(target)) {
@@ -288,7 +292,16 @@ export class ChatWidget extends HTMLElement {
             event.preventDefault();
             this.toggleUnreadMenu(false);
             this.querySelector<HTMLButtonElement>('.chat-private-unread')?.focus();
+            return;
         }
+        if (this.openMessageActionsId) {
+            event.preventDefault();
+            this.closeMessageActions(true);
+        }
+    };
+
+    private readonly handleDocumentScroll = (): void => {
+        this.closeMessageActions();
     };
 
     private readonly handleWindowResize = (): void => {
@@ -298,6 +311,7 @@ export class ChatWidget extends HTMLElement {
     };
 
     private readonly handleMessageScroll = (): void => {
+        this.closeMessageActions();
         this.keepBottomOnImageLoad = this.isNearBottom();
         if (this.keepBottomOnImageLoad) this.showNewMessages(false);
     };
@@ -450,8 +464,10 @@ export class ChatWidget extends HTMLElement {
         this.populateEmojiPicker();
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
+        document.removeEventListener('scroll', this.handleDocumentScroll, true);
         document.addEventListener('pointerdown', this.handleDocumentPointerDown);
         document.addEventListener('keydown', this.handleDocumentKeyDown);
+        document.addEventListener('scroll', this.handleDocumentScroll, { capture: true, passive: true });
         window.removeEventListener('resize', this.handleWindowResize);
         window.addEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('resize', this.handleWindowResize);
@@ -470,6 +486,7 @@ export class ChatWidget extends HTMLElement {
         this.removeEventListener('nch-chat-layout-ready', this.handleInitialLayoutReady);
         document.removeEventListener('pointerdown', this.handleDocumentPointerDown);
         document.removeEventListener('keydown', this.handleDocumentKeyDown);
+        document.removeEventListener('scroll', this.handleDocumentScroll, true);
         window.removeEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('resize', this.handleWindowResize);
         this.closeLightbox(false);
@@ -539,6 +556,7 @@ export class ChatWidget extends HTMLElement {
         if (!menu || !toggle) return;
         const open = force ?? menu.hidden;
         if (open) {
+            this.closeMessageActions();
             this.toggleUnreadMenu(false);
             this.toggleEmojiPicker(false);
             this.querySelectorAll<HTMLElement>('.chat-quick-reactions').forEach(reactions => { reactions.hidden = true; });
@@ -556,6 +574,7 @@ export class ChatWidget extends HTMLElement {
         menu.hidden = !open;
         toggle.setAttribute('aria-expanded', String(open));
         if (open) {
+            this.closeMessageActions();
             this.toggleRecipientMenu(false);
             this.toggleEmojiPicker(false);
             menu.querySelector<HTMLButtonElement>('button')?.focus();
@@ -667,6 +686,7 @@ export class ChatWidget extends HTMLElement {
 
     private async switchConversation(recipientId: string | null, focusComposer = false): Promise<void> {
         if (recipientId && !this.recipients.has(recipientId)) return;
+        this.closeMessageActions();
         if (recipientId !== this.selectedRecipientId) this.stopTyping();
         const container = this.querySelector<HTMLElement>('.chat-messages');
         const input = this.querySelector<HTMLTextAreaElement>('#local-chat-message');
@@ -762,6 +782,7 @@ export class ChatWidget extends HTMLElement {
         picker.hidden = !open;
         button.setAttribute('aria-expanded', String(open));
         if (open) {
+            this.closeMessageActions();
             this.toggleRecipientMenu(false);
             this.toggleUnreadMenu(false);
             this.querySelectorAll<HTMLElement>('.chat-quick-reactions').forEach(reactions => { reactions.hidden = true; });
@@ -1601,6 +1622,7 @@ export class ChatWidget extends HTMLElement {
         row.className = `chat-message border-bottom py-1${message.pinned ? ' chat-message-pinned' : ''}`;
         row.dataset['messageId'] = message.id;
         row.dataset['renderKey'] = renderKey;
+        row.classList.toggle('is-actions-open', this.openMessageActionsId === message.id);
         const heading = document.createElement('div');
         const author = document.createElement('strong');
         author.className = 'chat-message-author';
@@ -1725,7 +1747,17 @@ export class ChatWidget extends HTMLElement {
             && !message.canPin && !message.canBan && !message.canMessagePrivately) return;
         const controls = document.createElement('div');
         controls.className = 'chat-message-actions';
-        const addAction = (icon: string, label: string, className: string, action: () => void): HTMLButtonElement => {
+        controls.setAttribute('aria-label', `Actions for message from ${message.callSign}`);
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'chat-message-actions-toggle';
+        toggle.textContent = '⋯';
+        toggle.title = 'Message actions';
+        toggle.setAttribute('aria-label', `Show actions for message from ${message.callSign}`);
+        toggle.setAttribute('aria-expanded', String(this.openMessageActionsId === message.id));
+        toggle.addEventListener('click', () => this.toggleMessageActions(message.id, row));
+        const addAction = (icon: string, label: string, className: string, action: () => void,
+            keepOpen = false): HTMLButtonElement => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = `chat-message-action ${className}`;
@@ -1736,7 +1768,10 @@ export class ChatWidget extends HTMLElement {
             button.append(iconElement);
             button.title = label;
             button.setAttribute('aria-label', `${label} message from ${message.callSign}`);
-            button.addEventListener('click', action);
+            button.addEventListener('click', () => {
+                if (!keepOpen) this.closeMessageActions();
+                action();
+            });
             controls.append(button);
             return button;
         };
@@ -1747,7 +1782,7 @@ export class ChatWidget extends HTMLElement {
                     menu.hidden = !menu.hidden;
                     reactionButton.setAttribute('aria-expanded', String(!menu.hidden));
                 }
-            });
+            }, true);
             reactionButton.setAttribute('aria-haspopup', 'true');
             reactionButton.setAttribute('aria-expanded', 'false');
             const menu = document.createElement('div');
@@ -1763,6 +1798,7 @@ export class ChatWidget extends HTMLElement {
                 button.addEventListener('click', () => {
                     menu.hidden = true;
                     reactionButton.setAttribute('aria-expanded', 'false');
+                    this.closeMessageActions();
                     void this.toggleReaction(message, emoji);
                 });
                 menu.append(button);
@@ -1783,7 +1819,38 @@ export class ChatWidget extends HTMLElement {
         }
         if (message.canPin) addAction('📌', message.pinned ? 'Unpin' : 'Pin', 'chat-action-pin', () => void this.togglePin(message));
         if (message.canBan) addAction('⛔', 'Ban author of', 'chat-action-ban', () => void this.banAuthor(message));
-        row.append(controls);
+        row.append(toggle, controls);
+    }
+
+    private toggleMessageActions(messageId: string, row: HTMLElement): void {
+        const open = this.openMessageActionsId !== messageId;
+        this.closeMessageActions();
+        if (!open) return;
+        this.toggleEmojiPicker(false);
+        this.toggleRecipientMenu(false);
+        this.toggleUnreadMenu(false);
+        this.querySelectorAll<HTMLElement>('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
+        this.openMessageActionsId = messageId;
+        row.classList.add('is-actions-open');
+        row.querySelector<HTMLButtonElement>('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'true');
+    }
+
+    private closeMessageActions(returnFocus = false): void {
+        const messageId = this.openMessageActionsId;
+        this.openMessageActionsId = null;
+        this.querySelectorAll<HTMLElement>('.chat-message.is-actions-open').forEach(row => {
+            row.classList.remove('is-actions-open');
+            row.querySelector<HTMLButtonElement>('.chat-message-actions-toggle')?.setAttribute('aria-expanded', 'false');
+            row.querySelectorAll<HTMLElement>('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
+            row.querySelectorAll<HTMLButtonElement>('.chat-action-react').forEach(button => {
+                button.setAttribute('aria-expanded', 'false');
+            });
+        });
+        if (returnFocus && messageId) {
+            this.querySelector<HTMLButtonElement>(
+                `[data-message-id="${CSS.escape(messageId)}"] .chat-message-actions-toggle`
+            )?.focus();
+        }
     }
 
     private safeAttachmentUrl(message: LocalChatMessage): boolean {
