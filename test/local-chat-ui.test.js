@@ -200,6 +200,10 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0, w: 24, h: 7[\s\S]*active: \{ x: 0, y: 7[\s\S]*chat: \{ x: 0, y: 21/);
     assert.match(source, /phoneLandscape:[\s\S]*active: \{ x: 8, y: 0, w: 16/);
     assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
+    assert.doesNotMatch(source, /NCO_TABLET_PORTRAIT_DEFAULT_MODULE_LAYOUT/);
+    assert.match(source, /NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT[\s\S]*controls: \{ x: 10, y: 0, w: 4, h: 7 \}[\s\S]*chat: \{ x: 0, y: 4, w: 8, h: 16 \}[\s\S]*active: \{ x: 8, y: 7, w: 16, h: 13 \}/);
+    assert.match(source, /loggerLayoutRole\(role\) === "nco" && context === "tabletLandscape"[\s\S]*return NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
+    assert.match(source, /loggerLayoutRole\(role\) === "nco" && isSameLoggerModuleLayout\(bucket\.tabletLandscape, DEFAULT_MODULE_LAYOUT\)[\s\S]*bucket\.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
     assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
     assert.match(source, /roleResponsiveLayouts:\s*local\.roleResponsiveLayouts/);
     assert.doesNotMatch(source, /hasCanonicalReadOnlyTop/);

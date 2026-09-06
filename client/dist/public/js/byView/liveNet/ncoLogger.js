@@ -1,7 +1,7 @@
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
 import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, isQrzNameFresh, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
 import { formatConnectionLines } from "../../lib/publicSchedule.js";
-import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shouldResetLegacyLoggerLayout, LOGGER_RESPONSIVE_LAYOUT_VERSION, LOGGER_ROLE_LAYOUT_VERSION } from "../../lib/loggerResponsive.js";
+import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayout, loggerLayoutRole, shouldResetLegacyLoggerLayout, LOGGER_RESPONSIVE_LAYOUT_VERSION, LOGGER_ROLE_LAYOUT_VERSION } from "../../lib/loggerResponsive.js";
 (() => {
     "use strict";
     const POLL_MS = 3000;
@@ -104,6 +104,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
             }, collapsed: {}
         }),
         tabletLandscape: DEFAULT_MODULE_LAYOUT
+    });
+    const NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
+        gridVersion: LAYOUT_GRID_VERSION,
+        items: {
+            lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 7 },
+            checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+            active: { x: 8, y: 7, w: 16, h: 13 }
+        }, collapsed: {}
     });
     const VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS = Object.freeze({
         phonePortrait: Object.freeze({
@@ -3835,6 +3843,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
                 ? VIEWER_DEFAULT_MODULE_LAYOUT
                 : VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[context] || VIEWER_DEFAULT_MODULE_LAYOUT;
         }
+        if (loggerLayoutRole(role) === "nco" && context === "tabletLandscape") {
+            return NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT;
+        }
         return context === "desktop"
             ? DEFAULT_MODULE_LAYOUT
             : RESPONSIVE_DEFAULT_MODULE_LAYOUTS[context] || DEFAULT_MODULE_LAYOUT;
@@ -3876,17 +3887,20 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, loggerLayoutRole, shou
     }
     function migrateLegacyLayoutsForRole(role = currentUserRole) {
         const bucket = roleLayoutBucket(role);
-        if (local.layoutRoleStorageVersion >= LOGGER_ROLE_LAYOUT_VERSION || Object.keys(bucket).length)
-            return bucket;
-        ["desktop", "tabletPortrait", "tabletLandscape", "phonePortrait", "phoneLandscape"].forEach(context => {
-            const candidate = legacyLayoutForContext(context);
-            if (!candidate || typeof candidate !== "object" || legacyLayoutShouldResetForRole(candidate, role, context))
-                return;
-            if (context !== "desktop" && !isCurrentResponsiveLayout(candidate, context))
-                return;
-            bucket[context] = candidate;
-        });
-        local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
+        if (local.layoutRoleStorageVersion < LOGGER_ROLE_LAYOUT_VERSION && !Object.keys(bucket).length) {
+            ["desktop", "tabletPortrait", "tabletLandscape", "phonePortrait", "phoneLandscape"].forEach(context => {
+                const candidate = legacyLayoutForContext(context);
+                if (!candidate || typeof candidate !== "object" || legacyLayoutShouldResetForRole(candidate, role, context))
+                    return;
+                if (context !== "desktop" && !isCurrentResponsiveLayout(candidate, context))
+                    return;
+                bucket[context] = candidate;
+            });
+            local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
+        }
+        if (loggerLayoutRole(role) === "nco" && isSameLoggerModuleLayout(bucket.tabletLandscape, DEFAULT_MODULE_LAYOUT)) {
+            bucket.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT;
+        }
         return bucket;
     }
     function savedLayoutForContext(context, role = currentUserRole) {
