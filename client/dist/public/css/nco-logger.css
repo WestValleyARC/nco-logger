@@ -1601,11 +1601,13 @@ hl-chat.nch-chat-docked .chat-options-menu > summary {
 hl-chat.nch-chat-docked .chat-options-menu > summary::-webkit-details-marker { display: none; }
 
 hl-chat.nch-chat-docked .chat-options-panel {
-  position: absolute;
+  position: fixed;
   z-index: 30;
   top: calc(100% + 4px);
   left: 0;
   width: 190px;
+  max-width: calc(100vw - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right)));
+  box-sizing: border-box;
   padding: 6px;
   background: #07111a;
   border: 1px solid #294653;
@@ -1669,7 +1671,12 @@ hl-chat.nch-chat-docked .chat-recipient-toggle {
   font-size: calc(var(--nch-chat-ui-font-size) + 1px) !important;
 }
 
-hl-chat.nch-chat-floating:has(.chat-recipient-menu:not([hidden])) {
+hl-chat.nch-chat-floating:has(:is(
+  .chat-recipient-menu:not([hidden]),
+  .chat-unread-menu:not([hidden]),
+  .chat-emoji-picker:not([hidden]),
+  .chat-options-menu[open]
+)) {
   overflow: visible !important;
 }
 
@@ -1687,9 +1694,12 @@ hl-chat.nch-chat-docked .chat-message-action {
 hl-chat.nch-chat-docked .nch-command-suggestions {
   display: grid;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   max-height: min(40dvh, 18rem);
   margin-bottom: 4px;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   background: var(--nch-skin-surface-raised, #0d1a25);
   border: 1px solid var(--nch-skin-border-major, #13708b);
@@ -1867,6 +1877,14 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   height: auto;
   min-height: 17px;
   overflow: hidden;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-status-icon {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  font-size: 6px;
+  line-height: 8px;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode {

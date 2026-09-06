@@ -159,6 +159,7 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-fixed-status-bar\s*\{[^}]*z-index:\s*90/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card strong\s*\{[^}]*font-size:\s*calc\(12px \+ var\(--nch-font-adjust, 0px\)\)/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card small\s*\{[^}]*font-size:\s*calc\(8px \+ var\(--nch-font-adjust, 0px\)\)/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-status-icon\s*\{[^}]*width:\s*8px[^}]*height:\s*8px[^}]*flex:\s*0 0 8px[^}]*font-size:\s*6px/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode\s*\{[^}]*justify-self:\s*end[^}]*text-align:\s*right/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-footer-mode::after\s*\{[^}]*content:\s*none/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-count-card\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
@@ -305,6 +306,7 @@ test('NCO Logger and Chat font scales use independent variables', () => {
 test('message interactions are compact, accessible, and permission driven', () => {
     const source = read('client/src/public/js/lib/chat.ts');
     const css = read('client/dist/public/css/local.css');
+    const loggerCss = read('client/dist/public/css/nco-logger.css');
     assert.match(source, /message\.canReact/);
     assert.match(source, /message\.canReply/);
     assert.match(source, /message\.canPin/);
@@ -349,6 +351,16 @@ test('message interactions are compact, accessible, and permission driven', () =
     assert.match(source, /private toggleMessageActions\([\s\S]*const open = this\.openMessageActionsId !== messageId;[\s\S]*this\.closeMessageActions\(\);[\s\S]*if \(!open\) return;[\s\S]*this\.openMessageActionsId = messageId/);
     assert.match(source, /toggle\?\.setAttribute\('aria-label', 'Hide message actions'\)/);
     assert.match(source, /if \(!keepOpen\) this\.closeMessageActions\(\)[\s\S]*action\(\)/);
+    assert.match(source, /fitChatOverlayToViewport/);
+    assert.match(source, /positionTransientOverlay\(menu, toggle, 384\)/);
+    assert.match(source, /positionTransientOverlay\(menu, toggle, 320, true\)/);
+    assert.match(source, /positionTransientOverlay\(picker, button, 352, true, 8\)/);
+    assert.match(source, /positionTransientOverlay\(optionsPanel, optionsToggle, 190, true\)/);
+    assert.match(source, /window\.visualViewport\?\.addEventListener\('scroll', this\.handleWindowResize\)/);
+    assert.match(css, /\.chat-recipient-menu\s*\{[^}]*position:\s*fixed[^}]*max-width:\s*calc\(100vw - max\(8px, env\(safe-area-inset-left\)\) - max\(8px, env\(safe-area-inset-right\)\)\)/s);
+    assert.match(css, /\.chat-viewport-inset-probe\s*\{[^}]*padding:\s*max\(8px, env\(safe-area-inset-top\)\)[^}]*safe-area-inset-left/s);
+    assert.match(css, /\.chat-message-actions\s*\{[^}]*right:\s*0\.2rem[^}]*max-width:\s*calc\(100% - 0\.4rem\)/s);
+    assert.match(loggerCss, /\.nch-command-suggestions\s*\{[^}]*width:\s*100%[^}]*max-width:\s*100%[^}]*min-width:\s*0[^}]*overflow-x:\s*hidden/s);
 });
 
 test('native server-backed pins are not hidden or replaced by NCO helper normalization', () => {

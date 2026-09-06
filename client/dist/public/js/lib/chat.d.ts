@@ -52,6 +52,7 @@ export declare class ChatWidget extends HTMLElement {
     private readonly handleDocumentKeyDown;
     private readonly handleDocumentScroll;
     private readonly handleWindowResize;
+    private positionOpenTransientOverlays;
     private readonly handleMessageScroll;
     private readonly handleMessageImageLoad;
     private readonly handleInitialLayoutReady;
@@ -69,6 +70,7 @@ export declare class ChatWidget extends HTMLElement {
     private toggleIgnore;
     private toggleEmojiPicker;
     private positionEmojiPicker;
+    private positionTransientOverlay;
     private insertEmoji;
     private clearConnectionRetry;
     private scheduleConnectionRetry;

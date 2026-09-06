@@ -1,7 +1,7 @@
 import { createLogger } from '#@client/lib/logger.js';
 import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
-import { chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, InitialChatScrollGate, isLatestChatMessage, shouldScrollChatToLatest, SingleChatStream, sortChatMessages, sortPinnedChatMessages, hiddenPinnedMessageCount, isPinnedTextTruncated, trimOldestChatMessages } from '#@client/lib/chatState.js';
+import { chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, InitialChatScrollGate, isLatestChatMessage, shouldScrollChatToLatest, SingleChatStream, sortChatMessages, sortPinnedChatMessages, hiddenPinnedMessageCount, isPinnedTextTruncated, trimOldestChatMessages, fitChatOverlayToViewport } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
 import { appendChatText } from '#@client/lib/chatText.js';
 const logger = createLogger('lib/chat.ts');
@@ -231,13 +231,33 @@ export class ChatWidget extends HTMLElement {
     };
     handleDocumentScroll = () => {
         this.closeMessageActions();
+        this.positionOpenTransientOverlays();
     };
     handleWindowResize = () => {
+        this.positionOpenTransientOverlays();
+        this.updatePinnedTextOverflow();
+    };
+    positionOpenTransientOverlays() {
         const picker = this.querySelector('.chat-emoji-picker');
         if (picker && !picker.hidden)
             this.positionEmojiPicker();
-        this.updatePinnedTextOverflow();
-    };
+        const recipientMenu = this.querySelector('.chat-recipient-menu');
+        const recipientToggle = this.querySelector('.chat-recipient-toggle');
+        if (recipientMenu && recipientToggle && !recipientMenu.hidden) {
+            this.positionTransientOverlay(recipientMenu, recipientToggle, 384);
+        }
+        const unreadMenu = this.querySelector('.chat-unread-menu');
+        const unreadToggle = this.querySelector('.chat-private-unread');
+        if (unreadMenu && unreadToggle && !unreadMenu.hidden) {
+            this.positionTransientOverlay(unreadMenu, unreadToggle, 320, true);
+        }
+        const optionsMenu = this.querySelector('.chat-options-menu');
+        const optionsPanel = optionsMenu?.querySelector('.chat-options-panel');
+        const optionsToggle = optionsMenu?.querySelector('summary');
+        if (optionsMenu?.open && optionsPanel && optionsToggle) {
+            this.positionTransientOverlay(optionsPanel, optionsToggle, 190, true);
+        }
+    }
     handleMessageScroll = () => {
         this.closeMessageActions();
         this.keepBottomOnImageLoad = this.isNearBottom();
@@ -362,6 +382,13 @@ export class ChatWidget extends HTMLElement {
         const recipientToggle = this.querySelector('.chat-recipient-toggle');
         const recipientMenu = this.querySelector('.chat-recipient-menu');
         recipientToggle?.addEventListener('click', () => this.toggleRecipientMenu());
+        const optionsMenu = this.querySelector('.chat-options-menu');
+        optionsMenu?.addEventListener('toggle', () => {
+            const panel = optionsMenu.querySelector('.chat-options-panel');
+            const toggle = optionsMenu.querySelector('summary');
+            if (optionsMenu.open && panel && toggle)
+                this.positionTransientOverlay(panel, toggle, 190, true);
+        });
         this.querySelector('.chat-private-unread')?.addEventListener('click', () => {
             const unreadIds = [...this.unreadCounts].filter(([, count]) => count > 0).map(([id]) => id);
             if (unreadIds.length === 1)
@@ -408,6 +435,8 @@ export class ChatWidget extends HTMLElement {
         window.addEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('resize', this.handleWindowResize);
         window.visualViewport?.addEventListener('resize', this.handleWindowResize);
+        window.visualViewport?.removeEventListener('scroll', this.handleWindowResize);
+        window.visualViewport?.addEventListener('scroll', this.handleWindowResize);
         this.clearConnectionRetry();
         this.eventStream.close();
         this.connectionAbort?.abort();
@@ -424,6 +453,7 @@ export class ChatWidget extends HTMLElement {
         document.removeEventListener('scroll', this.handleDocumentScroll, true);
         window.removeEventListener('resize', this.handleWindowResize);
         window.visualViewport?.removeEventListener('resize', this.handleWindowResize);
+        window.visualViewport?.removeEventListener('scroll', this.handleWindowResize);
         this.closeLightbox(false);
         this.clearConnectionRetry();
         this.connectionAbort?.abort();
@@ -500,8 +530,10 @@ export class ChatWidget extends HTMLElement {
         }
         menu.hidden = !open;
         toggle.setAttribute('aria-expanded', String(open));
-        if (open)
+        if (open) {
+            this.positionTransientOverlay(menu, toggle, 384);
             menu.querySelector('[aria-current="true"], button')?.focus();
+        }
     }
     toggleUnreadMenu(force) {
         const menu = this.querySelector('.chat-unread-menu');
@@ -515,6 +547,7 @@ export class ChatWidget extends HTMLElement {
             this.closeMessageActions();
             this.toggleRecipientMenu(false);
             this.toggleEmojiPicker(false);
+            this.positionTransientOverlay(menu, toggle, 320, true);
             menu.querySelector('button')?.focus();
         }
     }
@@ -743,22 +776,35 @@ export class ChatWidget extends HTMLElement {
         const button = this.querySelector('.chat-emoji-button');
         if (!picker || !button || picker.hidden)
             return;
-        const margin = 8;
+        this.positionTransientOverlay(picker, button, 352, true, 8);
+    }
+    positionTransientOverlay(overlay, anchor, preferredWidth, alignEnd = false, gap = 4) {
         const viewport = window.visualViewport;
         const viewportLeft = viewport?.offsetLeft || 0;
         const viewportTop = viewport?.offsetTop || 0;
         const viewportWidth = viewport?.width || window.innerWidth;
         const viewportHeight = viewport?.height || window.innerHeight;
-        const buttonRect = button.getBoundingClientRect();
-        const width = Math.min(352, viewportWidth - margin * 2);
-        picker.style.width = `${width}px`;
-        const pickerHeight = picker.offsetHeight;
-        const left = Math.min(Math.max(viewportLeft + margin, buttonRect.right - width), viewportLeft + viewportWidth - width - margin);
-        const above = buttonRect.top - pickerHeight - margin;
-        const below = buttonRect.bottom + margin;
-        const top = above >= viewportTop + margin ? above : Math.min(below, viewportTop + viewportHeight - pickerHeight - margin);
-        picker.style.left = `${Math.max(viewportLeft + margin, left)}px`;
-        picker.style.top = `${Math.max(viewportTop + margin, top)}px`;
+        const probe = document.createElement('div');
+        probe.className = 'chat-viewport-inset-probe';
+        document.body.append(probe);
+        const probeStyle = getComputedStyle(probe);
+        const insetLeft = parseFloat(probeStyle.paddingLeft) || 8;
+        const insetRight = parseFloat(probeStyle.paddingRight) || 8;
+        const insetTop = parseFloat(probeStyle.paddingTop) || 8;
+        const insetBottom = parseFloat(probeStyle.paddingBottom) || 8;
+        probe.remove();
+        overlay.style.position = 'fixed';
+        overlay.style.width = `${Math.min(preferredWidth, Math.max(0, viewportWidth - insetLeft - insetRight))}px`;
+        const anchorRect = anchor.getBoundingClientRect();
+        const fitted = fitChatOverlayToViewport({
+            viewportLeft, viewportTop, viewportWidth, viewportHeight, insetLeft, insetRight, insetTop, insetBottom,
+            anchorLeft: anchorRect.left, anchorRight: anchorRect.right, anchorTop: anchorRect.top,
+            anchorBottom: anchorRect.bottom, preferredWidth, overlayHeight: overlay.offsetHeight, alignEnd, gap
+        });
+        overlay.style.width = `${fitted.width}px`;
+        overlay.style.left = `${fitted.left}px`;
+        overlay.style.top = `${fitted.top}px`;
+        overlay.style.right = 'auto';
     }
     insertEmoji(emoji) {
         const input = this.querySelector('#local-chat-message');

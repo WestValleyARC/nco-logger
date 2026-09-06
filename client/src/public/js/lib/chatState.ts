@@ -143,6 +143,41 @@ export const shouldScrollChatToLatest = (initialLoad: boolean, wasNearBottom: bo
 export const preserveScrollTop = (scrollTop: number, anchorOffsetBefore: number, anchorOffsetAfter: number): number =>
     Math.max(0, scrollTop + anchorOffsetAfter - anchorOffsetBefore);
 
+export const fitChatOverlayToViewport = ({
+    viewportLeft, viewportTop, viewportWidth, viewportHeight, insetLeft, insetRight, insetTop, insetBottom,
+    anchorLeft, anchorRight, anchorTop, anchorBottom, preferredWidth, overlayHeight, alignEnd = false, gap = 4
+}: {
+    viewportLeft: number;
+    viewportTop: number;
+    viewportWidth: number;
+    viewportHeight: number;
+    insetLeft: number;
+    insetRight: number;
+    insetTop: number;
+    insetBottom: number;
+    anchorLeft: number;
+    anchorRight: number;
+    anchorTop: number;
+    anchorBottom: number;
+    preferredWidth: number;
+    overlayHeight: number;
+    alignEnd?: boolean;
+    gap?: number;
+}): { left: number; top: number; width: number } => {
+    const leftEdge = viewportLeft + insetLeft;
+    const rightEdge = Math.max(leftEdge, viewportLeft + viewportWidth - insetRight);
+    const topEdge = viewportTop + insetTop;
+    const bottomEdge = Math.max(topEdge, viewportTop + viewportHeight - insetBottom);
+    const width = Math.min(preferredWidth, Math.max(0, rightEdge - leftEdge));
+    const desiredLeft = alignEnd ? anchorRight - width : anchorLeft;
+    const left = Math.min(Math.max(leftEdge, desiredLeft), Math.max(leftEdge, rightEdge - width));
+    const below = anchorBottom + gap;
+    const above = anchorTop - overlayHeight - gap;
+    const desiredTop = below + overlayHeight <= bottomEdge || above < topEdge ? below : above;
+    const top = Math.min(Math.max(topEdge, desiredTop), Math.max(topEdge, bottomEdge - overlayHeight));
+    return { left, top, width };
+};
+
 export const recordPrivateUnread = (counts: Map<string, number>, senderUserId: string, shouldCount: boolean): void => {
     if (!shouldCount || !senderUserId) return;
     counts.set(senderUserId, (counts.get(senderUserId) || 0) + 1);
