@@ -21,6 +21,7 @@ const landingCss = read('client/dist/public/css/app-shell.css');
 const loggerLightCss = read('client/dist/public/css/nco-logger-light.css');
 const appearanceClient = read('client/dist/public/js/lib/appearance.js');
 const themeControlClient = read('client/src/public/js/lib/themeControl.js');
+const mobileNavigationClient = read('client/src/public/js/lib/mobileNavigation.js');
 const loggerClient = read('client/src/public/js/byView/liveNet/ncoLogger.js');
 const heroTimeClient = read('client/dist/public/js/lib/heroTime.js');
 const head = read('server/dist/views/partials/head.ejs');
@@ -124,6 +125,37 @@ test('the shared navigation owns the single theme preference control', () => {
     assert.match(landingCss, /:root\[data-theme='light'\] \.app-theme-logo-light\s*\{\s*display:\s*block !important/);
     assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-navbar\s*\{[^}]*background:\s*rgba\(247, 250, 251, \.97\) !important/s);
     assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-footer\s*\{[^}]*background:\s*#e4edef !important/s);
+});
+
+test('collapsed site navigation is an accessible viewport drawer without changing desktop navigation', () => {
+    assert.match(navbar, /data-mobile-nav-trigger aria-controls="navmenu" aria-expanded="false"/);
+    assert.match(navbar, /class="navbar-collapse app-mobile-drawer" id="navmenu" data-mobile-nav-drawer/);
+    assert.match(navbar, /data-mobile-nav-close aria-label="Close navigation menu"/);
+    assert.match(navbar, /data-mobile-nav-backdrop hidden aria-hidden="true"/);
+    assert.match(navbar, /mobileNavigation\.js\?v=<%= server\.appAssetVersion %>/);
+    assert.doesNotMatch(navbar, /data-bs-toggle="collapse"|data-bs-target="#navmenu"/);
+    assert.ok(navbar.indexOf('app-theme-item') > navbar.indexOf('Log out'));
+    assert.match(navbar, /if \(user\.isLoggedIn\)[\s\S]*href="\/views\/favorites"[\s\S]*href="\/views\/myaccount"[\s\S]*Log out[\s\S]*else[\s\S]*href="\/views\/login"/);
+
+    assert.match(landingCss, /@media \(max-width: 991\.98px\)[\s\S]*\.app-navbar \.app-mobile-drawer\s*\{[^}]*position:\s*fixed[^}]*width:\s*min\(84vw, 20rem\)[^}]*height:\s*100dvh[^}]*transform:\s*translateX\(100%\)/s);
+    assert.match(landingCss, /\.app-mobile-nav-backdrop\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*1051/s);
+    assert.match(landingCss, /\.app-navbar \.app-mobile-drawer\s*\{[^}]*z-index:\s*1052/s);
+    assert.match(landingCss, /body\.app-mobile-nav-open\s*\{[^}]*position:\s*fixed[^}]*overflow:\s*hidden/s);
+    assert.match(landingCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.app-navbar \.app-mobile-drawer,[\s\S]*transition:\s*none/s);
+
+    assert.match(mobileNavigationClient, /trigger\.setAttribute\('aria-expanded', 'true'\)/);
+    assert.match(mobileNavigationClient, /trigger\.setAttribute\('aria-expanded', 'false'\)/);
+    assert.match(mobileNavigationClient, /backdrop\.addEventListener\('click', \(\) => closeDrawer\(\)\)/);
+    assert.match(mobileNavigationClient, /closeButton\.addEventListener\('click', \(\) => closeDrawer\(\)\)/);
+    assert.match(mobileNavigationClient, /event\.key === 'Escape'/);
+    assert.match(mobileNavigationClient, /querySelectorAll\('\.nav-link'\).*closeDrawer\(\{ restoreFocus: false \}\)/);
+    assert.match(mobileNavigationClient, /trigger\.focus\(\{ preventScroll: true \}\)/);
+    assert.match(mobileNavigationClient, /document\.body\.style\.top = `-\$\{lockedScrollY\}px`/);
+    assert.match(mobileNavigationClient, /window\.scrollTo\(0, lockedScrollY\)/);
+    assert.match(mobileNavigationClient, /window\.matchMedia\('\(min-width: 992px\)'\)/);
+    assert.match(mobileNavigationClient, /drawer\.setAttribute\('inert', ''\)/);
+    assert.match(mobileNavigationClient, /drawer\.setAttribute\('role', 'dialog'\)/);
+    assert.match(mobileNavigationClient, /drawer\.setAttribute\('aria-modal', 'true'\)/);
 });
 
 test('phone dashboard hero reserves a readable copy region and exposes the final artwork', () => {

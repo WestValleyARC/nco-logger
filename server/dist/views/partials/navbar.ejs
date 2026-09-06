@@ -13,10 +13,16 @@
       <img src="/img/NCO_Logger_Logo_Light_Mode.png" class="app-brand-logo app-theme-logo-light" alt="" aria-hidden="true" />
     </a>
     <% } %>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu" aria-controls="navmenu" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-mobile-nav-trigger aria-controls="navmenu" aria-expanded="false" aria-label="Open navigation menu">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navmenu">
+    <div class="navbar-collapse app-mobile-drawer" id="navmenu" data-mobile-nav-drawer aria-label="Site menu">
+      <div class="app-mobile-drawer-header">
+        <span>Menu</span>
+        <button class="app-mobile-drawer-close" type="button" data-mobile-nav-close aria-label="Close navigation menu">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
       <ul class="navbar-nav ms-auto" role="menubar">
         <li class="nav-item" role="none">
           <a href="/views/livenets" class="nav-link" role="menuitem" tabindex="0">
@@ -78,5 +84,7 @@
     </div>
   </div>
 </nav>
+<div class="app-mobile-nav-backdrop" data-mobile-nav-backdrop hidden aria-hidden="true"></div>
 <script src="/js/lib/themeControl.js?v=<%= server.appAssetVersion %>" defer></script>
+<script src="/js/lib/mobileNavigation.js?v=<%= server.appAssetVersion %>" defer></script>
 <!--End: navbar.ejs-->

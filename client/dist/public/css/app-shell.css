@@ -948,7 +948,7 @@
 
 @media (max-width: 991.98px) {
     .app-navbar .navbar-collapse {
-        padding-top: 0.8rem;
+        padding-top: 0;
     }
 
     .app-navbar .app-nav-sign-in {
@@ -981,6 +981,148 @@
 
     .login-intro h1 {
         margin-top: 2rem;
+    }
+}
+
+.app-mobile-drawer-header {
+    display: none;
+}
+
+.app-mobile-nav-backdrop {
+    display: none;
+}
+
+@media (max-width: 991.98px) {
+    body.app-mobile-nav-open {
+        position: fixed;
+        right: 0;
+        left: 0;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .app-navbar {
+        backdrop-filter: none;
+    }
+
+    .app-navbar .app-mobile-drawer {
+        position: fixed;
+        z-index: 1052;
+        top: 0;
+        right: 0;
+        bottom: auto;
+        display: flex;
+        width: min(84vw, 20rem);
+        max-width: calc(100vw - max(1rem, env(safe-area-inset-left)));
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
+        flex-direction: column;
+        padding: max(.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) 1rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+        color: var(--app-text);
+        background: rgba(8, 18, 25, .985);
+        border-left: 1px solid var(--app-border-strong);
+        box-shadow: -1rem 0 2.5rem rgba(0, 0, 0, .32);
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateX(100%);
+        transition: transform .18s ease, visibility 0s linear .18s;
+    }
+
+    .app-navbar .app-mobile-drawer.is-open {
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateX(0);
+        transition: transform .18s ease;
+    }
+
+    .app-mobile-drawer-header {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 2.75rem;
+        padding: 0 0 .75rem .65rem;
+        color: var(--app-muted);
+        border-bottom: 1px solid var(--app-border);
+        font-size: .76rem;
+        font-weight: 700;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+
+    .app-mobile-drawer-close {
+        display: inline-grid;
+        width: 2.75rem;
+        height: 2.75rem;
+        place-items: center;
+        padding: 0;
+        color: var(--app-text);
+        border: 1px solid var(--app-border);
+        border-radius: 50%;
+        background: var(--app-subtle-bg);
+        font-size: 1.1rem;
+    }
+
+    .app-navbar .app-mobile-drawer .navbar-nav {
+        width: 100%;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-items: stretch;
+        padding-top: .65rem;
+    }
+
+    .app-navbar .app-mobile-drawer .nav-link {
+        width: 100%;
+        padding: .72rem .65rem !important;
+        text-align: left;
+    }
+
+    .app-navbar .app-mobile-drawer .app-nav-sign-in {
+        display: inline-flex;
+        width: auto;
+    }
+
+    .app-navbar .app-mobile-drawer .app-theme-item {
+        margin-top: auto;
+        padding-top: .85rem;
+        border-top: 1px solid var(--app-border);
+    }
+
+    .app-mobile-nav-backdrop {
+        position: fixed;
+        z-index: 1051;
+        inset: 0;
+        display: block;
+        background: rgba(0, 6, 10, .58);
+        opacity: 0;
+        transition: opacity .18s ease;
+    }
+
+    .app-mobile-nav-backdrop.is-open {
+        opacity: 1;
+    }
+
+    :root[data-theme='light'] body.app-page .app-navbar .app-mobile-drawer {
+        color: #14242d;
+        border-left-color: rgba(27, 81, 96, .32);
+        background: rgba(247, 250, 251, .99);
+        box-shadow: -1rem 0 2.5rem rgba(18, 45, 57, .22);
+    }
+
+    :root[data-theme='light'] body.app-page .app-mobile-drawer-close {
+        color: #14242d;
+        border-color: rgba(27, 81, 96, .3);
+        background: rgba(8, 117, 144, .07);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-navbar .app-mobile-drawer,
+    .app-mobile-nav-backdrop {
+        transition: none;
     }
 }
 
