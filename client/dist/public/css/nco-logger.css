@@ -573,6 +573,31 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
   transform: translateY(-4px);
 }
 
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-checked-out:not(:focus-within) button.nch-hand-toggle {
+  pointer-events: none;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-row {
+  grid-template-columns: 18px minmax(96px, 112px) minmax(0, 1fr) 36px;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-row-info,
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-row-text,
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-meta {
+  min-width: 0;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-meta {
+  overflow: hidden;
+  flex: 1 1 0;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-status-tags {
+  max-width: none;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
 #netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-net-actions {
   margin-top: 3px;
 }

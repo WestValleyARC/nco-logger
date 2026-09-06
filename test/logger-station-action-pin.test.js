@@ -41,9 +41,20 @@ test('phone and tablet station actions use the dedicated operator-only touch tog
 
 test('tablet touch rows keep active selection while lurker and checked-out taps reveal inline actions', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    const css = read('client/dist/public/css/nco-logger.css');
     assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*station\?\.checkedState !== true[\s\S]*clickedRow\.focus\(\{ preventScroll: true \}\)[\s\S]*if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
     assert.match(source, /panel\.addEventListener\("contextmenu"[\s\S]*if \(usesTouchStationInteractions\(\)\) \{\s*event\.preventDefault\(\);\s*return;\s*\}/);
     assert.match(source, /\$\{usesTouchStationInteractions\(\) \? "" : stationActionTray/);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-checked-out:not\(:focus-within\) button\.nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
+    assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\][^{]*nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
+});
+
+test('tablet portrait active rows reserve a fixed action track and keep tags ahead of identity text', () => {
+    const css = read('client/dist/public/css/nco-logger.css');
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(96px, 112px\) minmax\(0, 1fr\) 36px/s);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-meta\s*\{[^}]*overflow:\s*hidden[^}]*flex:\s*1 1 0/s);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-active-section \.nch-status-tags\s*\{[^}]*max-width:\s*none[^}]*flex:\s*0 0 auto[^}]*flex-wrap:\s*nowrap/s);
+    assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\][^{]*nch-active-section \.nch-row\s*\{[^}]*36px/s);
 });
 
 test('phone and tablet station actions render in one visual-viewport modal with complete dismissal', () => {
