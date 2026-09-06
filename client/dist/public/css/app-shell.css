@@ -92,20 +92,50 @@
 .app-navbar .navbar-brand {
     display: inline-flex;
     align-items: center;
-    margin-right: 2rem;
+    margin-right: clamp(.85rem, 1.4vw, 1.35rem);
     padding: 0;
 }
 
 .app-navbar-brand {
-    width: clamp(13rem, 20vw, 17rem);
+    width: clamp(13.5rem, 17vw, 15.5rem);
 }
 
 .app-brand-logo {
     display: block;
     width: 100%;
-    height: 4.1rem;
+    height: auto;
+    max-height: 4.75rem;
     object-fit: contain;
     object-position: left center;
+}
+
+.app-theme-logo-light {
+    display: none !important;
+}
+
+:root[data-theme='light'] .app-theme-logo-dark {
+    display: none !important;
+}
+
+:root[data-theme='light'] .app-theme-logo-light {
+    display: block !important;
+}
+
+/* Balance the measured alpha bounds and align their centers without changing the layout box. */
+:root[data-theme='light'] .app-navbar .app-theme-logo-light {
+    transform: translate(0.04923%, 4.87357%) scale(1.06923);
+    transform-origin: center center;
+}
+
+/* The landing logo uses a fixed-height box, so its equivalent measured y-offset differs slightly. */
+:root[data-theme='light'] .app-navbar .landing-brand-logo.app-theme-logo-light {
+    transform: translate(0.04923%, 4.8228%) scale(1.06923);
+}
+
+/* Footer variants share a canvas; align their measured painted bounds independently. */
+:root[data-theme='light'] .landing-footer .app-theme-logo-light {
+    transform: translate(0.41456%, 1.05528%) scale(1.00425);
+    transform-origin: center center;
 }
 
 .app-navbar .nav-link {
@@ -116,6 +146,7 @@
     font-weight: 600;
     letter-spacing: 0.015em;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .app-navbar .nav-link:hover,
@@ -917,7 +948,7 @@
 
 @media (max-width: 991.98px) {
     .app-navbar .navbar-collapse {
-        padding-top: 0.8rem;
+        padding-top: 0;
     }
 
     .app-navbar .app-nav-sign-in {
@@ -950,6 +981,173 @@
 
     .login-intro h1 {
         margin-top: 2rem;
+    }
+}
+
+.app-mobile-drawer-header {
+    display: none;
+}
+
+.app-mobile-nav-backdrop {
+    display: none;
+}
+
+@media (max-width: 991.98px) {
+    body.app-mobile-nav-open {
+        position: fixed;
+        right: 0;
+        left: 0;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .app-navbar {
+        backdrop-filter: none;
+    }
+
+    .app-navbar .app-mobile-drawer {
+        position: fixed;
+        z-index: 1052;
+        top: 0;
+        right: 0;
+        bottom: auto;
+        display: flex;
+        width: min(84vw, 20rem);
+        max-width: calc(100vw - max(1rem, env(safe-area-inset-left)));
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
+        flex-direction: column;
+        padding: max(.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) 1rem;
+        overflow-x: hidden;
+        overflow-y: auto;
+        color: var(--app-text);
+        background: rgba(8, 18, 25, .985);
+        border-left: 1px solid var(--app-border-strong);
+        box-shadow: -1rem 0 2.5rem rgba(0, 0, 0, .32);
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateX(100%);
+        transition: transform .18s ease, visibility 0s linear .18s;
+    }
+
+    .app-navbar .app-mobile-drawer.is-open {
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateX(0);
+        transition: transform .18s ease;
+    }
+
+    .app-mobile-drawer-header {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 2.75rem;
+        padding: 0 0 .75rem .65rem;
+        color: var(--app-muted);
+        border-bottom: 1px solid var(--app-border);
+        font-size: .76rem;
+        font-weight: 700;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+
+    .app-mobile-drawer-close {
+        display: inline-grid;
+        width: 2.75rem;
+        height: 2.75rem;
+        place-items: center;
+        padding: 0;
+        color: var(--app-text);
+        border: 1px solid var(--app-border);
+        border-radius: 50%;
+        background: var(--app-subtle-bg);
+        font-size: 1.1rem;
+    }
+
+    .app-navbar .app-mobile-drawer .navbar-nav {
+        width: 100%;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-items: stretch;
+        padding-top: .65rem;
+    }
+
+    .app-navbar .app-mobile-drawer .nav-link {
+        width: 100%;
+        padding: .72rem .65rem !important;
+        text-align: left;
+    }
+
+    .app-navbar .app-mobile-drawer .app-nav-sign-in {
+        display: inline-flex;
+        width: auto;
+    }
+
+    .app-navbar .app-mobile-drawer .app-theme-item {
+        margin-top: auto;
+        padding-top: .85rem;
+        border-top: 1px solid var(--app-border);
+    }
+
+    .app-mobile-nav-backdrop {
+        position: fixed;
+        z-index: 1051;
+        inset: 0;
+        display: block;
+        background: rgba(0, 6, 10, .58);
+        opacity: 0;
+        transition: opacity .18s ease;
+    }
+
+    .app-mobile-nav-backdrop.is-open {
+        opacity: 1;
+    }
+
+    :root[data-theme='light'] body.app-page .app-navbar .app-mobile-drawer {
+        color: #14242d;
+        border-left-color: rgba(27, 81, 96, .32);
+        background: rgba(247, 250, 251, .99);
+        box-shadow: -1rem 0 2.5rem rgba(18, 45, 57, .22);
+    }
+
+    :root[data-theme='light'] body.app-page .app-mobile-drawer-close {
+        color: #14242d;
+        border-color: rgba(27, 81, 96, .3);
+        background: rgba(8, 117, 144, .07);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-navbar .app-mobile-drawer,
+    .app-mobile-nav-backdrop {
+        transition: none;
+    }
+}
+
+/* Feedback for an explicitly added structured connection. */
+.connection-card {
+    scroll-margin-block: 20vh;
+    transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
+}
+
+.connection-card.is-newly-created {
+    border-color: rgba(116, 198, 212, .92);
+    background: rgba(21, 69, 79, .72);
+    box-shadow: 0 0 0 3px rgba(116, 198, 212, .16), 0 .7rem 1.8rem rgba(0, 0, 0, .18);
+}
+
+:root[data-theme='light'] .connection-card.is-newly-created {
+    border-color: rgba(5, 107, 133, .8);
+    background: rgba(8, 117, 144, .11);
+    box-shadow: 0 0 0 3px rgba(8, 117, 144, .12), 0 .7rem 1.8rem rgba(18, 45, 57, .12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .connection-card {
+        scroll-behavior: auto;
+        transition: none;
     }
 }
 
@@ -3864,7 +4062,8 @@
 
 .landing-footer-brand > a,
 .landing-footer-brand img {
-    width: 14.5rem;
+    width: min(17.5rem, 100%);
+    height: auto;
 }
 
 .landing-footer-brand small {
@@ -3944,13 +4143,19 @@
 
 @media (max-width: 767.98px) {
     .landing-page .landing-hero {
-        min-height: 39rem;
+        --landing-mobile-art-height: clamp(15.5rem, 72vw, 17.5rem);
+        min-height: 42rem;
         align-items: flex-start;
-        padding-top: 3.5rem;
+        padding-top: 2.65rem;
+        padding-bottom: calc(var(--landing-mobile-art-height) + .75rem);
+        background-position: right bottom;
+        background-size: auto var(--landing-mobile-art-height);
     }
 
     .landing-page .landing-hero::before {
-        background: var(--app-dashboard-hero-overlay-mobile);
+        background:
+            linear-gradient(180deg, rgba(3, 11, 18, .98) 0%, rgba(3, 11, 18, .94) 47%, rgba(3, 11, 18, .34) 66%, rgba(3, 11, 18, .06) 100%),
+            linear-gradient(90deg, rgba(3, 11, 18, .78), rgba(3, 11, 18, .08));
     }
 
     .landing-page .landing-hero-copy {
@@ -3975,14 +4180,40 @@
     }
 }
 
+@media (max-width: 991.98px) and (orientation: landscape) and (max-height: 575px) {
+    .landing-page .landing-hero {
+        min-height: 26rem;
+        align-items: center;
+        padding: 1.75rem 0;
+        background-position: right bottom;
+        background-size: auto min(100%, 25rem);
+    }
+
+    .landing-page .landing-hero-copy {
+        max-width: min(27rem, 62vw);
+    }
+
+    .landing-page .landing-title {
+        margin-bottom: .75rem;
+        font-size: clamp(2.6rem, 7vw, 3.5rem);
+    }
+
+    .landing-page .landing-copy {
+        margin-bottom: 1rem;
+        font-size: .96rem;
+        line-height: 1.5;
+    }
+}
+
 @media (max-width: 575.98px) {
     .landing-navbar-brand {
-        width: 12rem;
+        width: 13.25rem;
     }
 
     .landing-brand-logo {
         width: 100%;
-        height: 3.6rem;
+        height: auto;
+        max-height: 4.25rem;
     }
 
     .landing-navbar-brand small {
@@ -4041,21 +4272,26 @@
     }
 
     .landing-navbar-brand {
-        width: clamp(16rem, 20vw, 17.5rem);
+        width: clamp(14rem, 17vw, 15.75rem);
     }
 
     .landing-brand-logo {
-        height: 4.25rem;
+        height: auto;
+        max-height: 4.75rem;
     }
 
     .landing-page .landing-navbar .navbar-nav {
-        gap: clamp(0.75rem, 1.6vw, 1.3rem);
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: clamp(.1rem, .45vw, .4rem);
     }
 
     .landing-page .landing-navbar .nav-link {
         color: #f8fafb !important;
-        font-size: 1.05rem;
+        padding-inline: clamp(.45rem, .75vw, .7rem) !important;
+        font-size: .98rem;
         font-weight: 600;
+        white-space: nowrap;
     }
 
     .landing-page .landing-hero {
@@ -4844,7 +5080,7 @@
 }
 
 /* Appearance Phase 2: light shared shell and basic pages. */
-:root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page) {
+:root[data-theme='light'] body.app-page:not(.landing-page):not(.public-directory-page) {
     --app-bg: #edf2f4;
     --app-surface: #f7fafb;
     --app-surface-raised: #ffffff;
@@ -4883,6 +5119,250 @@
     --app-danger-text: #9d2936;
     --app-danger-bg: #fff1f2;
     --app-danger-border: #c55560;
+}
+
+/* My Nets has a deliberately richer surface hierarchy than the basic site views. */
+:root[data-theme='light'] body.net-manager-page {
+    --app-border: rgba(20, 76, 92, 0.3);
+    --app-border-strong: rgba(5, 101, 128, 0.68);
+    --app-muted: #40545f;
+    --app-cyan: #056b85;
+    --app-orange: #934500;
+    --app-card-border: rgba(20, 76, 92, 0.38);
+    --app-divider: rgba(20, 76, 92, 0.32);
+    --app-divider-soft: rgba(20, 76, 92, 0.22);
+    --app-interactive-border: rgba(5, 101, 128, 0.78);
+    --app-subtle-bg: rgba(5, 107, 133, 0.1);
+    --app-control-border: #586f7a;
+    background:
+        radial-gradient(circle at 14% 8%, rgba(8, 117, 144, 0.09), transparent 32rem),
+        radial-gradient(circle at 88% 20%, rgba(163, 77, 0, 0.05), transparent 26rem),
+        var(--app-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .net-manager-header-tower {
+    opacity: 0.82;
+}
+
+:root[data-theme='light'] .net-manager-page .net-manager-hero {
+    border-bottom-color: var(--app-border);
+    background:
+        radial-gradient(circle at 20% 25%, rgba(8, 117, 144, 0.1), transparent 28rem),
+        linear-gradient(110deg, rgba(255, 255, 255, 0.78), rgba(224, 236, 240, 0.58) 62%, transparent);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.workspace-title, .panel-heading h2) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.app-panel, .owned-nets-panel, #formContainerNetProfile) {
+    border-color: var(--app-card-border);
+    background: var(--app-panel-background);
+    box-shadow: var(--app-panel-shadow);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-card, .app-option-card, .coowner-row, .connection-card) {
+    border-color: var(--app-card-border);
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-card:hover, .app-option-card:hover) {
+    border-color: var(--app-interactive-border);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-card.is-live {
+    border-color: #ad5608;
+    background: linear-gradient(135deg, rgba(173, 86, 8, 0.12), var(--app-surface-raised) 55%);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-card.is-preparing {
+    border-color: rgba(5, 107, 133, 0.72);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-status.is-live, .schedule-occurrence.is-live .schedule-occurrence-status) {
+    color: #7d3900;
+    background: rgba(173, 86, 8, 0.16);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-start.is-live {
+    color: #8a4000;
+    border-color: #ad5608;
+    background: rgba(173, 86, 8, 0.13);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-start.is-live:hover {
+    color: #ffffff;
+    background: #934500;
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-status.is-preparing, .schedule-occurrence.is-preparing .schedule-occurrence-status, .schedule-occurrence.is-override .schedule-occurrence-status) {
+    color: #045b71;
+    background: rgba(5, 107, 133, 0.14);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-start:not(.is-live), .owned-net-start.is-preparing) {
+    color: #045b71;
+    border-color: rgba(5, 107, 133, 0.72);
+    background: rgba(5, 107, 133, 0.1);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-actions, .app-form-actions, .schedule-occurrences) {
+    border-color: var(--app-divider);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-status, .schedule-occurrence-status) {
+    background: var(--app-status-bg);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.owned-net-schedule, .form-status, .legacy-connection-notice) {
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-schedule {
+    border-left-color: #087590;
+}
+
+:root[data-theme='light'] .net-manager-page :is(.app-field > label, .app-options-fieldset > legend) {
+    color: var(--app-heading);
+}
+
+:root[data-theme='light'] .net-manager-page .app-input {
+    color: var(--app-text) !important;
+    border-color: var(--app-control-border);
+    background-color: var(--app-control-bg) !important;
+}
+
+:root[data-theme='light'] .net-manager-page .app-input::placeholder,
+:root[data-theme='light'] .net-manager-page :is(.app-field > small, .app-option-card small) {
+    color: var(--app-control-placeholder);
+    opacity: 1;
+}
+
+:root[data-theme='light'] .net-manager-page .app-input:focus {
+    border-color: var(--app-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(8, 117, 144, 0.18);
+}
+
+:root[data-theme='light'] .net-manager-page .app-input:disabled {
+    color: var(--app-control-disabled-text) !important;
+    border-color: var(--app-border);
+    background-color: var(--app-control-disabled-bg) !important;
+}
+
+:root[data-theme='light'] .net-manager-page .app-select option {
+    color: var(--app-text);
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .net-manager-page .app-option-card .form-check-input {
+    border-color: var(--app-control-border);
+    background-color: var(--app-control-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .app-option-card .form-check-input:checked {
+    border-color: var(--app-cyan);
+    background-color: var(--app-cyan);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-secondary {
+    color: #045b71;
+    border-color: rgba(5, 107, 133, 0.72);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-secondary:is(:hover, :focus-visible) {
+    color: var(--app-link-hover);
+    border-color: var(--app-cyan);
+    background: rgba(8, 117, 144, 0.12);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-primary {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ad5608, #934500);
+    box-shadow: 0 0.65rem 1.5rem rgba(125, 57, 0, 0.16);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-primary:is(:hover, :focus-visible) {
+    color: #ffffff;
+    background: linear-gradient(135deg, #934500, #7d3900);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.connection-drag-handle, .connection-order-button):is(:hover, :focus-visible) {
+    border-color: var(--app-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .net-editor-panel .tox-tinymce {
+    border-color: var(--app-control-border);
+    background: var(--app-control-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .net-editor-panel .tox-tinymce:focus-within {
+    border-color: var(--app-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(8, 117, 144, 0.18);
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-editor-header, .tox-toolbar-overlord, .tox-toolbar, .tox-toolbar__primary, .tox-toolbar__overflow) {
+    color: var(--app-text);
+    border-color: var(--app-border);
+    background-color: #edf3f5 !important;
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-tbtn, .tox-tbtn svg) {
+    color: var(--app-text);
+    fill: currentColor;
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-tbtn:hover, .tox-tbtn:focus, .tox-tbtn--enabled, .tox-tbtn--enabled:hover) {
+    background: rgba(8, 117, 144, 0.14);
+}
+
+:root[data-theme='light'] .net-manager-page .tox :is(.tox-edit-area, .tox-edit-area__iframe) {
+    background: var(--app-control-bg) !important;
+}
+
+:root[data-theme='light'] .net-manager-page .app-modal .modal-content {
+    color: var(--app-text);
+    border-color: var(--app-border-strong);
+    background: var(--app-surface-raised);
+    box-shadow: 0 1.5rem 4rem rgba(18, 45, 57, 0.22);
+}
+
+:root[data-theme='light'] .net-manager-page .app-modal .btn-close-white {
+    filter: none;
+}
+
+:root[data-theme='light'] .net-manager-page .schedule-editor-body {
+    background: var(--app-surface-raised);
+}
+
+:root[data-theme='light'] .net-manager-page :is(.schedule-recurrence-fields, .schedule-occurrence) {
+    border-color: var(--app-card-border);
+    background: var(--app-subtle-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .schedule-weekdays span {
+    color: var(--app-muted);
+    border-color: var(--app-control-border);
+    background: var(--app-control-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .schedule-weekdays input:checked + span {
+    color: #ffffff;
+    border-color: var(--app-cyan);
+    background: var(--app-cyan);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-danger {
+    color: var(--app-danger-text);
+    border-color: var(--app-danger-border);
+    background: var(--app-danger-bg);
+}
+
+:root[data-theme='light'] .net-manager-page .app-button-danger:is(:hover, :focus-visible) {
+    color: #ffffff;
+    border-color: #9d2936;
+    background: #9d2936;
 }
 
 :root[data-theme='light'] body.app-page:not(.landing-page):not(.net-manager-page):not(.public-directory-page)
@@ -5544,4 +6024,145 @@
 :root[data-theme='light'] :is(.landing-page, .public-directory-page) .landing-footer {
     color: #d3d8da;
     background: #050d14 !important;
+}
+
+/* Shared two-state theme control and contained website light chrome. */
+.app-theme-item {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.app-theme-toggle {
+    display: inline-flex;
+    gap: .35rem;
+    align-items: center;
+    min-height: 2.4rem;
+    margin-left: .35rem;
+    padding: .25rem .45rem;
+    color: #f4f5f2;
+    border: 1px solid rgba(116, 198, 212, .3);
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 650;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.app-theme-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+}
+
+.app-theme-toggle-track {
+    position: relative;
+    width: 2rem;
+    height: 1.1rem;
+    background: #465963;
+    border: 1px solid #7d9ba5;
+    border-radius: 999px;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.app-theme-toggle-track::after {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: .75rem;
+    height: .75rem;
+    content: '';
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+    transition: transform .15s ease;
+}
+
+.app-theme-toggle input:checked + .app-theme-toggle-track {
+    background: #087590;
+    border-color: #74c6d4;
+}
+
+.app-theme-toggle input:checked + .app-theme-toggle-track::after {
+    transform: translateX(.88rem);
+}
+
+.app-theme-toggle input:focus-visible + .app-theme-toggle-track {
+    outline: 2px solid #00c8f0;
+    outline-offset: 2px;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar {
+    border-bottom-color: rgba(27, 81, 96, .22);
+    background: rgba(247, 250, 251, .97) !important;
+    box-shadow: 0 .45rem 1.4rem rgba(18, 45, 57, .1);
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .nav-link {
+    color: #18313d !important;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .nav-link:is(:hover, :focus-visible) {
+    color: #056b85 !important;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .navbar-toggler {
+    border-color: rgba(27, 81, 96, .38);
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-navbar .navbar-toggler-icon {
+    filter: invert(1) grayscale(1);
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-theme-toggle {
+    color: #18313d;
+    border-color: rgba(27, 81, 96, .28);
+    background: rgba(8, 117, 144, .05);
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-theme-toggle-track {
+    background: #d5e1e5;
+    border-color: #718993;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer {
+    color: #52636d;
+    border-top-color: rgba(27, 81, 96, .2);
+    background: #e4edef !important;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(p, small) {
+    color: #52636d;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(a, .landing-footer-link, .landing-footer-bottom a) {
+    color: #174f60;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(a, .landing-footer-link, .landing-footer-bottom a):is(:hover, :focus-visible) {
+    color: #873c00;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer .landing-footer-column h2 {
+    color: #056b85;
+}
+
+:root[data-theme='light'] body.app-page:not(.nco-logger-page) .app-footer :is(.landing-footer-brand, .landing-footer-column, .landing-footer-bottom) {
+    border-color: rgba(27, 81, 96, .2);
+}
+
+@media (max-width: 991.98px) {
+    .app-theme-item {
+        align-items: center;
+    }
+
+    .app-theme-toggle {
+        justify-content: flex-start;
+        width: fit-content;
+        min-height: 2.75rem;
+        gap: .5rem;
+        margin: .35rem 0 .15rem .4rem;
+    }
 }

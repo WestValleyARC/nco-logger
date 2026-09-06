@@ -22,7 +22,9 @@ Supported actions include check-in, highlighted check-in, checkout, in-and-out, 
 
 Shared operational state is stored on the active `LiveNet` document and included in live-net responses. Updates are pushed through the existing SSE service. Shared state includes station ordering, operational tags, helper visibility, the selected station, and normalized name/location overrides.
 
-Private station notes and personal module layout remain in browser `localStorage`; neither is written to the server. QRZ lookup for new check-ins uses the app server's configured QRZ integration, so operator credentials are not collected by this UI.
+Private station notes and personal module layouts remain in browser `localStorage`; neither is written to the server. Layouts are saved independently for Desktop, Phone Portrait, Phone Landscape, Tablet Portrait, and Tablet Landscape. Rotation selects the matching layout without overwriting another context, and the layout reset control resets only the active context. QRZ lookup for new check-ins uses the app server's configured QRZ integration, so operator credentials are not collected by this UI.
+
+Phone layouts use a vertically scrollable grid with touch-sized header and resize targets. Tablet layouts retain a multi-column workspace. These are initial defaults only: module visibility, position, size, and collapsed state continue to be user-customizable in every context.
 
 ## Plugin removal
 

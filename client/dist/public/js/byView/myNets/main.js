@@ -2,6 +2,14 @@
 
 'use strict';
 
+const syncNotesEditorAppearance = editor => {
+    const isLight = document.documentElement.dataset.theme === 'light';
+    const body = editor.getBody();
+    if (!body) return;
+    body.style.backgroundColor = isLight ? '#ffffff' : '#222f3e';
+    body.style.color = isLight ? '#14242d' : '#ffffff';
+};
+
 tinymce.init({
     selector: 'textarea#input_notes',
     skin_url: '/tinymce/skins/hl',
@@ -11,7 +19,15 @@ tinymce.init({
     menubar: '',
     promotion: false,
     statusbar: false,
+    setup: editor => {
+        editor.on('init', () => syncNotesEditorAppearance(editor));
+    },
     max_height: 235
+});
+
+window.addEventListener('ncoLogger:appearancechange', () => {
+    const editor = tinymce.get('input_notes');
+    if (editor) syncNotesEditorAppearance(editor);
 });
 
 import { HttpClient, FormState } from '#@client/lib/old__clientUtils.js';
@@ -60,6 +76,25 @@ let connectionsTouched = false;
 let editingHadStructuredConnections = false;
 let draggedConnectionCard = null;
 let currentCoOwnerProfileId = null;
+let newConnectionHighlightTimer = null;
+let highlightedConnectionCard = null;
+
+const revealCreatedConnection = index => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const card = document.querySelector(`[data-connection-index="${index}"]`);
+        if (!card) return;
+        if (newConnectionHighlightTimer) window.clearTimeout(newConnectionHighlightTimer);
+        highlightedConnectionCard?.classList.remove('is-newly-created');
+        highlightedConnectionCard = card;
+        card.classList.add('is-newly-created');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        newConnectionHighlightTimer = window.setTimeout(() => {
+            card.classList.remove('is-newly-created');
+            if (highlightedConnectionCard === card) highlightedConnectionCard = null;
+            newConnectionHighlightTimer = null;
+        }, 1600);
+    }));
+};
 
 const moveConnection = (index, direction) => {
     const destination = index + direction;
@@ -1093,6 +1128,7 @@ document.getElementById('add_connection').addEventListener('click', () => {
     connectionRows.push({ type: 'FM', operation: 'Repeater' });
     connectionsTouched = true;
     renderConnections();
+    revealCreatedConnection(connectionRows.length - 1);
 });
 document.getElementById('netprofile_form').addEventListener('reset', () => setTimeout(resetConnections));
 scheduleEditor.type.addEventListener('change', updateScheduleFields);

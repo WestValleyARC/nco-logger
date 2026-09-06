@@ -4,12 +4,17 @@ import {
   selectNcoAvatarSource, setBoundedCache
 } from "../../lib/avatarPolicy.js";
 import { formatConnectionLines } from "../../lib/publicSchedule.js";
+import {
+  classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayout, loggerLayoutRole,
+  shouldResetLegacyLoggerLayout,
+  LOGGER_RESPONSIVE_LAYOUT_VERSION, LOGGER_ROLE_LAYOUT_VERSION
+} from "../../lib/loggerResponsive.js";
 
 (() => {
   "use strict";
 
   const POLL_MS = 3000;
-  const VERSION = "1.1.0-beta.3";
+  const VERSION = "1.1.0-beta.4";
   const QRZ_NAME_VERSION = 3;
   const BUG_REPORT_URL = `mailto:ke7wil@gmail.com?subject=${encodeURIComponent(`WVARC NCO Logger Bug Report - ${VERSION}`)}&body=${encodeURIComponent(`Version: ${VERSION}\nLogger mode: \nWhat happened?\n\nWhat did you expect?\n\nSteps to reproduce:\n`)}`;
   const NOTE_MAX = 60;
@@ -81,6 +86,83 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     },
     collapsed: { lurkers: true, checkedOut: true }
   });
+  const RESPONSIVE_DEFAULT_MODULE_LAYOUTS = Object.freeze({
+    phonePortrait: Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        controls: { x: 0, y: 0, w: 24, h: 7 }, active: { x: 0, y: 7, w: 24, h: 14 },
+        chat: { x: 0, y: 21, w: 24, h: 14 }, lurkers: { x: 0, y: 35, w: 24, h: 5 },
+        checkedOut: { x: 0, y: 40, w: 24, h: 5 }
+      }, collapsed: {}
+    }),
+    phoneLandscape: Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        controls: { x: 0, y: 0, w: 8, h: 8 }, chat: { x: 0, y: 8, w: 8, h: 16 },
+        active: { x: 8, y: 0, w: 16, h: 16 }, lurkers: { x: 8, y: 16, w: 8, h: 8 },
+        checkedOut: { x: 16, y: 16, w: 8, h: 8 }
+      }, collapsed: {}
+    }),
+    tabletPortrait: Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        lurkers: { x: 0, y: 0, w: 9, h: 5 }, controls: { x: 9, y: 0, w: 6, h: 5 },
+        checkedOut: { x: 15, y: 0, w: 9, h: 5 }, chat: { x: 0, y: 5, w: 10, h: 19 },
+        active: { x: 10, y: 5, w: 14, h: 19 }
+      }, collapsed: {}
+    }),
+    tabletLandscape: DEFAULT_MODULE_LAYOUT
+  });
+  const PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
+    gridVersion: LAYOUT_GRID_VERSION,
+    items: {
+      lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 7 },
+      checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+      active: { x: 8, y: 7, w: 16, h: 13 }
+    }, collapsed: {}
+  });
+  const NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
+    gridVersion: LAYOUT_GRID_VERSION,
+    items: {
+      lurkers: { x: 0, y: 0, w: 10, h: 5 }, controls: { x: 10, y: 0, w: 4, h: 5 },
+      checkedOut: { x: 14, y: 0, w: 10, h: 5 }, chat: { x: 0, y: 5, w: 8, h: 15 },
+      active: { x: 8, y: 5, w: 16, h: 15 }
+    }, collapsed: {}
+  });
+  const VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS = Object.freeze({
+    phonePortrait: Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        active: { x: 0, y: 0, w: 24, h: 14 }, chat: { x: 0, y: 14, w: 24, h: 14 },
+        lurkers: { x: 0, y: 28, w: 24, h: 5 }, checkedOut: { x: 0, y: 33, w: 24, h: 5 },
+        controls: { x: 0, y: 38, w: 24, h: 7 }
+      }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+    }),
+    phoneLandscape: Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        controls: { x: 0, y: 0, w: 8, h: 8 }, chat: { x: 0, y: 8, w: 8, h: 16 },
+        active: { x: 8, y: 0, w: 16, h: 16 }, lurkers: { x: 8, y: 16, w: 8, h: 8 },
+        checkedOut: { x: 16, y: 16, w: 8, h: 8 }
+      }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+    }),
+    tabletPortrait: Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        chat: { x: 0, y: 0, w: 10, h: 24 }, active: { x: 10, y: 0, w: 14, h: 24 },
+        lurkers: { x: 0, y: 0, w: 9, h: 5 }, controls: { x: 9, y: 0, w: 6, h: 5 },
+        checkedOut: { x: 15, y: 0, w: 9, h: 5 }
+      }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+    }),
+    tabletLandscape: Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        chat: { x: 0, y: 0, w: 8, h: 20 }, active: { x: 8, y: 0, w: 16, h: 20 },
+        lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 4 },
+        checkedOut: { x: 14, y: 0, w: 10, h: 4 }
+      }, collapsed: { controls: true, lurkers: true, checkedOut: true }
+    })
+  });
   const DEFAULT_AVATAR = "/img/nco-logger-default-avatar.svg";
   const appearanceManager = window.ncoLoggerAppearance;
   const npid = location.pathname.split("/")[3] || "";
@@ -101,13 +183,17 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   let latestNetFrequency = "";
   let latestNetConnections = [];
   let currentUserRole = "netuser";
-  let defaultModuleLayoutPending = false;
+  let layoutRoleResolved = false;
+  let currentLayoutContext = "desktop";
+  let lastLayoutViewportWidth = 0;
   let local = {
     order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
-    hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {},
+    hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {}, responsiveLayouts: {}, roleResponsiveLayouts: {},
     helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0
   };
   let dragging = null;
+  let touchRowDrag = null;
+  let suppressStationRowClickUntil = 0;
   let resizing = null;
   let modulePointerDrag = null;
   let editingNoteCall = "";
@@ -133,6 +219,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   let stationTransitionBaseline = null;
   let selectedNextCall = "";
   let pinnedActionCall = "";
+  let touchInlineActionCall = "";
   let scrollActiveAfterRender = false;
   let updateCheckInFlight = false;
   let latestAvailableVersion = "";
@@ -225,6 +312,18 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   const helperModeShortLabel = () => helperModeLabel().replace(/ Mode$/, "");
   const moduleAvailable = id => id !== "controls" || canManageStations();
   const normalizeFontPreset = value => ["small", "normal", "large"].includes(value) ? value : "normal";
+  const layoutViewport = () => ({
+    width: Math.round(document.documentElement.clientWidth || window.innerWidth),
+    height: Math.round(document.documentElement.clientHeight || window.innerHeight)
+  });
+  const layoutContext = () => {
+    const { width, height } = layoutViewport();
+    return classifyLoggerLayout(width, height);
+  };
+  const layoutRows = (context = currentLayoutContext) => context === "phonePortrait" ? 45
+    : context === "phoneLandscape" || context === "tabletPortrait" ? 24 : GRID_ROWS;
+  const layoutContextLabel = context => context === "desktop" ? "Desktop"
+    : `${context.startsWith("phone") ? "Phone" : "Tablet"} — ${context.endsWith("Portrait") ? "Portrait" : "Landscape"}`;
 
   function commandAllowed(command) {
     const [verb, rawCall = ""] = String(command || "").trim().split(/\s+/);
@@ -249,23 +348,37 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       moduleLayout: layout.moduleLayout && typeof layout.moduleLayout === "object"
         ? layout.moduleLayout
         : saved.moduleLayout,
+      responsiveLayouts: layout.responsiveLayouts && typeof layout.responsiveLayouts === "object"
+        ? layout.responsiveLayouts
+        : saved.responsiveLayouts,
+      roleResponsiveLayouts: layout.roleResponsiveLayouts && typeof layout.roleResponsiveLayouts === "object"
+        ? layout.roleResponsiveLayouts
+        : saved.roleResponsiveLayouts,
+      layoutRoleStorageVersion: Number(layout.layoutRoleStorageVersion || saved.layoutRoleStorageVersion) || 0,
       helperFontPreset: normalizeFontPreset(layout.helperFontPreset || saved.helperFontPreset),
       chatFontPreset: normalizeFontPreset(layout.chatFontPreset || saved.chatFontPreset),
       helpFontPreset: normalizeFontPreset(layout.helpFontPreset || saved.helpFontPreset),
       sharedProfiles: data[sharedProfileKey] && typeof data[sharedProfileKey] === "object" ? data[sharedProfileKey] : {}
     });
   }));
-  const storageSet = () => browserStorage.set({
-    [stateKey]: local,
-    [layoutKey]: {
-      paneSizes: local.paneSizes || {},
-      collapsedSections: local.collapsedSections || {},
-      moduleLayout: local.moduleLayout || {},
-      helperFontPreset: normalizeFontPreset(local.helperFontPreset),
-      chatFontPreset: normalizeFontPreset(local.chatFontPreset),
-      helpFontPreset: normalizeFontPreset(local.helpFontPreset)
-    }
-  });
+  const storageSet = () => {
+    saveActiveLayoutContext();
+    const activeLayouts = layoutRoleResolved ? roleLayoutBucket() : (local.responsiveLayouts || {});
+    return browserStorage.set({
+      [stateKey]: local,
+      [layoutKey]: {
+        paneSizes: local.paneSizes || {},
+        collapsedSections: local.collapsedSections || {},
+        moduleLayout: activeLayouts.desktop || local.moduleLayout || {},
+        responsiveLayouts: activeLayouts,
+        roleResponsiveLayouts: local.roleResponsiveLayouts || {},
+        layoutRoleStorageVersion: LOGGER_ROLE_LAYOUT_VERSION,
+        helperFontPreset: normalizeFontPreset(local.helperFontPreset),
+        chatFontPreset: normalizeFontPreset(local.chatFontPreset),
+        helpFontPreset: normalizeFontPreset(local.helpFontPreset)
+      }
+    });
+  };
   const storeSharedProfiles = () => browserStorage.set({ [sharedProfileKey]: sharedProfiles });
 
   const escapeHtml = value =>
@@ -785,8 +898,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const slot = panel?.querySelector("[data-role='chat-slot']");
     if (!chat || !slot || !chat.classList.contains("nch-chat-floating")) return;
     const rect = slot.getBoundingClientRect();
-    chat.style.setProperty("--nch-chat-left", `${Math.round(rect.left + 2)}px`);
-    chat.style.setProperty("--nch-chat-top", `${Math.round(rect.top + 2)}px`);
+    const followsDocument = currentLayoutContext.startsWith("phone");
+    const documentLeft = rect.left + (followsDocument ? window.scrollX : 0);
+    const documentTop = rect.top + (followsDocument ? window.scrollY : 0);
+    chat.style.setProperty("--nch-chat-left", `${Math.round(documentLeft + 2)}px`);
+    chat.style.setProperty("--nch-chat-top", `${Math.round(documentTop + 2)}px`);
     chat.style.setProperty("--nch-chat-width", `${Math.max(0, Math.round(rect.width - 4))}px`);
     chat.style.setProperty("--nch-chat-height", `${Math.max(0, Math.round(rect.height - 4))}px`);
     syncNativeChatVisibility();
@@ -794,8 +910,22 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
 
   function handleWindowResize() {
     window.requestAnimationFrame(() => {
+      const viewport = layoutViewport();
+      let nextContext = classifyLoggerLayout(viewport.width, viewport.height);
+      const heightOnlyPhoneResize = currentLayoutContext.startsWith("phone")
+        && nextContext.startsWith("phone")
+        && lastLayoutViewportWidth > 0
+        && Math.abs(viewport.width - lastLayoutViewportWidth) <= 2;
+      if (heightOnlyPhoneResize) {
+        const currentOrientation = currentLayoutContext.endsWith("Portrait") ? "Portrait" : "Landscape";
+        nextContext = `phone${currentOrientation}`;
+      }
+      lastLayoutViewportWidth = viewport.width;
+      switchLayoutContext(nextContext);
       applyModuleLayout();
       positionNativeChat();
+      syncStationActionModal();
+      positionStationActionModal();
     });
   }
 
@@ -803,7 +933,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const modalOpen = panel && (
       panel.querySelector("[data-module='chat']")?.hidden ||
       panel.querySelector("[data-role='private-selector']")?.open ||
-      [...panel.querySelectorAll("[data-role='photo-viewer'], [data-role='edit-modal'], [data-role='close-confirm'], [data-role='help-modal'], [data-role='commands-modal'], [data-role='update-modal'], [data-role='viewer-host']")]
+      [...panel.querySelectorAll("[data-role='photo-viewer'], [data-role='edit-modal'], [data-role='close-confirm'], [data-role='help-modal'], [data-role='commands-modal'], [data-role='update-modal'], [data-role='viewer-host'], [data-role='station-action-modal']")]
         .some(element => !element.hidden)
     );
     nativeChat()?.classList.toggle("nch-chat-suspended", Boolean(modalOpen));
@@ -813,6 +943,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const sendButton = nativeChat()?.querySelector(".chat-send-btn");
     if (!sendButton) return;
     sendButton.textContent = "Send";
+    setupSlashSuggestions();
     sendButton.title = "Send message";
     sendButton.setAttribute("aria-label", "Send message");
     sendButton.classList.add("nch-chat-send");
@@ -1389,6 +1520,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   }
 
   function lockBackgroundScroll() {
+    if (currentLayoutContext.startsWith("phone")) {
+      unlockBackgroundScroll();
+      return;
+    }
     if (backgroundScrollLocked) return;
     backgroundScrollLocked = true;
     priorDocumentOverflow = document.documentElement.style.overflow;
@@ -1936,7 +2071,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         if (stationCall === call) return { ...station, role: "netcontrol", level: 0 };
         return station;
       });
-      currentUserRole = "netlogger";
+      activateLayoutRole("netlogger", currentUserRole);
+      storageSet();
       stopSync();
       applyRoleUi();
       renderQueue();
@@ -2169,7 +2305,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     return "";
   }
 
-  function stationActionTray(station, details, call, busy) {
+  function stationActionTray(station, details, call, busy, modal = false) {
     const manager = canManageStations();
     const active = station.checkedState === true;
     const checkedOut = station.checkedState === false;
@@ -2225,10 +2361,30 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const orderedGroups = active
       ? [managementGroup, statusGroup, attentionGroup, roleGroup]
       : [managementGroup];
+    const pinControl = !modal && pinnedActionCall === call
+      ? `<button class="nch-tray-unpin" data-unpin-controls="${escapeHtml(call)}" aria-label="Unpin controls" title="Unpin controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5c0 1.1-.9 2-2 2v2h5v7l1 2 1-2v-7h5v-2c-1.1 0-2-.9-2-2Z"></path></svg></button>`
+      : "";
+    const closeControl = modal
+      ? `<button class="nch-tray-close" data-close-station-actions aria-label="Close station actions" title="Close station actions">×</button>`
+      : "";
     return `<span class="nch-row-actions nch-active-actions" aria-label="Controls for ${escapeHtml(call)}">
-      <strong class="nch-tray-title"><span>Controls for ${escapeHtml(call)}</span>${pinnedActionCall === call ? `<button class="nch-tray-unpin" data-unpin-controls="${escapeHtml(call)}" aria-label="Unpin controls" title="Unpin controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5c0 1.1-.9 2-2 2v2h5v7l1 2 1-2v-7h5v-2c-1.1 0-2-.9-2-2Z"></path></svg></button>` : ""}<button class="nch-tray-help" data-role="commands-help" aria-label="Commands and shortcuts" title="Commands and shortcuts">?</button></strong>
+      <strong class="nch-tray-title"><span>Controls for ${escapeHtml(call)}</span>${pinControl}<button class="nch-tray-help" data-role="commands-help" aria-label="Commands and shortcuts" title="Commands and shortcuts">?</button>${closeControl}</strong>
       ${orderedGroups.join("")}
     </span>`;
+  }
+
+  function usesTouchStationInteractions() {
+    return (currentLayoutContext.startsWith("phone") || currentLayoutContext.startsWith("tablet"))
+      && window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  }
+
+  function stationActionToggle(station, call) {
+    const touchActions = usesTouchStationInteractions()
+      && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
+    if (!touchActions || station.checkedState !== true) return "";
+    return `<button class="nch-station-action-toggle" data-station-actions="${escapeHtml(call)}" aria-label="Open station actions for ${escapeHtml(call)}" aria-expanded="false" title="Station actions">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"></path></svg>
+    </button>`;
   }
 
   const HOTKEY_ACTIONS = Object.freeze({
@@ -2318,6 +2474,65 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   const slashComposer = () => nativeChat()?.querySelector(
     ".chat-text-input, .chat-message-input, .chat-input, textarea[placeholder^='Message'], input[placeholder^='Message'], [contenteditable='true'][role='textbox']"
   );
+  function slashCommandsForRole() {
+    if (isNcoUser()) return SLASH_COMMANDS;
+    if (currentUserRole === "netlogger") {
+      return SLASH_COMMANDS.filter(command => !["guest", "hi", "li", "f"].includes(command.name));
+    }
+    return SLASH_COMMANDS.filter(command => ["help", "note", "w"].includes(command.name));
+  }
+  function renderSlashSuggestions() {
+    const input = slashComposer();
+    const host = nativeChat()?.querySelector(".nch-command-suggestions");
+    if (!input || !host) return;
+    const value = String("value" in input ? input.value : input.textContent || "").trimStart();
+    const match = value.match(/^\/(?:h\s*)?([a-z?]*)$/i);
+    if (!match) {
+      host.hidden = true;
+      host.replaceChildren();
+      return;
+    }
+    const query = String(match[1] || "").toLowerCase();
+    const commands = slashCommandsForRole().filter(command =>
+      !query || command.name.startsWith(query) || command.aliases.some(alias => alias.startsWith(query))
+    );
+    host.replaceChildren(...commands.map(command => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "nch-command-suggestion";
+      button.innerHTML = `<code>${escapeHtml(command.usage)}</code><span>${escapeHtml(command.description)}</span>`;
+      button.addEventListener("click", () => {
+        setSlashComposerText(`${command.usage.replace(/\[?(?:CALL|frequency)\]?/g, "").trim()} `);
+        input.focus();
+        renderSlashSuggestions();
+      });
+      return button;
+    }));
+    host.hidden = commands.length === 0;
+  }
+  function setupSlashSuggestions() {
+    const input = slashComposer();
+    const composer = input?.closest(".chat-composer-wrap");
+    if (!input || !composer) return;
+    let host = composer.querySelector(".nch-command-suggestions");
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "nch-command-suggestions";
+      host.setAttribute("role", "listbox");
+      host.setAttribute("aria-label", "Available slash commands");
+      host.hidden = true;
+      input.closest("form")?.before(host);
+    }
+    if (input.dataset.nchSuggestionsBound === "true") return;
+    input.dataset.nchSuggestionsBound = "true";
+    input.addEventListener("input", renderSlashSuggestions);
+    input.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !host.hidden) {
+        event.stopPropagation();
+        host.hidden = true;
+      }
+    });
+  }
   function setSlashComposerText(value) {
     const input = slashComposer();
     if (!input) return;
@@ -2360,11 +2575,13 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       ["O", "Check Out"], ["N", "Needed Next"], ["R", "No Reply"], ["S", "Skip"],
       ["A", "Attention"], ["C", "Clear Tags"], ["E", "Edit Station"], ["T", "Note"], ["G", "Special Guest"]
     ].map(([key, label]) => `<span><kbd>${escapeHtml(shortcutHint(key))}</kbd> ${escapeHtml(label)}</span>`).join("");
-    return `<h3>Commands and keyboard shortcuts</h3>
+    return `<h3>/ Commands</h3>
       <p class="nch-slash-banner">${escapeHtml(SLASH_HELP_BANNER)}</p>
       <div class="nch-command-sections">${commandCards}</div>
-      <h4>Hotkeys</h4>
-      <div class="nch-hotkey-grid">${hotkeys}</div>`;
+      <details class="nch-hotkey-help"${currentLayoutContext === "desktop" ? " open" : ""}>
+        <summary>Keyboard Shortcuts</summary>
+        <div class="nch-hotkey-grid">${hotkeys}</div>
+      </details>`;
   }
 
   function showSlashHelp() {
@@ -2523,7 +2740,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const isNco = station.role === "netcontrol";
     const manager = canManageStations();
     const busy = busyCalls.has(call);
-    const roleClass = ` nch-role-${details.specialGuest ? "specialGuest" : station.role || "netuser"}${station.checkedState === true && call === selectedNextCall ? " nch-selected-next" : ""}${pinnedActionCall === call ? " nch-actions-pinned" : ""}`;
+    const roleClass = ` nch-role-${details.specialGuest ? "specialGuest" : station.role || "netuser"}${station.checkedState === true && call === selectedNextCall ? " nch-selected-next" : ""}${station.checkedState !== true && usesTouchStationInteractions() && touchInlineActionCall === call ? " nch-touch-actions-open" : ""}${!usesTouchStationInteractions() && pinnedActionCall === call ? " nch-actions-pinned" : ""}`;
     const avatarTitle = details.qrzPhoto
       ? `QRZ photo for ${call}`
       : details.qrzPhotoChecked
@@ -2553,8 +2770,57 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         ${dragHandle}
         <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span><span class="nch-hand-slot">${hand}</span></div>
         <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
-        ${stationActionTray(station, details, call, busy)}
+        ${stationActionToggle(station, call)}
+        ${usesTouchStationInteractions() ? "" : stationActionTray(station, details, call, busy)}
       </div>`;
+  }
+
+  function positionStationActionModal() {
+    const modal = panel?.querySelector("[data-role='station-action-modal']");
+    if (!modal || modal.hidden) return;
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0;
+    const top = viewport?.offsetTop || 0;
+    const width = viewport?.width || document.documentElement.clientWidth || window.innerWidth;
+    const height = viewport?.height || document.documentElement.clientHeight || window.innerHeight;
+    Object.assign(modal.style, {
+      left: `${Math.round(left)}px`, top: `${Math.round(top)}px`, width: `${Math.round(width)}px`, height: `${Math.round(height)}px`
+    });
+  }
+
+  function syncStationActionModal() {
+    const modal = panel?.querySelector("[data-role='station-action-modal']");
+    if (!modal) return;
+    const station = latestStations.find(item => normalizeCall(item.callSign) === pinnedActionCall);
+    const touchInteractions = usesTouchStationInteractions();
+    const allowed = touchInteractions && station?.checkedState === true
+      && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
+    if (!touchInteractions) {
+      modal.hidden = true;
+      modal.replaceChildren();
+    } else if (!allowed) {
+      pinnedActionCall = "";
+      modal.hidden = true;
+      modal.replaceChildren();
+    } else {
+      const call = normalizeCall(station.callSign);
+      modal.innerHTML = `<div class="nch-station-action-backdrop" data-close-station-actions aria-hidden="true"></div>
+        <div class="nch-station-action-panel" data-call="${escapeHtml(call)}" role="dialog" aria-modal="true" aria-label="Station actions for ${escapeHtml(call)}">
+          ${stationActionTray(station, detailsFor(call), call, busyCalls.has(call), true)}
+        </div>`;
+      modal.hidden = false;
+      positionStationActionModal();
+    }
+    panel.classList.toggle("nch-has-pinned-actions", Boolean(pinnedActionCall));
+    panel.querySelectorAll(".nch-row[data-call]").forEach(row => {
+      const open = normalizeCall(row.dataset.call) === pinnedActionCall;
+      row.classList.toggle("nch-actions-pinned", open);
+      const toggle = row.querySelector("[data-station-actions]");
+      toggle?.classList.toggle("is-open", open);
+      toggle?.setAttribute("aria-expanded", String(open));
+      toggle?.setAttribute("aria-label", `${open ? "Close" : "Open"} station actions for ${normalizeCall(row.dataset.call)}`);
+    });
+    syncNativeChatVisibility();
   }
 
   function updateStationGroup(element, html) {
@@ -2579,6 +2845,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     if (focusedNote) noteDrafts.set(focusedNote.call, focusedNote.value);
     const visibleStations = latestStations.filter(s => !hiddenCalls.has(normalizeCall(s.callSign)));
     if (pinnedActionCall && !visibleStations.some(s => normalizeCall(s.callSign) === pinnedActionCall)) pinnedActionCall = "";
+    if (touchInlineActionCall && !visibleStations.some(s => normalizeCall(s.callSign) === touchInlineActionCall && s.checkedState !== true)) touchInlineActionCall = "";
     panel.classList.toggle("nch-has-pinned-actions", Boolean(pinnedActionCall));
     const checkedOut = ordered(visibleStations.filter(s => s.checkedState === false), "checkedOutOrder");
     const activeRaw = visibleStations.filter(s => s.checkedState === true);
@@ -2603,6 +2870,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const activeList = panel.querySelector("[data-role='active']");
     const activeHtml = displayedActive.map(s => stationRow(s, "order")).join("") || `<p class="nch-empty">None</p>`;
     updateStationGroup(activeList, activeHtml);
+    syncStationActionModal();
     if (scrollActiveAfterRender) {
       scrollActiveAfterRender = false;
       requestAnimationFrame(() => { activeList.scrollTop = activeList.scrollHeight; });
@@ -2703,6 +2971,30 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     clearActionOrientationRows();
     panel?.classList.remove("nch-has-pinned-actions");
     panel?.querySelector(`[data-call='${CSS.escape(normalizedCall)}']`)?.classList.remove("nch-actions-pinned");
+    syncStationActionModal();
+    return true;
+  }
+
+  function clearTouchInlineActions() {
+    const call = normalizeCall(touchInlineActionCall);
+    touchInlineActionCall = "";
+    const openRows = [...(panel?.querySelectorAll(".nch-touch-actions-open") || [])];
+    openRows.forEach(row => row.classList.remove("nch-touch-actions-open"));
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && openRows.some(row => row.contains(focused))) focused.blur();
+    return Boolean(call || openRows.length);
+  }
+
+  function toggleDesktopInlineActions(row) {
+    if (usesTouchStationInteractions() || !canManageStations()) return false;
+    const call = normalizeCall(row?.dataset.call);
+    const station = latestStations.find(item => normalizeCall(item.callSign) === call);
+    if (!call || station?.checkedState === true) return false;
+    const closing = pinnedActionCall === call;
+    if (pinnedActionCall) clearPinnedStationAction(pinnedActionCall);
+    if (!closing) pinnedActionCall = call;
+    renderQueue();
+    setStatus(closing ? `${call} actions closed.` : `${call} actions opened.`, "success");
     return true;
   }
 
@@ -2710,6 +3002,86 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     panel?.querySelectorAll(".nch-drop-before, .nch-drop-after").forEach(row =>
       row.classList.remove("nch-drop-before", "nch-drop-after")
     );
+  }
+
+  const TOUCH_ROW_DRAG_HOLD_MS = 360;
+  const TOUCH_ROW_DRAG_CANCEL_PX = 12;
+
+  function touchRowDragCandidate(target) {
+    if (!usesTouchStationInteractions() || !canManageStations()) return null;
+    if (target.closest("button, input, select, textarea, a, [contenteditable='true'], .nch-row-actions, .nch-inline-actions")) return null;
+    const row = target.closest("[data-role='active'] .nch-row[draggable='true'][data-group='order']");
+    return row?.dataset.pinned === "true" ? null : row;
+  }
+
+  function clearTouchRowDrag() {
+    if (!touchRowDrag) return;
+    clearTimeout(touchRowDrag.holdTimer);
+    if (touchRowDrag.started) {
+      touchRowDrag.row?.classList.remove("nch-dragging");
+    }
+    clearDropIndicators();
+    dragging = null;
+    touchRowDrag = null;
+  }
+
+  function startTouchRowDrag() {
+    if (!touchRowDrag || touchRowDrag.started) return;
+    const row = panel?.querySelector(`[data-role='active'] .nch-row[data-call='${CSS.escape(touchRowDrag.call)}'][draggable='true']`);
+    if (!row) return clearTouchRowDrag();
+    touchRowDrag.row = row;
+    touchRowDrag.started = true;
+    dragging = { call: touchRowDrag.call, group: touchRowDrag.group };
+    row.classList.add("nch-dragging");
+  }
+
+  function updateStationDropTarget(row, clientY) {
+    if (!row || !dragging || row.dataset.group !== dragging.group || row.dataset.call === dragging.call) return false;
+    clearDropIndicators();
+    const box = row.getBoundingClientRect();
+    const after = row.dataset.pinned === "true" || clientY > box.top + box.height / 2;
+    row.classList.add(after ? "nch-drop-after" : "nch-drop-before");
+    dragging.after = after;
+    const scroller = row.closest("[data-role='checked-out'], [data-role='active'], [data-role='lurkers']");
+    const scrollerBox = scroller?.getBoundingClientRect();
+    if (scrollerBox && clientY < scrollerBox.top + 36) scroller.scrollTop -= 20;
+    if (scrollerBox && clientY > scrollerBox.bottom - 36) scroller.scrollTop += 20;
+    if (touchRowDrag) touchRowDrag.targetCall = normalizeCall(row.dataset.call);
+    return true;
+  }
+
+  function touchRowDragPoint(event) {
+    return [...event.changedTouches, ...event.touches].find(touch => touch.identifier === touchRowDrag?.touchId);
+  }
+
+  function updateTouchRowDrag(event) {
+    if (!touchRowDrag) return false;
+    const touch = touchRowDragPoint(event);
+    if (!touch) return false;
+    const distance = Math.hypot(touch.clientX - touchRowDrag.startX, touch.clientY - touchRowDrag.startY);
+    if (!touchRowDrag.started) {
+      if (distance >= TOUCH_ROW_DRAG_CANCEL_PX) clearTouchRowDrag();
+      return false;
+    }
+    event.preventDefault();
+    const row = document.elementFromPoint(touch.clientX, touch.clientY)?.closest?.("[data-role='active'] .nch-row[data-group='order']");
+    updateStationDropTarget(row, touch.clientY);
+    return true;
+  }
+
+  function finishTouchRowDrag(event, cancelled = false) {
+    if (!touchRowDrag || !touchRowDragPoint(event)) return false;
+    const completed = touchRowDrag.started;
+    const targetCall = touchRowDrag.targetCall;
+    const group = touchRowDrag.group;
+    const after = Boolean(dragging?.after);
+    if (completed) {
+      event.preventDefault();
+      suppressStationRowClickUntil = performance.now() + 500;
+      if (!cancelled && targetCall) moveDragged(targetCall, group, after);
+    }
+    clearTouchRowDrag();
+    return completed;
   }
 
   function moveDragged(targetCall, targetGroup, after = false) {
@@ -2789,6 +3161,25 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         displayName: String(station.displayName || ""),
         location: String(station.location || "")
       }))
+    });
+  }
+
+  function reconcileStationMetadata(stations) {
+    stations.forEach(station => {
+      const call = normalizeCall(station.callSign);
+      if (!call) return;
+      const saved = local.details[call] || {};
+      const serverName = formatName(station.displayName || "");
+      const serverLocation = formatLocation(station.location || "");
+      local.details[call] = {
+        ...saved,
+        name: serverName,
+        location: serverLocation,
+        nameOverride: false,
+        locationOverride: false,
+        qrzNameVersion: serverName ? QRZ_NAME_VERSION : 0
+      };
+      if (sharedProfiles[call]) delete sharedProfiles[call];
     });
   }
 
@@ -3226,7 +3617,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
 
   function normalizeModuleLayout(source = local.moduleLayout) {
     const candidate = source && typeof source === "object" ? source : {};
-    const fallbackLayout = currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT;
+    const fallbackLayout = rawDefaultModuleLayoutForMode();
+    const maximumRows = layoutRows();
     const migratedCollapsed = {
       controls: Boolean(local.collapsedSections?.entry), chat: Boolean(local.collapsedSections?.chat),
       checkedOut: Boolean(local.collapsedSections?.checkedOut), active: Boolean(local.collapsedSections?.active),
@@ -3283,16 +3675,30 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         supplied = { ...legacyItem, x: legacyX * 2, w: legacyW * 2 };
       }
       const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, Math.round(Number(supplied.w) || fallback.w)));
-      const h = Math.min(GRID_ROWS, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
+      const h = Math.min(maximumRows, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
       items[id] = {
         x: Math.min(GRID_COLUMNS - w, Math.max(0, Math.round(Number(supplied.x) || 0))),
-        y: Math.min(GRID_ROWS - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
+        y: Math.min(maximumRows - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
         w,
         h
       };
       collapsed[id] = Boolean(suppliedCollapsed[id]);
     });
-    return { gridVersion: LAYOUT_GRID_VERSION, items, collapsed };
+    if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
+      const previousBottom = items.controls.y + items.controls.h;
+      const addedRows = 7 - items.controls.h;
+      items.controls.h = 7;
+      MODULE_IDS.filter(id => id !== "controls" && items[id].y >= previousBottom).forEach(id => {
+        items[id].y = Math.min(maximumRows - items[id].h, items[id].y + addedRows);
+      });
+    }
+    return {
+      gridVersion: LAYOUT_GRID_VERSION,
+      responsiveLayoutVersion: LOGGER_RESPONSIVE_LAYOUT_VERSION,
+      layoutContext: currentLayoutContext,
+      items,
+      collapsed
+    };
   }
 
   const gridRectsOverlap = (left, right) =>
@@ -3300,6 +3706,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
 
   function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
     const layout = normalizeModuleLayout(source);
+    const maximumRows = layoutRows();
     const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]);
     visible.sort((left, right) => {
       if (left === fixedId) return -1;
@@ -3313,7 +3720,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     let attempts = 0;
     const candidatesFor = (item, allowEveryCell = false) => {
       const maxX = GRID_COLUMNS - item.w;
-      const maxY = GRID_ROWS - item.h;
+      const maxY = maximumRows - item.h;
       const xs = new Set([item.x, 0, maxX]);
       const ys = new Set([item.y, 0, maxY]);
       placed.forEach(other => {
@@ -3345,7 +3752,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       const candidates = id === fixedId && !nudgeFixed ? [item] : candidatesFor(item, id === fixedId && nudgeFixed);
       for (const candidate of candidates) {
         attempts += 1;
-        if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > GRID_COLUMNS || candidate.y + candidate.h > GRID_ROWS) continue;
+        if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > GRID_COLUMNS || candidate.y + candidate.h > maximumRows) continue;
         if (placed.some(other => gridRectsOverlap(candidate, other))) continue;
         placed.push({ id, ...candidate });
         layout.items[id] = { x: candidate.x, y: candidate.y, w: candidate.w, h: candidate.h };
@@ -3361,14 +3768,14 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const normalized = normalizeModuleLayout(source);
     const resolved = tryResolveGridLayout(normalized, fixedId);
     if (resolved) return resolved;
-    const fallback = normalizeModuleLayout(DEFAULT_MODULE_LAYOUT);
+    const fallback = normalizeModuleLayout(defaultModuleLayoutForMode());
     fallback.collapsed = { ...normalized.collapsed };
     return tryResolveGridLayout(fallback) || fallback;
   }
 
   function canonicalizeReadOnlyTop(layout, force = false) {
     const normalized = normalizeModuleLayout(layout);
-    if (moduleAvailable("controls")) return normalized;
+    if (moduleAvailable("controls") || currentLayoutContext !== "desktop") return normalized;
     const lurkers = normalized.items.lurkers;
     const checkedOut = normalized.items.checkedOut;
     if (!force && (lurkers.y !== 0 || checkedOut.y !== 0)) return normalized;
@@ -3377,26 +3784,134 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     return normalized;
   }
 
-  function defaultModuleLayoutForMode() {
-    const defaults = currentUserRole === "netuser" ? VIEWER_DEFAULT_MODULE_LAYOUT : DEFAULT_MODULE_LAYOUT;
-    return canonicalizeReadOnlyTop(defaults, true);
+  function rawDefaultModuleLayoutFor(role = currentUserRole, context = currentLayoutContext) {
+    if (loggerLayoutRole(role) === "viewer") {
+      return context === "desktop"
+        ? VIEWER_DEFAULT_MODULE_LAYOUT
+        : VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[context] || VIEWER_DEFAULT_MODULE_LAYOUT;
+    }
+    if (loggerLayoutRole(role) === "nco" && context === "tabletLandscape") {
+      return NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT;
+    }
+    return context === "desktop"
+      ? DEFAULT_MODULE_LAYOUT
+      : RESPONSIVE_DEFAULT_MODULE_LAYOUTS[context] || DEFAULT_MODULE_LAYOUT;
   }
 
-  function hasCanonicalReadOnlyTop(layout) {
-    const normalized = normalizeModuleLayout(layout);
-    const lurkers = normalized.items.lurkers;
-    const checkedOut = normalized.items.checkedOut;
-    return lurkers.x === 0 && lurkers.y === 0 && lurkers.w === 12 && lurkers.h === 4
-      && checkedOut.x === 12 && checkedOut.y === 0 && checkedOut.w === 12 && checkedOut.h === 4;
+  function rawDefaultModuleLayoutForMode() {
+    return rawDefaultModuleLayoutFor();
+  }
+
+  function defaultModuleLayoutForMode() {
+    return canonicalizeReadOnlyTop(rawDefaultModuleLayoutForMode(), true);
+  }
+
+  function roleLayoutBucket(role = currentUserRole) {
+    local.roleResponsiveLayouts = local.roleResponsiveLayouts && typeof local.roleResponsiveLayouts === "object"
+      ? local.roleResponsiveLayouts : {};
+    const roleKey = loggerLayoutRole(role);
+    const bucket = local.roleResponsiveLayouts[roleKey];
+    if (!bucket || typeof bucket !== "object") local.roleResponsiveLayouts[roleKey] = {};
+    return local.roleResponsiveLayouts[roleKey];
+  }
+
+  function saveActiveLayoutContext(role = currentUserRole) {
+    if (!layoutRoleResolved) return;
+    local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
+    roleLayoutBucket(role)[currentLayoutContext] = local.moduleLayout;
+  }
+
+  function legacyLayoutForContext(context) {
+    return context === "desktop"
+      ? (local.responsiveLayouts?.desktop || local.moduleLayout)
+      : local.responsiveLayouts?.[context];
+  }
+
+  function inheritedViewerLayoutForContext(context) {
+    if (!["tabletPortrait", "tabletLandscape"].includes(context)) return rawDefaultModuleLayoutFor("netuser", context);
+    const inherited = rawDefaultModuleLayoutFor("netcontrol", context);
+    return { ...inherited, collapsed: { controls: true, lurkers: true, checkedOut: true } };
+  }
+
+  function legacyLayoutShouldResetForRole(candidate, role, context) {
+    return shouldResetLegacyLoggerLayout(
+      candidate, role, rawDefaultModuleLayoutFor("netcontrol", context),
+      rawDefaultModuleLayoutFor("netuser", context), inheritedViewerLayoutForContext(context)
+    );
+  }
+
+  function migrateLegacyLayoutsForRole(role = currentUserRole) {
+    const bucket = roleLayoutBucket(role);
+    if (local.layoutRoleStorageVersion < LOGGER_ROLE_LAYOUT_VERSION && !Object.keys(bucket).length) {
+      ["desktop", "tabletPortrait", "tabletLandscape", "phonePortrait", "phoneLandscape"].forEach(context => {
+        const candidate = legacyLayoutForContext(context);
+        if (!candidate || typeof candidate !== "object" || legacyLayoutShouldResetForRole(candidate, role, context)) return;
+        if (context !== "desktop" && !isCurrentResponsiveLayout(candidate, context)) return;
+        bucket[context] = candidate;
+      });
+      local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
+    }
+    const ncoTabletLandscapeDefaultNeedsCorrection = loggerLayoutRole(role) === "nco"
+      && [DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT]
+        .some(previousDefault => isSameLoggerModuleLayout(bucket.tabletLandscape, previousDefault));
+    if (ncoTabletLandscapeDefaultNeedsCorrection) {
+      bucket.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT;
+    }
+    return bucket;
+  }
+
+  function savedLayoutForContext(context, role = currentUserRole) {
+    const candidate = roleLayoutBucket(role)[context];
+    if (!candidate || typeof candidate !== "object") return null;
+    return context === "desktop" || isCurrentResponsiveLayout(candidate, context) ? candidate : null;
+  }
+
+  function activateLayoutRole(role, previousRole = "") {
+    if (layoutRoleResolved && previousRole) saveActiveLayoutContext(previousRole);
+    currentUserRole = role || "netuser";
+    layoutRoleResolved = true;
+    migrateLegacyLayoutsForRole(currentUserRole);
+    local.moduleLayout = normalizeModuleLayout(savedLayoutForContext(currentLayoutContext) || defaultModuleLayoutForMode());
+  }
+
+  function switchLayoutContext(nextContext) {
+    if (!nextContext || nextContext === currentLayoutContext) return false;
+    saveActiveLayoutContext();
+    currentLayoutContext = nextContext;
+    local.moduleLayout = savedLayoutForContext(nextContext) || defaultModuleLayoutForMode();
+    panel?.setAttribute("data-layout-context", nextContext);
+    const label = panel?.querySelector("[data-role='layout-context']");
+    if (label) label.textContent = layoutContextLabel(nextContext);
+    lockBackgroundScroll();
+    storageSet();
+    return true;
+  }
+
+  function visiblePhonePortraitLayout(layout) {
+    if (currentLayoutContext !== "phonePortrait") return { layout, rows: layoutRows() };
+    const rendered = {
+      ...layout,
+      items: Object.fromEntries(MODULE_IDS.map(id => [id, { ...layout.items[id] }]))
+    };
+    const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id])
+      .sort((left, right) => layout.items[left].y - layout.items[right].y
+        || layout.items[left].x - layout.items[right].x || MODULE_IDS.indexOf(left) - MODULE_IDS.indexOf(right));
+    let nextRow = 0;
+    visible.forEach(id => {
+      rendered.items[id].y = nextRow;
+      nextRow += rendered.items[id].h;
+    });
+    return { layout: rendered, rows: Math.max(1, nextRow) };
   }
 
   function renderGridLayout(layout, draggingId = "") {
     const dashboard = panel?.querySelector("[data-role='dashboard']");
     if (!dashboard) return;
+    const rendered = visiblePhonePortraitLayout(layout);
     MODULE_IDS.forEach(id => {
       const module = dashboard.querySelector(`[data-module='${id}']`);
       if (!module) return;
-      const item = layout.items[id];
+      const item = rendered.layout.items[id];
       module.style.gridColumn = `${item.x + 1} / span ${item.w}`;
       module.style.gridRow = `${item.y + 1} / span ${item.h}`;
       module.style.setProperty("--nch-module-columns", String(item.w));
@@ -3404,13 +3919,14 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       module.classList.toggle("nch-grid-source", id === draggingId);
       module.classList.toggle("nch-read-only-top", !moduleAvailable("controls") && (id === "lurkers" || id === "checkedOut") && item.y === 0);
     });
-    dashboard.style.setProperty("--nch-grid-rows", String(GRID_ROWS));
+    dashboard.style.setProperty("--nch-grid-rows", String(rendered.rows));
     dashboard.style.setProperty("--nch-grid-gap", `${GRID_GAP}px`);
     window.requestAnimationFrame(positionNativeChat);
   }
 
   function applyModuleLayout() {
     if (!panel) return;
+    syncModuleResizeAvailability();
     if (modulePointerDrag?.started) {
       renderGridLayout(modulePointerDrag.previewLayout || modulePointerDrag.originalLayout, modulePointerDrag.moduleId);
       return;
@@ -3448,17 +3964,19 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     local.moduleLayout = normalizeModuleLayout();
     local.moduleLayout.collapsed[id] = collapsed;
     if (!collapsed) local.moduleLayout = resolveGridLayout(local.moduleLayout, id);
+    saveActiveLayoutContext();
     applyModuleLayout();
     storageSet();
   }
 
   function resizeModuleBy(id, widthDelta, heightDelta) {
-    if (!MODULE_IDS.includes(id)) return;
+    if (currentLayoutContext.startsWith("phone") || !MODULE_IDS.includes(id)) return;
     const layout = normalizeModuleLayout();
     const item = layout.items[id];
     item.w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
     item.x = Math.min(item.x, GRID_COLUMNS - item.w);
-    item.h = Math.min(GRID_ROWS - item.y, Math.max(MIN_MODULE_ROWS[id], item.h + heightDelta));
+    const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 7 : MIN_MODULE_ROWS[id];
+    item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
     const resolved = tryResolveGridLayout(layout, id);
     if (!resolved) return;
     local.moduleLayout = resolved;
@@ -3481,7 +3999,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     const layout = normalizeModuleLayout();
     const item = layout.items[id];
     item.x = Math.min(GRID_COLUMNS - item.w, Math.max(0, item.x + xDelta));
-    item.y = Math.min(GRID_ROWS - item.h, Math.max(0, item.y + yDelta));
+    item.y = Math.min(layoutRows() - item.h, Math.max(0, item.y + yDelta));
     const resolved = tryResolveGridLayout(layout, id);
     if (!resolved) return;
     local.moduleLayout = resolved;
@@ -3492,7 +4010,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   function gridMetrics(dashboard) {
     const style = getComputedStyle(dashboard);
     const gap = Math.max(0, parseFloat(style.rowGap) || GRID_GAP);
-    const rows = Math.max(1, Number(style.getPropertyValue("--nch-grid-rows")) || GRID_ROWS);
+    const rows = Math.max(1, Number(style.getPropertyValue("--nch-grid-rows")) || layoutRows());
     const columnWidth = Math.max(1, (dashboard.clientWidth - gap * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
     const rowHeight = Math.max(1, (dashboard.clientHeight - gap * (rows - 1)) / rows);
     return { columnWidth, columnStep: columnWidth + gap, rowStep: rowHeight + gap, rows };
@@ -3514,7 +4032,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     };
     return {
       x: snap(requestedX, xCandidates, 0, GRID_COLUMNS - item.w, 2),
-      y: snap(requestedY, yCandidates, 0, GRID_ROWS - item.h, 1)
+      y: snap(requestedY, yCandidates, 0, layoutRows() - item.h, 1)
     };
   }
 
@@ -3540,7 +4058,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
   function updateModulePointerDrag(event) {
     if (!modulePointerDrag || event.pointerId !== modulePointerDrag.pointerId) return;
     const distance = Math.hypot(event.clientX - modulePointerDrag.startX, event.clientY - modulePointerDrag.startY);
-    if (!modulePointerDrag.started && distance < 6) return;
+    if (!modulePointerDrag.started && distance < (event.pointerType === "touch" ? 12 : 6)) return;
     if (!modulePointerDrag.started) {
       modulePointerDrag.started = true;
       modulePointerDrag.module.classList.add("nch-module-dragging");
@@ -3608,10 +4126,14 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     }
     if (resizing.edge.includes("n")) {
       const bottomEdge = resizing.startItem.y + resizing.startItem.h;
-      item.h = Math.min(bottomEdge, Math.max(MIN_MODULE_ROWS[resizing.moduleId], resizing.startItem.h - rowDelta));
+      const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
+        ? 7 : MIN_MODULE_ROWS[resizing.moduleId];
+      item.h = Math.min(bottomEdge, Math.max(minimumRows, resizing.startItem.h - rowDelta));
       item.y = bottomEdge - item.h;
     } else if (resizing.edge.includes("s")) {
-      item.h = Math.min(GRID_ROWS - item.y, Math.max(MIN_MODULE_ROWS[resizing.moduleId], resizing.startItem.h + rowDelta));
+      const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
+        ? 7 : MIN_MODULE_ROWS[resizing.moduleId];
+      item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, resizing.startItem.h + rowDelta));
     }
     const resolved = tryResolveGridLayout(layout, resizing.moduleId);
     if (!resolved) return;
@@ -3630,9 +4152,20 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     storageSet();
   }
 
+  function syncModuleResizeAvailability() {
+    const enabled = !currentLayoutContext.startsWith("phone");
+    if (!enabled && resizing) stopResizing(null, true);
+    panel?.querySelectorAll("[data-resize-module]").forEach(handle => {
+      handle.hidden = !enabled;
+      handle.setAttribute("aria-hidden", String(!enabled || handle.dataset.resizeEdge !== "se"));
+      if (handle.dataset.resizeEdge === "se") handle.tabIndex = enabled ? 0 : -1;
+    });
+  }
+
   function moduleResizeZones(id) {
+    const disabled = currentLayoutContext.startsWith("phone");
     return ["n", "e", "s", "w", "ne", "nw", "se", "sw"].map(edge =>
-      `<span class="nch-resize-zone nch-resize-${edge}" data-resize-module="${id}" data-resize-edge="${edge}"${edge === "se" ? ` role="separator" tabindex="0" aria-label="Resize ${escapeHtml(MODULE_LABELS[id])}"` : ' aria-hidden="true"'}></span>`
+      `<span class="nch-resize-zone nch-resize-${edge}" data-resize-module="${id}" data-resize-edge="${edge}"${disabled ? " hidden" : ""}${edge === "se" ? ` role="separator" tabindex="${disabled ? "-1" : "0"}" aria-label="Resize ${escapeHtml(MODULE_LABELS[id])}"` : ' aria-hidden="true"'}></span>`
     ).join("");
   }
 
@@ -3647,10 +4180,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     panel = document.createElement("aside");
     panel.id = "netcontrol-ncs-helper";
     panel.dataset.renderedRole = currentUserRole;
+    panel.dataset.layoutContext = currentLayoutContext;
     panel.innerHTML = `
       <header>
         <a class="nch-helper-brand" href="/views/dashboard" aria-label="Return to the live nets page" title="Back to Live Nets">
-          <span class="nch-helper-title-line"><img class="nch-helper-logo" src="/img/NCO_Logger_Logo_compact.png" alt="NCO Logger"></span>
+          <span class="nch-helper-title-line"><img class="nch-helper-logo app-theme-logo-dark" src="/img/NCO_Logger_Logo_compact.png" alt="NCO Logger"><img class="nch-helper-logo app-theme-logo-light" src="/img/NCO_Logger_Logo_compact_Light_Mode.png" alt="" aria-hidden="true"></span>
           <small data-role="helper-version">Version ${escapeHtml(VERSION)}</small>
         </a>
         <div class="nch-net-title" data-role="net-title">
@@ -3683,7 +4217,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
                       <button data-helper-font="large" aria-label="Large Logger text" title="Large Logger text">A+</button>
                     </span>
                   </div>
-                  <button class="nch-menu-reset" data-role="menu-reset" title="Restore the original module arrangement">Reset Layout</button>
+                  <small class="nch-layout-context" data-role="layout-context">${escapeHtml(layoutContextLabel(currentLayoutContext))}</small>
+                  ${currentLayoutContext === "desktop"
+                    ? '<button class="nch-menu-reset" data-role="menu-reset" data-reset-layout="desktop">Reset Desktop Layout</button>'
+                    : '<button class="nch-menu-reset" data-role="menu-reset" data-reset-orientation="Portrait">Reset Portrait Layout</button><button class="nch-menu-reset" data-role="menu-reset" data-reset-orientation="Landscape">Reset Landscape Layout</button>'}
                 </div>
               </details>
               <button data-role="menu-commands">Commands &amp; Shortcuts</button>
@@ -3748,6 +4285,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
             <span><strong data-role="recheck-count">0</strong><small>Rechecks</small></span>
           </div>
         </div>
+        <div class="nch-station-action-modal" data-role="station-action-modal" hidden></div>
         <div class="nch-edit-modal" data-role="edit-modal" hidden>
           <div class="nch-edit-card">
             <h3>Edit Station Information</h3>
@@ -3849,6 +4387,18 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     syncAppearanceSwitch();
 
     panel.addEventListener("click", async event => {
+      const suppressedRowClick = event.target.closest?.("[data-role='active'] .nch-row[data-group='order']");
+      if (suppressedRowClick && performance.now() < suppressStationRowClickUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (event.target.closest?.("[data-close-station-actions]")) {
+        const call = pinnedActionCall;
+        clearPinnedStationAction(call);
+        setStatus(call ? `${call} actions closed.` : "", "success");
+        return;
+      }
       if (event.target.matches?.("[data-role='photo-viewer']")) {
         closePhotoViewer();
         return;
@@ -3871,6 +4421,39 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       }
       const clickedRow = event.target.closest?.(".nch-row[data-call]");
       const clickedInteractive = event.target.closest?.("button, input, textarea, select, a, [contenteditable='true'], .nch-drag, .nch-row-actions");
+      const touchStationActions = usesTouchStationInteractions()
+        && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
+      const stationActionButton = event.target.closest?.("[data-station-actions]");
+      if (stationActionButton && touchStationActions) {
+        const call = normalizeCall(stationActionButton.dataset.stationActions);
+        pinnedActionCall = pinnedActionCall === call ? "" : call;
+        syncStationActionModal();
+        setStatus(pinnedActionCall ? `${call} actions opened.` : `${call} actions closed.`, "success");
+        return;
+      }
+      if (clickedRow && !clickedInteractive && touchStationActions && pinnedActionCall === normalizeCall(clickedRow.dataset.call)) {
+        const call = normalizeCall(clickedRow.dataset.call);
+        pinnedActionCall = "";
+        syncStationActionModal();
+        setStatus(`${call} actions closed.`, "success");
+        return;
+      }
+      if (clickedRow && !clickedInteractive && touchStationActions) {
+        const station = latestStations.find(item => normalizeCall(item.callSign) === normalizeCall(clickedRow.dataset.call));
+        if (station?.checkedState !== true) {
+          if (pinnedActionCall) clearPinnedStationAction(pinnedActionCall);
+          const call = normalizeCall(clickedRow.dataset.call);
+          const closing = touchInlineActionCall === call;
+          clearTouchInlineActions();
+          if (!closing) {
+            touchInlineActionCall = call;
+            clickedRow.classList.add("nch-touch-actions-open");
+            clickedRow.focus({ preventScroll: true });
+          }
+          return;
+        }
+      }
+      if (clickedRow && !clickedInteractive && toggleDesktopInlineActions(clickedRow)) return;
       if (clickedRow && !clickedInteractive && canManageStations()) {
         const call = normalizeCall(clickedRow.dataset.call);
         if (pinnedActionCall && pinnedActionCall !== call) pinnedActionCall = "";
@@ -3883,6 +4466,11 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
           return;
         }
       }
+      if (!clickedRow && pinnedActionCall && !event.target.closest?.(".nch-row-actions, .nch-inline-actions")) {
+        pinnedActionCall = "";
+        renderQueue();
+      }
+      if (!clickedRow && touchInlineActionCall) clearTouchInlineActions();
       const target = event.target.closest("button");
       if (!target) return;
       if (target.disabled) return;
@@ -3933,10 +4521,16 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       if (stationActionRow && target.dataset.role !== "commands-help") {
         clearPinnedStationAction(stationActionRow.dataset.call);
       }
+      const stationActionModal = target.closest("[data-role='station-action-modal']");
+      if (stationActionModal && target.dataset.role !== "commands-help") {
+        clearPinnedStationAction(pinnedActionCall);
+      }
       if (target.dataset.viewPhoto) {
         const call = normalizeCall(target.dataset.viewPhoto);
         const source = target.querySelector("img.nch-avatar")?.src || DEFAULT_AVATAR;
-        openPhotoViewer(source, `${call} QRZ photo`, `${call} enlarged QRZ profile`, target);
+        const name = detailsFor(call).name;
+        const identity = name && normalizeCall(name) !== call ? `${name} — ${call}` : call;
+        openPhotoViewer(source, identity, `${identity} enlarged profile photo`, target);
       }
       if (target.dataset.role === "close-photo") {
         closePhotoViewer();
@@ -4014,7 +4608,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         const call = normalizeCall(target.dataset.specialGuest);
         setSpecialGuest(call);
       }
-      const rowCall = normalizeCall(target.dataset.call || target.closest(".nch-row")?.dataset.call);
+      const rowCall = normalizeCall(target.dataset.call || target.closest(".nch-row, .nch-station-action-panel")?.dataset.call);
       if (target.dataset.setTag) await setRowTag(rowCall, target.dataset.setTag);
       if (target.dataset.setRole) await changeStationRole(rowCall, target.dataset.setRole);
       if (target.dataset.clearTag) {
@@ -4174,6 +4768,9 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
           order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {}, hiddenCalls: [],
           paneSizes: { ...local.paneSizes }, collapsedSections: { ...local.collapsedSections },
           moduleLayout: normalizeModuleLayout(),
+          responsiveLayouts: { ...local.responsiveLayouts },
+          roleResponsiveLayouts: { ...local.roleResponsiveLayouts },
+          layoutRoleStorageVersion: LOGGER_ROLE_LAYOUT_VERSION,
           helperFontPreset: normalizeFontPreset(local.helperFontPreset),
           chatFontPreset: normalizeFontPreset(local.chatFontPreset),
           helpFontPreset: normalizeFontPreset(local.helpFontPreset),
@@ -4196,6 +4793,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     panel.addEventListener("contextmenu", event => {
       const row = event.target.closest?.(".nch-row[data-call]");
       if (!row || event.shiftKey || event.target.closest?.("button, input, textarea, select, a, [contenteditable='true']")) return;
+      if (usesTouchStationInteractions()) {
+        event.preventDefault();
+        return;
+      }
       event.preventDefault();
       const call = normalizeCall(row.dataset.call);
       pinnedActionCall = pinnedActionCall === call ? "" : call;
@@ -4246,6 +4847,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       if (noteInput) noteDrafts.set(normalizeCall(noteInput.dataset.noteInput), noteInput.value);
     });
     panel.addEventListener("focusout", event => {
+      const touchActionRow = event.target.closest?.(".nch-touch-actions-open");
+      if (touchActionRow && !touchActionRow.contains(event.relatedTarget)) clearTouchInlineActions();
       const noteInput = event.target.closest("[data-note-input]");
       if (!noteInput) return;
       const call = normalizeCall(noteInput.dataset.noteInput);
@@ -4282,8 +4885,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         return;
       }
       if (event.key === "Escape" && pinnedActionCall) {
-        pinnedActionCall = "";
-        renderQueue();
+        clearPinnedStationAction(pinnedActionCall);
         return;
       }
       if (event.key === "Escape" && !panel.querySelector("[data-role='update-modal']")?.hidden) {
@@ -4313,12 +4915,12 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         renderQueue();
       }
       const moduleResizer = event.target.closest("[data-resize-module]");
-      if (moduleResizer && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+      if (!currentLayoutContext.startsWith("phone") && moduleResizer && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
         event.preventDefault();
         const id = moduleResizer.dataset.resizeModule;
         resizeModuleBy(id, event.key === "ArrowLeft" ? -1 : 1, 0);
       }
-      if (moduleResizer && ["ArrowUp", "ArrowDown"].includes(event.key)) {
+      if (!currentLayoutContext.startsWith("phone") && moduleResizer && ["ArrowUp", "ArrowDown"].includes(event.key)) {
         event.preventDefault();
         const id = moduleResizer.dataset.resizeModule;
         resizeModuleBy(id, 0, event.key === "ArrowUp" ? -1 : 1);
@@ -4331,6 +4933,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       }
     });
     panel.addEventListener("dragstart", event => {
+      if (usesTouchStationInteractions()) return event.preventDefault();
       if (!canManageStations()) return event.preventDefault();
       const row = event.target.closest(".nch-row[draggable='true']");
       if (!row || event.target.closest("button, input, select, textarea, a")) return event.preventDefault();
@@ -4342,16 +4945,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     });
     panel.addEventListener("dragover", event => {
       const row = event.target.closest(".nch-row");
-      if (!row || !dragging || row.dataset.group !== dragging.group || row.dataset.call === dragging.call) return;
+      if (!row || !updateStationDropTarget(row, event.clientY)) return;
       event.preventDefault();
-      clearDropIndicators();
-      const after = row.dataset.pinned === "true" || event.clientY > row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
-      row.classList.add(after ? "nch-drop-after" : "nch-drop-before");
-      dragging.after = after;
-      const scroller = row.closest("[data-role='checked-out'], [data-role='active'], [data-role='lurkers']");
-      const box = scroller?.getBoundingClientRect();
-      if (box && event.clientY < box.top + 36) scroller.scrollTop -= 20;
-      if (box && event.clientY > box.bottom - 36) scroller.scrollTop += 20;
     });
     panel.addEventListener("drop", event => {
       if (!canManageStations()) return;
@@ -4366,9 +4961,28 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       clearDropIndicators();
       dragging = null;
     });
+    panel.addEventListener("touchstart", event => {
+      if (event.touches.length !== 1) {
+        if (touchRowDrag) clearTouchRowDrag();
+        return;
+      }
+      if (touchRowDrag) return;
+      const row = touchRowDragCandidate(event.target);
+      if (!row) return;
+      const touch = event.changedTouches[0];
+      touchRowDrag = {
+        call: normalizeCall(row.dataset.call), group: row.dataset.group,
+        row, touchId: touch.identifier, startX: touch.clientX, startY: touch.clientY,
+        started: false, targetCall: "", holdTimer: 0
+      };
+      touchRowDrag.holdTimer = window.setTimeout(startTouchRowDrag, TOUCH_ROW_DRAG_HOLD_MS);
+    }, { passive: true });
+    panel.addEventListener("touchmove", updateTouchRowDrag, { passive: false });
+    panel.addEventListener("touchend", event => finishTouchRowDrag(event), { passive: false });
+    panel.addEventListener("touchcancel", event => finishTouchRowDrag(event, true), { passive: false });
     panel.addEventListener("pointerdown", event => {
       const moduleResizer = event.target.closest("[data-resize-module]");
-      if (moduleResizer) {
+      if (moduleResizer && !currentLayoutContext.startsWith("phone")) {
         event.preventDefault();
         const moduleId = moduleResizer.dataset.resizeModule;
         const layout = normalizeModuleLayout();
@@ -4388,7 +5002,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       const module = moduleHandle.closest("[data-module]");
       const dashboard = panel.querySelector("[data-role='dashboard']");
       if (!module || !dashboard) return;
-      event.preventDefault();
+      if (event.pointerType !== "touch") event.preventDefault();
       modulePointerDrag = {
         moduleId: module.dataset.module, module, dashboard, pointerId: event.pointerId,
         startX: event.clientX, startY: event.clientY, started: false,
@@ -4412,25 +5026,37 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       if (resizing?.pointerId === event.pointerId) stopResizing(event, true);
       else if (modulePointerDrag?.pointerId === event.pointerId) cancelModulePointerDrag(event);
     });
+    panel.addEventListener("scroll", () => {
+      if (touchRowDrag && !touchRowDrag.started) clearTouchRowDrag();
+    }, true);
     panel.addEventListener("dblclick", event => {
       const moduleResizer = event.target.closest("[data-resize-module]");
       const id = moduleResizer?.dataset.resizeModule;
-      if (!id) return;
+      if (!id || currentLayoutContext.startsWith("phone")) return;
       const layout = normalizeModuleLayout();
       layout.items[id] = { ...defaultModuleLayoutForMode().items[id] };
       local.moduleLayout = resolveGridLayout(layout, id);
       applyModuleLayout();
       storageSet();
     });
-    panel.querySelector("[data-role='menu-reset']")?.addEventListener("click", () => {
-      if (!confirm("Reset the module layout to its default arrangement?")) return;
-      local.moduleLayout = resolveGridLayout(defaultModuleLayoutForMode());
+    panel.querySelectorAll("[data-role='menu-reset']").forEach(button => button.addEventListener("click", () => {
+      const orientation = button.dataset.resetOrientation;
+      const targetContext = orientation
+        ? `${currentLayoutContext.startsWith("phone") ? "phone" : "tablet"}${orientation}`
+        : "desktop";
+      if (!confirm(`Reset only the ${layoutContextLabel(targetContext)} module layout?`)) return;
+      const priorContext = currentLayoutContext;
+      currentLayoutContext = targetContext;
+      const resetLayout = resolveGridLayout(defaultModuleLayoutForMode());
+      currentLayoutContext = priorContext;
+      roleLayoutBucket()[targetContext] = resetLayout;
+      if (targetContext === currentLayoutContext) local.moduleLayout = resetLayout;
       storageSet();
       applyModuleLayout();
       const menu = panel.querySelector("[data-role='header-menu']");
       if (menu) menu.open = false;
-      setStatus("Module layout reset.", "success");
-    });
+      setStatus(`${layoutContextLabel(targetContext)} layout reset.`, "success");
+    }));
     applyRoleUi();
     applyDisplayPreferences();
     applyModuleLayout();
@@ -4535,6 +5161,7 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       const nextStations = Array.isArray(data.stations) ? data.stations : [];
       observeStationTransitions(nextStations);
       latestStations = nextStations;
+      reconcileStationMetadata(latestStations);
       latestNetTitle = String(data.net?.title || "").trim();
       latestNetFrequency = String(data.net?.frequency || "").trim();
       latestNetConnections = formatConnectionLines(data.net);
@@ -4555,11 +5182,10 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
           }
         : null;
       if (focusedNote) noteDrafts.set(focusedNote.call, focusedNote.value);
-      const previousRole = currentUserRole;
-      currentUserRole = me.role || "netuser";
-      if (defaultModuleLayoutPending) {
-        local.moduleLayout = resolveGridLayout(defaultModuleLayoutForMode());
-        defaultModuleLayoutPending = false;
+      const previousRole = layoutRoleResolved ? currentUserRole : "";
+      const nextRole = me.role || "netuser";
+      if (!layoutRoleResolved || previousRole !== nextRole) {
+        activateLayoutRole(nextRole, previousRole);
         storageSet();
       }
       const serverLoggerState = data.loggerState;
@@ -4575,14 +5201,6 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       const nextRenderSignature = remoteRenderSignature(latestStations, latestNetTitle, currentUserRole);
       const remoteUiChanged = nextRenderSignature !== lastRemoteRenderSignature;
       lastRemoteRenderSignature = nextRenderSignature;
-      if (!["netcontrol", "netlogger"].includes(previousRole) && canManageStations()) {
-        local.moduleLayout = hasCanonicalReadOnlyTop(local.moduleLayout)
-          ? normalizeModuleLayout(DEFAULT_MODULE_LAYOUT)
-          : normalizeModuleLayout(local.moduleLayout);
-        local.moduleLayout.collapsed.controls = false;
-        local.moduleLayout = resolveGridLayout(local.moduleLayout, "controls");
-        storageSet();
-      }
       const panelWasMissing = !panel;
       addPanel();
       const netTitle = panel.querySelector("[data-role='net-title'] a");
@@ -4624,6 +5242,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     browserStorage.get([relayTokenKey], resolve)
   );
   window.addEventListener("resize", handleWindowResize);
+  window.visualViewport?.addEventListener("resize", handleWindowResize);
+  window.visualViewport?.addEventListener("scroll", positionStationActionModal);
   window.addEventListener("keydown", handleActionHotkey, true);
   window.addEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
   Promise.all([relayStorageGet(), storageGet()]).then(async ([relayData, saved]) => {
@@ -4651,11 +5271,6 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       }
       return [[call, migrated]];
     }));
-    const savedModuleLayout = saved.moduleLayout && typeof saved.moduleLayout === "object" ? saved.moduleLayout : {};
-    const savedCollapsedSections = saved.collapsedSections && typeof saved.collapsedSections === "object"
-      ? saved.collapsedSections : {};
-    defaultModuleLayoutPending = Object.keys(savedModuleLayout).length === 0
-      && Object.keys(savedCollapsedSections).length === 0;
     local = {
       order: Array.isArray(saved.order) ? saved.order : [],
       checkedOutOrder: Array.isArray(saved.checkedOutOrder) ? saved.checkedOutOrder : [],
@@ -4667,6 +5282,9 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
       paneSizes: saved.paneSizes && typeof saved.paneSizes === "object" ? saved.paneSizes : {},
       collapsedSections: saved.collapsedSections && typeof saved.collapsedSections === "object" ? saved.collapsedSections : {},
       moduleLayout: saved.moduleLayout && typeof saved.moduleLayout === "object" ? saved.moduleLayout : {},
+      responsiveLayouts: saved.responsiveLayouts && typeof saved.responsiveLayouts === "object" ? saved.responsiveLayouts : {},
+      roleResponsiveLayouts: saved.roleResponsiveLayouts && typeof saved.roleResponsiveLayouts === "object" ? saved.roleResponsiveLayouts : {},
+      layoutRoleStorageVersion: Number(saved.layoutRoleStorageVersion) || 0,
       helperFontPreset: normalizeFontPreset(saved.helperFontPreset),
       chatFontPreset: normalizeFontPreset(saved.chatFontPreset),
       helpFontPreset: normalizeFontPreset(saved.helpFontPreset),
@@ -4678,9 +5296,13 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
         local.details[rawCall] = { ...details, name: "", nameOverride: false, qrzNameVersion: 0 };
       }
     }
-    local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
+    currentLayoutContext = layoutContext();
+    lastLayoutViewportWidth = layoutViewport().width;
+    if (!local.responsiveLayouts.desktop && Object.keys(local.moduleLayout).length) {
+      local.responsiveLayouts.desktop = local.moduleLayout;
+    }
+    local.moduleLayout = normalizeModuleLayout(defaultModuleLayoutForMode());
     storeSharedProfiles();
-    if (!defaultModuleLayoutPending) storageSet();
     local.hiddenCalls.forEach(call => hiddenCalls.add(call));
     await refresh();
     pollTimer = window.setInterval(() => scheduleRefresh(), POLL_MS);
@@ -4692,6 +5314,8 @@ import { formatConnectionLines } from "../../lib/publicSchedule.js";
     if (pollTimer !== null) clearInterval(pollTimer);
     pollTimer = null;
     window.removeEventListener("resize", handleWindowResize);
+    window.visualViewport?.removeEventListener("resize", handleWindowResize);
+    window.visualViewport?.removeEventListener("scroll", positionStationActionModal);
     window.removeEventListener("keydown", handleActionHotkey, true);
     window.removeEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
     stopSync();

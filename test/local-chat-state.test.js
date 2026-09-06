@@ -61,6 +61,36 @@ test('chat request failures use concise human-readable status messages', async (
     assert.equal(chatRequestErrorMessage(500, undefined, 'Fallback'), 'Fallback');
 });
 
+test('chat overlays clamp to safe visual viewport edges at phone widths', async () => {
+    const { fitChatOverlayToViewport } = await loadState();
+    for (const viewportWidth of [320, 357, 390]) {
+        const common = {
+            viewportLeft: 0, viewportTop: 0, viewportWidth, viewportHeight: 741,
+            insetLeft: 8, insetRight: 8, insetTop: 8, insetBottom: 8,
+            anchorTop: 60, anchorBottom: 100, overlayHeight: 300, preferredWidth: 384
+        };
+        const rightOverflow = fitChatOverlayToViewport({
+            ...common, anchorLeft: viewportWidth - 60, anchorRight: viewportWidth - 8
+        });
+        assert.equal(rightOverflow.left, 8);
+        assert.equal(rightOverflow.left + rightOverflow.width, viewportWidth - 8);
+        const leftOverflow = fitChatOverlayToViewport({
+            ...common, anchorLeft: -30, anchorRight: 20, preferredWidth: 190
+        });
+        assert.equal(leftOverflow.left, 8);
+        assert.ok(leftOverflow.left + leftOverflow.width <= viewportWidth - 8);
+    }
+    const zoomed = fitChatOverlayToViewport({
+        viewportLeft: 120, viewportTop: 40, viewportWidth: 320, viewportHeight: 500,
+        insetLeft: 12, insetRight: 10, insetTop: 8, insetBottom: 8,
+        anchorLeft: 410, anchorRight: 438, anchorTop: 450, anchorBottom: 480,
+        preferredWidth: 352, overlayHeight: 260, alignEnd: true, gap: 8
+    });
+    assert.equal(zoomed.left, 132);
+    assert.equal(zoomed.left + zoomed.width, 430);
+    assert.ok(zoomed.top >= 48 && zoomed.top + 260 <= 532);
+});
+
 test('latest-message detection preserves deterministic ordering for incremental appends', async () => {
     const { isLatestChatMessage } = await loadState();
     const messages = new Map([

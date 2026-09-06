@@ -4,17 +4,25 @@
   <div class="container">
     <% if (landingNavigation) { %>
     <a href="/views/dashboard" class="navbar-brand landing-navbar-brand" aria-label="NCO Logger by WVARC home">
-      <img src="/img/NCO_Logger_Logo_navbar.png" class="landing-brand-logo" alt="NCO Logger by WVARC" />
+      <img src="/img/NCO_Logger_Logo_navbar.png" class="landing-brand-logo app-theme-logo-dark" alt="NCO Logger by WVARC" />
+      <img src="/img/NCO_Logger_Logo_Light_Mode.png" class="landing-brand-logo app-theme-logo-light" alt="" aria-hidden="true" />
     </a>
     <% } else { %>
     <a href="/views/dashboard" class="navbar-brand app-navbar-brand" aria-label="NCO Logger by WVARC home — view active nets">
-      <img src="/img/NCO_Logger_Logo_navbar.png" class="app-brand-logo" alt="NCO Logger by WVARC" />
+      <img src="/img/NCO_Logger_Logo_navbar.png" class="app-brand-logo app-theme-logo-dark" alt="NCO Logger by WVARC" />
+      <img src="/img/NCO_Logger_Logo_Light_Mode.png" class="app-brand-logo app-theme-logo-light" alt="" aria-hidden="true" />
     </a>
     <% } %>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu" aria-controls="navmenu" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-mobile-nav-trigger aria-controls="navmenu" aria-expanded="false" aria-label="Open navigation menu">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navmenu">
+    <div class="navbar-collapse app-mobile-drawer" id="navmenu" data-mobile-nav-drawer aria-label="Site menu">
+      <div class="app-mobile-drawer-header">
+        <span>Menu</span>
+        <button class="app-mobile-drawer-close" type="button" data-mobile-nav-close aria-label="Close navigation menu">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
       <ul class="navbar-nav ms-auto" role="menubar">
         <li class="nav-item" role="none">
           <a href="/views/livenets" class="nav-link" role="menuitem" tabindex="0">
@@ -64,8 +72,19 @@
           </a>
         </li>
         <% } %>
+        <li class="nav-item app-theme-item" role="none">
+          <label class="app-theme-toggle" title="Toggle light or dark theme">
+            <i class="bi bi-sun-fill" aria-hidden="true"></i>
+            <input type="checkbox" data-appearance-control role="switch" aria-label="Use dark theme" />
+            <span class="app-theme-toggle-track" aria-hidden="true"></span>
+            <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+          </label>
+        </li>
       </ul>
     </div>
   </div>
 </nav>
+<div class="app-mobile-nav-backdrop" data-mobile-nav-backdrop hidden aria-hidden="true"></div>
+<script src="/js/lib/themeControl.js?v=<%= server.appAssetVersion %>" defer></script>
+<script src="/js/lib/mobileNavigation.js?v=<%= server.appAssetVersion %>" defer></script>
 <!--End: navbar.ejs-->

@@ -8,6 +8,7 @@ export declare class ChatWidget extends HTMLElement {
     private readonly recipients;
     private readonly unreadCounts;
     private readonly scrollPositions;
+    private readonly drafts;
     private readonly expandedPinnedMessageIds;
     private pinnedCollectionExpanded;
     private selectedRecipientId;
@@ -30,6 +31,7 @@ export declare class ChatWidget extends HTMLElement {
     private editDraft;
     private savingEdit;
     private replyingToId;
+    private openMessageActionsId;
     private viewerRole;
     private suspended;
     private emojiCategory;
@@ -48,7 +50,9 @@ export declare class ChatWidget extends HTMLElement {
     private get messages();
     private readonly handleDocumentPointerDown;
     private readonly handleDocumentKeyDown;
+    private readonly handleDocumentScroll;
     private readonly handleWindowResize;
+    private positionOpenTransientOverlays;
     private readonly handleMessageScroll;
     private readonly handleMessageImageLoad;
     private readonly handleInitialLayoutReady;
@@ -57,6 +61,7 @@ export declare class ChatWidget extends HTMLElement {
     private populateEmojiPicker;
     private renderEmojiChoices;
     private toggleRecipientMenu;
+    private toggleUnreadMenu;
     private recipientLabel;
     private renderRecipientControls;
     private conversationKey;
@@ -65,6 +70,7 @@ export declare class ChatWidget extends HTMLElement {
     private toggleIgnore;
     private toggleEmojiPicker;
     private positionEmojiPicker;
+    private positionTransientOverlay;
     private insertEmoji;
     private clearConnectionRetry;
     private scheduleConnectionRetry;
@@ -110,6 +116,8 @@ export declare class ChatWidget extends HTMLElement {
     private appendReplyReference;
     private appendReactions;
     private appendMessageActions;
+    private toggleMessageActions;
+    private closeMessageActions;
     private safeAttachmentUrl;
     private openLightbox;
     private closeLightbox;

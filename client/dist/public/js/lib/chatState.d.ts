@@ -40,6 +40,28 @@ export declare const isLatestChatMessage: <T extends IdentifiedChatMessage>(mess
 export declare const trimOldestChatMessages: <T extends IdentifiedChatMessage>(messages: Map<string, T>, limit: number) => string[];
 export declare const shouldScrollChatToLatest: (initialLoad: boolean, wasNearBottom: boolean) => boolean;
 export declare const preserveScrollTop: (scrollTop: number, anchorOffsetBefore: number, anchorOffsetAfter: number) => number;
+export declare const fitChatOverlayToViewport: ({ viewportLeft, viewportTop, viewportWidth, viewportHeight, insetLeft, insetRight, insetTop, insetBottom, anchorLeft, anchorRight, anchorTop, anchorBottom, preferredWidth, overlayHeight, alignEnd, gap }: {
+    viewportLeft: number;
+    viewportTop: number;
+    viewportWidth: number;
+    viewportHeight: number;
+    insetLeft: number;
+    insetRight: number;
+    insetTop: number;
+    insetBottom: number;
+    anchorLeft: number;
+    anchorRight: number;
+    anchorTop: number;
+    anchorBottom: number;
+    preferredWidth: number;
+    overlayHeight: number;
+    alignEnd?: boolean;
+    gap?: number;
+}) => {
+    left: number;
+    top: number;
+    width: number;
+};
 export declare const recordPrivateUnread: (counts: Map<string, number>, senderUserId: string, shouldCount: boolean) => void;
 export declare const shouldRecordPrivateUnread: ({ countUnread, isNew, mine, ignored, selected }: {
     countUnread: boolean;

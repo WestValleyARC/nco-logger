@@ -11,18 +11,25 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 const dashboard = read('server/dist/views/dashboard.ejs');
 const navbar = read('server/dist/views/partials/navbar.ejs');
 const footer = read('server/dist/views/partials/footer.ejs');
+const myAccount = read('server/dist/views/myAccount.ejs');
 const dashboardClient = read('client/dist/public/js/byView/dashboard/main.js');
 const favoriteWidgets = read('client/src/public/js/lib/widgets.ts');
 const legacyFavoriteClient = read('client/dist/public/js/lib/old__clientUtils.js');
 const waitingPage = read('server/dist/views/netNotRunning.ejs');
 const liveNetController = read('server/dist/controllers/liveNetController.js');
 const landingCss = read('client/dist/public/css/app-shell.css');
+const loggerLightCss = read('client/dist/public/css/nco-logger-light.css');
 const appearanceClient = read('client/dist/public/js/lib/appearance.js');
+const themeControlClient = read('client/src/public/js/lib/themeControl.js');
+const mobileNavigationClient = read('client/src/public/js/lib/mobileNavigation.js');
+const loggerClient = read('client/src/public/js/byView/liveNet/ncoLogger.js');
 const heroTimeClient = read('client/dist/public/js/lib/heroTime.js');
 const head = read('server/dist/views/partials/head.ejs');
 const serverUtils = read('server/dist/lib/serverUtils.js');
 const dayHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-phoenix-day-final.png');
 const nightHeroPath = path.join(root, 'client/dist/public/img/nco-logger-hero-phoenix-night-final.png');
+const lightLogoPath = path.join(root, 'client/dist/public/img/NCO_Logger_Logo_Light_Mode.png');
+const compactLightLogoPath = path.join(root, 'client/dist/public/img/NCO_Logger_Logo_compact_Light_Mode.png');
 const { getCheckInCounts } = require('../server/dist/controllers/liveNetController');
 
 test('landing hero uses the approved copy, actions, logo identity, and tower artwork', () => {
@@ -35,7 +42,12 @@ test('landing hero uses the approved copy, actions, logo identity, and tower art
     assert.match(dashboard, /href="#net-schedule"/);
     assert.match(landingCss, /\.landing-page \.landing-hero\s*\{[\s\S]*background-image:\s*var\(--app-dashboard-hero-image\)/);
     assert.match(navbar, /src="\/img\/NCO_Logger_Logo_navbar\.png"/);
+    assert.match(navbar, /src="\/img\/NCO_Logger_Logo_Light_Mode\.png"/);
     assert.match(navbar, /alt="NCO Logger by WVARC"/);
+    assert.match(footer, /NCO_Logger_Logo\.png[\s\S]*NCO_Logger_Logo_Light_Mode\.png/);
+    assert.match(loggerClient, /NCO_Logger_Logo_compact\.png[\s\S]*NCO_Logger_Logo_compact_Light_Mode\.png/);
+    assert.ok(fs.statSync(lightLogoPath).size > 100000);
+    assert.ok(fs.statSync(compactLightLogoPath).size > 100000);
     assert.ok(fs.statSync(dayHeroPath).size > 100000);
     assert.ok(fs.statSync(dayHeroPath).size < 5000000);
     assert.ok(fs.statSync(nightHeroPath).size > 100000);
@@ -94,6 +106,80 @@ test('Appearance remains responsible only for the application color theme', () =
     assert.match(appearanceClient, /if \(appearance === 'system'\)\s+applyAppearance\(appearance\)/);
     assert.match(appearanceClient, /systemDarkMode\.addEventListener\('change', handleSystemChange\)/);
     assert.match(head, /Blocking by design:[\s\S]*<script src="\/js\/lib\/appearance\.js\?v=<%= server\.appAssetVersion %>"><\/script>/);
+});
+
+test('the shared navigation owns the single theme preference control', () => {
+    assert.match(navbar, /type="checkbox" data-appearance-control role="switch"/);
+    assert.doesNotMatch(navbar, /<select[^>]*data-appearance-control|<option value="system">/);
+    assert.ok(navbar.indexOf('data-appearance-control') > navbar.indexOf('Log out'));
+    assert.match(navbar, /themeControl\.js\?v=<%= server\.appAssetVersion %>/);
+    assert.doesNotMatch(myAccount, /name="appearance"|id="appearance-settings"/);
+    assert.match(themeControlClient, /window\.ncoLoggerAppearance/);
+    assert.match(themeControlClient, /appearanceManager\.setAppearance\(control\.checked \? 'dark' : 'light'\)/);
+    assert.match(themeControlClient, /appearance === 'system' \? ' from system preference' : ''/);
+    assert.match(themeControlClient, /control\.setAttribute\('aria-label', `\$\{current\} theme active\$\{source\}\. Switch to \$\{target\} theme\.`\)/);
+    assert.match(themeControlClient, /ncoLogger:appearancechange/);
+    assert.doesNotMatch(navbar, /data-appearance-label|class="app-theme-state"/);
+    assert.match(landingCss, /\.app-theme-logo-light\s*\{\s*display:\s*none !important/);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-theme-logo-dark\s*\{\s*display:\s*none !important/);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-theme-logo-light\s*\{\s*display:\s*block !important/);
+    assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-navbar\s*\{[^}]*background:\s*rgba\(247, 250, 251, \.97\) !important/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] body\.app-page:not\(\.nco-logger-page\) \.app-footer\s*\{[^}]*background:\s*#e4edef !important/s);
+});
+
+test('collapsed site navigation is an accessible viewport drawer without changing desktop navigation', () => {
+    assert.match(navbar, /data-mobile-nav-trigger aria-controls="navmenu" aria-expanded="false"/);
+    assert.match(navbar, /class="navbar-collapse app-mobile-drawer" id="navmenu" data-mobile-nav-drawer/);
+    assert.match(navbar, /data-mobile-nav-close aria-label="Close navigation menu"/);
+    assert.match(navbar, /data-mobile-nav-backdrop hidden aria-hidden="true"/);
+    assert.match(navbar, /mobileNavigation\.js\?v=<%= server\.appAssetVersion %>/);
+    assert.doesNotMatch(navbar, /data-bs-toggle="collapse"|data-bs-target="#navmenu"/);
+    assert.ok(navbar.indexOf('app-theme-item') > navbar.indexOf('Log out'));
+    assert.match(navbar, /if \(user\.isLoggedIn\)[\s\S]*href="\/views\/favorites"[\s\S]*href="\/views\/myaccount"[\s\S]*Log out[\s\S]*else[\s\S]*href="\/views\/login"/);
+
+    assert.match(landingCss, /@media \(max-width: 991\.98px\)[\s\S]*\.app-navbar \.app-mobile-drawer\s*\{[^}]*position:\s*fixed[^}]*width:\s*min\(84vw, 20rem\)[^}]*height:\s*100dvh[^}]*transform:\s*translateX\(100%\)/s);
+    assert.match(landingCss, /\.app-mobile-nav-backdrop\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*1051/s);
+    assert.match(landingCss, /\.app-navbar \.app-mobile-drawer\s*\{[^}]*z-index:\s*1052/s);
+    assert.match(landingCss, /body\.app-mobile-nav-open\s*\{[^}]*position:\s*fixed[^}]*overflow:\s*hidden/s);
+    assert.match(landingCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.app-navbar \.app-mobile-drawer,[\s\S]*transition:\s*none/s);
+
+    assert.match(mobileNavigationClient, /trigger\.setAttribute\('aria-expanded', 'true'\)/);
+    assert.match(mobileNavigationClient, /trigger\.setAttribute\('aria-expanded', 'false'\)/);
+    assert.match(mobileNavigationClient, /backdrop\.addEventListener\('click', \(\) => closeDrawer\(\)\)/);
+    assert.match(mobileNavigationClient, /closeButton\.addEventListener\('click', \(\) => closeDrawer\(\)\)/);
+    assert.match(mobileNavigationClient, /event\.key === 'Escape'/);
+    assert.match(mobileNavigationClient, /querySelectorAll\('\.nav-link'\).*closeDrawer\(\{ restoreFocus: false \}\)/);
+    assert.match(mobileNavigationClient, /trigger\.focus\(\{ preventScroll: true \}\)/);
+    assert.match(mobileNavigationClient, /document\.body\.style\.top = `-\$\{lockedScrollY\}px`/);
+    assert.match(mobileNavigationClient, /window\.scrollTo\(0, lockedScrollY\)/);
+    assert.match(mobileNavigationClient, /window\.matchMedia\('\(min-width: 992px\)'\)/);
+    assert.match(mobileNavigationClient, /drawer\.setAttribute\('inert', ''\)/);
+    assert.match(mobileNavigationClient, /drawer\.setAttribute\('role', 'dialog'\)/);
+    assert.match(mobileNavigationClient, /drawer\.setAttribute\('aria-modal', 'true'\)/);
+});
+
+test('phone dashboard hero reserves a readable copy region and exposes the final artwork', () => {
+    assert.match(landingCss, /@media \(max-width: 767\.98px\)[\s\S]*--landing-mobile-art-height:\s*clamp\(15\.5rem, 72vw, 17\.5rem\)[^}]*padding-bottom:\s*calc\(var\(--landing-mobile-art-height\) \+ \.75rem\)[^}]*background-position:\s*right bottom[^}]*background-size:\s*auto var\(--landing-mobile-art-height\)/s);
+    assert.match(landingCss, /@media \(max-width: 991\.98px\) and \(orientation: landscape\) and \(max-height: 575px\)[\s\S]*background-position:\s*right bottom[^}]*background-size:\s*auto min\(100%, 25rem\)/s);
+});
+
+test('desktop navigation and complete logo presentation remain compact and single-line', () => {
+    assert.match(landingCss, /\.app-navbar \.nav-link\s*\{[^}]*white-space:\s*nowrap/s);
+    assert.match(landingCss, /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-navbar \.navbar-nav\s*\{[^}]*flex-wrap:\s*nowrap/s);
+    assert.match(landingCss, /\.app-brand-logo\s*\{[^}]*height:\s*auto[^}]*max-height:\s*4\.75rem/s);
+    assert.match(landingCss, /\.landing-footer-brand > a,[\s\S]*\.landing-footer-brand img\s*\{[^}]*width:\s*min\(17\.5rem, 100%\)[^}]*height:\s*auto/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-navbar \.app-theme-logo-light\s*\{[^}]*transform:\s*translate\(0\.04923%, 4\.87357%\) scale\(1\.06923\)[^}]*transform-origin:\s*center center/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.app-navbar \.landing-brand-logo\.app-theme-logo-light\s*\{[^}]*transform:\s*translate\(0\.04923%, 4\.8228%\) scale\(1\.06923\)/s);
+    assert.match(landingCss, /:root\[data-theme='light'\] \.landing-footer \.app-theme-logo-light\s*\{[^}]*transform:\s*translate\(0\.41456%, 1\.05528%\) scale\(1\.00425\)[^}]*transform-origin:\s*center center/s);
+    assert.match(landingCss, /@media \(max-width: 991\.98px\)[\s\S]*\.app-theme-toggle\s*\{[^}]*width:\s*fit-content[^}]*min-height:\s*2\.75rem[^}]*gap:\s*\.5rem/s);
+});
+
+test('Logger light appearance keeps intentional chrome and compact-control contrast', () => {
+    assert.match(loggerLightCss, /\.nch-tray-title\s*\{[^}]*color:\s*#0e202a[^}]*background:\s*#f4f8f9/s);
+    assert.match(loggerLightCss, /#netcontrol-ncs-helper > header\s*\{[^}]*color:\s*#f4f8f9[^}]*background:\s*linear-gradient\(135deg, #183844, #102934\)/s);
+    assert.match(loggerLightCss, /\.chat-message-actions-toggle\s*\{[^}]*color:\s*#174e5d[^}]*background:\s*#f2f7f9/s);
+    assert.match(loggerLightCss, /\.chat-icon-control\s*\{[^}]*color:\s*#174e5d !important[^}]*background:\s*#f2f7f9 !important/s);
+    assert.match(loggerLightCss, /\.nch-fixed-status-bar\s*\{[^}]*color:\s*#eef9fb[^}]*background:\s*#071722/s);
 });
 
 test('landing page contains exactly the four approved feature cards', () => {

@@ -186,7 +186,7 @@ class NetScheduledReminder extends EmailBase {
             preheader: `${title} is scheduled for ${scheduledTime}.`,
             heading: `${title} begins soon`,
             blocks: [
-                { type: 'paragraph', text: `${title} is scheduled to begin at ${scheduledTime}. The net will begin in approximately 10 minutes.` },
+                { type: 'paragraph', text: `${title} is scheduled to begin on ${scheduledTime}. The net will begin in approximately 10 minutes.` },
                 { type: 'paragraph', text: 'You received this message because you follow this net.' }
             ],
             cta: { label: 'Open Live Net', path: `/views/livenet/${_id}` },
@@ -386,7 +386,7 @@ class NetCloseReport extends EmailBase {
     }
     static createAttachments({ title, NPID, started, startedAt, closedAt, formattedAttendees, chatLog }) {
         const csvEscape = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
-        const csv = [['Net', 'Callsign', 'Role', 'Highlighted', 'Check-In Date', 'Name', 'Location', 'SigReport', 'Net ID', 'Net Start Date', 'Net Close Date'], ...formattedAttendees.map(a => [title, a.callSign, a.role, a.highlight ? 'True' : '', a.checkInIsoDate, a.displayName, a.location, a.sigReport, NPID, started ? new Date(startedAt).toISOString() : '', closedAt ? new Date(closedAt).toISOString() : ''])].map(row => row.map(csvEscape).join(',')).join('\n');
+        const csv = [['Net', 'Callsign', 'Role', 'Check-In Date', 'Name', 'Location', 'SigReport', 'Net ID', 'Net Start Date', 'Net Close Date'], ...formattedAttendees.map(a => [title, a.callSign, a.role, a.checkInIsoDate, a.displayName, a.location, a.sigReport, NPID, started ? new Date(startedAt).toISOString() : '', closedAt ? new Date(closedAt).toISOString() : ''])].map(row => row.map(csvEscape).join(',')).join('\n');
         const chat = `${title} (ID: ${NPID})\n\n${chatLog || '[ Empty Chat Log ]'}`;
         const slug = slugify(title, { replacement: '_', lower: true, strict: true, trim: true });
         const timestamp = startedAt ? new Date(startedAt).toISOString().replace(/[:.]/g, '-') : 'pre-start';

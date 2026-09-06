@@ -88,6 +88,7 @@ body.nco-logger-page > :is(#local-chat-container, hl-chat.nch-chat-staging):not(
 #netcontrol-ncs-helper .nch-entry-controls::-webkit-scrollbar { width: 0; height: 0; }
 #netcontrol-ncs-helper .nch-admin-only[hidden] { display: none !important; }
 #netcontrol-ncs-helper .nch-resize-zone { position: absolute; z-index: 6; display: block; touch-action: none; background: transparent; opacity: 0; }
+#netcontrol-ncs-helper .nch-resize-zone[hidden] { display: none !important; pointer-events: none !important; }
 #netcontrol-ncs-helper .nch-resize-zone:hover,
 #netcontrol-ncs-helper .nch-resize-zone:focus { background: rgba(141, 227, 238, .38); opacity: 1; outline: 0; }
 #netcontrol-ncs-helper .nch-resize-n { z-index: 7; top: 0; left: 11px; right: 11px; height: 4px; cursor: ns-resize; }
@@ -232,7 +233,6 @@ body.nch-moving-module { cursor: grabbing !important; user-select: none !importa
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned .nch-detail,
 #netcontrol-ncs-helper .nch-row.nch-highlighted:focus-within button.nch-note-preview,
 #netcontrol-ncs-helper .nch-row.nch-highlighted.nch-actions-pinned button.nch-note-preview { color: #211805; }
-#netcontrol-ncs-helper .nch-row.nch-selected-next { border-color: #ff3fbf; box-shadow: 0 0 0 2px rgba(255, 63, 191, .82), 0 0 14px rgba(255, 63, 191, .32); }
 #netcontrol-ncs-helper .nch-drag { align-self: stretch; display: inline-flex; align-items: center; justify-content: center; cursor: grab; color: #9adbe4; user-select: none; }
 #netcontrol-ncs-helper .nch-drag:active { cursor: grabbing; }
 #netcontrol-ncs-helper .nch-drag-locked { cursor: default; color: #6f7c84; }
@@ -249,6 +249,7 @@ body.nch-moving-module { cursor: grabbing !important; user-select: none !importa
 #netcontrol-ncs-helper .nch-avatar { width: 34px; height: 34px; flex: 0 0 34px; object-fit: cover; border: 1px solid #9de9f4; border-radius: 50%; }
 #netcontrol-ncs-helper button.nch-avatar-button { display: inline-flex; width: 34px; height: 34px; flex: 0 0 34px; padding: 0; background: transparent; border: 0; border-radius: 50%; }
 #netcontrol-ncs-helper button.nch-avatar-button:hover { outline: 3px solid #efbf62; }
+#netcontrol-ncs-helper button.nch-station-action-toggle { display: none; }
 #netcontrol-ncs-helper .nch-lurker-row { grid-template-columns: 15px 96px minmax(62px, 1fr) auto; min-height: 29px; gap: 2px; margin: 1px 0; padding: 1px 2px; font-size: calc(10px + var(--nch-font-adjust, 0px)); }
 #netcontrol-ncs-helper :is(.nch-lurker-row, .nch-row.nch-checked-out) .nch-avatar,
 #netcontrol-ncs-helper :is(.nch-lurker-row, .nch-row.nch-checked-out) button.nch-avatar-button { width: 20px; height: 20px; flex-basis: 20px; }
@@ -554,6 +555,29 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
   #netcontrol-ncs-helper .nch-module-header small { display: none; }
   #netcontrol-ncs-helper .nch-call-hint { font-size: 0; }
   #netcontrol-ncs-helper .nch-call-hint::after { content: "Press ENTER"; font-size: calc(9px + var(--nch-font-adjust, 0px)); }
+  #netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-quick-checkin {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-entry-controls {
+  justify-content: flex-start;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-entry-controls {
+  padding-bottom: 9px;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-net-actions {
+  transform: translateY(-4px);
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-checked-out:not(.nch-touch-actions-open) button.nch-hand-toggle {
+  pointer-events: none;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-net-actions {
+  margin-top: 3px;
 }
 
 #netcontrol-ncs-helper .nch-viewer-host { position: absolute; z-index: 100; inset: 0; background: #171c21; }
@@ -1075,11 +1099,6 @@ hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send {
   border-color: rgba(0, 200, 240, .48);
 }
 
-#netcontrol-ncs-helper .nch-row.nch-selected-next {
-  border-color: var(--nch-skin-cyan);
-  box-shadow: inset 3px 0 0 var(--nch-skin-cyan);
-}
-
 #netcontrol-ncs-helper .nch-drag {
   opacity: .45;
   transition: opacity .12s ease, color .12s ease;
@@ -1502,7 +1521,10 @@ hl-chat.nch-chat-docked :is(.chat-text-input, .chat-icon-control, .chat-send-btn
   min-width: 0;
 }
 
-#netcontrol-ncs-helper .nch-checked-out:is(:hover, :focus-within, .nch-actions-pinned) {
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"])
+  .nch-checked-out:is(:hover, :focus-within, .nch-actions-pinned),
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"])
+  .nch-checked-out.nch-touch-actions-open {
   grid-template-columns: 15px minmax(105px, 1fr) minmax(112px, auto);
 }
 
@@ -1601,11 +1623,13 @@ hl-chat.nch-chat-docked .chat-options-menu > summary {
 hl-chat.nch-chat-docked .chat-options-menu > summary::-webkit-details-marker { display: none; }
 
 hl-chat.nch-chat-docked .chat-options-panel {
-  position: absolute;
+  position: fixed;
   z-index: 30;
   top: calc(100% + 4px);
   left: 0;
   width: 190px;
+  max-width: calc(100vw - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right)));
+  box-sizing: border-box;
   padding: 6px;
   background: #07111a;
   border: 1px solid #294653;
@@ -1669,7 +1693,12 @@ hl-chat.nch-chat-docked .chat-recipient-toggle {
   font-size: calc(var(--nch-chat-ui-font-size) + 1px) !important;
 }
 
-hl-chat.nch-chat-floating:has(.chat-recipient-menu:not([hidden])) {
+hl-chat.nch-chat-floating:has(:is(
+  .chat-recipient-menu:not([hidden]),
+  .chat-unread-menu:not([hidden]),
+  .chat-emoji-picker:not([hidden]),
+  .chat-options-menu[open]
+)) {
   overflow: visible !important;
 }
 
@@ -1682,4 +1711,495 @@ hl-chat.nch-chat-docked .chat-icon-control {
 hl-chat.nch-chat-docked .chat-message-actions,
 hl-chat.nch-chat-docked .chat-message-action {
   border-radius: 4px !important;
+}
+
+hl-chat.nch-chat-docked .nch-command-suggestions {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  max-height: min(40dvh, 18rem);
+  margin-bottom: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  background: var(--nch-skin-surface-raised, #0d1a25);
+  border: 1px solid var(--nch-skin-border-major, #13708b);
+  border-radius: 6px;
+}
+
+hl-chat.nch-chat-docked .nch-command-suggestions[hidden] { display: none; }
+
+hl-chat.nch-chat-docked .nch-command-suggestion {
+  display: grid;
+  min-height: 40px;
+  grid-template-columns: minmax(7rem, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  color: var(--nch-skin-text, #f6f8f9);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--nch-skin-border-subtle, #294653);
+  text-align: left;
+}
+
+hl-chat.nch-chat-docked .nch-command-suggestion:is(:hover, :focus-visible) {
+  background: rgba(0, 200, 240, .12);
+  outline: 2px solid var(--nch-skin-cyan, #00c8f0);
+  outline-offset: -2px;
+}
+
+hl-chat.nch-chat-docked .nch-command-suggestion code {
+  color: var(--nch-skin-cyan-soft, #78d8e8);
+  overflow-wrap: anywhere;
+}
+
+#netcontrol-ncs-helper .nch-hotkey-help {
+  margin-top: 10px;
+  padding: 8px;
+  background: var(--nch-skin-surface-raised);
+  border: 1px solid var(--nch-skin-border-subtle);
+  border-radius: 6px;
+}
+
+#netcontrol-ncs-helper .nch-hotkey-help > summary {
+  color: var(--nch-skin-cyan-soft);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+#netcontrol-ncs-helper .nch-hotkey-help[open] > summary { margin-bottom: 8px; }
+
+/* Responsive layout contexts are independent saved workspaces. */
+#netcontrol-ncs-helper .nch-layout-context {
+  display: block;
+  padding: 4px 5px 1px;
+  color: var(--nch-skin-muted);
+  font-size: calc(9px + var(--nch-font-adjust, 0px));
+  text-align: center;
+}
+
+#netcontrol-ncs-helper {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+#netcontrol-ncs-helper > .nch-body { height: auto; }
+
+#netcontrol-ncs-helper :is(.nch-help-modal, .nch-update-modal, .nch-photo-viewer, .nch-edit-modal) {
+  position: fixed;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+}
+
+#netcontrol-ncs-helper :is(.nch-help-card, .nch-update-card, .nch-photo-card, .nch-edit-card) {
+  max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 20px);
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
+}
+
+#netcontrol-ncs-helper :is(.nch-update-card, .nch-edit-card) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#netcontrol-ncs-helper .nch-net-title {
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  font-size: clamp(13px, calc(1.2vw + 8px + var(--nch-font-adjust, 0px)), calc(17px + var(--nch-font-adjust, 0px)));
+  line-height: 1.05;
+  text-wrap: balance;
+  white-space: normal;
+}
+
+#netcontrol-ncs-helper .nch-net-title a {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-body {
+  --nch-phone-footer-height: 40px;
+  height: auto;
+  min-height: calc(100dvh - 44px - env(safe-area-inset-top));
+  grid-template-rows: auto auto;
+  padding-top: calc(47px + env(safe-area-inset-top));
+  padding-bottom: calc(var(--nch-phone-footer-height) + env(safe-area-inset-bottom));
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] {
+  z-index: auto;
+  grid-template-rows: auto auto;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] > header {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  right: 0;
+  left: 0;
+  min-height: calc(44px + env(safe-area-inset-top));
+  padding-top: calc(2px + env(safe-area-inset-top));
+}
+
+body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]),
+body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #nco-logger-root,
+#netcontrol-ncs-helper[data-layout-context^="phone"] {
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-dashboard {
+  height: calc(var(--nch-grid-rows) * 26px + (var(--nch-grid-rows) - 1) * var(--nch-grid-gap));
+  min-height: 0;
+  grid-template-rows: repeat(var(--nch-grid-rows), 26px);
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] :is(.nch-module-content, .nch-module-header) {
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-resize-zone {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+#netcontrol-ncs-helper .nch-station-action-modal {
+  position: fixed;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#netcontrol-ncs-helper .nch-station-action-modal[hidden] { display: none !important; }
+
+#netcontrol-ncs-helper .nch-station-action-backdrop {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: rgba(0, 0, 0, .58);
+  pointer-events: auto;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: min(34rem, 100%);
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel > .nch-row-actions {
+  position: static;
+  display: grid;
+  width: 100%;
+  max-height: 100%;
+  padding: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 12px;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel .nch-tray-title {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  grid-template-columns: 78px minmax(0, 1fr) 36px 36px;
+  gap: 6px;
+  padding: 2px 0 6px;
+  background: #07131c;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel .nch-tray-title > :is(button.nch-tray-help, button.nch-tray-close) {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  align-self: center;
+  padding: 0;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  line-height: 1;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel button.nch-tray-close {
+  grid-column: 4;
+  padding: 0;
+  color: #fff;
+  background: #8e2834;
+  border-color: #ff9da7;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+#netcontrol-ncs-helper .nch-station-action-panel .nch-tray-group > span > button {
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+  text-align: center;
+  text-wrap: balance;
+}
+
+@media (max-width: 400px) {
+  #netcontrol-ncs-helper .nch-station-action-panel > .nch-row-actions.nch-active-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #netcontrol-ncs-helper .nch-station-action-panel .nch-tray-group {
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+
+  #netcontrol-ncs-helper .nch-station-action-panel :is(.nch-management-actions, .nch-status-actions, .nch-attention-actions) > span {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 126px), 1fr));
+  }
+
+  #netcontrol-ncs-helper .nch-station-action-panel .nch-role-actions > span {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) > hl-chat.nch-chat-floating {
+  position: absolute !important;
+  z-index: 70 !important;
+}
+
+body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
+  hl-chat.nch-chat-docked :is(.chat-messages, .nch-private-messages, .nch-pinned-chat-strip) {
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-fixed-status-bar {
+  position: fixed;
+  z-index: 90;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: calc(var(--nch-phone-footer-height, 40px) + env(safe-area-inset-bottom));
+  min-height: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: 17px minmax(0, 1fr);
+  gap: 0 8px;
+  margin: 0;
+  padding: 1px max(7px, env(safe-area-inset-right)) calc(1px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-status {
+  width: 100%;
+  height: auto;
+  min-height: 17px;
+  overflow: hidden;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-status-icon {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  font-size: 6px;
+  line-height: 8px;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode {
+  min-width: 0;
+  justify-self: end;
+  text-align: right;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-footer-mode::after {
+  content: none;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card {
+  display: grid;
+  width: 100%;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card > span {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  gap: 0;
+  padding: 0 3px;
+  line-height: 1.05;
+  text-align: center;
+  white-space: normal;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card > span + span {
+  padding-left: 3px;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card strong {
+  font-size: calc(12px + var(--nch-font-adjust, 0px));
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-count-card small {
+  max-width: none;
+  overflow: visible;
+  font-size: calc(8px + var(--nch-font-adjust, 0px));
+  line-height: 1;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-entry-controls {
+  padding-bottom: 9px;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row {
+  grid-template-columns: 18px minmax(112px, 128px) minmax(0, 1fr) 36px;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-active-section .nch-row {
+  grid-template-columns: 20px minmax(112px, 136px) minmax(0, 1fr) 36px;
+}
+
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-active-section .nch-row {
+  grid-template-columns: 18px minmax(112px, 128px) minmax(0, 1fr) 36px;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) button.nch-station-action-toggle {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  color: #bdeef5;
+  background: rgba(7, 19, 28, .72);
+  border: 1px solid #497582;
+  border-radius: 7px;
+  touch-action: manipulation;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) button.nch-station-action-toggle:is(:active, :focus-visible, .is-open) {
+  color: #07131c;
+  background: #8dd9e4;
+  border-color: #d8fbff;
+  outline: none;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) button.nch-station-action-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"])
+  :is(.nch-row.nch-checked-out, .nch-lurker-row) .nch-row-text {
+  display: inline-flex;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"])
+  :is(.nch-row.nch-checked-out, .nch-lurker-row) .nch-inline-actions {
+  display: none;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"])
+  :is(.nch-row.nch-checked-out, .nch-lurker-row).nch-touch-actions-open .nch-row-text {
+  display: none;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"])
+  :is(.nch-row.nch-checked-out, .nch-lurker-row).nch-touch-actions-open .nch-inline-actions {
+  display: inline-flex;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-active-section .nch-row-info {
+  min-width: 0;
+  align-items: stretch;
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-active-section .nch-row-text {
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-active-section .nch-meta {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-active-section .nch-status-tags {
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-active-section :is(.nch-role-badge, .nch-tag) {
+  flex: 0 0 auto;
+}
+
+@media (hover: none), (pointer: coarse) {
+  #netcontrol-ncs-helper .nch-module-header {
+    min-height: 32px;
+    flex-basis: 32px;
+    line-height: 32px;
+    touch-action: pan-y;
+  }
+
+  #netcontrol-ncs-helper .nch-resize-zone {
+    min-width: 18px;
+    min-height: 18px;
+  }
+
+  #netcontrol-ncs-helper .nch-resize-e,
+  #netcontrol-ncs-helper .nch-resize-w { width: 18px; }
+  #netcontrol-ncs-helper .nch-resize-n,
+  #netcontrol-ncs-helper .nch-resize-s { height: 18px; }
+}
+
+@media (max-width: 600px) {
+  #netcontrol-ncs-helper header {
+    min-height: 44px;
+    grid-template-columns: minmax(72px, .8fr) minmax(0, 2.4fr) minmax(48px, .8fr);
+  }
+
+  #netcontrol-ncs-helper .nch-helper-logo { height: 28px; }
+  #netcontrol-ncs-helper .nch-helper-brand small { display: none; }
+  #netcontrol-ncs-helper .nch-header-menu > summary { min-height: 40px; }
+  #netcontrol-ncs-helper .nch-header-menu-popover {
+    max-height: calc(100dvh - 54px - env(safe-area-inset-bottom));
+  }
+
+  #netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-station-action-panel :is(.nch-row-actions, .nch-inline-actions) button:not(.nch-tray-help):not(.nch-tray-close) {
+    min-height: 44px;
+  }
 }

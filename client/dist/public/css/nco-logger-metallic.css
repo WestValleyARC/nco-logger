@@ -55,7 +55,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07);
 }
 
-:root:not([data-theme='light']) body.nco-logger-page #netcontrol-ncs-helper :is(.nch-header-menu-popover, .nch-row-actions, .nch-photo-card, .nch-tray) {
+:root:not([data-theme='light']) body.nco-logger-page #netcontrol-ncs-helper :is(.nch-row-actions, .nch-photo-card, .nch-tray) {
   background: linear-gradient(145deg, #303940 0%, #1d252a 68%, #283138 100%);
   border-color: #66808a;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 12px 30px rgba(0, 0, 0, .58);
@@ -67,7 +67,7 @@
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, .5), 0 1px 0 rgba(255, 255, 255, .05);
 }
 
-:root:not([data-theme='light']) body.nco-logger-page #netcontrol-ncs-helper :is(.nch-header-menu > summary, .nch-header-menu-popover > button, .nch-header-menu-popover > a, .nch-header-menu-popover > details > summary, .nch-font-buttons button) {
+:root:not([data-theme='light']) body.nco-logger-page #netcontrol-ncs-helper .nch-font-buttons button {
   background: linear-gradient(180deg, #46545b 0%, #303c42 52%, #273137 100%);
   border-color: #718d97;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), 0 1px 2px rgba(0, 0, 0, .28);
