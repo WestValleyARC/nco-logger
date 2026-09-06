@@ -3103,6 +3103,16 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         syncStationActionModal();
         return true;
     }
+    function clearTouchInlineActions() {
+        const call = normalizeCall(touchInlineActionCall);
+        touchInlineActionCall = "";
+        const openRows = [...(panel?.querySelectorAll(".nch-touch-actions-open") || [])];
+        openRows.forEach(row => row.classList.remove("nch-touch-actions-open"));
+        const focused = document.activeElement;
+        if (focused instanceof HTMLElement && openRows.some(row => row.contains(focused)))
+            focused.blur();
+        return Boolean(call || openRows.length);
+    }
     function clearDropIndicators() {
         panel?.querySelectorAll(".nch-drop-before, .nch-drop-after").forEach(row => row.classList.remove("nch-drop-before", "nch-drop-after"));
     }
@@ -4513,11 +4523,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                         clearPinnedStationAction(pinnedActionCall);
                     const call = normalizeCall(clickedRow.dataset.call);
                     const closing = touchInlineActionCall === call;
-                    touchInlineActionCall = closing ? "" : call;
-                    panel.querySelectorAll(".nch-touch-actions-open").forEach(row => row.classList.remove("nch-touch-actions-open"));
-                    if (closing)
-                        clickedRow.blur();
-                    else {
+                    clearTouchInlineActions();
+                    if (!closing) {
+                        touchInlineActionCall = call;
                         clickedRow.classList.add("nch-touch-actions-open");
                         clickedRow.focus({ preventScroll: true });
                     }
@@ -4541,6 +4549,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 pinnedActionCall = "";
                 renderQueue();
             }
+            if (!clickedRow && touchInlineActionCall)
+                clearTouchInlineActions();
             const target = event.target.closest("button");
             if (!target)
                 return;
@@ -4954,6 +4964,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 noteDrafts.set(normalizeCall(noteInput.dataset.noteInput), noteInput.value);
         });
         panel.addEventListener("focusout", event => {
+            const touchActionRow = event.target.closest?.(".nch-touch-actions-open");
+            if (touchActionRow && !touchActionRow.contains(event.relatedTarget))
+                clearTouchInlineActions();
             const noteInput = event.target.closest("[data-note-input]");
             if (!noteInput)
                 return;

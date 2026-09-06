@@ -1527,7 +1527,10 @@ hl-chat.nch-chat-docked :is(.chat-text-input, .chat-icon-control, .chat-send-btn
   min-width: 0;
 }
 
-#netcontrol-ncs-helper .nch-checked-out:is(:hover, :focus-within, .nch-actions-pinned) {
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"])
+  .nch-checked-out:is(:hover, :focus-within, .nch-actions-pinned),
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"])
+  .nch-checked-out.nch-touch-actions-open {
   grid-template-columns: 15px minmax(105px, 1fr) minmax(112px, auto);
 }
 

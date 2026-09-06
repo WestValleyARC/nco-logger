@@ -44,11 +44,15 @@ test('touch rows deterministically toggle lurker and checked-out inline actions'
     const css = read('client/dist/public/css/nco-logger.css');
     assert.match(source, /let touchInlineActionCall = ""/);
     assert.match(source, /station\.checkedState !== true && usesTouchStationInteractions\(\) && touchInlineActionCall === call \? " nch-touch-actions-open"/);
-    assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*station\?\.checkedState !== true[\s\S]*const closing = touchInlineActionCall === call[\s\S]*touchInlineActionCall = closing \? "" : call[\s\S]*querySelectorAll\("\.nch-touch-actions-open"\)[\s\S]*if \(closing\) clickedRow\.blur\(\)[\s\S]*classList\.add\("nch-touch-actions-open"\)[\s\S]*clickedRow\.focus\(\{ preventScroll: true \}\)[\s\S]*if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
+    assert.match(source, /function clearTouchInlineActions\(\)[\s\S]*touchInlineActionCall = ""[\s\S]*querySelectorAll\("\.nch-touch-actions-open"\)[\s\S]*classList\.remove\("nch-touch-actions-open"\)[\s\S]*row\.contains\(focused\)[\s\S]*focused\.blur\(\)/);
+    assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*station\?\.checkedState !== true[\s\S]*const closing = touchInlineActionCall === call[\s\S]*clearTouchInlineActions\(\)[\s\S]*if \(!closing\)[\s\S]*touchInlineActionCall = call[\s\S]*classList\.add\("nch-touch-actions-open"\)[\s\S]*clickedRow\.focus\(\{ preventScroll: true \}\)[\s\S]*if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
     assert.match(source, /const clickedInteractive = event\.target\.closest\?\.\("button, input,[^"]+\.nch-row-actions"\)[\s\S]*if \(clickedRow && !clickedInteractive && touchStationActions\)/);
+    assert.match(source, /if \(!clickedRow && touchInlineActionCall\) clearTouchInlineActions\(\)/);
+    assert.match(source, /panel\.addEventListener\("focusout"[\s\S]*\.nch-touch-actions-open[\s\S]*!touchActionRow\.contains\(event\.relatedTarget\)[\s\S]*clearTouchInlineActions\(\)/);
     assert.match(source, /panel\.addEventListener\("contextmenu"[\s\S]*if \(usesTouchStationInteractions\(\)\) \{\s*event\.preventDefault\(\);\s*return;\s*\}/);
     assert.match(source, /\$\{usesTouchStationInteractions\(\) \? "" : stationActionTray/);
     assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\)[\s\S]*:is\(\.nch-row\.nch-checked-out, \.nch-lurker-row\)\.nch-touch-actions-open \.nch-inline-actions\s*\{\s*display:\s*inline-flex/s);
+    assert.match(css, /:not\(\[data-layout-context\^="phone"\]\):not\(\[data-layout-context\^="tablet"\]\)[\s\S]*\.nch-checked-out:is\(:hover, :focus-within, \.nch-actions-pinned\)[\s\S]*\.nch-checked-out\.nch-touch-actions-open\s*\{\s*grid-template-columns:/s);
     assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-checked-out:not\(\.nch-touch-actions-open\) button\.nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
     assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\][^{]*nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
 });
