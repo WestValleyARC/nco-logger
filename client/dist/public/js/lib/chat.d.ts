@@ -35,6 +35,12 @@ export declare class ChatWidget extends HTMLElement {
     private viewerRole;
     private suspended;
     private emojiCategory;
+    private curatedGifs;
+    private gifCategories;
+    private gifCategory;
+    private gifVisibleCount;
+    private gifCategoriesExpanded;
+    private gifCatalogLoaded;
     private lightboxTrigger;
     private lightboxUrl;
     private lightboxMimeType;
@@ -70,6 +76,11 @@ export declare class ChatWidget extends HTMLElement {
     private toggleIgnore;
     private toggleEmojiPicker;
     private positionEmojiPicker;
+    private toggleGifPicker;
+    private loadGifCatalog;
+    private renderGifCategories;
+    private renderGifChoices;
+    private sendCuratedGif;
     private positionTransientOverlay;
     private insertEmoji;
     private clearConnectionRetry;

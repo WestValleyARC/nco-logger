@@ -7,6 +7,7 @@ const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const loadEmoji = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/chatEmoji.js')).href);
+const loadGif = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/chatGif.js')).href);
 const loadChatText = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/chatText.js')).href);
 const loadLoggerResponsive = () => import(pathToFileURL(path.join(root, 'client/dist/public/js/lib/loggerResponsive.js')).href);
 
@@ -148,13 +149,42 @@ test('emoji insertion replaces a selection and returns the restored caret positi
     assert.deepEqual(insertChatEmoji('CQ old net', 3, 6, '📻'), { value: 'CQ 📻 net', caret: 5 });
 });
 
+test('curated GIF picker is searchable, paginated, attributed, and separate from emoji insertion', async () => {
+    const source = read('client/src/public/js/lib/chat.ts');
+    const css = read('client/dist/public/css/local.css');
+    const { filterCuratedGifs } = await loadGif();
+    const fixtures = [
+        { id: 'one', title: 'Radio hello', description: 'wave', category: 'radio-tech', keywords: ['ham'] },
+        { id: 'two', title: 'Happy', description: 'smile', category: 'reactions', keywords: ['joy'] }
+    ];
+    assert.deepEqual(filterCuratedGifs(fixtures, 'reactions', '', 0, 40), [fixtures[1]]);
+    assert.deepEqual(filterCuratedGifs(fixtures, 'reactions', 'radio', 0, 40), [fixtures[0]]);
+    assert.match(source, /class="chat-gif-picker"[\s\S]*class="[^"]*chat-gif-search[^"]*"[\s\S]*class="chat-gif-categories"[\s\S]*class="chat-gif-grid"/);
+    assert.match(source, /body: JSON\.stringify\(\{ text: '', gifId: gif\.id, replyTo: replyToId \}\)/);
+    assert.match(source, /\.chat-gif-button'\)\?\.addEventListener\('click', \(\) => void this\.toggleGifPicker\(\)\)/);
+    assert.match(source, /\.chat-gif-close'\)\?\.addEventListener\('click', \(\) => this\.toggleGifPicker\(false\)\)/);
+    assert.match(source, /image\.src = gif\.thumbnailUrl/);
+    assert.match(source, /button\.title = gif\.attributionText/);
+    assert.match(source, /credit\.textContent = `\$\{gifAttachment\.creator\} · \$\{gifAttachment\.licenseName\}`/);
+    assert.match(source, /toggleGifPicker\(false\)[\s\S]*toggleEmojiPicker\(false\)/);
+    assert.match(source, /gifVisibleCount = 18/);
+    assert.match(source, /chat-gif-categories-more/);
+    assert.match(source, /data\.defaultCategory/);
+    assert.match(source, /positionTransientOverlay\(picker, button, 390, true, 6, true\)/);
+    assert.match(css, /\.chat-gif-picker\s*\{[^}]*max-height:\s*min\(24rem, 58vh\)[^}]*overflow:\s*hidden/s);
+    assert.match(css, /\.chat-gif-categories\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)[^}]*border-bottom:/s);
+    assert.match(css, /\.chat-gif-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit, minmax\(6\.25rem, 1fr\)\)[^}]*overflow-y:\s*auto/s);
+    assert.match(css, /\.chat-gif-choice img\s*\{[^}]*width:\s*100%[^}]*object-fit:\s*contain/s);
+    assert.match(css, /\.chat-gif-button\s*\{[^}]*width:\s*2\.25rem[^}]*font-size:\s*0\.64rem/s);
+});
+
 test('chat image thumbnails stay compact and open an in-page lightbox', () => {
     const css = read('client/dist/public/css/local.css');
     const source = read('client/src/public/js/lib/chat.ts');
     assert.match(css, /\.chat-image\s*\{[^}]*max-width:\s*min\(100%,\s*210px\)[^}]*max-height:\s*160px[^}]*object-fit:\s*contain/s);
     assert.match(css, /\.chat-lightbox-card\s*\{[^}]*width:\s*min\(66vw,\s*1100px\)[^}]*height:\s*min\(66vh,\s*760px\)/s);
     assert.match(source, /imageButton\.type = 'button'/);
-    assert.doesNotMatch(source, /target\s*=\s*['_"]_blank/);
+    assert.doesNotMatch(source, /imageButton[\s\S]{0,300}target\s*=\s*['_"]_blank/);
     assert.match(source, /lightbox && !lightbox\.hidden[\s\S]*event\.key === 'Escape'[\s\S]*closeLightbox\(\)/);
     assert.match(source, /\.chat-lightbox-close'\)\?\.addEventListener\('click', \(\) => this\.closeLightbox\(\)\)/);
     assert.match(source, /event\.key === 'Tab'[\s\S]*document\.activeElement/);
@@ -175,7 +205,7 @@ test('composer controls and text retain the intended accessible styling', () => 
     assert.match(css, /#local-chat-message\s*\{[^}]*resize:\s*none[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-icon-control:focus-visible/);
     assert.match(css, /\.chat-icon-control\s*\{[^}]*width:\s*auto[^}]*min-width:\s*0[^}]*font-size:\s*1\.35rem/s);
-    assert.match(css, /\.chat-form\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto auto[^}]*gap:\s*0\.5rem !important[^}]*align-items:\s*stretch/s);
+    assert.match(css, /\.chat-form\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto auto auto[^}]*gap:\s*0\.5rem !important[^}]*align-items:\s*stretch/s);
     assert.match(css, /\.chat-emoji-tab\s*\{[^}]*font-size:\s*1\.35rem/s);
     assert.match(css, /\.chat-emoji-search::placeholder\s*\{[^}]*color:\s*var\(--chat-accent-bright\)/s);
     assert.match(css, /\.chat-send-btn\s*\{[^}]*align-items:\s*center[^}]*justify-content:\s*center/s);

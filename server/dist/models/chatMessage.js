@@ -27,8 +27,9 @@ const chatMessageSchema = new Schema(
         }],
         attachment: {
             _id: false,
-            kind: { type: String, enum: ['image'] },
+            kind: { type: String, enum: ['image', 'curated-gif'] },
             storageName: { type: String, match: /^[a-f0-9-]+\.(png|jpg|gif|webp)$/ },
+            gifId: { type: String, match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/ },
             mimeType: { type: String, enum: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] },
             size: { type: Number, min: 1, max: 10 * 1024 * 1024 }
         },
@@ -49,8 +50,8 @@ chatMessageSchema.pre('validate', function (next) {
     if (this.scope === 'public' && this.recipientUserProfile) {
         this.invalidate('recipientUserProfile', 'A public message cannot have a private recipient');
     }
-    if (!this.deletedAt && !this.text && !this.attachment?.storageName) {
-        this.invalidate('text', 'A chat message requires text or an image');
+    if (!this.deletedAt && !this.text && !this.attachment?.storageName && !this.attachment?.gifId) {
+        this.invalidate('text', 'A chat message requires text or an attachment');
     }
     next();
 });

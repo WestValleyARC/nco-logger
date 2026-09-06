@@ -11,6 +11,7 @@ const {
 const { requireSameOriginMutation, chatRouteErrorHandler } = require('../server/dist/routes/chatRoutes');
 const { chatMessageSchema } = require('../server/dist/models/chatMessage');
 const { userProfileSchema } = require('../server/dist/models/userProfile');
+const { manifest } = require('../server/dist/lib/curatedGifs');
 
 test('chat display names follow manual, QRZ, account, then callsign precedence', () => {
     assert.equal(chatDisplayName({
@@ -115,6 +116,26 @@ test('public image metadata exposes an authenticated URL but not its storage nam
         url: `/api/chat/${netProfile}/messages/507f1f77bcf86cd799439012/image`
     });
     assert.equal(JSON.stringify(result).includes('private-name'), false);
+});
+
+test('curated GIF messages serialize a stable catalog ID, safe URL, and visible attribution', () => {
+    const userId = '507f1f77bcf86cd799439011';
+    const gif = manifest.items[0];
+    const result = toPublicMessage({
+        _id: { toString: () => '507f1f77bcf86cd799439012' },
+        netProfile: { toString: () => '507f1f77bcf86cd799439013' },
+        userProfile: { toString: () => userId },
+        callSign: 'W1ABC', displayName: 'Alex', text: '', createdAt: new Date(),
+        editedAt: null, deletedAt: null, clearedAt: null,
+        attachment: { kind: 'curated-gif', gifId: gif.id, mimeType: 'image/gif', size: gif.bytes }
+    }, 'netuser', userId);
+    assert.equal(result.attachment.kind, 'curated-gif');
+    assert.equal(result.attachment.gifId, gif.id);
+    assert.equal(result.attachment.url, `/api/chat/gifs/${gif.id}/file`);
+    assert.equal(result.attachment.creator, gif.original_creator);
+    assert.equal(result.attachment.licenseName, gif.license_name);
+    assert.equal(result.attachment.attributionText, gif.attribution_text);
+    assert.equal(JSON.stringify(result.attachment).includes(gif.filename), false);
 });
 
 test('chat action authorization follows the Phase 2 role matrix', () => {

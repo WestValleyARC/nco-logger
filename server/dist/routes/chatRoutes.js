@@ -1,7 +1,9 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 
 const express = require('express');
+const fs = require('fs');
 const router = express.Router();
+const { curatedGifPath, getCuratedGif, listCuratedGifs, manifest } = require('../lib/curatedGifs');
 const {
     listMessages,
     listDirectMessages,
@@ -21,6 +23,15 @@ const {
 } = require('../lib/localChat');
 
 const imageBody = express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES });
+
+const safeExternalUrl = value => {
+    try {
+        const url = new URL(String(value));
+        return url.protocol === 'https:' ? url.href : '#';
+    } catch (_err) {
+        return '#';
+    }
+};
 
 const requireSameOriginMutation = (req, res, next) => {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
@@ -53,6 +64,40 @@ const chatRouteErrorHandler = (err, _req, res, next) => {
 };
 
 router.use(requireSameOriginMutation);
+
+router.get('/gifs', (_req, res) => res.json({
+    endpointVersion: '1.1',
+    source: manifest.source,
+    licenseName: manifest.license_name,
+    licenseUrl: manifest.license_url,
+    categories: [...new Set(manifest.items.map(item => item.category))],
+    defaultCategory: manifest.default_category,
+    gifs: listCuratedGifs()
+}));
+router.get('/gifs/credits', (_req, res) => {
+    const escape = value => String(value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
+    const rows = manifest.items.map(item => `<li><a href="${escape(safeExternalUrl(item.source_file_page_url))}">${
+        escape(item.title)}</a> — ${escape(item.attribution_text)}</li>`).join('');
+    res.type('html').send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>GIF Credits</title><body><main><h1>NCO Logger GIF Credits</h1><p>This self-hosted catalog uses public-domain and Creative Commons footage from <a href="${escape(safeExternalUrl(manifest.source_url))}">Wikimedia Commons</a>, plus a small OpenMoji subset. Each item below includes its source and license.</p><ul>${rows}</ul></main></body></html>`);
+});
+router.get('/gifs/:gifId/file', (req, res) => {
+    const gif = getCuratedGif(req.params.gifId);
+    const filename = curatedGifPath(req.params.gifId);
+    if (!gif || !filename) return res.status(404).json({ endpointVersion: '1.1', error: 'GIF not found' });
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.type('gif');
+    return fs.createReadStream(filename).pipe(res);
+});
+router.get('/gifs/:gifId/thumbnail', (req, res) => {
+    const gif = getCuratedGif(req.params.gifId);
+    const filename = curatedGifPath(req.params.gifId, true);
+    if (!gif || !filename) return res.status(404).json({ endpointVersion: '1.1', error: 'GIF not found' });
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.type('png');
+    return fs.createReadStream(filename).pipe(res);
+});
 
 router.get('/:id/messages', listMessages);
 router.post('/:id/messages', createMessage);

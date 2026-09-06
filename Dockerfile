@@ -10,6 +10,7 @@ RUN npm ci
 COPY client ./client
 COPY server ./server
 COPY scripts ./scripts
+COPY assets/gifs ./assets/gifs
 
 RUN npm run build && npm prune --omit=dev
 
@@ -28,6 +29,7 @@ COPY --from=build --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/server/dist ./server/dist
 COPY --from=build --chown=node:node /app/client/dist ./client/dist
+COPY --from=build --chown=node:node /app/assets/gifs ./assets/gifs
 RUN mkdir -p /app/data/chat-uploads && chown -R node:node /app/data
 
 USER node

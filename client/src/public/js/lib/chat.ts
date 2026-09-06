@@ -11,6 +11,7 @@ import {
     hiddenPinnedMessageCount, isPinnedTextTruncated, trimOldestChatMessages, fitChatOverlayToViewport
 } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
+import { CuratedGif, filterCuratedGifs } from '#@client/lib/chatGif.js';
 import { appendChatText } from '#@client/lib/chatText.js';
 
 const logger = createLogger('lib/chat.ts');
@@ -43,6 +44,16 @@ const chatTimingSummary = (samples: number[]): { count: number; averageMs: numbe
     })
 });
 
+interface UploadedImageAttachment {
+    kind: 'image'; mimeType: string; size: number; url: string;
+}
+
+interface CuratedGifAttachment {
+    kind: 'curated-gif'; gifId: string; mimeType: 'image/gif'; size: number; url: string;
+    title: string; creator: string; licenseName: string; licenseUrl: string;
+    sourceUrl: string; attributionText: string;
+}
+
 interface LocalChatMessage {
     id: string;
     scope: 'public' | 'direct';
@@ -52,7 +63,7 @@ interface LocalChatMessage {
     callSign: string;
     displayName: string;
     text: string;
-    attachment: { kind: 'image'; mimeType: string; size: number; url: string } | null;
+    attachment: UploadedImageAttachment | CuratedGifAttachment | null;
     createdAt: string;
     editedAt: string | null;
     deleted: boolean;
@@ -127,11 +138,18 @@ const isLocalChatMessage = (value: unknown): value is LocalChatMessage => {
     if (!value || typeof value !== 'object') return false;
     const message = value as Record<string, unknown>;
     const attachment = message['attachment'];
-    const validAttachment = attachment === null || (typeof attachment === 'object' && attachment !== null
-        && (attachment as Record<string, unknown>)['kind'] === 'image'
-        && typeof (attachment as Record<string, unknown>)['mimeType'] === 'string'
-        && typeof (attachment as Record<string, unknown>)['size'] === 'number'
-        && typeof (attachment as Record<string, unknown>)['url'] === 'string');
+    const attachmentRecord = attachment && typeof attachment === 'object'
+        ? attachment as Record<string, unknown> : null;
+    const validUploadedImage = attachmentRecord?.['kind'] === 'image'
+        && typeof attachmentRecord['mimeType'] === 'string'
+        && typeof attachmentRecord['size'] === 'number'
+        && typeof attachmentRecord['url'] === 'string';
+    const validCuratedGif = attachmentRecord?.['kind'] === 'curated-gif'
+        && ['gifId', 'url', 'title', 'creator', 'licenseName', 'licenseUrl', 'sourceUrl', 'attributionText']
+            .every(key => typeof attachmentRecord[key] === 'string')
+        && attachmentRecord['mimeType'] === 'image/gif'
+        && typeof attachmentRecord['size'] === 'number';
+    const validAttachment = attachment === null || validUploadedImage || validCuratedGif;
     return typeof message['id'] === 'string'
         && typeof message['callSign'] === 'string'
         && (message['scope'] === 'public' || message['scope'] === 'direct')
@@ -195,7 +213,7 @@ export class ChatWidget extends HTMLElement {
     private typingRecipientId: string | null = null;
     private lastTypingSentAt = 0;
     private readonly remoteTypists = new Map<string, ChatTypingEvent>();
-    private readonly composerOperation = new ExclusiveChatOperation<'send' | 'upload'>();
+    private readonly composerOperation = new ExclusiveChatOperation<'send' | 'upload' | 'gif'>();
     private reloadingHistory = false;
     private historyReloadQueued = false;
     private editingMessageId: string | null = null;
@@ -206,6 +224,12 @@ export class ChatWidget extends HTMLElement {
     private viewerRole: ChatHistoryResponse['viewerRole'] = 'netuser';
     private suspended = false;
     private emojiCategory = CHAT_EMOJI_CATEGORIES[0]?.id ?? '';
+    private curatedGifs: CuratedGif[] = [];
+    private gifCategories: string[] = [];
+    private gifCategory = '';
+    private gifVisibleCount = 18;
+    private gifCategoriesExpanded = false;
+    private gifCatalogLoaded = false;
     private lightboxTrigger: HTMLElement | null = null;
     private lightboxUrl = '';
     private lightboxMimeType = '';
@@ -239,6 +263,11 @@ export class ChatWidget extends HTMLElement {
         const toggle = this.querySelector<HTMLButtonElement>('.chat-emoji-button');
         if (picker && !picker.hidden && !picker.contains(target) && !toggle?.contains(target)) {
             this.toggleEmojiPicker(false);
+        }
+        const gifPicker = this.querySelector<HTMLElement>('.chat-gif-picker');
+        const gifToggle = this.querySelector<HTMLButtonElement>('.chat-gif-button');
+        if (gifPicker && !gifPicker.hidden && !gifPicker.contains(target) && !gifToggle?.contains(target)) {
+            this.toggleGifPicker(false);
         }
         this.querySelectorAll<HTMLElement>('.chat-quick-reactions:not([hidden])').forEach(menu => {
             if (!menu.contains(target) && !menu.parentElement?.contains(target)) menu.hidden = true;
@@ -280,6 +309,13 @@ export class ChatWidget extends HTMLElement {
             this.querySelector<HTMLButtonElement>('.chat-emoji-button')?.focus();
             return;
         }
+        const gifPicker = this.querySelector<HTMLElement>('.chat-gif-picker');
+        if (gifPicker && !gifPicker.hidden) {
+            event.preventDefault();
+            this.toggleGifPicker(false);
+            this.querySelector<HTMLButtonElement>('.chat-gif-button')?.focus();
+            return;
+        }
         const recipientMenu = this.querySelector<HTMLElement>('.chat-recipient-menu');
         if (recipientMenu && !recipientMenu.hidden) {
             event.preventDefault();
@@ -313,6 +349,11 @@ export class ChatWidget extends HTMLElement {
     private positionOpenTransientOverlays(): void {
         const picker = this.querySelector<HTMLElement>('.chat-emoji-picker');
         if (picker && !picker.hidden) this.positionEmojiPicker();
+        const gifPicker = this.querySelector<HTMLElement>('.chat-gif-picker');
+        const gifButton = this.querySelector<HTMLButtonElement>('.chat-gif-button');
+        if (gifPicker && gifButton && !gifPicker.hidden) {
+            this.positionTransientOverlay(gifPicker, gifButton, 390, true, 6, true);
+        }
         const recipientMenu = this.querySelector<HTMLElement>('.chat-recipient-menu');
         const recipientToggle = this.querySelector<HTMLButtonElement>('.chat-recipient-toggle');
         if (recipientMenu && recipientToggle && !recipientMenu.hidden) {
@@ -403,10 +444,24 @@ export class ChatWidget extends HTMLElement {
                         <div class="chat-emoji-grid" role="group" aria-label="Available emoji"></div>
                         <div class="chat-emoji-empty text-muted" role="status" hidden>No emoji found</div>
                     </div>
+                    <div class="chat-gif-picker" role="dialog" aria-label="GIF picker" hidden>
+                        <div class="chat-gif-picker-header">
+                            <strong>GIFs <span class="chat-gif-current-category"></span></strong>
+                            <button class="chat-gif-close" type="button" aria-label="Close GIF picker">×</button>
+                        </div>
+                        <label class="visually-hidden" for="local-chat-gif-search">Search GIFs</label>
+                        <input id="local-chat-gif-search" class="form-control form-control-sm chat-gif-search" type="search" placeholder="Search GIFs" autocomplete="off">
+                        <div class="chat-gif-categories" role="group" aria-label="GIF categories"></div>
+                        <div class="chat-gif-grid" role="list" aria-label="Available GIFs"></div>
+                        <div class="chat-gif-empty text-muted" role="status" hidden>No GIFs found</div>
+                        <button class="chat-gif-more" type="button" hidden>Load more</button>
+                        <a class="chat-gif-credits" href="/api/chat/gifs/credits" target="_blank" rel="noopener noreferrer">GIF credits and license</a>
+                    </div>
                     <form class="chat-form">
                         <label class="visually-hidden" for="local-chat-message">Chat message</label>
                         <textarea id="local-chat-message" class="form-control chat-text-input" rows="1" autocomplete="off" placeholder="Message the net…" required></textarea>
                         <button class="chat-icon-control chat-emoji-button" type="button" title="Add emoji" aria-label="Add emoji" aria-expanded="false">😊</button>
+                        <button class="chat-icon-control chat-gif-button" type="button" title="Share a GIF" aria-label="Share a GIF" aria-expanded="false">GIF</button>
                         <button class="chat-icon-control chat-image-button" type="button" title="Share image" aria-label="Share image">🖼️</button>
                         <input id="local-chat-image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
                         <button class="btn btn-primary chat-send-btn" type="submit">Send</button>
@@ -441,6 +496,16 @@ export class ChatWidget extends HTMLElement {
             }
         });
         this.querySelector<HTMLButtonElement>('.chat-emoji-button')?.addEventListener('click', () => this.toggleEmojiPicker());
+        this.querySelector<HTMLButtonElement>('.chat-gif-button')?.addEventListener('click', () => void this.toggleGifPicker());
+        this.querySelector<HTMLButtonElement>('.chat-gif-close')?.addEventListener('click', () => this.toggleGifPicker(false));
+        this.querySelector<HTMLInputElement>('.chat-gif-search')?.addEventListener('input', () => {
+            this.gifVisibleCount = 18;
+            this.renderGifChoices();
+        });
+        this.querySelector<HTMLButtonElement>('.chat-gif-more')?.addEventListener('click', () => {
+            this.gifVisibleCount += 18;
+            this.renderGifChoices();
+        });
         this.querySelector<HTMLButtonElement>('.chat-image-button')?.addEventListener('click', () => {
             this.querySelector<HTMLInputElement>('#local-chat-image')?.click();
         });
@@ -819,6 +884,7 @@ export class ChatWidget extends HTMLElement {
         picker.hidden = !open;
         button.setAttribute('aria-expanded', String(open));
         if (open) {
+            this.toggleGifPicker(false);
             this.closeMessageActions();
             this.toggleRecipientMenu(false);
             this.toggleUnreadMenu(false);
@@ -835,8 +901,172 @@ export class ChatWidget extends HTMLElement {
         this.positionTransientOverlay(picker, button, 352, true, 8);
     }
 
+    private async toggleGifPicker(force?: boolean): Promise<void> {
+        const picker = this.querySelector<HTMLElement>('.chat-gif-picker');
+        const button = this.querySelector<HTMLButtonElement>('.chat-gif-button');
+        if (!picker || !button) return;
+        const open = force ?? picker.hidden;
+        picker.hidden = !open;
+        button.setAttribute('aria-expanded', String(open));
+        if (!open) return;
+        this.toggleEmojiPicker(false);
+        this.closeMessageActions();
+        this.toggleRecipientMenu(false);
+        this.toggleUnreadMenu(false);
+        this.querySelectorAll<HTMLElement>('.chat-quick-reactions').forEach(menu => { menu.hidden = true; });
+        this.positionTransientOverlay(picker, button, 390, true, 6, true);
+        if (!this.gifCatalogLoaded) await this.loadGifCatalog();
+        this.querySelector<HTMLInputElement>('.chat-gif-search')?.focus();
+    }
+
+    private async loadGifCatalog(): Promise<void> {
+        const empty = this.querySelector<HTMLElement>('.chat-gif-empty');
+        try {
+            const response = await fetch('/api/chat/gifs', { credentials: 'same-origin' });
+            const data = (await response.json()) as {
+                gifs?: CuratedGif[]; categories?: string[]; defaultCategory?: string; error?: string;
+            };
+            if (!response.ok || !Array.isArray(data.gifs) || !Array.isArray(data.categories)) {
+                throw new Error(data.error || 'GIF catalog unavailable');
+            }
+            this.curatedGifs = data.gifs.filter(gif => typeof gif?.id === 'string'
+                && typeof gif.title === 'string' && typeof gif.category === 'string'
+                && Array.isArray(gif.keywords) && typeof gif.thumbnailUrl === 'string');
+            this.gifCategories = data.categories.filter(category => typeof category === 'string');
+            this.gifCategory = typeof data.defaultCategory === 'string'
+                && this.gifCategories.includes(data.defaultCategory)
+                ? data.defaultCategory : (this.gifCategories[0] || '');
+            this.gifCatalogLoaded = true;
+            this.renderGifCategories();
+            this.renderGifChoices();
+        } catch (error) {
+            if (empty) {
+                empty.textContent = error instanceof Error ? error.message : 'GIF catalog unavailable';
+                empty.hidden = false;
+            }
+        }
+    }
+
+    private renderGifCategories(): void {
+        const categories = this.querySelector<HTMLElement>('.chat-gif-categories');
+        if (!categories) return;
+        categories.replaceChildren();
+        const currentCategory = this.querySelector<HTMLElement>('.chat-gif-current-category');
+        if (currentCategory) currentCategory.textContent = `· ${this.gifCategory.replace(/-/g, ' ')}`;
+        const collapsedCategories = this.gifCategories.slice(0, 5);
+        if (!collapsedCategories.includes(this.gifCategory) && this.gifCategory) {
+            collapsedCategories[collapsedCategories.length - 1] = this.gifCategory;
+        }
+        const displayedCategories = this.gifCategoriesExpanded ? this.gifCategories : collapsedCategories;
+        displayedCategories.forEach(category => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'chat-gif-category';
+            button.textContent = category.replace(/-/g, ' ');
+            button.setAttribute('aria-pressed', String(category === this.gifCategory));
+            button.addEventListener('click', () => {
+                this.gifCategory = category;
+                this.gifVisibleCount = 18;
+                this.gifCategoriesExpanded = false;
+                const search = this.querySelector<HTMLInputElement>('.chat-gif-search');
+                if (search) search.value = '';
+                this.renderGifCategories();
+                this.renderGifChoices();
+            });
+            categories.append(button);
+        });
+        if (this.gifCategories.length > 5) {
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'chat-gif-categories-more';
+            more.textContent = this.gifCategoriesExpanded ? 'Less' : 'More…';
+            more.setAttribute('aria-expanded', String(this.gifCategoriesExpanded));
+            more.addEventListener('click', () => {
+                this.gifCategoriesExpanded = !this.gifCategoriesExpanded;
+                this.renderGifCategories();
+                this.positionOpenTransientOverlays();
+            });
+            categories.append(more);
+        }
+    }
+
+    private renderGifChoices(): void {
+        const grid = this.querySelector<HTMLElement>('.chat-gif-grid');
+        const search = this.querySelector<HTMLInputElement>('.chat-gif-search');
+        const empty = this.querySelector<HTMLElement>('.chat-gif-empty');
+        const more = this.querySelector<HTMLButtonElement>('.chat-gif-more');
+        if (!grid || !search || !empty || !more) return;
+        const allMatches = filterCuratedGifs(this.curatedGifs, this.gifCategory, search.value, 0, this.curatedGifs.length);
+        const matches = allMatches.slice(0, this.gifVisibleCount);
+        grid.replaceChildren();
+        matches.forEach(gif => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'chat-gif-choice';
+            button.setAttribute('role', 'listitem');
+            button.setAttribute('aria-label', `Send ${gif.title} GIF`);
+            button.title = gif.attributionText;
+            const image = document.createElement('img');
+            image.src = gif.thumbnailUrl;
+            image.alt = '';
+            image.loading = 'lazy';
+            const label = document.createElement('span');
+            label.textContent = gif.title;
+            button.append(image, label);
+            button.addEventListener('click', () => void this.sendCuratedGif(gif));
+            grid.append(button);
+        });
+        empty.textContent = 'No GIFs found';
+        empty.hidden = allMatches.length > 0;
+        more.hidden = matches.length >= allMatches.length;
+    }
+
+    private async sendCuratedGif(gif: CuratedGif): Promise<void> {
+        const recipientId = this.selectedRecipientId;
+        const replyToId = this.replyingToId;
+        const signal = this.connectionAbort?.signal;
+        if (signal?.aborted || !this.composerOperation.begin('gif')) return;
+        this.stopTyping();
+        this.setComposerDisabled(true);
+        this.setStatus('Sending GIF…');
+        try {
+            const requestPath = recipientId
+                ? `/api/chat/${encodeURIComponent(this.npid)}/direct/${encodeURIComponent(recipientId)}/messages`
+                : `/api/chat/${encodeURIComponent(this.npid)}/messages`;
+            const options: RequestInit = {
+                method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: '', gifId: gif.id, replyTo: replyToId })
+            };
+            if (signal) options.signal = signal;
+            const response = await fetch(requestPath, options);
+            const data = (await response.json()) as { message?: LocalChatMessage; error?: string };
+            if (!response.ok || !data.message || !isLocalChatMessage(data.message)) {
+                throw new Error(chatRequestErrorMessage(response.status, data.error, 'GIF could not be sent'));
+            }
+            if (data.message.scope === 'direct') this.reconcileDirectMessages([data.message], false);
+            else {
+                reconcileChatMessages(this.publicMessages, [data.message]);
+                trimOldestChatMessages(this.publicMessages, PUBLIC_MESSAGE_LIMIT);
+            }
+            this.toggleGifPicker(false);
+            if (this.selectedRecipientId === recipientId) {
+                this.setReply(null);
+                if (!this.renderLatestAppend(data.message, true)) this.render({ forceBottom: true });
+            }
+            this.setStatus('GIF shared', false, 2500);
+        } catch (error) {
+            if (!signal?.aborted) this.setStatus(error instanceof Error ? error.message : 'GIF could not be sent', true);
+        } finally {
+            this.composerOperation.end('gif');
+            if (this.isConnected) {
+                this.setComposerDisabled(this.suspended || this.composerOperation.isActive());
+                this.querySelector<HTMLTextAreaElement>('#local-chat-message')?.focus();
+            }
+        }
+    }
+
     private positionTransientOverlay(overlay: HTMLElement, anchor: HTMLElement, preferredWidth: number,
-        alignEnd = false, gap = 4): void {
+        alignEnd = false, gap = 4, constrainToChat = false): void {
         const viewport = window.visualViewport;
         const viewportLeft = viewport?.offsetLeft || 0;
         const viewportTop = viewport?.offsetTop || 0;
@@ -846,16 +1076,36 @@ export class ChatWidget extends HTMLElement {
         probe.className = 'chat-viewport-inset-probe';
         document.body.append(probe);
         const probeStyle = getComputedStyle(probe);
-        const insetLeft = parseFloat(probeStyle.paddingLeft) || 8;
-        const insetRight = parseFloat(probeStyle.paddingRight) || 8;
-        const insetTop = parseFloat(probeStyle.paddingTop) || 8;
-        const insetBottom = parseFloat(probeStyle.paddingBottom) || 8;
+        let insetLeft = parseFloat(probeStyle.paddingLeft) || 8;
+        let insetRight = parseFloat(probeStyle.paddingRight) || 8;
+        let insetTop = parseFloat(probeStyle.paddingTop) || 8;
+        let insetBottom = parseFloat(probeStyle.paddingBottom) || 8;
         probe.remove();
+        let fittedViewportLeft = viewportLeft;
+        let fittedViewportTop = viewportTop;
+        let fittedViewportRight = viewportLeft + viewportWidth;
+        let fittedViewportBottom = viewportTop + viewportHeight;
+        if (constrainToChat) {
+            const chatRect = this.getBoundingClientRect();
+            fittedViewportLeft = Math.max(fittedViewportLeft + insetLeft, chatRect.left + 6);
+            fittedViewportTop = Math.max(fittedViewportTop + insetTop, chatRect.top + 6);
+            fittedViewportRight = Math.min(fittedViewportRight - insetRight, chatRect.right - 6);
+            fittedViewportBottom = Math.min(fittedViewportBottom - insetBottom, chatRect.bottom - 6);
+            insetLeft = 0;
+            insetRight = 0;
+            insetTop = 0;
+            insetBottom = 0;
+        }
+        const fittedViewportWidth = Math.max(0, fittedViewportRight - fittedViewportLeft);
+        const fittedViewportHeight = Math.max(0, fittedViewportBottom - fittedViewportTop);
         overlay.style.position = 'fixed';
-        overlay.style.width = `${Math.min(preferredWidth, Math.max(0, viewportWidth - insetLeft - insetRight))}px`;
+        overlay.style.width = `${Math.min(preferredWidth, fittedViewportWidth)}px`;
+        overlay.style.maxHeight = constrainToChat ? `${fittedViewportHeight}px` : '';
         const anchorRect = anchor.getBoundingClientRect();
         const fitted = fitChatOverlayToViewport({
-            viewportLeft, viewportTop, viewportWidth, viewportHeight, insetLeft, insetRight, insetTop, insetBottom,
+            viewportLeft: fittedViewportLeft, viewportTop: fittedViewportTop,
+            viewportWidth: fittedViewportWidth, viewportHeight: fittedViewportHeight,
+            insetLeft, insetRight, insetTop, insetBottom,
             anchorLeft: anchorRect.left, anchorRight: anchorRect.right, anchorTop: anchorRect.top,
             anchorBottom: anchorRect.bottom, preferredWidth, overlayHeight: overlay.offsetHeight, alignEnd, gap
         });
@@ -1181,10 +1431,12 @@ export class ChatWidget extends HTMLElement {
         const send = this.querySelector<HTMLButtonElement>('.chat-send-btn');
         const image = this.querySelector<HTMLButtonElement>('.chat-image-button');
         const emoji = this.querySelector<HTMLButtonElement>('.chat-emoji-button');
+        const gif = this.querySelector<HTMLButtonElement>('.chat-gif-button');
         if (input) input.disabled = disabled;
         if (send) send.disabled = disabled;
         if (image) image.disabled = disabled;
         if (emoji) emoji.disabled = disabled;
+        if (gif) gif.disabled = disabled;
     }
 
     private handleTypingInput(): void {
@@ -1394,7 +1646,9 @@ export class ChatWidget extends HTMLElement {
 
     private messagePreview(message: LocalChatMessage): string {
         if (message.deleted) return '[message deleted]';
-        return (message.text || (message.attachment ? '[Image]' : '[message unavailable]')).slice(0, 80);
+        const attachmentLabel = message.attachment?.kind === 'curated-gif' ? `[GIF: ${message.attachment.title}]`
+            : message.attachment ? '[Image]' : '[message unavailable]';
+        return (message.text || attachmentLabel).slice(0, 80);
     }
 
     private async updateMessage(path: string, method: 'PUT' | 'POST', body?: object): Promise<void> {
@@ -1713,10 +1967,14 @@ export class ChatWidget extends HTMLElement {
                 const imageButton = document.createElement('button');
                 imageButton.type = 'button';
                 imageButton.className = 'chat-image-link d-block mt-1';
-                imageButton.setAttribute('aria-label', `Open image shared by ${message.callSign}`);
+                const gifAttachment = message.attachment.kind === 'curated-gif' ? message.attachment : null;
+                imageButton.setAttribute('aria-label', gifAttachment
+                    ? `Open ${gifAttachment.title} GIF shared by ${message.callSign}`
+                    : `Open image shared by ${message.callSign}`);
                 const image = document.createElement('img');
                 image.src = message.attachment.url;
-                image.alt = `Image shared by ${message.callSign}`;
+                image.alt = gifAttachment ? `${gifAttachment.title} GIF shared by ${message.callSign}`
+                    : `Image shared by ${message.callSign}`;
                 image.loading = 'lazy';
                 image.className = 'chat-image rounded';
                 imageButton.append(image);
@@ -1724,6 +1982,21 @@ export class ChatWidget extends HTMLElement {
                     this.openLightbox(message.attachment?.url ?? '', image.alt, message.attachment?.mimeType ?? '', imageButton);
                 });
                 row.append(imageButton);
+                if (gifAttachment) {
+                    try {
+                        const sourceUrl = new URL(gifAttachment.sourceUrl);
+                        if (sourceUrl.protocol === 'https:') {
+                            const credit = document.createElement('a');
+                            credit.className = 'chat-gif-message-credit';
+                            credit.href = sourceUrl.href;
+                            credit.target = '_blank';
+                            credit.rel = 'noopener noreferrer';
+                            credit.textContent = `${gifAttachment.creator} · ${gifAttachment.licenseName}`;
+                            credit.title = gifAttachment.attributionText;
+                            row.append(credit);
+                        }
+                    } catch { /* Invalid catalog links are not rendered. */ }
+                }
             }
             this.appendReactions(row, message);
             this.appendMessageActions(row, message);
@@ -1914,7 +2187,9 @@ export class ChatWidget extends HTMLElement {
         if (!message.attachment) return false;
         try {
             const url = new URL(message.attachment.url, window.location.origin);
-            const expected = `/api/chat/${encodeURIComponent(this.npid)}/messages/${encodeURIComponent(message.id)}/image`;
+            const expected = message.attachment.kind === 'curated-gif'
+                ? `/api/chat/gifs/${encodeURIComponent(message.attachment.gifId)}/file`
+                : `/api/chat/${encodeURIComponent(this.npid)}/messages/${encodeURIComponent(message.id)}/image`;
             return url.origin === window.location.origin && url.pathname === expected && !url.search && !url.hash;
         } catch { return false; }
     }

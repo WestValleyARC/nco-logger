@@ -652,7 +652,7 @@
   border-color: #791d28 !important;
 }
 
-:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-recipient-menu, .chat-options-panel, .chat-emoji-picker, .chat-quick-reactions) {
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-recipient-menu, .chat-options-panel, .chat-emoji-picker, .chat-gif-picker, .chat-quick-reactions) {
   color: #14242d !important;
   background: #fbfdfd !important;
   border-color: #7897a2 !important;
@@ -808,6 +808,28 @@
 
 :root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-emoji-search::placeholder {
   color: #607680 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-gif-search {
+  color: #14242d !important;
+  background: #f7fbfc !important;
+  border-color: #7f9ba5 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-gif-category, .chat-gif-categories-more, .chat-gif-choice, .chat-gif-more, .chat-gif-close) {
+  color: #174e5d !important;
+  background: #f2f7f9 !important;
+  border-color: #9bb1b9 !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked .chat-gif-category[aria-pressed='true'] {
+  color: #ffffff !important;
+  background: #087188 !important;
+  border-color: #04586c !important;
+}
+
+:root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-gif-credits, .chat-gif-message-credit) {
+  color: #075b70 !important;
 }
 
 :root[data-theme='light'] body.nco-logger-page hl-chat.nch-chat-docked :is(.chat-emoji-tab, .chat-emoji-choice) {

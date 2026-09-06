@@ -14,6 +14,7 @@ const { getChatBan } = require('../models/chatBan');
 const { getUserProfile } = require('../models/userProfile');
 const { getQrzCache } = require('../models/qrzCache');
 const stationProfiles = require('./stationProfileService');
+const { getCuratedGif, publicGif } = require('./curatedGifs');
 
 const MAX_MESSAGE_CHARS = Math.min(Number(conf.chat_max_message_chars) || 2000, 2000);
 const RATE_LIMIT_COUNT = Number(conf.chat_rate_limit_count) || 12;
@@ -129,12 +130,25 @@ const toChatMessage = (message, role = 'netuser', currentUserId = '') => {
     const participant = scope === 'public' || isDirectParticipant(message, currentUserId);
     if (!participant) throw new Error('Direct chat message cannot be serialized for a non-participant');
     const netProfile = message.netProfile?.toString() || '';
-    const attachment = !deleted && !cleared && netProfile && message.attachment?.storageName ? {
-        kind: 'image',
-        mimeType: message.attachment.mimeType,
-        size: message.attachment.size,
-        url: `/api/chat/${netProfile}/messages/${message._id}/image`
-    } : null;
+    let attachment = null;
+    if (!deleted && !cleared && netProfile && message.attachment?.storageName) {
+        attachment = {
+            kind: 'image',
+            mimeType: message.attachment.mimeType,
+            size: message.attachment.size,
+            url: `/api/chat/${netProfile}/messages/${message._id}/image`
+        };
+    } else if (!deleted && !cleared && message.attachment?.kind === 'curated-gif') {
+        const gif = getCuratedGif(message.attachment.gifId);
+        if (gif) attachment = {
+            kind: 'curated-gif',
+            gifId: gif.id,
+            mimeType: 'image/gif',
+            size: gif.bytes,
+            url: `/api/chat/gifs/${gif.id}/file`,
+            ...publicGif(gif)
+        };
+    }
     return {
         id: message._id.toString(),
         scope,
@@ -602,7 +616,10 @@ const createMessage = async (req, res) => {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
         const text = cleanMessage(req.body?.text);
-        if (!text) return sendError(res, 400, 'Message text is required');
+        const requestedGifId = req.body?.gifId;
+        const gif = requestedGifId === undefined ? null : getCuratedGif(requestedGifId);
+        if (requestedGifId !== undefined && !gif) return sendError(res, 400, 'Invalid curated GIF identifier');
+        if (!text && !gif) return sendError(res, 400, 'Message text or GIF is required');
         if (text.length > MAX_MESSAGE_CHARS) return sendError(res, 400, `Message exceeds ${MAX_MESSAGE_CHARS} characters`);
         const scope = req.params.userId ? 'direct' : 'public';
         const peer = scope === 'direct' ? await getDirectPeer({
@@ -626,7 +643,8 @@ const createMessage = async (req, res) => {
             scope,
             recipientUserProfile: peer?.userProfile || null,
             text,
-            replyTo: replyTarget?._id || null
+            replyTo: replyTarget?._id || null,
+            attachment: gif ? { kind: 'curated-gif', gifId: gif.id, mimeType: 'image/gif', size: gif.bytes } : undefined
         });
         return res.status(201).json({ endpointVersion: '1.1', message: toChatMessage(message, access.role, userId) });
     } catch (err) {
@@ -654,7 +672,9 @@ const editMessage = async (req, res) => {
         if (message.userProfile.toString() !== userId) return sendError(res, 403, 'Not authorized');
         if (message.deletedAt) return sendError(res, 409, 'Deleted messages cannot be edited');
         const text = cleanMessage(req.body?.text);
-        if (!text && !message.attachment?.storageName) return sendError(res, 400, 'Message text is required');
+        if (!text && !message.attachment?.storageName && !message.attachment?.gifId) {
+            return sendError(res, 400, 'Message text is required');
+        }
         if (text.length > MAX_MESSAGE_CHARS) {
             return sendError(res, 400, `Message exceeds ${MAX_MESSAGE_CHARS} characters`);
         }

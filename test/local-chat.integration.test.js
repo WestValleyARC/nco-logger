@@ -74,6 +74,23 @@ test('net participants exchange, interact with, and moderate local chat', { skip
         user: { _id: userId, callSign, displayName }
     });
 
+    const invalidGif = await invoke(createMessage, makeReq(userOtherLogger, 'W1LOG', 'Logger', {
+        text: '', gifId: '../../not-in-the-catalog'
+    }));
+    assert.equal(invalidGif.status, 400);
+    assert.equal(invalidGif.payload.error, 'Invalid curated GIF identifier');
+
+    const { manifest: gifManifest } = require('../server/dist/lib/curatedGifs');
+    const catalogGif = gifManifest.items[0];
+    const gifSent = await invoke(createMessage, makeReq(userOtherLogger, 'W1LOG', 'Logger', {
+        text: '', gifId: catalogGif.id
+    }));
+    assert.equal(gifSent.status, 201);
+    assert.equal(gifSent.payload.message.text, '');
+    assert.equal(gifSent.payload.message.attachment.gifId, catalogGif.id);
+    assert.equal(gifSent.payload.message.attachment.url, `/api/chat/gifs/${catalogGif.id}/file`);
+    assert.equal(gifSent.payload.message.attachment.attributionText, catalogGif.attribution_text);
+
     const change = new Promise((resolve, reject) => {
         const stream = ChatMessage.watch([{ $match: { operationType: 'insert' } }], { fullDocument: 'updateLookup' });
         const timer = setTimeout(() => { void stream.close(); reject(new Error('chat change stream timeout')); }, 5000);
