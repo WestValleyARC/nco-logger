@@ -4,6 +4,11 @@ const { Schema } = require('mongoose');
 
 const CONNECTION_TYPES = ['FM', 'HF', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'M17', 'NXDN', 'Zello', 'Other', 'Legacy'];
 const HF_MODES = ['SSB', 'USB', 'LSB', 'CW', 'AM', 'Digital', 'Other'];
+const NET_TYPES = ['Net', 'Roundtable', 'Ragchew', 'Other'];
+const OPERATING_MODES = [
+    'LSB', 'USB', 'AM', 'CW', 'FM', 'RTTY', 'FSQ', 'PSK-31', 'FreeDV', 'Reflector',
+    'Olivia', 'Hell', 'JS8Call', 'CUSTOM'
+];
 const optionalConnectionValue = maxlength => ({ type: String, trim: true, maxlength });
 
 const connectionSchema = new Schema(
@@ -91,6 +96,12 @@ const netProfileSchema = new Schema(
                 message: 'net title format did not pass validation'
             }
         },
+        netType: {
+            type: String,
+            enum: NET_TYPES,
+            default: 'Net',
+            required: true
+        },
         frequency: {
             type: String,
             maxlength: 20,
@@ -107,22 +118,7 @@ const netProfileSchema = new Schema(
         mode: {
             type: String,
             enum: {
-                values: [
-                    'LSB',
-                    'USB',
-                    'AM',
-                    'CW',
-                    'FM',
-                    'RTTY',
-                    'FSQ',
-                    'PSK-31',
-                    'FreeDV',
-                    'Reflector',
-                    'Olivia',
-                    'Hell',
-                    'JS8Call',
-                    'CUSTOM'
-                ],
+                values: OPERATING_MODES,
                 message: '{VALUE} not in valid mode list'
             },
             required: [true, 'Mode Required']
@@ -136,7 +132,7 @@ const netProfileSchema = new Schema(
                     if (v === '') {
                         return true;
                     }
-                    return /^\w+(?:[&. ]*\w+)*$/.test(v);
+                    return /^[\w&. \'\u2019-]+$/.test(v);
                 },
                 message: 'mode details contains invalid characters'
             }
@@ -196,6 +192,8 @@ module.exports = {
     netProfileSchema,
     connectionSchema,
     CONNECTION_TYPES,
+    NET_TYPES,
+    OPERATING_MODES,
     getNetProfileConnections,
     removeLegacyTitleUniqueIndex
 };

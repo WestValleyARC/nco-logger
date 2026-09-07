@@ -105,6 +105,7 @@ exports.isStation = createTypeGuard({
 }, true);
 exports.netInfoCommonFields = {
     title: value => typeof value === 'string',
+    netType: value => ['Net', 'Roundtable', 'Ragchew', 'Other'].includes(value),
     frequency: value => typeof value === 'string',
     mode: value => typeof value === 'string',
     modeDetails: value => typeof value === 'string',

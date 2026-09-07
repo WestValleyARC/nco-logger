@@ -517,6 +517,9 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
 #netcontrol-ncs-helper .nch-edit-modal { position: absolute; z-index: 100; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .78); }
 #netcontrol-ncs-helper .nch-edit-modal[hidden] { display: none !important; }
 #netcontrol-ncs-helper .nch-edit-card { width: min(520px, calc(100% - 30px)); padding: 18px; background: #20252b; border: 2px solid #74c6d4; border-radius: 10px; box-shadow: 0 8px 28px #000; }
+#netcontrol-ncs-helper .nch-net-edit-modal .nch-edit-card { max-height: calc(100% - 30px); overflow-y: auto; }
+#netcontrol-ncs-helper .nch-net-edit-modal :is(select, textarea) { width: 100%; margin-top: 3px; padding: 7px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
+#netcontrol-ncs-helper .nch-net-edit-modal textarea { min-height: 82px; resize: vertical; }
 #netcontrol-ncs-helper .nch-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 #netcontrol-ncs-helper .nch-close-confirm .nch-edit-card { width: min(460px, calc(100% - 30px)); border-color: #ff8b96; }
 #netcontrol-ncs-helper .nch-close-confirm h3 { color: #ff9eac; font-size: calc(20px + var(--nch-font-adjust, 0px)); }
@@ -832,7 +835,7 @@ body.nco-logger-page,
   border-color: #c9ffd3;
 }
 
-#netcontrol-ncs-helper button.nch-undo-top {
+#netcontrol-ncs-helper button.nch-edit-net {
   min-height: 34px;
   color: #dffaff;
   background: #0b3444;

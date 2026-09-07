@@ -85,6 +85,7 @@ const publicOccurrenceResponse = occurrence => ({
     id: occurrence._id,
     netProfileId: occurrence.netProfile._id,
     title: occurrence.netProfile.title,
+    netType: occurrence.netProfile.netType || 'Net',
     description: plainTextDescription(occurrence.netProfile.notes),
     frequency: occurrence.netProfile.frequency || '',
     mode: occurrence.netProfile.mode || '',

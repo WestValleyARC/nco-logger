@@ -134,8 +134,11 @@ export interface Client {
 }
 
 // NetInfoCommon type
+export type NetType = 'Net' | 'Roundtable' | 'Ragchew' | 'Other';
+
 export interface NetInfoCommon {
     title: string;
+    netType: NetType;
     frequency: string;
     mode: string;
     modeDetails: string;

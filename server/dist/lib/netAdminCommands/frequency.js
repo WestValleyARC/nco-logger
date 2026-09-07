@@ -33,20 +33,22 @@ class FrequencyCmd extends NetAdminCmd {
         const pushIntervalSec = (res.locals.flexOpts.awayInMs * (1 - AWAY_BUFFER_PCT / 100)) / 1000; // 80% of awayInMs in seconds
 
         if (cmdLine.length === 0) {
-            if (Boolean(this.data.instance.np.frequency)) {
-                return `${this.data.instance.np.frequency} MHz`;
+            const frequency = this.data.instance.ln.frequency ?? this.data.instance.np.frequency;
+            if (Boolean(frequency)) {
+                return `${frequency} MHz`;
             } else {
                 return 'No frequency set';
             }
         } else {
-            if (this.data.instance.np.frequency != cmdLine[0]) {
-                await this.data.model.NetProfile.findOneAndUpdate(
-                    { _id: this.data.instance.np._id },
+            const currentFrequency = this.data.instance.ln.frequency ?? this.data.instance.np.frequency;
+            if (currentFrequency != cmdLine[0]) {
+                await this.data.model.LiveNet.findOneAndUpdate(
+                    { _id: this.data.instance.ln._id },
                     { frequency: cmdLine[0] },
                     { runValidators: true }
                 );
 
-                const frequency = Boolean(this.data.instance.np.frequency) ? this.data.instance.np.frequency : '(null)';
+                const frequency = Boolean(currentFrequency) ? currentFrequency : '(null)';
                 const interval = pushIntervalSec ? `~${Math.round(pushIntervalSec)}sec` : '';
 
                 return `${frequency}MHz -> ${cmdLine[0]}MHz (wait ${interval} for UI (low priority))`;

@@ -2,6 +2,7 @@
 const { Schema } = require('mongoose');
 const { modelMaker } = require('../lib/modelMaker');
 const uniqueValidator = require('mongoose-unique-validator');
+const { NET_TYPES, OPERATING_MODES } = require('./netProfile');
 
 const lookupTableSchema = new Schema({
     stationInteraction: {
@@ -31,6 +32,35 @@ const liveNetSchema = new Schema(
             ref: 'UserProfile',
             required: [true, 'ncs userprofile obj required by livenet']
         },
+        title: {
+            type: String,
+            trim: true,
+            minlength: 4,
+            maxlength: 100,
+            validate: {
+                validator: value => /^[\p{L}\p{N} @|_#*&/+\-().,':!]+$/u.test(value),
+                message: 'net title format did not pass validation'
+            }
+        },
+        netType: { type: String, enum: NET_TYPES },
+        frequency: {
+            type: String,
+            maxlength: 20,
+            validate: {
+                validator: value => value === '' || /^\d+[.]\d+(?:([.]\d+))?$/.test(value),
+                message: 'frequency format did not pass validation'
+            }
+        },
+        mode: { type: String, enum: OPERATING_MODES },
+        modeDetails: {
+            type: String,
+            maxlength: 15,
+            validate: {
+                validator: value => value === '' || /^[\w&. \'\u2019-]+$/.test(value),
+                message: 'mode details contains invalid characters'
+            }
+        },
+        notes: { type: String, maxlength: 320 },
         countdownTimer: {
             type: Number,
             min: 0,

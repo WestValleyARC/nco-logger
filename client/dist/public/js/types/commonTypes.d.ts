@@ -97,8 +97,10 @@ export interface Client {
     callSign: string;
     level: number;
 }
+export type NetType = 'Net' | 'Roundtable' | 'Ragchew' | 'Other';
 export interface NetInfoCommon {
     title: string;
+    netType: NetType;
     frequency: string;
     mode: string;
     modeDetails: string;
