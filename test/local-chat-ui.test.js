@@ -203,9 +203,31 @@ test('typing indicator reserves stable space at the composer boundary when idle'
     const css = read('client/dist/public/css/local.css');
     const source = read('client/src/public/js/lib/chat.ts');
     assert.match(source, /chat-composer-wrap[\s\S]*chat-typing-indicator[\s\S]*chat-form/);
-    assert.match(css, /\.chat-typing-indicator\s*\{[^}]*display:\s*block[^}]*height:\s*2\.5em[^}]*min-height:\s*2\.5em[^}]*overflow-wrap:\s*anywhere[^}]*white-space:\s*normal/s);
+    assert.match(css, /\.chat-composer-wrap\s*\{[^}]*flex:\s*0 0 auto/s);
+    assert.match(css, /\.chat-typing-indicator\s*\{[^}]*display:\s*block[^}]*height:\s*20px[^}]*min-height:\s*20px[^}]*max-height:\s*20px[^}]*flex:\s*0 0 20px[^}]*overflow:\s*hidden[^}]*white-space:\s*nowrap/s);
     assert.match(css, /\.chat-typing-indicator\[hidden\]\s*\{[^}]*display:\s*block[^}]*visibility:\s*hidden/s);
     assert.doesNotMatch(css, /\.chat-typing-indicator\s*\{[^}]*position:\s*(?:absolute|fixed)/s);
+});
+
+test('emoji-only chat messages are detected by grapheme and limited to three', async () => {
+    const { isEmojiOnlyChatMessage } = await loadChatText();
+    for (const value of ['👍', '😂😂', '❤️ 👍 😂', '👍🏽', '☕️', '👨‍👩‍👧‍👦', '🇺🇸 🇨🇦']) {
+        assert.equal(isEmojiOnlyChatMessage(value), true, value);
+    }
+    for (const value of ['', '   ', 'Great job 👍', 'Thanks!', '👍 Great', '👍👍👍👍', '©', '↔']) {
+        assert.equal(isEmojiOnlyChatMessage(value), false, value);
+    }
+});
+
+test('large emoji styling is applied only to the rendered message body', () => {
+    const localCss = read('client/dist/public/css/local.css');
+    const loggerCss = read('client/dist/public/css/nco-logger.css');
+    const source = read('client/src/public/js/lib/chat.ts');
+    assert.match(source, /body\.classList\.toggle\('chat-emoji-only', isEmojiOnlyChatMessage\(message\.text\)\)/);
+    assert.match(source, /appendChatText\(body, message\.text\)/);
+    assert.match(localCss, /\.chat-message-content\.chat-emoji-only\s*\{[^}]*font-size:\s*3em[^}]*line-height:\s*1\.1/s);
+    assert.match(loggerCss, /\.chat-message-content\.chat-emoji-only\s*\{[^}]*font-size:\s*calc\(var\(--nch-chat-font-size\) \* 3\) !important/s);
+    assert.doesNotMatch(source, /innerHTML[\s\S]{0,200}chat-emoji-only/);
 });
 
 test('emoji categories are labeled navigation controls separated from insertion choices', () => {

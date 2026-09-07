@@ -604,18 +604,26 @@ hl-chat.chat-private-active .chat-form {
     align-items: stretch;
 }
 
+.chat-composer-wrap {
+    min-height: 0;
+    flex: 0 0 auto;
+}
+
 .chat-typing-indicator {
     display: block;
-    height: 2.5em;
-    min-height: 2.5em;
-    margin: 0 0 0.2rem 0.25rem;
+    height: 20px;
+    min-height: 20px;
+    max-height: 20px;
+    box-sizing: border-box;
+    flex: 0 0 20px;
+    margin: 0 0 0 0.25rem;
     overflow: hidden;
-    overflow-wrap: anywhere;
     color: var(--bs-secondary-color, #8b949e);
     font-size: 0.78rem;
     font-style: italic;
-    line-height: 1.25;
-    white-space: normal;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .chat-typing-indicator[hidden] {
@@ -639,6 +647,11 @@ hl-chat.chat-private-active .chat-form {
 .chat-message {
     position: relative;
     padding-right: 0.25rem;
+}
+
+.chat-message-content.chat-emoji-only {
+    font-size: 3em;
+    line-height: 1.1;
 }
 
 .chat-message-pinned {

@@ -7,6 +7,8 @@ export type ChatTextPart =
 const CHAT_URL_PATTERN = /(?:\bhttps?:\/\/[^\s<>"']+|(?<![@.\w-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?::\d{1,5})?(?:[/?#][^\s<>"']*)?)/gi;
 const TRAILING_PUNCTUATION = /[.,!?;:]$/;
 const CLOSING_DELIMITERS: Readonly<Record<string, string>> = Object.freeze({ ')': '(', ']': '[', '}': '{' });
+const CHAT_EMOJI_GRAPHEME_PATTERN = /^(?:\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|(?:\p{Emoji_Presentation}\uFE0F?|\p{Extended_Pictographic}\uFE0F)(?:\p{Emoji_Modifier})?(?:\u200D(?:\p{Emoji_Presentation}\uFE0F?|\p{Extended_Pictographic}\uFE0F)(?:\p{Emoji_Modifier})?)*)$/u;
+const CHAT_GRAPHEME_SEGMENTER = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 const trimUrlEnd = (value: string): string => {
     let url = value;
@@ -48,6 +50,14 @@ export const chatTextParts = (text: string): ChatTextPart[] => {
 
 export const chatLinkHref = (value: string): string =>
     /^https?:\/\//i.test(value) ? value : `https://${value}`;
+
+export const isEmojiOnlyChatMessage = (text: string): boolean => {
+    const graphemes = [...CHAT_GRAPHEME_SEGMENTER.segment(text)]
+        .map(part => part.segment)
+        .filter(part => !/^\s+$/u.test(part));
+    return graphemes.length >= 1 && graphemes.length <= 3
+        && graphemes.every(grapheme => CHAT_EMOJI_GRAPHEME_PATTERN.test(grapheme));
+};
 
 export const appendChatText = (container: HTMLElement, text: string): void => {
     chatTextParts(text).forEach(part => {
