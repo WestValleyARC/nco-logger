@@ -56,7 +56,7 @@ const liveNetSchema = new Schema(
             type: String,
             maxlength: 15,
             validate: {
-                validator: value => value === '' || /^\w+(?:[&. ]*\w+)*$/.test(value),
+                validator: value => value === '' || /^[\w&. \'\u2019-]+$/.test(value),
                 message: 'mode details contains invalid characters'
             }
         },

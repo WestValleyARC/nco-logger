@@ -65,6 +65,10 @@ test('Edit Net and Net Type', async t => {
             assert.deepEqual(NET_TYPES, ['Net', 'Roundtable', 'Ragchew', 'Other']);
             const legacy = await NetProfile.create({ title: 'Legacy Default Net', mode: 'FM', owners: [nco._id] });
             assert.equal(legacy.netType, 'Net');
+            const punctuation = await NetProfile.create({
+                title: 'Mode Details Punctuation', mode: 'CUSTOM', modeDetails: "Don't Know", owners: [nco._id]
+            });
+            assert.equal(punctuation.modeDetails, "Don't Know");
             await assert.rejects(
                 NetProfile.create({ title: 'Invalid Type Net', netType: 'Directed', mode: 'FM', owners: [nco._id] }),
                 /not a valid enum value/
@@ -202,6 +206,9 @@ test('Edit Net and Net Type', async t => {
                 assert.match(liveClient, new RegExp(`data-net-modal="${field}"`));
             }
             assert.match(liveClient, /action: "editNet", net/);
+            assert.match(liveClient, /function netNotesToPlainText\(value\)/);
+            assert.match(liveClient, /field === "notes" \? netNotesToPlainText/);
+            assert.match(liveClient, /field === "notes" \? netNotesToHtml/);
             assert.match(liveClient, /\[data-role='edit-net'\].*\[data-role='net-edit-modal'\]/);
             assert.doesNotMatch(
                 liveClient.match(/<div class="nch-edit-modal nch-net-edit-modal"[\s\S]*?<\/div>\n        <\/div>/)?.[0] || '',

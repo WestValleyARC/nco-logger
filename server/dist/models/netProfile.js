@@ -132,7 +132,7 @@ const netProfileSchema = new Schema(
                     if (v === '') {
                         return true;
                     }
-                    return /^\w+(?:[&. ]*\w+)*$/.test(v);
+                    return /^[\w&. \'\u2019-]+$/.test(v);
                 },
                 message: 'mode details contains invalid characters'
             }

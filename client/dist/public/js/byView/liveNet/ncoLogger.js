@@ -1862,6 +1862,22 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         modal.dataset.originalCall = "";
         syncNativeChatVisibility();
     }
+    function netNotesToPlainText(value) {
+        const html = String(value || "");
+        if (!/[<>]/.test(html))
+            return html;
+        const container = document.createElement("div");
+        container.innerHTML = html;
+        container.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
+        container.querySelectorAll("p, div, li").forEach(element => element.append("\n"));
+        return (container.textContent || "").replace(/\n{3,}/g, "\n\n").trim();
+    }
+    function netNotesToHtml(value) {
+        const text = String(value || "").replace(/\r\n?/g, "\n").trim();
+        if (!text)
+            return "";
+        return text.split(/\n{2,}/).map(paragraph => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("");
+    }
     function openNetEditModal() {
         if (!isNcoUser())
             return setStatus("Only the checked-in NCO can edit this live net.", "warning");
@@ -1869,7 +1885,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         if (!modal)
             return;
         ["title", "netType", "frequency", "mode", "modeDetails", "notes"].forEach(field => {
-            modal.querySelector(`[data-net-modal='${field}']`).value = latestNetInfo[field] || "";
+            const value = field === "notes" ? netNotesToPlainText(latestNetInfo[field]) : latestNetInfo[field];
+            modal.querySelector(`[data-net-modal='${field}']`).value = value || "";
         });
         modal.hidden = false;
         syncNativeChatVisibility();
@@ -1886,7 +1903,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             return setStatus("Only the checked-in NCO can edit this live net.", "warning");
         const modal = panel.querySelector("[data-role='net-edit-modal']");
         const net = Object.fromEntries(["title", "netType", "frequency", "mode", "modeDetails", "notes"]
-            .map(field => [field, modal.querySelector(`[data-net-modal='${field}']`)?.value || ""]));
+            .map(field => {
+            const value = modal.querySelector(`[data-net-modal='${field}']`)?.value || "";
+            return [field, field === "notes" ? netNotesToHtml(value) : value];
+        }));
         setStatus("Updating live net details…", "working");
         try {
             const response = await fetch(`/api/nco-logger/${npid}`, {
