@@ -11,6 +11,9 @@ const LiveNet = require('../models/liveNet').getLiveNet(null);
 const UserProfile = require('../models/userProfile').getUserProfile(null);
 const StationInteraction = require('../models/stationInteraction').getStationInteraction(null);
 const { realtimeClients } = require('../lib/realtimeClients');
+const { sanitizeNotes } = require('../lib/serverUtils');
+
+const LIVE_NET_INFO_FIELDS = ['title', 'netType', 'frequency', 'mode', 'modeDetails', 'notes'];
 
 const MANAGER_ROLES = new Set(['netcontrol', 'netlogger']);
 const VALID_ROLES = new Set(['netcontrol', 'netlogger', 'netrelay', 'netuser']);
@@ -39,6 +42,41 @@ function requireNco(source) {
     if (source.role !== 'netcontrol' || source.checkedState !== true) {
         throw new Error('Only the checked-in NCO can perform this action');
     }
+}
+
+async function editLiveNetInfo({ req, liveNet, netProfile, source }) {
+    requireNco(source);
+    const body = req.body?.net;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        throw new Error('Live net details are required');
+    }
+    if (LIVE_NET_INFO_FIELDS.some(field => typeof body[field] !== 'string')) {
+        throw new Error('All live net fields are required');
+    }
+
+    const values = {
+        title: body.title.trim(),
+        netType: body.netType,
+        frequency: body.frequency.trim(),
+        mode: body.mode.trim(),
+        modeDetails: body.modeDetails.trim(),
+        notes: sanitizeNotes(body.notes)
+    };
+    const candidate = new NetProfile({ ...values, owners: netProfile.owners });
+    const validationError = candidate.validateSync(LIVE_NET_INFO_FIELDS);
+    if (validationError) throw validationError;
+    const customOrReflector = values.mode === 'CUSTOM' || values.mode === 'Reflector';
+    if (!values.frequency && !customOrReflector) {
+        throw new Error('empty frequency only permitted for CUSTOM or Digital Reflector modes');
+    }
+    if (customOrReflector && !values.modeDetails) {
+        throw new Error('mode details required for CUSTOM or Digital Reflector modes');
+    }
+
+    liveNet.set(values);
+    await liveNet.save();
+    await realtimeClients.push(req.params.id);
+    return { action: 'editNet', net: values };
 }
 
 function validateTarget(callSign) {
@@ -263,11 +301,14 @@ async function runAction(req, res) {
             return toggleRole({ req, liveNet, source, target, desiredRole: 'netrelay' });
         case 'handoff':
             return handoff({ req, liveNet, source, target });
+        case 'editNet':
+            return editLiveNetInfo({ req, liveNet, netProfile, source });
         case 'frequency':
             requireNco(source);
-            netProfile.frequency = String(req.body?.frequency || '').trim().slice(0, 40);
-            await netProfile.save();
-            return { action, frequency: netProfile.frequency };
+            liveNet.frequency = String(req.body?.frequency || '').trim();
+            await liveNet.save();
+            await realtimeClients.push(req.params.id);
+            return { action, frequency: liveNet.frequency };
         case 'stationInfo': {
             const callSign = target || normalizeCall(req.user.callSign);
             const detail = await netOps.getStationDetail({ lnid: liveNet._id, station: callSign });
@@ -314,5 +355,5 @@ async function ncoLoggerAction(req, res) {
 
 module.exports = {
     ncoLoggerAction, sanitizeLoggerState, setCheckedState, lookupQrzProfile,
-    getStationProfile, updateStationProfile
+    getStationProfile, updateStationProfile, editLiveNetInfo
 };

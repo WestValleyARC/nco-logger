@@ -167,6 +167,7 @@ export const isStation = createTypeGuard<Station>(
 // Common fields for NetInfo
 export const netInfoCommonFields: Record<keyof NetInfoCommon, (value: unknown) => boolean> = {
     title: value => typeof value === 'string',
+    netType: value => ['Net', 'Roundtable', 'Ragchew', 'Other'].includes(value as string),
     frequency: value => typeof value === 'string',
     mode: value => typeof value === 'string',
     modeDetails: value => typeof value === 'string',

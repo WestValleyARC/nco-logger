@@ -88,14 +88,20 @@ const buildResponseSkeleton = (netProfileDoc, liveNetDoc, sigReportTypeByMode) =
             throw new Error('netProfileDoc or liveNetDoc null in buildResponseSkeleton()');
         }
 
+        const title = liveNetDoc.title ?? netProfileDoc.title;
+        const netType = liveNetDoc.netType ?? netProfileDoc.netType ?? 'Net';
+        const frequency = liveNetDoc.frequency ?? netProfileDoc.frequency;
+        const mode = liveNetDoc.mode ?? netProfileDoc.mode;
+        const modeDetails = liveNetDoc.modeDetails ?? netProfileDoc.modeDetails;
         response = {
             net: {
-                title: netProfileDoc.title,
-                frequency: netProfileDoc.frequency,
-                mode: netProfileDoc.mode,
-                modeDetails: netProfileDoc.modeDetails,
+                title,
+                netType,
+                frequency,
+                mode,
+                modeDetails,
                 connections: netProfileDoc.connections || [],
-                notes: sanitizeNotes(netProfileDoc.notes),
+                notes: sanitizeNotes(liveNetDoc.notes ?? netProfileDoc.notes),
                 permanent: netProfileDoc.permanent,
                 invisible: netProfileDoc.invisible,
                 restrictedSigReports: netProfileDoc.restrictedSigReports,
@@ -111,10 +117,10 @@ const buildResponseSkeleton = (netProfileDoc, liveNetDoc, sigReportTypeByMode) =
         throw err;
     }
 
-    if (netProfileDoc.mode === 'CUSTOM' && netProfileDoc.modeDetails === 'Web Chat') {
+    if (response.net.mode === 'CUSTOM' && response.net.modeDetails === 'Web Chat') {
         response.net.sigReportType = null;
     } else {
-        response.net.sigReportType = getSigReportType({ mode: netProfileDoc.mode, sigReportTypeByMode });
+        response.net.sigReportType = getSigReportType({ mode: response.net.mode, sigReportTypeByMode });
     }
 
     return response;

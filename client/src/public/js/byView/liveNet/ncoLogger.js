@@ -182,6 +182,7 @@ import {
   let latestNetTitle = "";
   let latestNetFrequency = "";
   let latestNetConnections = [];
+  let latestNetInfo = { title: "", netType: "Net", frequency: "", mode: "FM", modeDetails: "", notes: "" };
   let currentUserRole = "netuser";
   let layoutRoleResolved = false;
   let currentLayoutContext = "desktop";
@@ -933,7 +934,7 @@ import {
     const modalOpen = panel && (
       panel.querySelector("[data-module='chat']")?.hidden ||
       panel.querySelector("[data-role='private-selector']")?.open ||
-      [...panel.querySelectorAll("[data-role='photo-viewer'], [data-role='edit-modal'], [data-role='close-confirm'], [data-role='help-modal'], [data-role='commands-modal'], [data-role='update-modal'], [data-role='viewer-host'], [data-role='station-action-modal']")]
+      [...panel.querySelectorAll("[data-role='photo-viewer'], [data-role='edit-modal'], [data-role='net-edit-modal'], [data-role='close-confirm'], [data-role='help-modal'], [data-role='commands-modal'], [data-role='update-modal'], [data-role='viewer-host'], [data-role='station-action-modal']")]
         .some(element => !element.hidden)
     );
     nativeChat()?.classList.toggle("nch-chat-suspended", Boolean(modalOpen));
@@ -1812,6 +1813,50 @@ import {
     modal.hidden = true;
     modal.dataset.originalCall = "";
     syncNativeChatVisibility();
+  }
+
+  function openNetEditModal() {
+    if (!isNcoUser()) return setStatus("Only the checked-in NCO can edit this live net.", "warning");
+    const modal = panel.querySelector("[data-role='net-edit-modal']");
+    if (!modal) return;
+    ["title", "netType", "frequency", "mode", "modeDetails", "notes"].forEach(field => {
+      modal.querySelector(`[data-net-modal='${field}']`).value = latestNetInfo[field] || "";
+    });
+    modal.hidden = false;
+    syncNativeChatVisibility();
+    modal.querySelector("[data-net-modal='title']")?.focus();
+  }
+
+  function closeNetEditModal() {
+    const modal = panel.querySelector("[data-role='net-edit-modal']");
+    if (modal) modal.hidden = true;
+    syncNativeChatVisibility();
+  }
+
+  async function saveNetEditModal() {
+    if (!isNcoUser()) return setStatus("Only the checked-in NCO can edit this live net.", "warning");
+    const modal = panel.querySelector("[data-role='net-edit-modal']");
+    const net = Object.fromEntries(
+      ["title", "netType", "frequency", "mode", "modeDetails", "notes"]
+        .map(field => [field, modal.querySelector(`[data-net-modal='${field}']`)?.value || ""])
+    );
+    setStatus("Updating live net details…", "working");
+    try {
+      const response = await fetch(`/api/nco-logger/${npid}`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ action: "editNet", net })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.errorMessage || `Live net update failed (${response.status}).`);
+      latestNetInfo = { ...latestNetInfo, ...net };
+      closeNetEditModal();
+      setStatus("Live net details updated for this session.", "success");
+      scheduleRefresh(100);
+    } catch (error) {
+      setStatus(`Couldn’t update this live net: ${error.message || String(error)}`, "error");
+    }
   }
 
   function replaceCallInLocalLists(oldCall, newCall) {
@@ -4244,7 +4289,7 @@ import {
               <button class="nch-quick-io" data-quick-command="io" data-short="I/O" title="Look up QRZ, check in, and immediately check out">In &amp; Out</button>
             </div>
             <div class="nch-net-actions nch-admin-only">
-              <button class="nch-undo-top" data-editor-command="ui" data-short="Undo" title="Remove the entered callsign from the native net log and return it to Lurkers">Undo Check-in</button>
+              <button class="nch-edit-net" data-role="edit-net" data-short="Edit">Edit Net</button>
               <button class="nch-close-net" data-role="close-net" data-short="Close">Close Net</button>
             </div>
             <input type="hidden" data-role="name">
@@ -4299,6 +4344,21 @@ import {
             </div>
           </div>
         </div>
+        <div class="nch-edit-modal nch-net-edit-modal" data-role="net-edit-modal" hidden>
+          <div class="nch-edit-card" role="dialog" aria-modal="true" aria-labelledby="nch-net-edit-title">
+            <h3 id="nch-net-edit-title">Edit Net</h3>
+            <label>Net Name <input data-net-modal="title" maxlength="100" required></label>
+            <label>Net Type <select data-net-modal="netType"><option>Net</option><option>Roundtable</option><option>Ragchew</option><option>Other</option></select></label>
+            <label>Frequency <input data-net-modal="frequency" maxlength="20"></label>
+            <label>Mode <select data-net-modal="mode"><option>LSB</option><option>USB</option><option>AM</option><option>CW</option><option>FM</option><option>RTTY</option><option>FSQ</option><option>PSK-31</option><option>FreeDV</option><option>Reflector</option><option>Olivia</option><option>Hell</option><option>JS8Call</option><option>CUSTOM</option></select></label>
+            <label>Mode Details <input data-net-modal="modeDetails" maxlength="15"></label>
+            <label>Notes <textarea data-net-modal="notes" maxlength="320"></textarea></label>
+            <div class="nch-modal-actions">
+              <button data-role="save-net-edit">Save</button>
+              <button data-role="cancel-net-edit">Cancel</button>
+            </div>
+          </div>
+        </div>
         <div class="nch-edit-modal nch-close-confirm" data-role="close-confirm" hidden>
           <div class="nch-edit-card" role="alertdialog" aria-modal="true" aria-labelledby="nch-close-title">
             <h3 id="nch-close-title">Close This Net?</h3>
@@ -4326,9 +4386,9 @@ import {
             </header>
             <div class="nch-help-content">
               <section><h3>Getting started</h3><p>Open an active WVARC net. The logger detects your current role and opens in NCO, Logger, Relay, or Viewer Mode.</p></section>
-              <section><h3>Interface modules</h3><p>Station Controls handles callsign entry and permitted net actions. Chat docks the native conversation. Active Log shows connected stations. Checked Out shows completed contacts. Lurkers shows visible visitors who are not yet logged.</p></section>
-              <section><h3>Modes and permissions</h3><ul><li><strong>NCO:</strong> full permitted check-in, checkout, editing, role, handoff, ordering, and confirmed Close Net controls.</li><li><strong>Logger:</strong> permitted station management, Undo Check-in for non-NCO stations, and Relay assignment, without NCO-only Close Net, undoing the NCO, Logger assignment, or NCO handoff.</li><li><strong>Relay and Viewer:</strong> read-only station lists, chat, private notes, layout controls, and the operator's own hand control.</li></ul></section>
-              <section><h3>Checking stations in</h3><p>Enter a callsign and press Enter. Mobile, Short Time, Portable, and In &amp; Out perform the same QRZ lookup and real check-in while adding the selected status. Undo Check-in removes the callsign currently entered in Station Controls from the native net log and returns that station to Lurkers if they are still watching. Logger may use Undo Check-in except against the NCO. Close Net remains NCO-only and sends nothing until the confirmation button is selected.</p></section>
+              <section><h3>Interface modules</h3><p>Station Controls handles callsign entry and permitted net actions, including NCO-only Edit Net and Close Net controls. Chat docks the native conversation. Active Log shows connected stations. Checked Out shows completed contacts. Lurkers shows visible visitors who are not yet logged.</p></section>
+              <section><h3>Modes and permissions</h3><ul><li><strong>NCO:</strong> full permitted check-in, checkout, editing, live-net editing, role, handoff, ordering, and confirmed Close Net controls.</li><li><strong>Logger:</strong> permitted station management and Relay assignment, without NCO-only Edit Net, Close Net, Logger assignment, or NCO handoff.</li><li><strong>Relay and Viewer:</strong> read-only station lists, chat, private notes, layout controls, and the operator's own hand control.</li></ul></section>
+              <section><h3>Checking stations in</h3><p>Enter a callsign and press Enter. Mobile, Short Time, Portable, and In &amp; Out perform the same QRZ lookup and real check-in while adding the selected status. Edit Net changes only the current live session and does not change the saved net profile. Close Net remains NCO-only and sends nothing until the confirmation button is selected.</p></section>
               <section><h3>QRZ and photos</h3><p>All callsign and profile-photo lookups use the server's shared QRZ integration. Personal QRZ credentials are not requested or stored in the browser. Profile photos use the returned station image and fall back to the bundled default avatar.</p></section>
               <section><h3>Station rows</h3><p>Move the pointer anywhere over a station row, or focus it with the keyboard, to change the row color and open its available controls without making the row taller. Active Log controls use about half of the row width and float over the right side of following rows. Right-click a row to pin or unpin its controls; Shift-right-click keeps the browser menu. Checked Out and Lurker rows use small inline controls that temporarily replace the row text instead of covering other stations. Active tags and role tags are labeled and color matched; select a tag’s × to clear it. There are no colored edge tabs.</p></section>
               <section data-role="slash-command-help">${slashHelpHtml()}</section>
@@ -4374,9 +4434,9 @@ import {
         <div class="nch-viewer-host" data-role="viewer-host" hidden></div>
       </div>`;
     if (!canManageStations()) {
-      panel.querySelectorAll(".nch-admin-only, [data-role='edit-modal'], [data-role='close-confirm']").forEach(element => element.remove());
+      panel.querySelectorAll(".nch-admin-only, [data-role='edit-modal'], [data-role='net-edit-modal'], [data-role='close-confirm']").forEach(element => element.remove());
     } else if (!isNcoUser()) {
-      panel.querySelectorAll("[data-role='close-net'], [data-role='close-confirm']").forEach(element => element.remove());
+      panel.querySelectorAll("[data-role='edit-net'], [data-role='net-edit-modal'], [data-role='close-net'], [data-role='close-confirm']").forEach(element => element.remove());
     }
     const mount = document.getElementById("nco-logger-root");
     if (!mount) throw new Error("NCO Logger page root is missing.");
@@ -4616,6 +4676,9 @@ import {
       }
       if (target.dataset.role === "save-edit") await saveEditModal();
       if (target.dataset.role === "cancel-edit") closeEditModal();
+      if (target.dataset.role === "edit-net") openNetEditModal();
+      if (target.dataset.role === "save-net-edit") await saveNetEditModal();
+      if (target.dataset.role === "cancel-net-edit") closeNetEditModal();
       if (["open-viewer", "menu-viewer"].includes(target.dataset.role)) {
         const host = panel.querySelector("[data-role='viewer-host']");
         if (host) host.hidden = false;
@@ -5165,6 +5228,14 @@ import {
       latestNetTitle = String(data.net?.title || "").trim();
       latestNetFrequency = String(data.net?.frequency || "").trim();
       latestNetConnections = formatConnectionLines(data.net);
+      latestNetInfo = {
+        title: latestNetTitle,
+        netType: String(data.net?.netType || "Net"),
+        frequency: latestNetFrequency,
+        mode: String(data.net?.mode || "FM"),
+        modeDetails: String(data.net?.modeDetails || ""),
+        notes: String(data.net?.notes || "")
+      };
       const me = latestStations.find(station => normalizeCall(station.callSign) === selfCall());
       if (!me) {
         restoreNativeChat();

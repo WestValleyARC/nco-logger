@@ -86,6 +86,7 @@ const netProfileDetails = async (req, res) => {
             endpointVersion: '1.0',
             _id: npresult._id,
             title: npresult.title,
+            netType: npresult.netType,
             frequency: npresult.frequency,
             mode: npresult.mode,
             restrictedSigReports: npresult?.restrictedSigReports ? true : false,
@@ -131,6 +132,7 @@ const netProfileUpdate = async (req, res) => {
 
             npresult.set({
                 title: req.body.title.trim(),
+                ...(hasOwn(req.body, 'netType') ? { netType: req.body.netType } : {}),
                 ...(hasOwn(req.body, 'restrictedSigReports')
                     ? { restrictedSigReports: req.body.restrictedSigReports ? true : false }
                     : {}),
@@ -257,7 +259,7 @@ const netProfileRemoveCoOwner = async (req, res) => {
 const netProfileCreatePost = async (req, res) => {
     const session = await mongoose.connection.startSession();
     try {
-        const { title, frequency, mode, restrictedSigReports, autoIn, modeDetails, notes } = req.body;
+        const { title, netType, frequency, mode, restrictedSigReports, autoIn, modeDetails, notes } = req.body;
         const hasConnections = hasOwn(req.body, 'connections');
         const operatingFields = hasConnections
             ? { ...legacyFieldsForConnections(req.body.connections), connections: req.body.connections }
@@ -268,6 +270,7 @@ const netProfileCreatePost = async (req, res) => {
               };
         const netprofile = new NetProfile({
             title: typeof title === 'string' ? title.trim() : undefined,
+            netType,
             restrictedSigReports: restrictedSigReports ? true : false,
             autoIn: autoIn ? true : false,
             notes: sanitizeNotes(notes),

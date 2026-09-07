@@ -995,6 +995,7 @@ window.netProfileEditByID = async function (id) {
     netProfileFormState.mode = 'edit';
 
     document.getElementById('input_title').value = res.data.title;
+    document.getElementById('input_net_type').value = res.data.netType || 'Net';
     document.getElementById('input_auto_in').checked = res.data?.autoIn ? true : false;
     tinymce.get('input_notes').setContent(res.data.notes);
 
@@ -1036,6 +1037,7 @@ function np_submitHandler(e) {
 
     const dataPayload = {
         title,
+        netType: String(formDataToSend.get('net_type') || 'Net'),
         autoIn: formDataToSend.get('auto_in') ? true : false,
         notes: tinymce.get('input_notes').getContent()
     };

@@ -37,10 +37,11 @@ const updateUserProfileFollowing = async (reqUser, npresultId) => {
 
 // Transforms a net profile object to a simplified format.
 const transformNetProfile = (net, scheduling = null) => {
-    const { id, title, frequency, mode, permanent, modeDetails, connections, followers } = net;
+    const { id, title, netType = 'Net', frequency, mode, permanent, modeDetails, connections, followers } = net;
     return {
         id,
         title,
+        netType,
         frequency,
         mode,
         permanent,
