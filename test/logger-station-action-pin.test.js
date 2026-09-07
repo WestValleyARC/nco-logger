@@ -146,13 +146,16 @@ test('phone module resize handles are absent and every resize path is guarded', 
 
 test('module move and resize affordances are visible, directional, and responsively suppressed', () => {
     const css = read('client/dist/public/css/nco-logger.css');
+    const source = read('client/dist/public/js/byView/liveNet/ncoLogger.js');
     const lightCss = read('client/dist/public/css/nco-logger-light.css');
-    assert.match(css, /\.nch-module-header::after\s*\{[^}]*radial-gradient\(circle, currentColor[^}]*repeat-x[^}]*opacity:\s*\.72/s);
-    assert.match(css, /\.nch-module-header:is\(:hover, :focus-visible\)::after\s*\{[^}]*opacity:\s*1/s);
-    assert.match(css, /:is\(\.nch-resize-n, \.nch-resize-s\)::after\s*\{[^}]*repeat-x/s);
-    assert.match(css, /:is\(\.nch-resize-e, \.nch-resize-w\)::after\s*\{[^}]*repeat-y/s);
-    assert.match(css, /:is\(\.nch-resize-ne, \.nch-resize-nw, \.nch-resize-se, \.nch-resize-sw\)::after\s*\{[^}]*width:\s*10px[^}]*height:\s*10px/s);
-    assert.match(css, /\.nch-resize-ne::after,[\s\S]*\.nch-resize-sw::after\s*\{[^}]*radial-gradient[^}]*radial-gradient[^}]*radial-gradient/s);
+    assert.match(css, /\.nch-module-header::after\s*\{[^}]*content:\s*none/s);
+    assert.match(css, /\.nch-module-header:is\(:hover, :focus-visible\)::after/);
+    assert.match(css, /\.nch-resize-n::after\s*\{[^}]*repeat-x/s);
+    assert.match(css, /\.nch-resize-s::after\s*\{[^}]*content:\s*none/s);
+    assert.match(css, /:is\(\.nch-resize-e, \.nch-resize-w\)::after\s*\{[^}]*content:\s*none/s);
+    assert.match(css, /:is\(\.nch-resize-ne, \.nch-resize-nw, \.nch-resize-se, \.nch-resize-sw\)::after\s*\{[^}]*content:\s*none/s);
+    assert.doesNotMatch(css, /\.nch-resize-ne::after,[\s\S]*radial-gradient/);
+    assert.match(source, /function moduleResizeZones\(id\) \{[\s\S]*id === \"controls\"[\s\S]*return \"\"/);
     assert.match(css, /\.nch-resize-zone:is\(:hover, :focus-visible, :active\)::after\s*\{[^}]*opacity:\s*1/s);
     assert.match(css, /\.nch-resize-zone\[hidden\]\s*\{[^}]*display:\s*none !important[^}]*pointer-events:\s*none !important/s);
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-resize-zone\s*\{[^}]*display:\s*none !important[^}]*pointer-events:\s*none !important/s);

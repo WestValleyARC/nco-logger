@@ -79,7 +79,7 @@ body.nco-logger-page > :is(#local-chat-container, hl-chat.nch-chat-staging):not(
 #netcontrol-ncs-helper .nch-module-header { position: relative; display: flex; min-width: 0; min-height: 19px; flex: 0 0 19px; align-items: center; justify-content: space-between; gap: 3px; margin: 0; padding: 0 25px 0 6px; cursor: grab; touch-action: none; user-select: none; background: #182026; border-bottom: 1px solid #4f7880; font-size: calc(11px + var(--nch-font-adjust, 0px)); line-height: 18px; }
 #netcontrol-ncs-helper .nch-module-header:active { cursor: grabbing; }
 #netcontrol-ncs-helper .nch-module-header > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#netcontrol-ncs-helper .nch-module-header::after { position: absolute; top: 50%; right: 6px; width: 15px; height: 5px; content: ""; transform: translateY(-50%); background: radial-gradient(circle, currentColor 1.25px, transparent 1.5px) 0 50% / 5px 5px repeat-x; color: rgba(141, 227, 238, .52); opacity: .72; transition: color .12s ease, opacity .12s ease, transform .12s ease; }
+#netcontrol-ncs-helper .nch-module-header::after { content: none; }
 #netcontrol-ncs-helper .nch-module-header:is(:hover, :focus-visible)::after { color: #b9f6ff; opacity: 1; }
 #netcontrol-ncs-helper .nch-module-header:active::after { color: #fff; opacity: 1; transform: translateY(-50%) scale(1.08); }
 #netcontrol-ncs-helper .nch-module-content { min-width: 0; min-height: 0; flex: 1 1 auto; margin: 0; padding: 5px 7px 10px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
@@ -102,19 +102,17 @@ body.nco-logger-page > :is(#local-chat-container, hl-chat.nch-chat-staging):not(
 #netcontrol-ncs-helper .nch-resize-w { z-index: 7; top: 13px; bottom: 13px; width: 8px; cursor: ew-resize; }
 #netcontrol-ncs-helper .nch-resize-e { right: 0; }
 #netcontrol-ncs-helper .nch-resize-w { left: 0; }
-#netcontrol-ncs-helper :is(.nch-resize-n, .nch-resize-s)::after { width: 15px; height: 5px; background: radial-gradient(circle, currentColor 1.2px, transparent 1.45px) 0 50% / 5px 5px repeat-x; }
-#netcontrol-ncs-helper :is(.nch-resize-e, .nch-resize-w)::after { width: 5px; height: 15px; background: radial-gradient(circle, currentColor 1.2px, transparent 1.45px) 50% 0 / 5px 5px repeat-y; }
+#netcontrol-ncs-helper .nch-resize-n::after { width: 15px; height: 5px; background: radial-gradient(circle, currentColor 1.2px, transparent 1.45px) 0 50% / 5px 5px repeat-x; }
+#netcontrol-ncs-helper .nch-resize-n::after { margin-top: -3px; }
+#netcontrol-ncs-helper .nch-resize-s::after { content: none; }
+#netcontrol-ncs-helper :is(.nch-resize-e, .nch-resize-w)::after { content: none; }
 #netcontrol-ncs-helper .nch-resize-ne,
 #netcontrol-ncs-helper .nch-resize-nw,
 #netcontrol-ncs-helper .nch-resize-se,
 #netcontrol-ncs-helper .nch-resize-sw { width: 14px; height: 14px; }
-#netcontrol-ncs-helper :is(.nch-resize-ne, .nch-resize-nw, .nch-resize-se, .nch-resize-sw)::after { width: 10px; height: 10px; }
+#netcontrol-ncs-helper :is(.nch-resize-ne, .nch-resize-nw, .nch-resize-se, .nch-resize-sw)::after { content: none; }
 #netcontrol-ncs-helper .nch-resize-ne { top: 0; right: 0; cursor: nesw-resize; }
-#netcontrol-ncs-helper .nch-resize-ne::after,
-#netcontrol-ncs-helper .nch-resize-sw::after { background: radial-gradient(circle at 2px 8px, currentColor 1.1px, transparent 1.4px), radial-gradient(circle at 5px 5px, currentColor 1.1px, transparent 1.4px), radial-gradient(circle at 8px 2px, currentColor 1.1px, transparent 1.4px); }
 #netcontrol-ncs-helper .nch-resize-nw { top: 0; left: 0; cursor: nwse-resize; }
-#netcontrol-ncs-helper .nch-resize-nw::after,
-#netcontrol-ncs-helper .nch-resize-se::after { background: radial-gradient(circle at 2px 2px, currentColor 1.1px, transparent 1.4px), radial-gradient(circle at 5px 5px, currentColor 1.1px, transparent 1.4px), radial-gradient(circle at 8px 8px, currentColor 1.1px, transparent 1.4px); }
 #netcontrol-ncs-helper .nch-resize-se { right: 0; bottom: 0; cursor: nwse-resize; }
 #netcontrol-ncs-helper .nch-resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
 #netcontrol-ncs-helper .nch-module-dragging { opacity: .96; border-color: #b9f6ff; box-shadow: 0 14px 34px rgba(0, 0, 0, .68); transition: none; }
@@ -1244,13 +1242,7 @@ hl-chat.nch-chat-docked .chat-send-btn.nch-chat-send {
 
 /* Subtle shared zoning and alignment refinement for the desktop console. */
 #netcontrol-ncs-helper .nch-dashboard {
-  background: linear-gradient(
-    to bottom,
-    #07131d 0,
-    #07131d 20%,
-    #050d15 20%,
-    #050d15 100%
-  );
+  background: #07131d;
 }
 
 #netcontrol-ncs-helper .nch-module,
@@ -1272,6 +1264,11 @@ hl-chat.nch-chat-docked .chat-widget {
 
 #netcontrol-ncs-helper .nch-module-content {
   padding-top: 4px;
+}
+
+#netcontrol-ncs-helper .nch-controls-pane,
+#netcontrol-ncs-helper :is(.nch-lurkers-fixed, .nch-checked-out-section) {
+  background: #0b1a25 !important;
 }
 
 #netcontrol-ncs-helper :is(.nch-checked-out-section, .nch-lurkers-fixed) > .nch-module-content {

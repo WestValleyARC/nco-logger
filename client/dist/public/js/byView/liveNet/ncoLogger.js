@@ -4357,6 +4357,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         });
     }
     function moduleResizeZones(id) {
+        if (id === "controls")
+            return "";
         const disabled = currentLayoutContext.startsWith("phone");
         return ["n", "e", "s", "w", "ne", "nw", "se", "sw"].map(edge => `<span class="nch-resize-zone nch-resize-${edge}" data-resize-module="${id}" data-resize-edge="${edge}"${disabled ? " hidden" : ""}${edge === "se" ? ` role="separator" tabindex="${disabled ? "-1" : "0"}" aria-label="Resize ${escapeHtml(MODULE_LABELS[id])}"` : ' aria-hidden="true"'}></span>`).join("");
     }
