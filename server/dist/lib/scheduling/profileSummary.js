@@ -48,12 +48,13 @@ const loadProfileSchedulingSummaries = async ({ profiles, now = new Date(), db =
     const NetSchedule = getNetSchedule(db);
     const ScheduledOccurrence = getScheduledOccurrence(db);
     const LiveNet = getLiveNet(db);
+    const graceCutoff = new Date(now.getTime() - GRACE_PERIOD_MS);
     const [schedules, occurrences, liveNets] = await Promise.all([
         NetSchedule.find({ netProfile: { $in: ids }, enabled: true }).lean(),
         ScheduledOccurrence.find({
             netProfile: { $in: ids },
             status: { $in: ACTIVE_STATUSES },
-            $or: [{ status: { $in: ['preparing', 'live'] } }, { startAt: { $gte: now } }]
+            $or: [{ status: { $in: ['preparing', 'live'] } }, { startAt: { $gt: graceCutoff } }]
         }).sort({ startAt: 1 }).lean(),
         LiveNet.find({ netProfile: { $in: ids }, closing: { $ne: true } }).lean()
     ]);
@@ -82,7 +83,7 @@ const loadProfileSchedulingSummaries = async ({ profiles, now = new Date(), db =
             if (occurrence.status === 'preparing') {
                 return Boolean(preparingLiveNet && String(occurrence.liveNet) === String(preparingLiveNet._id));
             }
-            return occurrence.startAt >= now;
+            return occurrence.startAt > graceCutoff;
         }) || null;
         const preparing = Boolean(preparingLiveNet);
         const opensAt = nextOccurrence ? new Date(nextOccurrence.startAt.getTime() - PREPARATION_WINDOW_MS) : null;

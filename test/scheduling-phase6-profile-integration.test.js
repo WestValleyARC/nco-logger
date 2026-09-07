@@ -125,6 +125,51 @@ test('Phase 6 My Nets and Favorites scheduling integration', async t => {
             assert.equal(summaries.get(String(earlyProfile._id)).canPrepare, false);
         });
 
+        await t.test('scheduled occurrence remains preparable during the thirty-minute post-start grace period', async () => {
+            const profile = await createProfile();
+            const schedule = await createSchedule(profile);
+
+            // Reproduce the AZ POTA incident: scheduled for 6:55, operator arrives at 7:00.
+            const startAt = new Date(NOW.getTime() - 5 * 60000);
+            const occurrence = await createOccurrence(profile, schedule, startAt);
+
+            const summary = (
+                await loadProfileSchedulingSummaries({ profiles: [profile], now: NOW, db })
+            ).get(String(profile._id));
+
+            assert.equal(summary.nextOccurrence?.id, String(occurrence._id));
+            assert.equal(summary.nextOccurrence?.status, 'scheduled');
+            assert.equal(summary.canPrepare, true);
+
+            const nearGraceProfile = await createProfile();
+            const nearGraceSchedule = await createSchedule(nearGraceProfile);
+            const nearGraceOccurrence = await createOccurrence(
+                nearGraceProfile,
+                nearGraceSchedule,
+                new Date(NOW.getTime() - (30 * 60000 - 1000))
+            );
+            const nearGraceSummary = (
+                await loadProfileSchedulingSummaries({ profiles: [nearGraceProfile], now: NOW, db })
+            ).get(String(nearGraceProfile._id));
+
+            assert.equal(nearGraceSummary.nextOccurrence?.id, String(nearGraceOccurrence._id));
+            assert.equal(nearGraceSummary.canPrepare, true);
+
+            const expiredProfile = await createProfile();
+            const expiredSchedule = await createSchedule(expiredProfile);
+            await createOccurrence(
+                expiredProfile,
+                expiredSchedule,
+                new Date(NOW.getTime() - 30 * 60000)
+            );
+            const expiredSummary = (
+                await loadProfileSchedulingSummaries({ profiles: [expiredProfile], now: NOW, db })
+            ).get(String(expiredProfile._id));
+
+            assert.equal(expiredSummary.nextOccurrence, null);
+            assert.equal(expiredSummary.canPrepare, false);
+        });
+
         await t.test('similar names remain independently associated by profile ID and owner-invisible profiles remain manageable', async () => {
             const first = await createProfile({ title: 'Similar Name A', invisible: true });
             const second = await createProfile({ title: 'Similar Name B' });
