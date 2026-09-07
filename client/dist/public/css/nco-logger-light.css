@@ -232,7 +232,8 @@
   border-color: #ccd6da;
 }
 
-:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module-header > span:first-child::before {
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module-header::after,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-resize-zone {
   color: rgba(5, 107, 133, .62);
 }
 
@@ -243,8 +244,9 @@
   box-shadow: 0 8px 20px var(--nch-light-shadow);
 }
 
-:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-resize-zone:is(:hover, :focus) {
-  background: rgba(8, 117, 144, .28);
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module-header:is(:hover, :focus-visible, :active)::after,
+:root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-resize-zone:is(:hover, :focus-visible, :active) {
+  color: var(--nch-light-focus);
 }
 
 :root[data-theme='light'] body.nco-logger-page #netcontrol-ncs-helper .nch-module-drop-preview {
