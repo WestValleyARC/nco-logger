@@ -3,7 +3,7 @@ import { serverInfo } from '#@client/lib/serverInfo.js';
 import { getNpid } from '#@client/lib/clientUtils.js';
 import { chatRequestErrorMessage, clearPrivateUnread, preserveScrollTop, reconcileChatMessages, reconcileChatSnapshot, recordPrivateUnread, shouldRecordPrivateUnread, ExclusiveChatOperation, InitialChatScrollGate, isLatestChatMessage, shouldScrollChatToLatest, SingleChatStream, sortChatMessages, sortPinnedChatMessages, hiddenPinnedMessageCount, isPinnedTextTruncated, trimOldestChatMessages, fitChatOverlayToViewport } from '#@client/lib/chatState.js';
 import { CHAT_EMOJI_CATEGORIES, filterChatEmoji, insertChatEmoji } from '#@client/lib/chatEmoji.js';
-import { appendChatText } from '#@client/lib/chatText.js';
+import { appendChatText, isEmojiOnlyChatMessage } from '#@client/lib/chatText.js';
 const logger = createLogger('lib/chat.ts');
 const PUBLIC_MESSAGE_LIMIT = 1000;
 const DIRECT_MESSAGE_LIMIT = 500;
@@ -1760,8 +1760,10 @@ export class ChatWidget extends HTMLElement {
             body.className = `chat-message-content chat-text${message.deleted ? ' text-muted fst-italic' : ''}`;
             if (message.deleted)
                 body.textContent = '[message deleted]';
-            else
+            else {
+                body.classList.toggle('chat-emoji-only', isEmojiOnlyChatMessage(message.text));
                 appendChatText(body, message.text);
+            }
             row.append(body);
             if (!message.deleted && message.attachment && this.safeAttachmentUrl(message)) {
                 const imageButton = document.createElement('button');

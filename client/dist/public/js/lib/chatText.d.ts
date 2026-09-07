@@ -7,5 +7,6 @@ export type ChatTextPart = {
 };
 export declare const chatTextParts: (text: string) => ChatTextPart[];
 export declare const chatLinkHref: (value: string) => string;
+export declare const isEmojiOnlyChatMessage: (text: string) => boolean;
 export declare const appendChatText: (container: HTMLElement, text: string) => void;
 //# sourceMappingURL=chatText.d.ts.map
