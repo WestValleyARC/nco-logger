@@ -304,7 +304,7 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) button\.nch-station-action-toggle\s*\{[^}]*width:\s*36px[^}]*height:\s*36px[^}]*touch-action:\s*manipulation/s);
     assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) \.nch-active-section \.nch-row-text\s*\{[^}]*flex-direction:\s*column[^}]*overflow:\s*visible/s);
     assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) \.nch-active-section :is\(\.nch-role-badge, \.nch-tag\)\s*\{[^}]*flex:\s*0 0 auto/s);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*calc\(12px \+ env\(safe-area-inset-bottom\)\)[^}]*overflow-y:\s*auto[^}]*overscroll-behavior-y:\s*contain/s);
     assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"[^>]*aria-expanded="false"/);
     assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)[\s\S]*pinnedActionCall = pinnedActionCall === call \? "" : call/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 7[\s\S]*items\.controls\.h = 7[\s\S]*items\[id\]\.y \+ addedRows/);
