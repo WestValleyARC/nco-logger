@@ -62,8 +62,12 @@ async function editLiveNetInfo({ req, liveNet, netProfile, source }) {
         modeDetails: body.modeDetails.trim(),
         notes: sanitizeNotes(body.notes)
     };
+    if (Object.hasOwn(body, 'connections')) {
+        if (!Array.isArray(body.connections)) throw new Error('Live net connections must be an array');
+        values.connections = body.connections;
+    }
     const candidate = new NetProfile({ ...values, owners: netProfile.owners });
-    const validationError = candidate.validateSync(LIVE_NET_INFO_FIELDS);
+    const validationError = candidate.validateSync(Object.hasOwn(values, 'connections') ? [...LIVE_NET_INFO_FIELDS, 'connections'] : LIVE_NET_INFO_FIELDS);
     if (validationError) throw validationError;
     const customOrReflector = values.mode === 'CUSTOM' || values.mode === 'Reflector';
     if (!values.frequency && !customOrReflector) {

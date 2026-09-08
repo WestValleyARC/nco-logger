@@ -177,6 +177,20 @@ test('Edit Net and Net Type', async t => {
                 ['FM', 'AllStarLink', 'EchoLink']
             );
             assert.equal(withConnections.net.frequency, override.frequency);
+
+            const sessionConnections = [
+                { type: 'Fusion', frequency: '448.800', operation: 'Repeater', offset: '-5.000' },
+                { type: 'WIRES-X', room: 'America-Link', node: '21080' }
+            ];
+            const connectionEdit = await invoke(nco, { ...override, connections: sessionConnections });
+            assert.equal(connectionEdit.status, 200);
+            const connectionLiveNet = await LiveNet.findById(liveNet._id).lean();
+            assert.deepEqual(connectionLiveNet.connections.map(connection => connection.type), ['Fusion', 'WIRES-X']);
+            assert.deepEqual((await NetProfile.findById(profile._id).lean()).connections.map(connection => connection.type), ['FM', 'AllStarLink', 'EchoLink']);
+            const sessionDetails = await genLiveNetDetails({
+                npid: String(profile._id), flexOpts: { baseTtlMs: 5000, awayInMs: 120000, sigReportTypeByMode: {} }, requestingCallSign: nco.callSign
+            });
+            assert.deepEqual(sessionDetails.net.connections.map(connection => connection.type), ['Fusion', 'WIRES-X']);
         });
 
         await t.test('rejects invalid net types and Logger/Viewer edit authority', async () => {
@@ -206,6 +220,9 @@ test('Edit Net and Net Type', async t => {
                 assert.match(liveClient, new RegExp(`data-net-modal="${field}"`));
             }
             assert.match(liveClient, /action: "editNet", net/);
+            assert.match(liveClient, /<legend>Connections<\/legend>/);
+            assert.match(liveClient, /data-role="add-net-connection"/);
+            for (const type of ['Fusion', 'WIRES-X', 'YSF']) assert.match(liveClient, new RegExp(`['\"]?${type}['\"]?:`));
             assert.match(liveClient, /function netNotesToPlainText\(value\)/);
             assert.match(liveClient, /field === "notes" \? netNotesToPlainText/);
             assert.match(liveClient, /field === "notes" \? netNotesToHtml/);

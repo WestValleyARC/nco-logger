@@ -2228,3 +2228,12 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-entry-controls { overflow-y: auto; }
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-quick-checkin button { min-height: 30px; }
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-net-actions button { min-height: 30px; }
+#netcontrol-ncs-helper .nch-net-connections { margin: 4px 0; padding: 8px; border: 1px solid #4f7880; border-radius: 6px; }
+#netcontrol-ncs-helper .nch-net-connections legend { padding: 0 5px; color: #8dd9e4; }
+#netcontrol-ncs-helper .nch-net-connection-card { margin: 6px 0; padding: 7px; background: #10171c; border: 1px solid #45636a; border-radius: 5px; }
+#netcontrol-ncs-helper .nch-net-connection-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#netcontrol-ncs-helper .nch-net-connection-header select { width: min(100%, 180px); }
+#netcontrol-ncs-helper .nch-net-connection-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin-top: 6px; }
+#netcontrol-ncs-helper .nch-net-connection-fields label { min-width: 0; }
+#netcontrol-ncs-helper .nch-net-connection-fields :is(input, select) { width: 100%; margin-top: 3px; padding: 6px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
+#netcontrol-ncs-helper .nch-net-connections-empty { margin: 4px 0; color: #adb6bd; font-size: 12px; }
