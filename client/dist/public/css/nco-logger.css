@@ -523,6 +523,9 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
 #netcontrol-ncs-helper .nch-edit-card { width: min(520px, calc(100% - 30px)); padding: 18px; background: #20252b; border: 2px solid #74c6d4; border-radius: 10px; box-shadow: 0 8px 28px #000; }
 #netcontrol-ncs-helper .nch-net-edit-modal .nch-edit-card { max-height: calc(100% - 30px); overflow-y: auto; }
 #netcontrol-ncs-helper .nch-net-edit-modal :is(select, textarea) { width: 100%; margin-top: 3px; padding: 7px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
+#netcontrol-ncs-helper .nch-net-edit-modal select.nch-select { padding-right: 32px; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238dd9e4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 9px center; background-size: 14px 10px; }
+#netcontrol-ncs-helper .nch-net-edit-modal label:has(> select[data-net-modal="netType"]),
+#netcontrol-ncs-helper .nch-net-edit-modal label:has(> select[data-net-modal="mode"]) { width: min(100%, 180px); }
 #netcontrol-ncs-helper .nch-net-edit-modal textarea { min-height: 82px; resize: vertical; }
 #netcontrol-ncs-helper .nch-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 #netcontrol-ncs-helper .nch-close-confirm .nch-edit-card { width: min(460px, calc(100% - 30px)); border-color: #ff8b96; }
@@ -2082,7 +2085,9 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-entry-controls {
-  padding-bottom: 9px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row {
@@ -2220,5 +2225,6 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 }
 
 /* Keep the desktop Station Controls actions visible within the four-row default module. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-quick-checkin button { min-height: 32px; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-net-actions button { min-height: 32px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-entry-controls { overflow-y: auto; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-quick-checkin button { min-height: 30px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-net-actions button { min-height: 30px; }

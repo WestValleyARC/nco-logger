@@ -4379,9 +4379,9 @@ import {
           <div class="nch-edit-card" role="dialog" aria-modal="true" aria-labelledby="nch-net-edit-title">
             <h3 id="nch-net-edit-title">Edit Net</h3>
             <label>Net Name <input data-net-modal="title" maxlength="100" required></label>
-            <label>Net Type <select data-net-modal="netType"><option>Net</option><option>Roundtable</option><option>Ragchew</option><option>Other</option></select></label>
+            <label>Net Type <select class="nch-select" data-net-modal="netType"><option>Net</option><option>Roundtable</option><option>Ragchew</option><option>Other</option></select></label>
             <label>Frequency <input data-net-modal="frequency" maxlength="20"></label>
-            <label>Mode <select data-net-modal="mode"><option>LSB</option><option>USB</option><option>AM</option><option>CW</option><option>FM</option><option>RTTY</option><option>FSQ</option><option>PSK-31</option><option>FreeDV</option><option>Reflector</option><option>Olivia</option><option>Hell</option><option>JS8Call</option><option>CUSTOM</option></select></label>
+            <label>Mode <select class="nch-select" data-net-modal="mode"><option>LSB</option><option>USB</option><option>AM</option><option>CW</option><option>FM</option><option>RTTY</option><option>FSQ</option><option>PSK-31</option><option>FreeDV</option><option>Reflector</option><option>Olivia</option><option>Hell</option><option>JS8Call</option><option>CUSTOM</option></select></label>
             <label>Mode Details <input data-net-modal="modeDetails" maxlength="15"></label>
             <label>Notes <textarea data-net-modal="notes" maxlength="320"></textarea></label>
             <div class="nch-modal-actions">
