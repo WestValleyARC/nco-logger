@@ -58,6 +58,16 @@ const CONNECTION_FIELDS = {
         { key: 'reflector', label: 'Reflector', required: true },
         { key: 'module', label: 'Module' }
     ],
+    Fusion: [
+        { key: 'frequency', label: 'Frequency', required: true, placeholder: '448.800' },
+        { key: 'operation', label: 'Operation', options: ['Repeater', 'Simplex'] },
+        { key: 'offset', label: 'Offset', placeholder: '-5.000', when: connection => connection.operation === 'Repeater' }
+    ],
+    'WIRES-X': [
+        { key: 'room', label: 'Room Name', placeholder: 'America-Link' },
+        { key: 'node', label: 'Room ID', placeholder: '21080' },
+        { key: 'frequency', label: 'Access Frequency', placeholder: '448.800' }
+    ],
     YSF: [{ key: 'room', label: 'Room / Reflector', required: true }],
     P25: [{ key: 'talkgroup', label: 'Talkgroup', required: true }],
     M17: [
@@ -130,7 +140,7 @@ const createConnectionField = (connection, field) => {
     wrapper.textContent = field.label;
     const input = document.createElement(field.options ? 'select' : 'input');
     if (!field.options) input.type = 'text';
-    input.className = 'form-control app-input';
+    input.className = field.options ? 'form-select app-input app-select' : 'form-control app-input';
     if (field.options) {
         const blank = document.createElement('option');
         blank.value = '';
@@ -181,8 +191,8 @@ const renderConnections = () => {
         });
         select.value = connection.type;
         select.addEventListener('change', () => {
-            connectionRows[index] = select.value === 'FM'
-                ? { type: 'FM', operation: 'Repeater' }
+            connectionRows[index] = ['FM', 'Fusion'].includes(select.value)
+                ? { type: select.value, operation: 'Repeater' }
                 : { type: select.value };
             connectionsTouched = true;
             renderConnections();

@@ -269,6 +269,10 @@ body.nch-moving-module { cursor: grabbing !important; user-select: none !importa
 #netcontrol-ncs-helper :is(.nch-lurker-row, .nch-row.nch-checked-out) .nch-detail { font-size: calc(9px + var(--nch-font-adjust, 0px)); }
 #netcontrol-ncs-helper :is(.nch-lurker-row, .nch-row.nch-checked-out) button.nch-note-preview { font-size: calc(8px + var(--nch-font-adjust, 0px)); line-height: 10px; }
 #netcontrol-ncs-helper .nch-hand-slot { display: inline-flex; width: 17px; height: 18px; min-width: 17px; flex: 0 0 17px; margin-left: auto; align-items: center; justify-content: center; }
+#netcontrol-ncs-helper .nch-call-actions { display: inline-flex; width: 17px; min-width: 17px; flex: 0 0 17px; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+#netcontrol-ncs-helper .nch-call-actions.nch-qrz-only { width: auto; min-width: 0; flex-basis: auto; }
+#netcontrol-ncs-helper .nch-qrz-link { display: inline-flex; min-width: 17px; min-height: 14px; align-items: center; justify-content: center; color: var(--nch-skin-cyan-soft, #8dd9e4); border-radius: 2px; font-size: calc(7.5px + var(--nch-font-adjust, 0px)); font-weight: 800; line-height: 1; letter-spacing: 0; text-decoration: underline; text-underline-offset: 1px; touch-action: manipulation; }
+#netcontrol-ncs-helper .nch-qrz-link:is(:hover, :focus-visible) { color: var(--nch-skin-text, #f6f8f9); background: rgba(0, 200, 240, .12); }
 #netcontrol-ncs-helper .nch-hand { display: inline-flex; width: 17px; height: 18px; align-items: center; justify-content: center; margin: 0; font-size: calc(14px + var(--nch-font-adjust, 0px)); line-height: 1; filter: drop-shadow(0 0 2px #000); }
 #netcontrol-ncs-helper button.nch-hand-toggle { display: inline-flex; width: 17px; height: 18px; min-width: 17px; flex: 0 0 17px; margin: 0; align-items: center; justify-content: center; padding: 0; opacity: .42; background: transparent; border: 0; font-size: calc(14px + var(--nch-font-adjust, 0px)); line-height: 1; filter: grayscale(1); }
 #netcontrol-ncs-helper button.nch-hand-toggle:hover,
@@ -519,6 +523,9 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
 #netcontrol-ncs-helper .nch-edit-card { width: min(520px, calc(100% - 30px)); padding: 18px; background: #20252b; border: 2px solid #74c6d4; border-radius: 10px; box-shadow: 0 8px 28px #000; }
 #netcontrol-ncs-helper .nch-net-edit-modal .nch-edit-card { max-height: calc(100% - 30px); overflow-y: auto; }
 #netcontrol-ncs-helper .nch-net-edit-modal :is(select, textarea) { width: 100%; margin-top: 3px; padding: 7px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
+#netcontrol-ncs-helper .nch-net-edit-modal select.nch-select { padding-right: 32px; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238dd9e4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 9px center; background-size: 14px 10px; }
+#netcontrol-ncs-helper .nch-net-edit-modal label:has(> select[data-net-modal="netType"]),
+#netcontrol-ncs-helper .nch-net-edit-modal label:has(> select[data-net-modal="mode"]) { width: min(100%, 180px); }
 #netcontrol-ncs-helper .nch-net-edit-modal textarea { min-height: 82px; resize: vertical; }
 #netcontrol-ncs-helper .nch-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 #netcontrol-ncs-helper .nch-close-confirm .nch-edit-card { width: min(460px, calc(100% - 30px)); border-color: #ff8b96; }
@@ -2078,7 +2085,9 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-entry-controls {
-  padding-bottom: 9px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-active-section .nch-row {
@@ -2214,3 +2223,17 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
     min-height: 44px;
   }
 }
+
+/* Keep the desktop Station Controls actions visible within the four-row default module. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-entry-controls { overflow-y: auto; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-quick-checkin button { min-height: 30px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-net-actions button { min-height: 30px; }
+#netcontrol-ncs-helper .nch-net-connections { margin: 4px 0; padding: 8px; border: 1px solid #4f7880; border-radius: 6px; }
+#netcontrol-ncs-helper .nch-net-connections legend { padding: 0 5px; color: #8dd9e4; }
+#netcontrol-ncs-helper .nch-net-connection-card { margin: 6px 0; padding: 7px; background: #10171c; border: 1px solid #45636a; border-radius: 5px; }
+#netcontrol-ncs-helper .nch-net-connection-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#netcontrol-ncs-helper .nch-net-connection-header select { width: min(100%, 180px); }
+#netcontrol-ncs-helper .nch-net-connection-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin-top: 6px; }
+#netcontrol-ncs-helper .nch-net-connection-fields label { min-width: 0; }
+#netcontrol-ncs-helper .nch-net-connection-fields :is(input, select) { width: 100%; margin-top: 3px; padding: 6px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
+#netcontrol-ncs-helper .nch-net-connections-empty { margin: 4px 0; color: #adb6bd; font-size: 12px; }

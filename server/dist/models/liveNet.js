@@ -2,7 +2,7 @@
 const { Schema } = require('mongoose');
 const { modelMaker } = require('../lib/modelMaker');
 const uniqueValidator = require('mongoose-unique-validator');
-const { NET_TYPES, OPERATING_MODES } = require('./netProfile');
+const { NET_TYPES, OPERATING_MODES, connectionSchema } = require('./netProfile');
 
 const lookupTableSchema = new Schema({
     stationInteraction: {
@@ -60,7 +60,8 @@ const liveNetSchema = new Schema(
                 message: 'mode details contains invalid characters'
             }
         },
-        notes: { type: String, maxlength: 320 },
+        connections: { type: [connectionSchema], default: undefined },
+        notes: { type: String, maxlength: 500 },
         countdownTimer: {
             type: Number,
             min: 0,

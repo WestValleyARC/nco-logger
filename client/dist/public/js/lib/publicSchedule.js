@@ -46,6 +46,10 @@ const formatStructuredConnection = connection => {
             return `DMR: ${[clean(connection.talkgroup) && `TG ${clean(connection.talkgroup)}`, clean(connection.colorCode) && `CC ${clean(connection.colorCode)}`].filter(Boolean).join(' · ')}`;
         case 'D-STAR':
             return `D-STAR: ${[clean(connection.reflector), clean(connection.module)].filter(Boolean).join(' ')}`;
+        case 'Fusion':
+            return `Fusion: ${[withMHz(connection.frequency), connection.operation === 'Repeater' && withMHz(connection.offset), connection.operation === 'Simplex' && 'Simplex'].filter(Boolean).join(' · ')}`;
+        case 'WIRES-X':
+            return `WIRES-X: ${[clean(connection.room), clean(connection.node) && `Room ${clean(connection.node)}`, withMHz(connection.frequency)].filter(Boolean).join(' · ')}`;
         case 'YSF':
             return `YSF: ${clean(connection.room) || clean(connection.reflector)}`;
         case 'P25':

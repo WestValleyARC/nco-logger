@@ -172,7 +172,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
     let latestNetTitle = "";
     let latestNetFrequency = "";
     let latestNetConnections = [];
-    let latestNetInfo = { title: "", netType: "Net", frequency: "", mode: "FM", modeDetails: "", notes: "" };
+    let latestNetInfo = { title: "", netType: "Net", frequency: "", mode: "FM", modeDetails: "", notes: "", connections: [] };
+    let netEditConnections = [];
     let currentUserRole = "netuser";
     let layoutRoleResolved = false;
     let currentLayoutContext = "desktop";
@@ -1878,16 +1879,91 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             return "";
         return text.split(/\n{2,}/).map(paragraph => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("");
     }
+    const NET_EDIT_CONNECTION_FIELDS = {
+        FM: [{ key: "frequency", label: "Frequency", required: true }, { key: "operation", label: "Operation", options: ["Repeater", "Simplex"] }, { key: "offset", label: "Offset", when: c => c.operation === "Repeater" }, { key: "tone", label: "PL / CTCSS" }],
+        HF: [{ key: "frequency", label: "Frequency", required: true }, { key: "mode", label: "Mode", options: ["SSB", "USB", "LSB", "CW", "AM", "Digital", "Other"] }],
+        AllStarLink: [{ key: "node", label: "Node Number", required: true }], EchoLink: [{ key: "callsign", label: "Callsign / Node", required: true }],
+        DMR: [{ key: "talkgroup", label: "Talkgroup", required: true }, { key: "colorCode", label: "Color Code" }],
+        "D-STAR": [{ key: "reflector", label: "Reflector", required: true }, { key: "module", label: "Module" }],
+        Fusion: [{ key: "frequency", label: "Frequency", required: true }, { key: "operation", label: "Operation", options: ["Repeater", "Simplex"] }, { key: "offset", label: "Offset", when: c => c.operation === "Repeater" }],
+        "WIRES-X": [{ key: "room", label: "Room Name" }, { key: "node", label: "Room ID" }, { key: "frequency", label: "Access Frequency" }],
+        YSF: [{ key: "room", label: "Room / Reflector", required: true }], P25: [{ key: "talkgroup", label: "Talkgroup", required: true }],
+        M17: [{ key: "reflector", label: "Reflector", required: true }, { key: "module", label: "Module" }], NXDN: [{ key: "talkgroup", label: "Talkgroup", required: true }],
+        Zello: [{ key: "channel", label: "Channel", required: true }], Other: [{ key: "label", label: "Label", required: true }, { key: "value", label: "Value", required: true }]
+    };
+    function renderNetEditConnections() {
+        const container = panel.querySelector("[data-net-connections]");
+        if (!container)
+            return;
+        container.replaceChildren();
+        netEditConnections.forEach((connection, index) => {
+            const card = document.createElement("div");
+            card.className = "nch-net-connection-card";
+            const type = document.createElement("select");
+            type.className = "nch-select";
+            type.setAttribute("aria-label", "Connection Type");
+            Object.keys(NET_EDIT_CONNECTION_FIELDS).forEach(value => type.add(new Option(value, value)));
+            type.value = connection.type;
+            type.addEventListener("change", () => { netEditConnections[index] = ["FM", "Fusion"].includes(type.value) ? { type: type.value, operation: "Repeater" } : { type: type.value }; renderNetEditConnections(); });
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.textContent = "Remove";
+            remove.addEventListener("click", () => { netEditConnections.splice(index, 1); renderNetEditConnections(); });
+            const header = document.createElement("div");
+            header.className = "nch-net-connection-header";
+            header.append(type, remove);
+            card.append(header);
+            const fields = document.createElement("div");
+            fields.className = "nch-net-connection-fields";
+            (NET_EDIT_CONNECTION_FIELDS[connection.type] || []).forEach(field => {
+                if (field.when && !field.when(connection))
+                    return;
+                const label = document.createElement("label");
+                label.textContent = field.label;
+                const input = field.options ? document.createElement("select") : document.createElement("input");
+                if (field.options)
+                    field.options.forEach(value => input.add(new Option(value, value)));
+                input.value = connection[field.key] || "";
+                input.required = Boolean(field.required);
+                input.addEventListener("change", () => { if (input.value)
+                    connection[field.key] = input.value;
+                else
+                    delete connection[field.key]; if (field.key === "operation") {
+                    if (input.value === "Simplex")
+                        delete connection.offset;
+                    renderNetEditConnections();
+                } });
+                input.addEventListener("input", () => { if (!field.options) {
+                    if (input.value)
+                        connection[field.key] = input.value;
+                    else
+                        delete connection[field.key];
+                } });
+                label.append(input);
+                fields.append(label);
+            });
+            card.append(fields);
+            container.append(card);
+        });
+        if (!netEditConnections.length) {
+            const empty = document.createElement("p");
+            empty.className = "nch-net-connections-empty";
+            empty.textContent = "No connections added.";
+            container.append(empty);
+        }
+    }
     function openNetEditModal() {
         if (!isNcoUser())
             return setStatus("Only the checked-in NCO can edit this live net.", "warning");
         const modal = panel.querySelector("[data-role='net-edit-modal']");
         if (!modal)
             return;
-        ["title", "netType", "frequency", "mode", "modeDetails", "notes"].forEach(field => {
+        ["title", "netType", "notes"].forEach(field => {
             const value = field === "notes" ? netNotesToPlainText(latestNetInfo[field]) : latestNetInfo[field];
             modal.querySelector(`[data-net-modal='${field}']`).value = value || "";
         });
+        netEditConnections = structuredClone(latestNetInfo.connections || []);
+        renderNetEditConnections();
         modal.hidden = false;
         syncNativeChatVisibility();
         modal.querySelector("[data-net-modal='title']")?.focus();
@@ -1902,11 +1978,15 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         if (!isNcoUser())
             return setStatus("Only the checked-in NCO can edit this live net.", "warning");
         const modal = panel.querySelector("[data-role='net-edit-modal']");
-        const net = Object.fromEntries(["title", "netType", "frequency", "mode", "modeDetails", "notes"]
+        const net = Object.fromEntries(["title", "netType", "notes"]
             .map(field => {
             const value = modal.querySelector(`[data-net-modal='${field}']`)?.value || "";
             return [field, field === "notes" ? netNotesToHtml(value) : value];
         }));
+        net.frequency = latestNetInfo.frequency || "";
+        net.mode = latestNetInfo.mode || "FM";
+        net.modeDetails = latestNetInfo.modeDetails || "";
+        net.connections = structuredClone(netEditConnections);
         setStatus("Updating live net details…", "working");
         try {
             const response = await fetch(`/api/nco-logger/${npid}`, {
@@ -2440,6 +2520,13 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             : ` title="${escapeHtml(label)}"`;
         return `<button class="${className}${active ? " is-active" : ""}" ${attributes}${shortcutAttributes} aria-pressed="${active ? "true" : "false"}">${escapeHtml(label)}</button>`;
     };
+    function qrzProfileLink(callSign) {
+        const call = normalizeCall(callSign);
+        if (!call)
+            return "";
+        const label = `View ${call} on QRZ`;
+        return `<a class="nch-qrz-link" href="https://www.qrz.com/db/${encodeURIComponent(call)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">QRZ</a>`;
+    }
     function inlineRowActions(station, call, busy) {
         if (!canManageStations())
             return "";
@@ -2943,6 +3030,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             : station.hand
                 ? '<span class="nch-hand" title="Hand raised" aria-label="Hand raised">✋</span>'
                 : "";
+        const callActions = `<span class="nch-call-actions${hand ? "" : " nch-qrz-only"}">${hand ? `<span class="nch-hand-slot">${hand}</span>` : ""}${qrzProfileLink(call)}</span>`;
         const pinned = station.checkedState === true && (isNco || ["netlogger", "netrelay"].includes(station.role) || details.specialGuest);
         const rowDraggable = manager && !pinned;
         const dragHandle = rowDraggable
@@ -2955,7 +3043,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         return `
       <div class="nch-row nch-has-actions${station.checkedState === null ? " nch-lurker-row" : ""}${station.checkedState === false ? " nch-checked-out" : ""}${station.checkedState === true && station.highlight ? " nch-highlighted" : ""}${station.checkedState === true && details.notResponding ? " nch-not-responding" : ""}${station.checkedState === true && details.neededNext ? " nch-needed-next-row" : ""}${station.checkedState === true && details.skipped ? " nch-skip-row" : ""}${details.specialGuest ? " nch-special-guest-row" : ""}${isNco ? " nch-nco-row" : ""}${roleClass}${pulse.className}" data-call="${escapeHtml(call)}" data-group="${group}" data-pinned="${pinned ? "true" : "false"}" tabindex="0" aria-label="${escapeHtml(call)} station row"${rowDraggable ? ' draggable="true"' : ""}${pulse.style}>
         ${dragHandle}
-        <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span><span class="nch-hand-slot">${hand}</span></div>
+        <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span>${callActions}</div>
         <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
         ${stationActionToggle(station, call)}
         ${usesTouchStationInteractions() ? "" : stationActionTray(station, details, call, busy)}
@@ -4563,11 +4651,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
           <div class="nch-edit-card" role="dialog" aria-modal="true" aria-labelledby="nch-net-edit-title">
             <h3 id="nch-net-edit-title">Edit Net</h3>
             <label>Net Name <input data-net-modal="title" maxlength="100" required></label>
-            <label>Net Type <select data-net-modal="netType"><option>Net</option><option>Roundtable</option><option>Ragchew</option><option>Other</option></select></label>
-            <label>Frequency <input data-net-modal="frequency" maxlength="20"></label>
-            <label>Mode <select data-net-modal="mode"><option>LSB</option><option>USB</option><option>AM</option><option>CW</option><option>FM</option><option>RTTY</option><option>FSQ</option><option>PSK-31</option><option>FreeDV</option><option>Reflector</option><option>Olivia</option><option>Hell</option><option>JS8Call</option><option>CUSTOM</option></select></label>
-            <label>Mode Details <input data-net-modal="modeDetails" maxlength="15"></label>
-            <label>Notes <textarea data-net-modal="notes" maxlength="320"></textarea></label>
+            <label>Net Type <select class="nch-select" data-net-modal="netType"><option>Net</option><option>Roundtable</option><option>Ragchew</option><option>Other</option></select></label>
+            <fieldset class="nch-net-connections"><legend>Connections</legend><div data-net-connections></div><button type="button" data-role="add-net-connection">Add Connection</button></fieldset>
+            <label>Notes <textarea data-net-modal="notes" maxlength="500"></textarea></label>
             <div class="nch-modal-actions">
               <button data-role="save-net-edit">Save</button>
               <button data-role="cancel-net-edit">Cancel</button>
@@ -4693,6 +4779,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 event.target.hidden = true;
                 updatePromptDismissed = true;
                 syncNativeChatVisibility();
+                return;
+            }
+            if (event.target.closest?.("a.nch-qrz-link")) {
+                event.stopPropagation();
                 return;
             }
             const clickedRow = event.target.closest?.(".nch-row[data-call]");
@@ -4907,6 +4997,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 closeEditModal();
             if (target.dataset.role === "edit-net")
                 openNetEditModal();
+            if (target.dataset.role === "add-net-connection") {
+                netEditConnections.push({ type: "FM", operation: "Repeater" });
+                renderNetEditConnections();
+            }
             if (target.dataset.role === "save-net-edit")
                 await saveNetEditModal();
             if (target.dataset.role === "cancel-net-edit")
@@ -5522,7 +5616,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 frequency: latestNetFrequency,
                 mode: String(data.net?.mode || "FM"),
                 modeDetails: String(data.net?.modeDetails || ""),
-                notes: String(data.net?.notes || "")
+                notes: String(data.net?.notes || ""),
+                connections: Array.isArray(data.net?.connections) ? data.net.connections : []
             };
             const me = latestStations.find(station => normalizeCall(station.callSign) === selfCall());
             if (!me) {

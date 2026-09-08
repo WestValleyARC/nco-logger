@@ -2,7 +2,7 @@
 const { modelMaker } = require('../lib/modelMaker');
 const { Schema } = require('mongoose');
 
-const CONNECTION_TYPES = ['FM', 'HF', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'YSF', 'P25', 'M17', 'NXDN', 'Zello', 'Other', 'Legacy'];
+const CONNECTION_TYPES = ['FM', 'HF', 'AllStarLink', 'EchoLink', 'DMR', 'D-STAR', 'Fusion', 'WIRES-X', 'YSF', 'P25', 'M17', 'NXDN', 'Zello', 'Other', 'Legacy'];
 const HF_MODES = ['SSB', 'USB', 'LSB', 'CW', 'AM', 'Digital', 'Other'];
 const NET_TYPES = ['Net', 'Roundtable', 'Ragchew', 'Other'];
 const OPERATING_MODES = [
@@ -60,6 +60,12 @@ connectionSchema.pre('validate', function validateConnection(next) {
             break;
         case 'M17':
             requireField('reflector', 'M17 connections require reflector');
+            break;
+        case 'Fusion':
+            requireField('frequency', 'Fusion connections require frequency');
+            break;
+        case 'WIRES-X':
+            if (!this.room && !this.node) this.invalidate('room', 'WIRES-X connections require room name or room ID');
             break;
         case 'YSF':
             if (!this.room && !this.reflector) this.invalidate('room', 'YSF connections require room or reflector');
@@ -141,7 +147,7 @@ const netProfileSchema = new Schema(
         notes: {
             type: String,
             required: false,
-            maxlength: 320,
+            maxlength: 500,
             default: ''
         },
         owners: [
