@@ -1475,8 +1475,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             download.dataset.imageUrl = kind === "chat" ? candidate : "";
         }
         photoTrigger = trigger;
-        netEditConnections = structuredClone(latestNetInfo.connections || []);
-        renderNetEditConnections();
         modal.hidden = false;
         syncNativeChatVisibility();
         modal.querySelector("[data-role='close-photo']")?.focus();
@@ -1960,10 +1958,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const modal = panel.querySelector("[data-role='net-edit-modal']");
         if (!modal)
             return;
-        ["title", "netType", "frequency", "mode", "modeDetails", "notes"].forEach(field => {
+        ["title", "netType", "notes"].forEach(field => {
             const value = field === "notes" ? netNotesToPlainText(latestNetInfo[field]) : latestNetInfo[field];
             modal.querySelector(`[data-net-modal='${field}']`).value = value || "";
         });
+        netEditConnections = structuredClone(latestNetInfo.connections || []);
+        renderNetEditConnections();
         modal.hidden = false;
         syncNativeChatVisibility();
         modal.querySelector("[data-net-modal='title']")?.focus();
@@ -1978,11 +1978,14 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         if (!isNcoUser())
             return setStatus("Only the checked-in NCO can edit this live net.", "warning");
         const modal = panel.querySelector("[data-role='net-edit-modal']");
-        const net = Object.fromEntries(["title", "netType", "frequency", "mode", "modeDetails", "notes"]
+        const net = Object.fromEntries(["title", "netType", "notes"]
             .map(field => {
             const value = modal.querySelector(`[data-net-modal='${field}']`)?.value || "";
             return [field, field === "notes" ? netNotesToHtml(value) : value];
         }));
+        net.frequency = latestNetInfo.frequency || "";
+        net.mode = latestNetInfo.mode || "FM";
+        net.modeDetails = latestNetInfo.modeDetails || "";
         net.connections = structuredClone(netEditConnections);
         setStatus("Updating live net details…", "working");
         try {
@@ -4649,9 +4652,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             <h3 id="nch-net-edit-title">Edit Net</h3>
             <label>Net Name <input data-net-modal="title" maxlength="100" required></label>
             <label>Net Type <select class="nch-select" data-net-modal="netType"><option>Net</option><option>Roundtable</option><option>Ragchew</option><option>Other</option></select></label>
-            <label>Frequency <input data-net-modal="frequency" maxlength="20"></label>
-            <label>Mode <select class="nch-select" data-net-modal="mode"><option>LSB</option><option>USB</option><option>AM</option><option>CW</option><option>FM</option><option>RTTY</option><option>FSQ</option><option>PSK-31</option><option>FreeDV</option><option>Reflector</option><option>Olivia</option><option>Hell</option><option>JS8Call</option><option>CUSTOM</option></select></label>
-            <label>Mode Details <input data-net-modal="modeDetails" maxlength="15"></label>
             <fieldset class="nch-net-connections"><legend>Connections</legend><div data-net-connections></div><button type="button" data-role="add-net-connection">Add Connection</button></fieldset>
             <label>Notes <textarea data-net-modal="notes" maxlength="320"></textarea></label>
             <div class="nch-modal-actions">

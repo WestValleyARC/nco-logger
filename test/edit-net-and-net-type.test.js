@@ -216,9 +216,13 @@ test('Edit Net and Net Type', async t => {
             assert.match(profileClient, /netType: String\(formDataToSend\.get\('net_type'\)/);
             assert.match(liveClient, /data-role="edit-net"[^>]*>Edit Net</);
             assert.doesNotMatch(liveClient, /data-editor-command="ui"[^>]*>Undo Check-in</);
-            for (const field of ['title', 'netType', 'frequency', 'mode', 'modeDetails', 'notes']) {
+            for (const field of ['title', 'netType', 'notes']) {
                 assert.match(liveClient, new RegExp(`data-net-modal="${field}"`));
             }
+            for (const legacyField of ['frequency', 'mode', 'modeDetails']) {
+                assert.doesNotMatch(liveClient, new RegExp(`data-net-modal="${legacyField}"`));
+            }
+            assert.match(liveClient, /netEditConnections = structuredClone\(latestNetInfo\.connections \|\| \[\]\);/);
             assert.match(liveClient, /action: "editNet", net/);
             assert.match(liveClient, /<legend>Connections<\/legend>/);
             assert.match(liveClient, /data-role="add-net-connection"/);
