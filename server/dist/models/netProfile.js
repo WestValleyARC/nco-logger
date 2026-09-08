@@ -147,7 +147,7 @@ const netProfileSchema = new Schema(
         notes: {
             type: String,
             required: false,
-            maxlength: 320,
+            maxlength: 500,
             default: ''
         },
         owners: [

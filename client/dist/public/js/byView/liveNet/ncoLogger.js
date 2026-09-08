@@ -4653,7 +4653,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             <label>Net Name <input data-net-modal="title" maxlength="100" required></label>
             <label>Net Type <select class="nch-select" data-net-modal="netType"><option>Net</option><option>Roundtable</option><option>Ragchew</option><option>Other</option></select></label>
             <fieldset class="nch-net-connections"><legend>Connections</legend><div data-net-connections></div><button type="button" data-role="add-net-connection">Add Connection</button></fieldset>
-            <label>Notes <textarea data-net-modal="notes" maxlength="320"></textarea></label>
+            <label>Notes <textarea data-net-modal="notes" maxlength="500"></textarea></label>
             <div class="nch-modal-actions">
               <button data-role="save-net-edit">Save</button>
               <button data-role="cancel-net-edit">Cancel</button>

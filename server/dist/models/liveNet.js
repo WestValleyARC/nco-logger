@@ -61,7 +61,7 @@ const liveNetSchema = new Schema(
             }
         },
         connections: { type: [connectionSchema], default: undefined },
-        notes: { type: String, maxlength: 320 },
+        notes: { type: String, maxlength: 500 },
         countdownTimer: {
             type: Number,
             min: 0,
