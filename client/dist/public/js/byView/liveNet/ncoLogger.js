@@ -2440,6 +2440,13 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             : ` title="${escapeHtml(label)}"`;
         return `<button class="${className}${active ? " is-active" : ""}" ${attributes}${shortcutAttributes} aria-pressed="${active ? "true" : "false"}">${escapeHtml(label)}</button>`;
     };
+    function qrzProfileLink(callSign) {
+        const call = normalizeCall(callSign);
+        if (!call)
+            return "";
+        const label = `View ${call} on QRZ`;
+        return `<a class="nch-qrz-link" href="https://www.qrz.com/db/${encodeURIComponent(call)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">QRZ</a>`;
+    }
     function inlineRowActions(station, call, busy) {
         if (!canManageStations())
             return "";
@@ -2943,6 +2950,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             : station.hand
                 ? '<span class="nch-hand" title="Hand raised" aria-label="Hand raised">✋</span>'
                 : "";
+        const callActions = `<span class="nch-call-actions${hand ? "" : " nch-qrz-only"}">${hand ? `<span class="nch-hand-slot">${hand}</span>` : ""}${qrzProfileLink(call)}</span>`;
         const pinned = station.checkedState === true && (isNco || ["netlogger", "netrelay"].includes(station.role) || details.specialGuest);
         const rowDraggable = manager && !pinned;
         const dragHandle = rowDraggable
@@ -2955,7 +2963,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         return `
       <div class="nch-row nch-has-actions${station.checkedState === null ? " nch-lurker-row" : ""}${station.checkedState === false ? " nch-checked-out" : ""}${station.checkedState === true && station.highlight ? " nch-highlighted" : ""}${station.checkedState === true && details.notResponding ? " nch-not-responding" : ""}${station.checkedState === true && details.neededNext ? " nch-needed-next-row" : ""}${station.checkedState === true && details.skipped ? " nch-skip-row" : ""}${details.specialGuest ? " nch-special-guest-row" : ""}${isNco ? " nch-nco-row" : ""}${roleClass}${pulse.className}" data-call="${escapeHtml(call)}" data-group="${group}" data-pinned="${pinned ? "true" : "false"}" tabindex="0" aria-label="${escapeHtml(call)} station row"${rowDraggable ? ' draggable="true"' : ""}${pulse.style}>
         ${dragHandle}
-        <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span><span class="nch-hand-slot">${hand}</span></div>
+        <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span>${callActions}</div>
         <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
         ${stationActionToggle(station, call)}
         ${usesTouchStationInteractions() ? "" : stationActionTray(station, details, call, busy)}
@@ -4693,6 +4701,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 event.target.hidden = true;
                 updatePromptDismissed = true;
                 syncNativeChatVisibility();
+                return;
+            }
+            if (event.target.closest?.("a.nch-qrz-link")) {
+                event.stopPropagation();
                 return;
             }
             const clickedRow = event.target.closest?.(".nch-row[data-call]");
