@@ -2291,3 +2291,12 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
   row-gap: 0;
 }
+
+/* Keep each desktop status pair close together with a small intentional gap. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-rows: 34px 34px minmax(0, 1fr) auto;
+  row-gap: 5px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  grid-row: 4;
+}
