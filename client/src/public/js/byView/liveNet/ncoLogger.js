@@ -3854,7 +3854,7 @@ import {
       if (dashboard) {
         const metrics = gridMetrics(dashboard);
         const width = 342;
-        const height = 116;
+        const height = 114;
         const x = (dashboard.clientWidth - width) / 2;
         return { ...item, x: x / metrics.columnStep, y: 0, w: width / metrics.columnStep, h: height / metrics.rowStep };
       }
@@ -4088,7 +4088,7 @@ import {
       module.style.setProperty("--nch-module-columns", String(item.w));
       if (id === "controls" && currentLayoutContext === "desktop") {
         module.style.width = "342px";
-        module.style.height = "116px";
+        module.style.height = "114px";
         module.style.justifySelf = "center";
         module.style.alignSelf = "start";
       } else {
@@ -4237,7 +4237,7 @@ import {
     modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
     if (moduleId === "controls" && currentLayoutContext === "desktop") {
       modulePointerDrag.preview.style.width = "342px";
-      modulePointerDrag.preview.style.height = "116px";
+      modulePointerDrag.preview.style.height = "114px";
       modulePointerDrag.preview.style.justifySelf = "center";
       modulePointerDrag.preview.style.alignSelf = "start";
     }
