@@ -2441,3 +2441,20 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   gap: 5px;
   margin-top: 0;
 }
+
+/* Desktop controls: use margins because quick-checkin is display:contents, so parent gap cannot separate these items. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"],
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io {
+  margin-bottom: 4px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"],
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] {
+  margin-right: 4px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io,
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
+  margin-left: 4px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  margin-top: 4px;
+}
