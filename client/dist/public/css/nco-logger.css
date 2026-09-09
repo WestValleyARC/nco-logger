@@ -2501,3 +2501,8 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-top: 0;
   padding-bottom: 0;
 }
+
+/* Nudge desktop check-in helper text down slightly. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
+  transform: translateY(2px);
+}
