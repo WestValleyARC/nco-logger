@@ -3828,6 +3828,9 @@ import {
       };
       collapsed[id] = Boolean(suppliedCollapsed[id]);
     });
+    if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
+      items.controls = { ...items.controls, x: 9, y: 0, w: 6, h: 4 };
+    }
     if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
       const previousBottom = items.controls.y + items.controls.h;
       const addedRows = 7 - items.controls.h;
@@ -3847,7 +3850,7 @@ import {
 
   const collisionRect = (item, id = item?.id) => {
     if (currentLayoutContext === "desktop" && id === "controls") {
-      return { ...item, x: 9, y: 0, w: 6, h: 2 };
+      return { ...item, x: 9, y: 0, w: 6, h: 4 };
     }
     return item;
   };
@@ -4224,6 +4227,12 @@ import {
     const item = modulePointerDrag.previewLayout.items[moduleId];
     modulePointerDrag.preview.style.gridColumn = `${item.x + 1} / span ${item.w}`;
     modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
+    if (moduleId === "controls" && currentLayoutContext === "desktop") {
+      modulePointerDrag.preview.style.width = "342px";
+      modulePointerDrag.preview.style.height = "117px";
+      modulePointerDrag.preview.style.justifySelf = "center";
+      modulePointerDrag.preview.style.alignSelf = "start";
+    }
   }
 
   function updateModulePointerDrag(event) {

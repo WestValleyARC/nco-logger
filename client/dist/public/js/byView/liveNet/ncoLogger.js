@@ -4037,6 +4037,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             };
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
+        if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
+            items.controls = { ...items.controls, x: 9, y: 0, w: 6, h: 4 };
+        }
         if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
             const previousBottom = items.controls.y + items.controls.h;
             const addedRows = 7 - items.controls.h;
@@ -4053,7 +4056,17 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             collapsed
         };
     }
-    const gridRectsOverlap = (left, right) => left.x < right.x + right.w && left.x + left.w > right.x && left.y < right.y + right.h && left.y + left.h > right.y;
+    const collisionRect = (item, id = item?.id) => {
+        if (currentLayoutContext === "desktop" && id === "controls") {
+            return { ...item, x: 9, y: 0, w: 6, h: 4 };
+        }
+        return item;
+    };
+    const gridRectsOverlap = (left, right) => {
+        const a = collisionRect(left);
+        const b = collisionRect(right);
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    };
     function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
         const layout = normalizeModuleLayout(source);
         const maximumRows = layoutRows();
@@ -4076,8 +4089,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             const xs = new Set([item.x, 0, maxX]);
             const ys = new Set([item.y, 0, maxY]);
             placed.forEach(other => {
-                [other.x, other.x + other.w, other.x - item.w, other.x + other.w - item.w].forEach(value => xs.add(value));
-                [other.y, other.y + other.h, other.y - item.h, other.y + other.h - item.h].forEach(value => ys.add(value));
+                const edge = collisionRect(other);
+                [edge.x, edge.x + edge.w, edge.x - item.w, edge.x + edge.w - item.w].forEach(value => xs.add(value));
+                [edge.y, edge.y + edge.h, edge.y - item.h, edge.y + edge.h - item.h].forEach(value => ys.add(value));
             });
             if (allowEveryCell) {
                 for (let x = 0; x <= maxX; x += 1)
@@ -4399,7 +4413,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const xCandidates = [0, GRID_COLUMNS - item.w];
         const yCandidates = [0];
         MODULE_IDS.filter(otherId => otherId !== id && !layout.collapsed[otherId]).forEach(otherId => {
-            const other = layout.items[otherId];
+            const other = collisionRect(layout.items[otherId], otherId);
             xCandidates.push(other.x, other.x + other.w, other.x - item.w, other.x + other.w - item.w);
             yCandidates.push(other.y, other.y + other.h, other.y - item.h, other.y + other.h - item.h);
         });
@@ -4432,6 +4446,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const item = modulePointerDrag.previewLayout.items[moduleId];
         modulePointerDrag.preview.style.gridColumn = `${item.x + 1} / span ${item.w}`;
         modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
+        if (moduleId === "controls" && currentLayoutContext === "desktop") {
+            modulePointerDrag.preview.style.width = "342px";
+            modulePointerDrag.preview.style.height = "117px";
+            modulePointerDrag.preview.style.justifySelf = "center";
+            modulePointerDrag.preview.style.alignSelf = "start";
+        }
     }
     function updateModulePointerDrag(event) {
         if (!modulePointerDrag || event.pointerId !== modulePointerDrag.pointerId)
