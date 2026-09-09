@@ -2253,3 +2253,29 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-checked-out-section, .nch-lurkers-fixed) > .nch-module-content > .nch-row {
   min-width: 0; max-width: calc(50% - 2px); overflow: hidden;
 }
+
+/* Desktop Station Controls: original-width callsign entry with stacked status controls. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 4px 8px;
+  align-items: stretch;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  grid-column: 2; grid-row: 1; width: 100%; min-height: 36px; justify-self: center;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
+  grid-column: 2; grid-row: 2; text-align: center;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin {
+  display: contents;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] { grid-column: 1; grid-row: 2; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io { grid-column: 3; grid-row: 1; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] { grid-column: 3; grid-row: 2; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button { min-height: 36px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  grid-column: 1 / -1; grid-row: 3; align-self: end;
+}
