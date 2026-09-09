@@ -4280,7 +4280,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             module.style.setProperty("--nch-module-columns", String(item.w));
             if (id === "controls" && currentLayoutContext === "desktop") {
                 module.style.width = "342px";
-                module.style.height = "118px";
+                module.style.height = "117px";
                 module.style.justifySelf = "center";
                 module.style.alignSelf = "start";
             }
