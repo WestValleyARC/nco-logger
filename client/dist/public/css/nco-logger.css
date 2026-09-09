@@ -2344,3 +2344,24 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-left: 5px;
   padding-right: 5px;
 }
+
+/* Compact desktop Station Controls: full-width two-button action row directly below statuses. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-columns: max-content 150px max-content;
+  grid-template-rows: 34px 34px auto;
+  row-gap: 5px;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 0;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  width: 100%;
+}

@@ -85,11 +85,11 @@ import {
   const DEFAULT_MODULE_LAYOUT = Object.freeze({
     gridVersion: LAYOUT_GRID_VERSION,
     items: {
-      lurkers: { x: 0, y: 0, w: 8, h: 5 },
-      controls: { x: 8, y: 0, w: 8, h: 5 },
-      checkedOut: { x: 16, y: 0, w: 8, h: 5 },
-      chat: { x: 0, y: 5, w: 8, h: 15 },
-      active: { x: 8, y: 5, w: 16, h: 15 }
+      lurkers: { x: 0, y: 0, w: 9, h: 4 },
+      controls: { x: 9, y: 0, w: 6, h: 4 },
+      checkedOut: { x: 15, y: 0, w: 9, h: 4 },
+      chat: { x: 0, y: 4, w: 8, h: 16 },
+      active: { x: 8, y: 4, w: 16, h: 16 }
     },
     collapsed: {}
   });
