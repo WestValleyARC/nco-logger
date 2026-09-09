@@ -2415,3 +2415,19 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-top: 2px !important;
   padding-bottom: 2px !important;
 }
+
+/* Keep visible breathing room and make Edit/Close Net slightly shorter. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-rows: 27px 27px 24px;
+  row-gap: 3px;
+  column-gap: 3px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  gap: 3px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  min-height: 24px;
+  height: 24px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
