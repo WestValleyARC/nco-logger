@@ -2214,3 +2214,33 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
     min-height: 44px;
   }
 }
+
+/* Mobile/tablet Station Controls: mirror the desktop control hierarchy with touch-friendly sizing. */
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  display: grid;
+  grid-template-columns: minmax(74px, 1fr) minmax(118px, 1.35fr) minmax(74px, 1fr);
+  grid-template-rows: 40px 40px 40px;
+  gap: 4px;
+  align-items: stretch;
+  padding: 3px 4px 7px;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin { display: contents; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] { grid-column: 1; grid-row: 2; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io { grid-column: 3; grid-row: 1; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] { grid-column: 3; grid-row: 2; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: 100%; min-width: 0; min-height: 40px; height: 40px; padding: 2px 4px; font-size: 14px; line-height: 1.05;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  grid-column: 2; grid-row: 1; width: 100%; min-width: 0; min-height: 40px; height: 40px; padding: 4px 6px !important; font-size: 15px; text-align: center;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
+  grid-column: 2; grid-row: 2; align-self: start; text-align: center; font-size: 11px; line-height: 1.1;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 0; transform: none;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  width: 100%; min-width: 0; min-height: 40px; height: 40px; padding: 2px 5px; font-size: 14px; line-height: 1.05;
+}
