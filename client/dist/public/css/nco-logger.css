@@ -2260,3 +2260,9 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-controls-pane .nch-call-hint::after {
   content: none;
 }
+
+/* Phone portrait: trim the remaining controls-frame tail without changing grid geometry. */
+#netcontrol-ncs-helper[data-layout-context="phonePortrait"] .nch-controls-pane {
+  clip-path: inset(0 0 5px 0);
+  margin-bottom: -5px;
+}
