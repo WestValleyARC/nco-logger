@@ -2395,27 +2395,33 @@
 }
 
 .owned-net-start {
-    display: inline-grid;
-    width: 2.35rem;
-    height: 2.35rem;
+    display: inline-flex;
+    min-height: 2.35rem;
     flex: 0 0 auto;
-    place-items: center;
-    border: 1px solid var(--app-border-strong);
-    border-radius: 50%;
-    color: var(--app-cyan);
-    background: rgba(116, 198, 212, 0.08);
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid #35d07f;
+    border-radius: 0.55rem;
+    color: #071d12;
+    background: #35d07f;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .owned-net-start:hover {
-    color: #11181c;
-    border-color: var(--app-cyan);
-    background: var(--app-cyan);
+    color: #04150c;
+    border-color: #65e7a0;
+    background: #65e7a0;
 }
 
 .owned-net-start.is-live {
     color: #ffb56f;
-    border-color: rgba(220, 131, 53, 0.62);
-    background: rgba(220, 131, 53, 0.11);
+    border-color: rgba(220, 131, 53, 0.78);
+    background: rgba(220, 131, 53, 0.18);
 }
 
 .owned-net-start.is-live:hover {
@@ -5208,7 +5214,13 @@
     background: rgba(5, 107, 133, 0.14);
 }
 
-:root[data-theme='light'] .net-manager-page :is(.owned-net-start:not(.is-live), .owned-net-start.is-preparing) {
+:root[data-theme='light'] .net-manager-page .owned-net-start:not(.is-live):not(.is-preparing) {
+    color: #06351d;
+    border-color: #16854b;
+    background: #5cdb95;
+}
+
+:root[data-theme='light'] .net-manager-page .owned-net-start.is-preparing {
     color: #045b71;
     border-color: rgba(5, 107, 133, 0.72);
     background: rgba(5, 107, 133, 0.1);

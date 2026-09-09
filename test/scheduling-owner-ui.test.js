@@ -84,6 +84,12 @@ test('Scheduling Owner UI Phase 1 uses the existing schedule API contract', asyn
         assert.match(client, /axios\.delete\(`\/api\/data\/netprofiles\/\$\{scheduleEditor\.profileId\.value\}\/schedule`\)/);
     });
 
+    await t.test('owned-net start action is a clear, distinct text button', () => {
+        assert.match(client, /startLabelElem\.textContent = hasOperationalSession \? 'Open Net' : 'Start Net'/);
+        assert.match(css, /\.owned-net-start\s*\{[^}]*background:\s*#35d07f[^}]*font-weight:\s*800/s);
+        assert.doesNotMatch(css, /\.owned-net-start\s*\{[^}]*border-radius:\s*50%/s);
+    });
+
     await t.test('manual unscheduled start behavior remains in place', () => {
         assert.match(client, /if \(!hasSchedule && !hasOperationalSession\)/);
         assert.match(client, /new HttpClient\('livenet', `\/api\/data\/livenets\/\$\{netProfile\._id\}`\)/);
