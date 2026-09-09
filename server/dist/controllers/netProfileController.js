@@ -13,6 +13,13 @@ const { sanitizeNotes } = require('../lib/serverUtils');
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const apiError = (status, message) => Object.assign(new Error(message), { status });
+const validateConnections = connections => {
+    if (!Array.isArray(connections) || !connections.length) throw apiError(400, 'Add at least one connection, frequency, or operating mode before saving this net');
+};
+const validateNotesLength = notes => {
+    const text = String(notes || '').replace(/<[^>]*>/g, '').trim();
+    if (text.length > 500) throw apiError(400, `Welcome notes are too long (${text.length}/500 characters). Shorten them to 500 characters or fewer`);
+};
 
 const requirePrimaryOwner = async (req, session = null) => {
     const profile = await NetProfile.findById(req.params.id).session(session);
@@ -128,7 +135,9 @@ const netProfileUpdate = async (req, res) => {
                         modeDetails: req.body.modeDetails && req.body.modeDetails.trim()
                     }
                   : {};
+            if (hasConnections) validateConnections(req.body.connections);
             if (!hasConnections && hasLegacyFields) validateLegacyOperatingFields(operatingFields);
+            validateNotesLength(req.body.notes);
 
             npresult.set({
                 title: req.body.title.trim(),
@@ -146,11 +155,8 @@ const netProfileUpdate = async (req, res) => {
             throw new Error('user is not owner for this net');
         }
     } catch (err) {
-        res.status(500).json({
-            endpointVersion: '1.0',
-            errorMessage: 'Unable to update the net profile',
-            status: 500
-        });
+        const status = err.status || 500;
+        res.status(status).json({ endpointVersion: '1.0', errorMessage: err.message || 'Unable to update the net profile', status });
         logger.error(err.stack);
     }
 };
@@ -277,7 +283,9 @@ const netProfileCreatePost = async (req, res) => {
             owners: req.user._id,
             ...operatingFields
         });
+        if (hasConnections) validateConnections(req.body.connections);
         if (!hasConnections) validateLegacyOperatingFields(operatingFields);
+        validateNotesLength(notes);
 
         if (req.user.myNets.length < res.locals.flexOpts['maxNetsPerUser']) {
             let npresult;
@@ -295,11 +303,8 @@ const netProfileCreatePost = async (req, res) => {
         }
     } catch (err) {
         logger.error(err.stack);
-        return res.status(500).json({
-            endpointVersion: '1.0',
-            errorMessage: 'Unable to create the net profile',
-            status: 500
-        });
+        const status = err.status || 500;
+        return res.status(status).json({ endpointVersion: '1.0', errorMessage: err.message || 'Unable to create the net profile', status });
     } finally {
         await session.endSession();
     }

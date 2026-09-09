@@ -54,7 +54,7 @@
               <div class="section-eyebrow">Profile details</div>
               <h2 id="net-profile-editor">Create or Edit a Net</h2>
             </div>
-            <span class="form-status" id="netprofile_form_status" role="status" aria-live="polite"></span>
+            <span class="form-status" id="netprofile_form_status" role="status" aria-live="assertive" tabindex="-1"></span>
           </div>
 
           <form id="netprofile_form" class="app-form">
@@ -105,7 +105,7 @@
 
             <div class="app-field">
               <label for="input_notes">Welcome notes</label>
-              <small>Keep this to roughly five lines. Attendees see it briefly when the live net opens.</small>
+              <small>Maximum 500 characters, including formatting. Attendees see these notes briefly when the live net opens.</small>
               <textarea class="form-control" name="notes" id="input_notes"></textarea>
             </div>
 

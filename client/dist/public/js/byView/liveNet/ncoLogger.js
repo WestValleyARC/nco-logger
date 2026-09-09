@@ -1886,7 +1886,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         DMR: [{ key: "talkgroup", label: "Talkgroup", required: true }, { key: "colorCode", label: "Color Code" }],
         "D-STAR": [{ key: "reflector", label: "Reflector", required: true }, { key: "module", label: "Module" }],
         Fusion: [{ key: "frequency", label: "Frequency", required: true }, { key: "operation", label: "Operation", options: ["Repeater", "Simplex"] }, { key: "offset", label: "Offset", when: c => c.operation === "Repeater" }],
-        "WIRES-X": [{ key: "room", label: "Room Name" }, { key: "node", label: "Room ID" }, { key: "frequency", label: "Access Frequency" }],
+        "WIRES-X": [{ key: "room", label: "Room Name" }, { key: "node", label: "Room ID" }],
         YSF: [{ key: "room", label: "Room / Reflector", required: true }], P25: [{ key: "talkgroup", label: "Talkgroup", required: true }],
         M17: [{ key: "reflector", label: "Reflector", required: true }, { key: "module", label: "Module" }], NXDN: [{ key: "talkgroup", label: "Talkgroup", required: true }],
         Zello: [{ key: "channel", label: "Channel", required: true }], Other: [{ key: "label", label: "Label", required: true }, { key: "value", label: "Value", required: true }]
