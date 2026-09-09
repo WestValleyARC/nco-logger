@@ -24,10 +24,8 @@ import {
   };
   const LEGACY_GRID_COLUMNS = 12;
   const GRID_COLUMNS = 24;
-  const DESKTOP_GRID_COLUMNS = 96;
-  const gridColumns = () => currentLayoutContext === "desktop" ? DESKTOP_GRID_COLUMNS : GRID_COLUMNS;
   const GRID_ROWS = 20;
-  const LAYOUT_GRID_VERSION = 5;
+  const LAYOUT_GRID_VERSION = 4;
   const GRID_ROW_HEIGHT = 26;
   const GRID_GAP = 1;
   const MIN_MODULE_COLUMNS = 2;
@@ -87,22 +85,22 @@ import {
   const DEFAULT_MODULE_LAYOUT = Object.freeze({
     gridVersion: LAYOUT_GRID_VERSION,
     items: {
-      lurkers: { x: 0, y: 0, w: 40, h: 4 },
-      controls: { x: 40, y: 0, w: 16, h: 4 },
-      checkedOut: { x: 56, y: 0, w: 40, h: 4 },
-      chat: { x: 0, y: 4, w: 32, h: 16 },
-      active: { x: 32, y: 4, w: 64, h: 16 }
+      lurkers: { x: 0, y: 0, w: 10, h: 4 },
+      controls: { x: 10, y: 0, w: 4, h: 4 },
+      checkedOut: { x: 14, y: 0, w: 10, h: 4 },
+      chat: { x: 0, y: 4, w: 8, h: 16 },
+      active: { x: 8, y: 4, w: 16, h: 16 }
     },
     collapsed: {}
   });
   const VIEWER_DEFAULT_MODULE_LAYOUT = Object.freeze({
     gridVersion: LAYOUT_GRID_VERSION,
     items: {
-      lurkers: { x: 0, y: 0, w: 48, h: 4 },
-      controls: { x: 40, y: 0, w: 16, h: 4 },
-      checkedOut: { x: 48, y: 0, w: 48, h: 4 },
-      chat: { x: 0, y: 0, w: 48, h: 20 },
-      active: { x: 48, y: 0, w: 48, h: 20 }
+      lurkers: { x: 0, y: 0, w: 12, h: 4 },
+      controls: { x: 10, y: 0, w: 4, h: 4 },
+      checkedOut: { x: 12, y: 0, w: 12, h: 4 },
+      chat: { x: 0, y: 0, w: 12, h: 20 },
+      active: { x: 12, y: 0, w: 12, h: 20 }
     },
     collapsed: { lurkers: true, checkedOut: true }
   });
@@ -3775,10 +3773,9 @@ import {
       ? candidate.collapsed
       : hasMigratedCollapsed ? migratedCollapsed : fallbackLayout.collapsed;
     const hasCurrentGrid = candidate.gridVersion === LAYOUT_GRID_VERSION && candidate.items && typeof candidate.items === "object";
-    const hasV4Grid = candidate.gridVersion === 4 && candidate.items && typeof candidate.items === "object";
     const hasV3Grid = candidate.gridVersion === 3 && candidate.items && typeof candidate.items === "object";
     const hasV2Grid = candidate.gridVersion === 2 && candidate.items && typeof candidate.items === "object";
-    const hasLegacy = !hasCurrentGrid && !hasV4Grid && !hasV3Grid && !hasV2Grid && (Array.isArray(candidate.order) || (candidate.spans && typeof candidate.spans === "object") || (candidate.heights && typeof candidate.heights === "object"));
+    const hasLegacy = !hasCurrentGrid && !hasV3Grid && !hasV2Grid && (Array.isArray(candidate.order) || (candidate.spans && typeof candidate.spans === "object") || (candidate.heights && typeof candidate.heights === "object"));
     const migratedItems = {};
     if (!hasCurrentGrid && !hasV2Grid && hasLegacy) {
       const legacyOrder = [...new Set([...(Array.isArray(candidate.order) ? candidate.order : []), "controls", "checkedOut", "chat", "active", "status", "lurkers"])]
@@ -3789,10 +3786,10 @@ import {
       legacyOrder.forEach(id => {
         const fallback = fallbackLayout.items[id];
         const legacySpan = Number(candidate.spans?.[id]);
-        const w = Math.min(gridColumns(), Math.max(MIN_MODULE_COLUMNS,
-          legacySpan ? Math.round(legacySpan * gridColumns() / LEGACY_GRID_COLUMNS) : fallback.w));
+        const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS,
+          legacySpan ? Math.round(legacySpan * GRID_COLUMNS / LEGACY_GRID_COLUMNS) : fallback.w));
         const h = Math.min(60, Math.max(MIN_MODULE_ROWS[id], Math.round(((Number(candidate.heights?.[id]) || (fallback.h * GRID_ROW_HEIGHT)) + GRID_GAP) / (GRID_ROW_HEIGHT + GRID_GAP))));
-        if (x && x + w > gridColumns()) {
+        if (x && x + w > GRID_COLUMNS) {
           x = 0;
           y += rowHeight;
           rowHeight = 0;
@@ -3808,10 +3805,6 @@ import {
       const fallback = fallbackLayout.items[id];
       let supplied = migratedItems[id] || fallback;
       if (hasCurrentGrid && candidate.items[id] && typeof candidate.items[id] === "object") supplied = candidate.items[id];
-      if (hasV4Grid && candidate.items[id] && typeof candidate.items[id] === "object") {
-        supplied = { ...candidate.items[id] };
-        if (currentLayoutContext === "desktop") supplied = { ...supplied, x: Number(supplied.x || 0) * 4, w: Number(supplied.w || fallback.w) * 4 };
-      }
       if (hasV3Grid && candidate.items[id] && typeof candidate.items[id] === "object") {
         supplied = { ...candidate.items[id] };
         const oldDefault = id === "lurkers"
@@ -3825,10 +3818,10 @@ import {
         const legacyW = Math.max(1, Math.round(Number(legacyItem.w) || (fallback.w / 2)));
         supplied = { ...legacyItem, x: legacyX * 2, w: legacyW * 2 };
       }
-      const w = Math.min(gridColumns(), Math.max(MIN_MODULE_COLUMNS, Math.round(Number(supplied.w) || fallback.w)));
+      const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, Math.round(Number(supplied.w) || fallback.w)));
       const h = Math.min(maximumRows, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
       items[id] = {
-        x: Math.min(gridColumns() - w, Math.max(0, Math.round(Number(supplied.x) || 0))),
+        x: Math.min(GRID_COLUMNS - w, Math.max(0, Math.round(Number(supplied.x) || 0))),
         y: Math.min(maximumRows - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
         w,
         h
@@ -3836,7 +3829,7 @@ import {
       collapsed[id] = Boolean(suppliedCollapsed[id]);
     });
     if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
-      items.controls = { ...items.controls, x: 37, y: 0, w: 22, h: 4 };
+      items.controls = { ...items.controls, x: 9, y: 0, w: 6, h: 4 };
     }
     if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
       const previousBottom = items.controls.y + items.controls.h;
@@ -3865,7 +3858,7 @@ import {
         const x = (dashboard.clientWidth - width) / 2;
         return { ...item, x: x / metrics.columnStep, y: 0, w: width / metrics.columnStep, h: height / metrics.rowStep };
       }
-      return { ...item, x: 37, y: 0, w: 22, h: 4 };
+      return { ...item, x: 9, y: 0, w: 6, h: 4 };
     }
     return item;
   };
@@ -3890,7 +3883,7 @@ import {
     const placed = [];
     let attempts = 0;
     const candidatesFor = (item, allowEveryCell = false) => {
-      const maxX = gridColumns() - item.w;
+      const maxX = GRID_COLUMNS - item.w;
       const maxY = maximumRows - item.h;
       const xs = new Set([item.x, 0, maxX]);
       const ys = new Set([item.y, 0, maxY]);
@@ -3911,8 +3904,8 @@ import {
         results.push(candidate);
       }));
       return results.sort((left, right) => {
-        const leftScore = Math.abs(left.y - item.y) * gridColumns() + Math.abs(left.x - item.x);
-        const rightScore = Math.abs(right.y - item.y) * gridColumns() + Math.abs(right.x - item.x);
+        const leftScore = Math.abs(left.y - item.y) * GRID_COLUMNS + Math.abs(left.x - item.x);
+        const rightScore = Math.abs(right.y - item.y) * GRID_COLUMNS + Math.abs(right.x - item.x);
         return leftScore - rightScore || left.y - right.y || left.x - right.x;
       });
     };
@@ -3924,7 +3917,7 @@ import {
       const candidates = id === fixedId && !nudgeFixed ? [item] : candidatesFor(item, id === fixedId && nudgeFixed);
       for (const candidate of candidates) {
         attempts += 1;
-        if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > gridColumns() || candidate.y + candidate.h > maximumRows) continue;
+        if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > GRID_COLUMNS || candidate.y + candidate.h > maximumRows) continue;
         if (placed.some(other => gridRectsOverlap(candidate, other))) continue;
         placed.push({ id, ...candidate });
         layout.items[id] = { x: candidate.x, y: candidate.y, w: candidate.w, h: candidate.h };
@@ -4109,7 +4102,6 @@ import {
       module.classList.toggle("nch-read-only-top", !moduleAvailable("controls") && (id === "lurkers" || id === "checkedOut") && item.y === 0);
     });
     dashboard.style.setProperty("--nch-grid-rows", String(rendered.rows));
-    dashboard.style.setProperty("--nch-grid-columns", String(gridColumns()));
     dashboard.style.setProperty("--nch-grid-gap", `${GRID_GAP}px`);
     window.requestAnimationFrame(positionNativeChat);
   }
@@ -4163,8 +4155,8 @@ import {
     if (currentLayoutContext.startsWith("phone") || !MODULE_IDS.includes(id)) return;
     const layout = normalizeModuleLayout();
     const item = layout.items[id];
-    item.w = Math.min(gridColumns(), Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
-    item.x = Math.min(item.x, gridColumns() - item.w);
+    item.w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
+    item.x = Math.min(item.x, GRID_COLUMNS - item.w);
     const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 7 : MIN_MODULE_ROWS[id];
     item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
     const resolved = tryResolveGridLayout(layout, id);
@@ -4188,7 +4180,7 @@ import {
     if (!MODULE_IDS.includes(id)) return;
     const layout = normalizeModuleLayout();
     const item = layout.items[id];
-    item.x = Math.min(gridColumns() - item.w, Math.max(0, item.x + xDelta));
+    item.x = Math.min(GRID_COLUMNS - item.w, Math.max(0, item.x + xDelta));
     item.y = Math.min(layoutRows() - item.h, Math.max(0, item.y + yDelta));
     const resolved = tryResolveGridLayout(layout, id);
     if (!resolved) return;
@@ -4201,14 +4193,14 @@ import {
     const style = getComputedStyle(dashboard);
     const gap = Math.max(0, parseFloat(style.rowGap) || GRID_GAP);
     const rows = Math.max(1, Number(style.getPropertyValue("--nch-grid-rows")) || layoutRows());
-    const columnWidth = Math.max(1, (dashboard.clientWidth - gap * (gridColumns() - 1)) / gridColumns());
+    const columnWidth = Math.max(1, (dashboard.clientWidth - gap * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
     const rowHeight = Math.max(1, (dashboard.clientHeight - gap * (rows - 1)) / rows);
     return { columnWidth, columnStep: columnWidth + gap, rowStep: rowHeight + gap, rows };
   }
 
   function snapModulePosition(layout, id, requestedX, requestedY) {
     const item = layout.items[id];
-    const xCandidates = [0, gridColumns() - item.w];
+    const xCandidates = [0, GRID_COLUMNS - item.w];
     const yCandidates = [0];
     MODULE_IDS.filter(otherId => otherId !== id && !layout.collapsed[otherId]).forEach(otherId => {
       const other = collisionRect(layout.items[otherId], otherId);
@@ -4221,7 +4213,7 @@ import {
       return Math.abs(closest - value) <= tolerance ? closest : value;
     };
     return {
-      x: snap(requestedX, xCandidates, 0, gridColumns() - item.w, currentLayoutContext === "desktop" ? 6 : 2),
+      x: snap(requestedX, xCandidates, 0, GRID_COLUMNS - item.w, 2),
       y: snap(requestedY, yCandidates, 0, layoutRows() - item.h, 1)
     };
   }
@@ -4232,7 +4224,7 @@ import {
     const box = dashboard.getBoundingClientRect();
     const metrics = gridMetrics(dashboard);
     const originalItem = modulePointerDrag.originalLayout.items[moduleId];
-    const requestedX = Math.min(gridColumns() - originalItem.w, Math.max(0, Math.round((clientX - box.left - offsetX) / metrics.columnStep)));
+    const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, Math.round((clientX - box.left - offsetX) / metrics.columnStep)));
     const requestedY = Math.min(Math.max(0, metrics.rows - originalItem.h), Math.max(0, Math.round((clientY - box.top - offsetY) / metrics.rowStep)));
     const candidate = normalizeModuleLayout(modulePointerDrag.originalLayout);
     const snapped = snapModulePosition(candidate, moduleId, requestedX, requestedY);
@@ -4318,7 +4310,7 @@ import {
       item.w = Math.min(rightEdge, Math.max(MIN_MODULE_COLUMNS, resizing.startItem.w - columnDelta));
       item.x = rightEdge - item.w;
     } else if (resizing.edge.includes("e")) {
-      item.w = Math.min(gridColumns() - item.x, Math.max(MIN_MODULE_COLUMNS, resizing.startItem.w + columnDelta));
+      item.w = Math.min(GRID_COLUMNS - item.x, Math.max(MIN_MODULE_COLUMNS, resizing.startItem.w + columnDelta));
     }
     if (resizing.edge.includes("n")) {
       const bottomEdge = resizing.startItem.y + resizing.startItem.h;
