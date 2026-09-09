@@ -2320,3 +2320,27 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-left: 0;
   padding-right: 0;
 }
+
+/* Desktop Station Controls: make every action button intrinsically narrower. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-columns: max-content 150px max-content;
+  justify-content: center;
+  column-gap: 4px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: auto;
+  min-width: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  width: max-content;
+  justify-self: center;
+  grid-template-columns: max-content max-content;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  width: auto;
+  min-width: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+}
