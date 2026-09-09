@@ -2377,3 +2377,14 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   margin: 0;
   align-self: start;
 }
+
+/* Reduce vertical padding/height on every desktop Station Controls button. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-rows: 30px 30px 30px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane button {
+  min-height: 30px;
+  height: 30px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
