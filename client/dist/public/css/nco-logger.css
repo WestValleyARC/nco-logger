@@ -2490,3 +2490,14 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   transform: translate(0, 2px);
   margin-left: 3px;
 }
+
+/* Match all six desktop Station Controls buttons to the Edit/Close Net height. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-rows: 24px 24px 24px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  min-height: 24px;
+  height: 24px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
