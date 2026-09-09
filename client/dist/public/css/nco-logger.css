@@ -2224,10 +2224,6 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   }
 }
 
-/* Keep the desktop Station Controls actions visible within the four-row default module. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-entry-controls { overflow-y: auto; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-quick-checkin button { min-height: 30px; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-net-actions button { min-height: 30px; }
 #netcontrol-ncs-helper .nch-net-connections { margin: 4px 0; padding: 8px; border: 1px solid #4f7880; border-radius: 6px; }
 #netcontrol-ncs-helper .nch-net-connections legend { padding: 0 5px; color: #8dd9e4; }
 #netcontrol-ncs-helper .nch-net-connection-card { margin: 6px 0; padding: 7px; background: #10171c; border: 1px solid #45636a; border-radius: 5px; }
@@ -2239,345 +2235,42 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper .nch-net-connections-empty { margin: 4px 0; color: #adb6bd; font-size: 12px; }
 
 
-/* Desktop Station Controls readability: wider centered pane without sacrificing two station cards per side row. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  min-height: 38px; padding: 7px 9px !important; font-size: 17px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint { font-size: 12px; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
-  min-height: 36px; padding: 6px 5px; font-size: 15px; line-height: 1.1;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
-  min-height: 36px; padding: 6px 8px; font-size: 16px; line-height: 1.1;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-checked-out-section, .nch-lurkers-fixed) > .nch-module-content > .nch-row {
-  min-width: 0; max-width: calc(50% - 2px); overflow: hidden;
-}
-
-/* Desktop Station Controls: original-width callsign entry with stacked status controls. */
+/* Desktop Station Controls: compact fixed-size desktop presentation. */
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
-  gap: 4px 8px;
-  align-items: stretch;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  grid-column: 2; grid-row: 1; width: 100%; min-height: 36px; justify-self: center;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
-  grid-column: 2; grid-row: 2; text-align: center;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin {
-  display: contents;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] { grid-column: 1; grid-row: 2; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io { grid-column: 3; grid-row: 1; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] { grid-column: 3; grid-row: 2; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button { min-height: 36px; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  grid-column: 1 / -1; grid-row: 3; align-self: end;
-}
-
-/* Match stacked desktop status buttons to Edit/Close Net height with tighter padding. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
-  min-height: 34px;
-  height: 34px;
-  padding: 2px 4px;
-}
-
-/* Stack paired desktop status buttons flush against each other. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  row-gap: 0;
-}
-
-/* Keep each desktop status pair close together with a small intentional gap. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-rows: 34px 34px minmax(0, 1fr) auto;
-  row-gap: 5px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  grid-row: 4;
-}
-
-/* Compact desktop controls horizontally around a nine-character callsign field. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 9ch) minmax(0, 1fr);
-  column-gap: 4px;
-  padding-left: 2px;
-  padding-right: 2px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  width: 150px;
-  max-width: 100%;
-  padding-left: 5px !important;
-  padding-right: 5px !important;
-}
-
-/* Remove horizontal button padding in desktop Station Controls. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane button {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-/* Desktop Station Controls: make every action button intrinsically narrower. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-columns: max-content 150px max-content;
-  justify-content: center;
-  column-gap: 4px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
-  width: auto;
-  min-width: 0;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  width: max-content;
-  justify-self: center;
-  grid-template-columns: max-content max-content;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
-  width: auto;
-  min-width: 0;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-/* Compact desktop Station Controls: full-width two-button action row directly below statuses. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-columns: max-content 150px max-content;
-  grid-template-rows: 34px 34px auto;
-  row-gap: 5px;
+  grid-template-columns: max-content 144px max-content;
+  grid-template-rows: 24px 24px 24px;
+  column-gap: 2px;
+  row-gap: 3px;
   width: max-content;
   max-width: 100%;
   margin-inline: auto;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  grid-column: 1 / -1;
-  grid-row: 3;
-  width: 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  margin-top: 0;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
-  width: 100%;
-}
-
-/* Final compact desktop controls: no side whitespace and actions tight to status rows. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-rows: 34px 34px 34px;
-  row-gap: 2px;
   padding-inline: 0;
+  overflow-y: auto;
+  align-items: stretch;
 }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  gap: 4px;
-  margin: 0;
-  align-self: start;
-}
-
-/* Reduce vertical padding/height on every desktop Station Controls button. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-rows: 30px 30px 30px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane button {
-  min-height: 30px;
-  height: 30px;
-  padding-top: 1px;
-  padding-bottom: 1px;
-}
-
-/* Hairline spacing between every desktop Station Controls button. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  row-gap: 2px;
-  column-gap: 2px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  gap: 2px;
-}
-
-/* Slightly shorter desktop controls while preserving hairline gaps. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-rows: 27px 27px 27px;
-  row-gap: 2px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane button {
-  min-height: 27px;
-  height: 27px;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  min-height: 27px;
-  height: 27px;
-  padding-top: 2px !important;
-  padding-bottom: 2px !important;
-}
-
-/* Keep visible breathing room and make Edit/Close Net slightly shorter. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-rows: 27px 27px 24px;
-  row-gap: 3px;
-  column-gap: 3px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  gap: 3px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
-  min-height: 24px;
-  height: 24px;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-/* Force visible separation between all desktop Station Controls buttons. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  row-gap: 5px;
-  column-gap: 5px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  gap: 5px;
-  margin-top: 0;
-}
-
-/* Desktop controls: use margins because quick-checkin is display:contents, so parent gap cannot separate these items. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"],
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io {
-  margin-bottom: 4px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"],
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] {
-  margin-right: 4px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io,
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
-  margin-left: 4px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  margin-top: 4px;
-}
-
-/* Desktop controls: physically inset each of the four status buttons to guarantee visible gaps. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] {
-  transform: translate(-3px, -2px);
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] {
-  transform: translate(-3px, 2px);
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io {
-  transform: translate(3px, -2px);
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
-  transform: translate(3px, 2px);
-}
-
-/* Keep status-button separation inside the compact Station Controls bounds. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] {
-  transform: translate(0, -2px);
-  margin-right: 3px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] {
-  transform: translate(0, 2px);
-  margin-right: 3px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io {
-  transform: translate(0, -2px);
-  margin-left: 3px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
-  transform: translate(0, 2px);
-  margin-left: 3px;
-}
-
-/* Match all six desktop Station Controls buttons to the Edit/Close Net height. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-rows: 24px 24px 24px;
-}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin { display: contents; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; transform: translateY(-1px); margin-right: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] { grid-column: 1; grid-row: 2; transform: translateY(1px); margin-right: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io { grid-column: 3; grid-row: 1; transform: translateY(-1px); margin-left: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] { grid-column: 3; grid-row: 2; transform: translateY(1px); margin-left: 3px; }
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
-  min-height: 24px;
-  height: 24px;
-  padding-top: 0;
-  padding-bottom: 0;
+  width: 90px; min-width: 90px; max-width: 90px; min-height: 24px; height: 24px;
+  padding: 0 4px; box-sizing: border-box; font-size: 15px; line-height: 1.05; white-space: nowrap;
 }
-
-/* Nudge desktop check-in helper text down slightly. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
-  transform: translateY(2px);
-}
-
-/* Increase desktop callsign field height by 3px and keep helper aligned beneath it. */
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  min-height: 30px;
-  height: 30px;
+  grid-column: 2; grid-row: 1; width: 144px; min-height: 30px; height: 30px;
+  padding: 2px 9px !important; justify-self: center; transform: translateY(-1px); font-size: 14px;
 }
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
-  transform: translateY(5px);
-}
-
-/* Unify desktop Station Controls button typography and tighten separation to fit. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button,
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
-  font-size: 15px;
-  line-height: 1.05;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  row-gap: 3px;
-  column-gap: 3px;
+  grid-column: 2; grid-row: 2; text-align: center; transform: translateY(5px); font-size: 12px;
 }
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
-  gap: 3px;
+  grid-column: 1 / -1; grid-row: 3; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px; margin: 0; align-self: start;
 }
-
-/* Keep all four desktop status buttons the same width. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
-  width: 78px;
-  min-width: 78px;
-  max-width: 78px;
-  box-sizing: border-box;
-}
-
-/* Increase all four desktop status buttons by 5px. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
-  width: 83px;
-  min-width: 83px;
-  max-width: 83px;
-}
-
-/* Fit Short Time on one line while keeping the compact desktop controls footprint. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
-  width: 90px;
-  min-width: 90px;
-  max-width: 90px;
-  white-space: nowrap;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
-  grid-template-columns: max-content 144px max-content;
-  column-gap: 2px;
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  width: 144px;
-}
-
-/* Reduce vertical separation within each desktop status-button pair by 2px. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"],
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io {
-  transform: translateY(-1px);
-}
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"],
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
-  transform: translateY(1px);
-}
-
-/* Align callsign field top exactly with the top status buttons. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  transform: translateY(-1px);
-}
-
-/* Slightly reduce desktop callsign input text without changing field dimensions. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
-  font-size: 14px;
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  width: 100%; min-height: 24px; height: 24px; padding: 0 8px; font-size: 15px; line-height: 1.05;
 }
 
 /* Compact desktop Lurker/Checked Out rows now that QRZ links are active-station only. */
