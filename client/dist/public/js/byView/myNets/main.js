@@ -42,10 +42,15 @@ const showNetProfileError = message => {
     netProfileFormState.mesg('error', message);
     const status = document.getElementById('netprofile_form_status');
     if (!status) return;
-    const header = status.closest('.panel-heading') || status;
-    const top = Math.max(0, header.getBoundingClientRect().top + window.scrollY - 80);
-    window.scrollTo({ top, behavior: 'smooth' });
-    window.setTimeout(() => status.focus({ preventScroll: true }), 350);
+    const panel = document.getElementById('formContainerNetProfile') || status;
+    const top = Math.max(0, panel.getBoundingClientRect().top + window.scrollY - 24);
+    window.scrollTo({ top, behavior: 'auto' });
+    document.documentElement.scrollTop = top;
+    document.body.scrollTop = top;
+    window.setTimeout(() => {
+        window.scrollTo({ top, behavior: 'auto' });
+        status.focus({ preventScroll: true });
+    }, 50);
 };
 const actionErrorMessage = (error, action) => {
     const detail = error?.response?.data?.errorMessage
