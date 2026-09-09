@@ -54,7 +54,7 @@ test('chat URL rendering uses inert text nodes and preserves Unicode around link
 test('Viewer defaults and saved layouts are isolated by role and responsive context', () => {
     for (const file of ['client/src/public/js/byView/liveNet/ncoLogger.js', 'client/dist/public/js/byView/liveNet/ncoLogger.js']) {
         const source = read(file);
-        assert.match(source, /VIEWER_DEFAULT_MODULE_LAYOUT[\s\S]*chat:\s*\{ x: 0, y: 0, w: 12, h: 20 \}[\s\S]*active:\s*\{ x: 12, y: 0, w: 12, h: 20 \}[\s\S]*collapsed:\s*\{ lurkers: true, checkedOut: true \}/);
+        assert.match(source, /VIEWER_DEFAULT_MODULE_LAYOUT[\s\S]*chat:\s*\{ x: 0, y: 0, w: 48, h: 20 \}[\s\S]*active:\s*\{ x: 48, y: 0, w: 48, h: 20 \}[\s\S]*collapsed:\s*\{ lurkers: true, checkedOut: true \}/);
         assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait:[\s\S]*active:\s*\{ x: 0, y: 0, w: 24, h: 14 \}[\s\S]*chat:\s*\{ x: 0, y: 14, w: 24, h: 14 \}/);
         assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait:[\s\S]*collapsed:\s*\{ controls: true, lurkers: true, checkedOut: true \}/);
         assert.match(source, /tabletPortrait:[\s\S]*chat:\s*\{ x: 0, y: 0, w: 10, h: 24 \}[\s\S]*active:\s*\{ x: 10, y: 0, w: 14, h: 24 \}/);
