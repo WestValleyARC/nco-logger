@@ -259,7 +259,7 @@ test('quick reactions are fitted to the visible Chat module when opened and resi
 test('responsive logger keeps independent orientation layouts and touch-safe controls', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
-    assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0, w: 24, h: 7[\s\S]*active: \{ x: 0, y: 7[\s\S]*chat: \{ x: 0, y: 21/);
+    assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0, w: 24, h: 6[\s\S]*active: \{ x: 0, y: 6[\s\S]*chat: \{ x: 0, y: 20/);
     assert.match(source, /phoneLandscape:[\s\S]*active: \{ x: 8, y: 0, w: 16/);
     assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
     assert.doesNotMatch(source, /NCO_TABLET_PORTRAIT_DEFAULT_MODULE_LAYOUT/);
@@ -307,8 +307,8 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
     assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"[^>]*aria-expanded="false"/);
     assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)[\s\S]*pinnedActionCall = pinnedActionCall === call \? "" : call/);
-    assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 7[\s\S]*items\.controls\.h = 7[\s\S]*items\[id\]\.y \+ addedRows/);
-    assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 7 : MIN_MODULE_ROWS\[id\]/);
+    assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 6[\s\S]*items\.controls\.h = 6[\s\S]*items\[id\]\.y \+ addedRows/);
+    assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 6 : MIN_MODULE_ROWS\[id\]/);
 });
 
 test('357x741 is phone portrait and cannot retain an unstamped desktop layout', async () => {
