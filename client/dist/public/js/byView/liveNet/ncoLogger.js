@@ -72,16 +72,24 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 checkedOut: { x: 15, y: 0, w: 9, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
                 active: { x: 8, y: 4, w: 16, h: 16 }
             }, collapsed: {}
+        }),
+        Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 4 },
+                checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+                active: { x: 8, y: 4, w: 16, h: 16 }
+            }, collapsed: {}
         })
     ]);
     const DEFAULT_MODULE_LAYOUT = Object.freeze({
         gridVersion: LAYOUT_GRID_VERSION,
         items: {
-            lurkers: { x: 0, y: 0, w: 10, h: 4 },
-            controls: { x: 10, y: 0, w: 4, h: 4 },
-            checkedOut: { x: 14, y: 0, w: 10, h: 4 },
-            chat: { x: 0, y: 4, w: 8, h: 16 },
-            active: { x: 8, y: 4, w: 16, h: 16 }
+            lurkers: { x: 0, y: 0, w: 9, h: 4 },
+            controls: { x: 9, y: 0, w: 6, h: 3 },
+            checkedOut: { x: 15, y: 0, w: 9, h: 4 },
+            chat: { x: 0, y: 4, w: 9, h: 16 },
+            active: { x: 9, y: 4, w: 15, h: 16 }
         },
         collapsed: {}
     });
