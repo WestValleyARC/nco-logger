@@ -2279,3 +2279,10 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
   grid-column: 1 / -1; grid-row: 3; align-self: end;
 }
+
+/* Match stacked desktop status buttons to Edit/Close Net height with tighter padding. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  min-height: 34px;
+  height: 34px;
+  padding: 2px 4px;
+}
