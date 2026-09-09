@@ -65,8 +65,7 @@ const CONNECTION_FIELDS = {
     ],
     'WIRES-X': [
         { key: 'room', label: 'Room Name', placeholder: 'America-Link' },
-        { key: 'node', label: 'Room ID', placeholder: '21080' },
-        { key: 'frequency', label: 'Access Frequency', placeholder: '448.800' }
+        { key: 'node', label: 'Room ID', placeholder: '21080' }
     ],
     YSF: [{ key: 'room', label: 'Room / Reflector', required: true }],
     P25: [{ key: 'talkgroup', label: 'Talkgroup', required: true }],
