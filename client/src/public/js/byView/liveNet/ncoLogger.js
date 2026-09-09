@@ -3820,8 +3820,9 @@ import {
       }
       const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, Math.round(Number(supplied.w) || fallback.w)));
       const h = Math.min(maximumRows, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
+      const suppliedX = Number(supplied.x) || 0;
       items[id] = {
-        x: Math.min(GRID_COLUMNS - w, Math.max(0, Math.round(Number(supplied.x) || 0))),
+        x: Math.min(GRID_COLUMNS - w, Math.max(0, currentLayoutContext === "desktop" ? Math.round(suppliedX * 4) / 4 : Math.round(suppliedX))),
         y: Math.min(maximumRows - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
         w,
         h
@@ -3854,7 +3855,7 @@ import {
       if (dashboard) {
         const metrics = gridMetrics(dashboard);
         const width = 342;
-        const height = 114;
+        const height = 115;
         const x = (dashboard.clientWidth - width) / 2;
         return { ...item, x: x / metrics.columnStep, y: 0, w: width / metrics.columnStep, h: height / metrics.rowStep };
       }
@@ -4088,7 +4089,7 @@ import {
       module.style.setProperty("--nch-module-columns", String(item.w));
       if (id === "controls" && currentLayoutContext === "desktop") {
         module.style.width = "342px";
-        module.style.height = "114px";
+        module.style.height = "115px";
         module.style.justifySelf = "center";
         module.style.alignSelf = "start";
       } else {
@@ -4224,7 +4225,8 @@ import {
     const box = dashboard.getBoundingClientRect();
     const metrics = gridMetrics(dashboard);
     const originalItem = modulePointerDrag.originalLayout.items[moduleId];
-    const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, Math.round((clientX - box.left - offsetX) / metrics.columnStep)));
+    const rawRequestedX = (clientX - box.left - offsetX) / metrics.columnStep;
+    const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, currentLayoutContext === "desktop" ? Math.round(rawRequestedX * 4) / 4 : Math.round(rawRequestedX)));
     const requestedY = Math.min(Math.max(0, metrics.rows - originalItem.h), Math.max(0, Math.round((clientY - box.top - offsetY) / metrics.rowStep)));
     const candidate = normalizeModuleLayout(modulePointerDrag.originalLayout);
     const snapped = snapModulePosition(candidate, moduleId, requestedX, requestedY);
@@ -4237,7 +4239,7 @@ import {
     modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
     if (moduleId === "controls" && currentLayoutContext === "desktop") {
       modulePointerDrag.preview.style.width = "342px";
-      modulePointerDrag.preview.style.height = "114px";
+      modulePointerDrag.preview.style.height = "115px";
       modulePointerDrag.preview.style.justifySelf = "center";
       modulePointerDrag.preview.style.alignSelf = "start";
     }
