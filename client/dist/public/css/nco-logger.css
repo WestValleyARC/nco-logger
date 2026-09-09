@@ -2237,3 +2237,19 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper .nch-net-connection-fields label { min-width: 0; }
 #netcontrol-ncs-helper .nch-net-connection-fields :is(input, select) { width: 100%; margin-top: 3px; padding: 6px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
 #netcontrol-ncs-helper .nch-net-connections-empty { margin: 4px 0; color: #adb6bd; font-size: 12px; }
+
+
+/* Desktop Station Controls readability: wider centered pane without sacrificing two station cards per side row. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  min-height: 36px; padding: 6px 8px !important; font-size: 16px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint { font-size: 12px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  min-height: 34px; padding: 5px 4px; font-size: 14px; line-height: 1.1;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  min-height: 34px; padding: 5px 7px; font-size: 15px; line-height: 1.1;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-checked-out-section, .nch-lurkers-fixed) > .nch-module-content > .nch-row {
+  min-width: 0; max-width: calc(50% - 2px); overflow: hidden;
+}
