@@ -2286,3 +2286,8 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   height: 34px;
   padding: 2px 4px;
 }
+
+/* Stack paired desktop status buttons flush against each other. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  row-gap: 0;
+}
