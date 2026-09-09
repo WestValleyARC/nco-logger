@@ -2544,3 +2544,18 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   min-width: 83px;
   max-width: 83px;
 }
+
+/* Fit Short Time on one line while keeping the compact desktop controls footprint. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
+  white-space: nowrap;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-columns: max-content 144px max-content;
+  column-gap: 2px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  width: 144px;
+}
