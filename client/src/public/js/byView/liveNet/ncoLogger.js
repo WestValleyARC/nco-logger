@@ -3918,6 +3918,21 @@ import {
       });
       local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
     }
+    const phonePortraitDefaultNeedsCorrection = [
+      { gridVersion: LAYOUT_GRID_VERSION, items: {
+        controls: { x: 0, y: 0, w: 24, h: 7 }, active: { x: 0, y: 7, w: 24, h: 14 },
+        chat: { x: 0, y: 21, w: 24, h: 14 }, lurkers: { x: 0, y: 35, w: 24, h: 5 },
+        checkedOut: { x: 0, y: 40, w: 24, h: 5 }
+      }, collapsed: {} },
+      { gridVersion: LAYOUT_GRID_VERSION, items: {
+        controls: { x: 0, y: 0, w: 24, h: 6 }, active: { x: 0, y: 6, w: 24, h: 14 },
+        chat: { x: 0, y: 20, w: 24, h: 14 }, lurkers: { x: 0, y: 34, w: 24, h: 5 },
+        checkedOut: { x: 0, y: 39, w: 24, h: 5 }
+      }, collapsed: {} }
+    ].some(previousDefault => isSameLoggerModuleLayout(bucket.phonePortrait, previousDefault));
+    if (phonePortraitDefaultNeedsCorrection) {
+      bucket.phonePortrait = RESPONSIVE_DEFAULT_MODULE_LAYOUTS.phonePortrait;
+    }
     const ncoTabletLandscapeDefaultNeedsCorrection = loggerLayoutRole(role) === "nco"
       && [DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT]
         .some(previousDefault => isSameLoggerModuleLayout(bucket.tabletLandscape, previousDefault));
