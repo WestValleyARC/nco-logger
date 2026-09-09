@@ -4067,7 +4067,7 @@ import {
       module.style.setProperty("--nch-module-columns", String(item.w));
       if (id === "controls" && currentLayoutContext === "desktop") {
         module.style.width = "342px";
-        module.style.height = "126px";
+        module.style.height = "120px";
         module.style.justifySelf = "center";
         module.style.alignSelf = "start";
       } else {
