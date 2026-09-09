@@ -2431,3 +2431,13 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-top: 0;
   padding-bottom: 0;
 }
+
+/* Force visible separation between all desktop Station Controls buttons. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  row-gap: 5px;
+  column-gap: 5px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  gap: 5px;
+  margin-top: 0;
+}
