@@ -2506,3 +2506,12 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
   transform: translateY(2px);
 }
+
+/* Increase desktop callsign field height by 3px and keep helper aligned beneath it. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  min-height: 30px;
+  height: 30px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
+  transform: translateY(5px);
+}
