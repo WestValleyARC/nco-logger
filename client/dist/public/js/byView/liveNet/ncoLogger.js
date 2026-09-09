@@ -4038,9 +4038,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             };
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
-        if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
-            items.controls = { ...items.controls, x: 9, y: 0, w: 6, h: 4 };
-        }
         if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
             const previousBottom = items.controls.y + items.controls.h;
             const addedRows = 7 - items.controls.h;
@@ -4058,18 +4055,16 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         };
     }
     const collisionRect = (item, id = item?.id) => {
-        if (currentLayoutContext === "desktop" && id === "controls") {
-            const dashboard = panel?.querySelector("[data-role='dashboard']");
-            if (dashboard) {
-                const metrics = gridMetrics(dashboard);
-                const width = 342;
-                const height = 116;
-                const x = (dashboard.clientWidth - width) / 2;
-                return { ...item, x: x / metrics.columnStep, y: 0, w: width / metrics.columnStep, h: height / metrics.rowStep };
-            }
-            return { ...item, x: 9, y: 0, w: 6, h: 4 };
-        }
-        return item;
+        if (currentLayoutContext !== "desktop" || id !== "controls")
+            return item;
+        const dashboard = panel?.querySelector("[data-role='dashboard']");
+        if (!dashboard)
+            return item;
+        const metrics = gridMetrics(dashboard);
+        const width = 342 / metrics.columnStep;
+        const height = 116 / metrics.rowStep;
+        const slotWidth = item.w;
+        return { ...item, x: item.x + (slotWidth - width) / 2, w: width, h: height };
     };
     const gridRectsOverlap = (left, right) => {
         const a = collisionRect(left);
@@ -4079,8 +4074,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
     function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
         const layout = normalizeModuleLayout(source);
         const maximumRows = layoutRows();
-        const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]
-            && !(currentLayoutContext === "desktop" && id === "controls"));
+        const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]);
         visible.sort((left, right) => {
             if (left === fixedId)
                 return -1;
@@ -4371,8 +4365,13 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         applyModuleLayout();
         storageSet();
     }
+    function modulePlacementIsClear(layout, id) {
+        const item = { id, ...layout.items[id] };
+        return MODULE_IDS.filter(otherId => otherId !== id && moduleAvailable(otherId) && !layout.collapsed[otherId])
+            .every(otherId => !gridRectsOverlap(item, { id: otherId, ...layout.items[otherId] }));
+    }
     function resizeModuleBy(id, widthDelta, heightDelta) {
-        if (currentLayoutContext.startsWith("phone") || !MODULE_IDS.includes(id))
+        if (id === "controls" || currentLayoutContext.startsWith("phone") || !MODULE_IDS.includes(id))
             return;
         const layout = normalizeModuleLayout();
         const item = layout.items[id];
@@ -4380,10 +4379,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         item.x = Math.min(item.x, GRID_COLUMNS - item.w);
         const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 7 : MIN_MODULE_ROWS[id];
         item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
-        const resolved = tryResolveGridLayout(layout, id);
-        if (!resolved)
+        if (!modulePlacementIsClear(layout, id))
             return;
-        local.moduleLayout = resolved;
+        local.moduleLayout = layout;
         storageSet();
         applyModuleLayout();
     }
@@ -4403,10 +4401,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const item = layout.items[id];
         item.x = Math.min(GRID_COLUMNS - item.w, Math.max(0, item.x + xDelta));
         item.y = Math.min(layoutRows() - item.h, Math.max(0, item.y + yDelta));
-        const resolved = tryResolveGridLayout(layout, id);
-        if (!resolved)
+        if (!modulePlacementIsClear(layout, id))
             return;
-        local.moduleLayout = resolved;
+        local.moduleLayout = layout;
         storageSet();
         applyModuleLayout();
     }
@@ -4450,9 +4447,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const candidate = normalizeModuleLayout(modulePointerDrag.originalLayout);
         const snapped = snapModulePosition(candidate, moduleId, requestedX, requestedY);
         candidate.items[moduleId] = { ...candidate.items[moduleId], ...snapped };
-        modulePointerDrag.previewLayout = tryResolveGridLayout(candidate, moduleId, true);
-        if (!modulePointerDrag.previewLayout)
+        if (!modulePlacementIsClear(candidate, moduleId))
             return;
+        modulePointerDrag.previewLayout = candidate;
         renderGridLayout(modulePointerDrag.previewLayout, moduleId);
         const item = modulePointerDrag.previewLayout.items[moduleId];
         modulePointerDrag.preview.style.gridColumn = `${item.x + 1} / span ${item.w}`;
@@ -4551,10 +4548,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 ? 7 : MIN_MODULE_ROWS[resizing.moduleId];
             item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, resizing.startItem.h + rowDelta));
         }
-        const resolved = tryResolveGridLayout(layout, resizing.moduleId);
-        if (!resolved)
+        if (!modulePlacementIsClear(layout, resizing.moduleId))
             return;
-        local.moduleLayout = resolved;
+        local.moduleLayout = layout;
         renderGridLayout(local.moduleLayout);
     }
     function stopResizing(event, cancelled = false) {

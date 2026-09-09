@@ -2584,3 +2584,40 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-lurker-row, .nch-row.nch-checked-out) {
   min-height: 25px;
 }
+
+/* Desktop Station Controls — authoritative compact layout. Earlier desktop tuning rules are superseded here. */
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-entry-controls {
+  display: grid;
+  grid-template-columns: 90px 150px 90px;
+  grid-template-rows: 30px 24px 24px;
+  gap: 2px 3px;
+  width: 342px;
+  padding: 3px;
+  margin: 0;
+  overflow: visible;
+  box-sizing: border-box;
+}
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-quick-checkin { display: contents; }
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane [data-quick-tag="mobile"] { grid-column:1; grid-row:1; }
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane [data-quick-tag="shortTime"] { grid-column:1; grid-row:2; }
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-quick-io { grid-column:3; grid-row:1; }
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane [data-quick-tag="portable"] { grid-column:3; grid-row:2; }
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-quick-checkin button {
+  width:90px; min-width:90px; max-width:90px; height:24px; min-height:24px; margin:0; transform:none;
+  padding:0 3px; font-size:15px; line-height:1.05; white-space:nowrap; box-sizing:border-box;
+}
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane [data-quick-tag="mobile"],
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-quick-io { height:30px; min-height:30px; }
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-callsign-input {
+  grid-column:2; grid-row:1; width:150px; height:30px; min-height:30px; margin:0; padding:2px 5px !important;
+  font-size:14px; box-sizing:border-box;
+}
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-call-hint {
+  grid-column:2; grid-row:2; margin:0; transform:none; align-self:center; text-align:center; font-size:12px; white-space:nowrap;
+}
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-net-actions {
+  grid-column:1 / -1; grid-row:3; display:grid; grid-template-columns:1fr 1fr; gap:3px; width:100%; margin:0; align-self:stretch;
+}
+#netcontrol-ncs-helper[data-layout-context="desktop"] .nch-controls-pane .nch-net-actions button {
+  width:100%; min-width:0; height:24px; min-height:24px; margin:0; padding:0 3px; font-size:15px; line-height:1.05;
+}
