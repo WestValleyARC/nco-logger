@@ -2584,3 +2584,16 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-lurker-row, .nch-row.nch-checked-out) {
   min-height: 25px;
 }
+
+/* Hug the desktop Station Controls frame to its controls with a 3px inner edge. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane {
+  width: max-content;
+  height: max-content;
+  justify-self: center;
+  align-self: start;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  padding-left: 3px;
+  padding-right: 3px;
+  padding-bottom: 3px;
+}
