@@ -17,7 +17,8 @@ test('Fusion and WIRES-X are distinct connection types and YSF remains unchanged
 
 test('connection editor exposes appropriate Fusion and WIRES-X fields', () => {
   assert.match(editor, /Fusion: \[[\s\S]*Frequency[\s\S]*Operation[\s\S]*Offset/);
-  assert.match(editor, /'WIRES-X': \[[\s\S]*Room Name[\s\S]*Room ID[\s\S]*Access Frequency/);
+  assert.match(editor, /'WIRES-X': \[[\s\S]*Room Name[\s\S]*Room ID/);
+  assert.doesNotMatch(editor.match(/'WIRES-X': \[[\s\S]*?\],/)[0], /Access Frequency/);
   assert.match(editor, /YSF: \[\{ key: 'room', label: 'Room \/ Reflector', required: true \}\]/);
 });
 
