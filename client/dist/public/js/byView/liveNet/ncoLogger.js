@@ -4608,7 +4608,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             <h3 class="nch-module-header" data-module-drag="controls" tabindex="0" aria-label="Move Station Controls"><span>Station Controls</span></h3>
             <div class="nch-module-content nch-entry-controls">
             <input class="nch-callsign-input nch-admin-only" data-role="callsign" aria-label="Callsign" autocomplete="off" maxlength="15" placeholder="Callsign">
-            <small class="nch-call-hint nch-admin-only">Type a callsign and press ENTER</small>
+            <small class="nch-call-hint nch-admin-only">Press ENTER to check in</small>
             <div class="nch-quick-checkin nch-admin-only" aria-label="Check in with station status">
               <button data-quick-tag="mobile" data-short="M" aria-pressed="false" title="Mark Mobile, look up QRZ, and check in">Mobile</button>
               <button data-quick-tag="shortTime" data-short="ST" aria-pressed="false" title="Mark Short Time, look up QRZ, and check in">Short Time</button>
