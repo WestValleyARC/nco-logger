@@ -2574,3 +2574,8 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
   transform: translateY(-1px);
 }
+
+/* Slightly reduce desktop callsign input text without changing field dimensions. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  font-size: 14px;
+}
