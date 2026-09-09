@@ -90,9 +90,9 @@ import {
     phonePortrait: Object.freeze({
       gridVersion: LAYOUT_GRID_VERSION,
       items: {
-        controls: { x: 0, y: 0, w: 24, h: 5 }, active: { x: 0, y: 5, w: 24, h: 14 },
-        chat: { x: 0, y: 19, w: 24, h: 14 }, lurkers: { x: 0, y: 33, w: 24, h: 5 },
-        checkedOut: { x: 0, y: 38, w: 24, h: 5 }
+        controls: { x: 0, y: 0, w: 24, h: 6 }, active: { x: 0, y: 6, w: 24, h: 14 },
+        chat: { x: 0, y: 20, w: 24, h: 14 }, lurkers: { x: 0, y: 34, w: 24, h: 5 },
+        checkedOut: { x: 0, y: 39, w: 24, h: 5 }
       }, collapsed: {}
     }),
     phoneLandscape: Object.freeze({
@@ -3751,10 +3751,10 @@ import {
       };
       collapsed[id] = Boolean(suppliedCollapsed[id]);
     });
-    if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 5) {
+    if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 6) {
       const previousBottom = items.controls.y + items.controls.h;
-      const addedRows = 5 - items.controls.h;
-      items.controls.h = 5;
+      const addedRows = 6 - items.controls.h;
+      items.controls.h = 6;
       MODULE_IDS.filter(id => id !== "controls" && items[id].y >= previousBottom).forEach(id => {
         items[id].y = Math.min(maximumRows - items[id].h, items[id].y + addedRows);
       });
@@ -3925,9 +3925,9 @@ import {
         checkedOut: { x: 0, y: 40, w: 24, h: 5 }
       }, collapsed: {} },
       { gridVersion: LAYOUT_GRID_VERSION, items: {
-        controls: { x: 0, y: 0, w: 24, h: 6 }, active: { x: 0, y: 6, w: 24, h: 14 },
-        chat: { x: 0, y: 20, w: 24, h: 14 }, lurkers: { x: 0, y: 34, w: 24, h: 5 },
-        checkedOut: { x: 0, y: 39, w: 24, h: 5 }
+        controls: { x: 0, y: 0, w: 24, h: 5 }, active: { x: 0, y: 5, w: 24, h: 14 },
+        chat: { x: 0, y: 19, w: 24, h: 14 }, lurkers: { x: 0, y: 33, w: 24, h: 5 },
+        checkedOut: { x: 0, y: 38, w: 24, h: 5 }
       }, collapsed: {} }
     ].some(previousDefault => isSameLoggerModuleLayout(bucket.phonePortrait, previousDefault));
     if (phonePortraitDefaultNeedsCorrection) {
@@ -4057,7 +4057,7 @@ import {
     const item = layout.items[id];
     item.w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
     item.x = Math.min(item.x, GRID_COLUMNS - item.w);
-    const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 5 : MIN_MODULE_ROWS[id];
+    const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 6 : MIN_MODULE_ROWS[id];
     item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
     const resolved = tryResolveGridLayout(layout, id);
     if (!resolved) return;
@@ -4209,12 +4209,12 @@ import {
     if (resizing.edge.includes("n")) {
       const bottomEdge = resizing.startItem.y + resizing.startItem.h;
       const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
-        ? 5 : MIN_MODULE_ROWS[resizing.moduleId];
+        ? 6 : MIN_MODULE_ROWS[resizing.moduleId];
       item.h = Math.min(bottomEdge, Math.max(minimumRows, resizing.startItem.h - rowDelta));
       item.y = bottomEdge - item.h;
     } else if (resizing.edge.includes("s")) {
       const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
-        ? 5 : MIN_MODULE_ROWS[resizing.moduleId];
+        ? 6 : MIN_MODULE_ROWS[resizing.moduleId];
       item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, resizing.startItem.h + rowDelta));
     }
     const resolved = tryResolveGridLayout(layout, resizing.moduleId);
