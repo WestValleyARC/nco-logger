@@ -37,6 +37,14 @@ const netProfileFormState = new FormState('netprofile', 'new');
 const netOwnerFormState = new FormState('netowner', 'new');
 const netProfileApi = new HttpClient('netprofile', '/api/data/netprofiles');
 const NET_TITLE_PATTERN = /^[\p{L}\p{N} @|_#*&/+\-().,':!]+$/u;
+const actionErrorMessage = (error, action) => {
+    const detail = error?.response?.data?.errorMessage
+        || error?.response?.data?.message
+        || error?.message;
+    if (detail) return `${action} failed: ${detail}`;
+    if (error?.response?.status) return `${action} failed: server returned HTTP ${error.response.status}.`;
+    return `${action} failed: no additional error details were provided.`;
+};
 const CONNECTION_FIELDS = {
     FM: [
         { key: 'frequency', label: 'Frequency', required: true, placeholder: '146.940' },
@@ -613,7 +621,10 @@ const enablePreparationAction = ({ button, status, netProfile, scheduling }) => 
             window.location.href = response.data.liveNet.url;
         } catch (error) {
             button.disabled = false;
-            console.error(error.response?.data?.errorMessage || String(error));
+            const message = actionErrorMessage(error, 'Starting scheduled net');
+            status.textContent = message;
+            status.classList.add('is-error');
+            console.error(message, error);
         }
     };
 };
@@ -1066,14 +1077,9 @@ function np_submitHandler(e) {
                 setNetProfileMode('new');
             })
             .catch(error => {
-                if (error.response.data.errorMessage) {
-                    netProfileFormState.mesg('error', error.response.data.errorMessage);
-                    console.error(error.response.data.errorMessage);
-                } else {
-                    netProfileFormState.mesg('error', error);
-                    console.error(error);
-                }
-
+                const message = actionErrorMessage(error, 'Saving net profile');
+                netProfileFormState.mesg('error', message);
+                console.error(message, error);
                 setTimeout(() => {
                     netProfileFormState.mode = 'edit';
                 }, 8500);
@@ -1087,14 +1093,9 @@ function np_submitHandler(e) {
                 console.info('refreshNetList() just ran');
             })
             .catch(error => {
-                if (error.response.data.errorMessage) {
-                    netProfileFormState.mesg('error', error.response.data.errorMessage);
-                    console.error(error.response.data.errorMessage);
-                } else {
-                    netProfileFormState.mesg('error', error);
-                    console.error(error);
-                }
-
+                const message = actionErrorMessage(error, 'Creating net profile');
+                netProfileFormState.mesg('error', message);
+                console.error(message, error);
                 setTimeout(() => {
                     setNetProfileMode('new');
                 }, 8500);
@@ -1125,13 +1126,9 @@ function netowner_submitHandler(e) {
             refreshNetList();
         })
         .catch(error => {
-            if (error.response.data.errorMessage) {
-                netOwnerFormState.mesg('error', error.response.data.errorMessage);
-                console.error(error.response.data.errorMessage);
-            } else {
-                netOwnerFormState.mesg('error', error);
-                console.error(error);
-            }
+            const message = actionErrorMessage(error, 'Adding co-owner');
+            netOwnerFormState.mesg('error', message);
+            console.error(message, error);
         });
 }
 
