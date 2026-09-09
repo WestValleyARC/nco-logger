@@ -4038,7 +4038,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
         if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
-            items.controls = { ...items.controls, x: 9, y: 0, w: 6, h: 4 };
+            items.controls = { ...items.controls,
+                x: Math.min(GRID_COLUMNS - 6, Math.max(0, items.controls.x)),
+                y: Math.min(maximumRows - 4, Math.max(0, items.controls.y)),
+                w: 6, h: 4 };
         }
         if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
             const previousBottom = items.controls.y + items.controls.h;
@@ -4056,20 +4059,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             collapsed
         };
     }
-    const collisionRect = (item, id = item?.id) => {
-        if (currentLayoutContext === "desktop" && id === "controls") {
-            const dashboard = panel?.querySelector("[data-role='dashboard']");
-            if (dashboard) {
-                const metrics = gridMetrics(dashboard);
-                const width = 342;
-                const height = 114;
-                const x = (dashboard.clientWidth - width) / 2;
-                return { ...item, x: x / metrics.columnStep, y: 0, w: width / metrics.columnStep, h: height / metrics.rowStep };
-            }
-            return { ...item, x: 9, y: 0, w: 6, h: 4 };
-        }
-        return item;
-    };
+    const collisionRect = item => item;
     const gridRectsOverlap = (left, right) => {
         const a = collisionRect(left);
         const b = collisionRect(right);
@@ -4300,18 +4290,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             module.style.gridColumn = `${item.x + 1} / span ${item.w}`;
             module.style.gridRow = `${item.y + 1} / span ${item.h}`;
             module.style.setProperty("--nch-module-columns", String(item.w));
-            if (id === "controls" && currentLayoutContext === "desktop") {
-                module.style.width = "342px";
-                module.style.height = "114px";
-                module.style.justifySelf = "center";
-                module.style.alignSelf = "start";
-            }
-            else {
-                module.style.removeProperty("width");
-                module.style.removeProperty("height");
-                module.style.removeProperty("justify-self");
-                module.style.removeProperty("align-self");
-            }
+            module.style.removeProperty("width");
+            module.style.removeProperty("height");
+            module.style.removeProperty("justify-self");
+            module.style.removeProperty("align-self");
             module.hidden = !moduleAvailable(id) || layout.collapsed[id];
             module.classList.toggle("nch-grid-source", id === draggingId);
             module.classList.toggle("nch-read-only-top", !moduleAvailable("controls") && (id === "lurkers" || id === "checkedOut") && item.y === 0);
@@ -4419,6 +4401,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
     function snapModulePosition(layout, id, requestedX, requestedY) {
         const item = layout.items[id];
         const xCandidates = [0, GRID_COLUMNS - item.w];
+        if (currentLayoutContext === "desktop" && id === "controls")
+            xCandidates.push((GRID_COLUMNS - item.w) / 2);
         const yCandidates = [0];
         MODULE_IDS.filter(otherId => otherId !== id && !layout.collapsed[otherId]).forEach(otherId => {
             const other = collisionRect(layout.items[otherId], otherId);
@@ -4454,12 +4438,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const item = modulePointerDrag.previewLayout.items[moduleId];
         modulePointerDrag.preview.style.gridColumn = `${item.x + 1} / span ${item.w}`;
         modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
-        if (moduleId === "controls" && currentLayoutContext === "desktop") {
-            modulePointerDrag.preview.style.width = "342px";
-            modulePointerDrag.preview.style.height = "114px";
-            modulePointerDrag.preview.style.justifySelf = "center";
-            modulePointerDrag.preview.style.alignSelf = "start";
-        }
     }
     function updateModulePointerDrag(event) {
         if (!modulePointerDrag || event.pointerId !== modulePointerDrag.pointerId)
