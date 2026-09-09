@@ -3048,7 +3048,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             : station.hand
                 ? '<span class="nch-hand" title="Hand raised" aria-label="Hand raised">✋</span>'
                 : "";
-        const callActions = `<span class="nch-call-actions${hand ? "" : " nch-qrz-only"}">${hand ? `<span class="nch-hand-slot">${hand}</span>` : ""}${qrzProfileLink(call)}</span>`;
+        const qrzLink = station.checkedState === true ? qrzProfileLink(call) : "";
+        const callActions = hand || qrzLink
+            ? `<span class="nch-call-actions${hand ? "" : " nch-qrz-only"}">${hand ? `<span class="nch-hand-slot">${hand}</span>` : ""}${qrzLink}</span>`
+            : "";
         const pinned = station.checkedState === true && (isNco || ["netlogger", "netrelay"].includes(station.role) || details.specialGuest);
         const rowDraggable = manager && !pinned;
         const dragHandle = rowDraggable
