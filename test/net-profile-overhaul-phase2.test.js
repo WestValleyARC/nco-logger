@@ -44,7 +44,7 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
         return { status: response.status, body: await response.json() };
     };
     const formBody = overrides => ({
-        title: 'Profile Test', connections: [], restrictedSigReports: false, autoIn: false, notes: '', ...overrides
+        title: 'Profile Test', connections: [{ type: 'FM', frequency: '146.940' }], restrictedSigReports: false, autoIn: false, notes: '', ...overrides
     });
 
     try {

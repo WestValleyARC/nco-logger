@@ -37,6 +37,7 @@ const netProfileFormState = new FormState('netprofile', 'new');
 const netOwnerFormState = new FormState('netowner', 'new');
 const netProfileApi = new HttpClient('netprofile', '/api/data/netprofiles');
 const NET_TITLE_PATTERN = /^[\p{L}\p{N} @|_#*&/+\-().,':!]+$/u;
+const MAX_NET_NOTES_LENGTH = 500;
 const actionErrorMessage = (error, action) => {
     const detail = error?.response?.data?.errorMessage
         || error?.response?.data?.message
@@ -1057,11 +1058,25 @@ function np_submitHandler(e) {
         return;
     }
 
+    const notesEditor = tinymce.get('input_notes');
+    const notesText = notesEditor.getContent({ format: 'text' });
+    if (notesText.length > MAX_NET_NOTES_LENGTH) {
+        netProfileFormState.mesg('error', `Welcome notes are too long (${notesText.length}/500 characters). Shorten them to 500 characters or fewer.`);
+        document.getElementById('input_notes').closest('.app-field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        notesEditor.focus();
+        return;
+    }
+    if (!connectionRows.length) {
+        netProfileFormState.mesg('error', 'Add at least one connection, frequency, or operating mode before saving this net.');
+        document.getElementById('connections_container')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
     const dataPayload = {
         title,
         netType: String(formDataToSend.get('net_type') || 'Net'),
         autoIn: formDataToSend.get('auto_in') ? true : false,
-        notes: tinymce.get('input_notes').getContent()
+        notes: notesEditor.getContent()
     };
     if (netProfileFormState.mode === 'new' || editingHadStructuredConnections || connectionsTouched) {
         dataPayload.connections = connectionRows.map(connection => ({ ...connection }));
@@ -1080,9 +1095,7 @@ function np_submitHandler(e) {
                 const message = actionErrorMessage(error, 'Saving net profile');
                 netProfileFormState.mesg('error', message);
                 console.error(message, error);
-                setTimeout(() => {
-                    netProfileFormState.mode = 'edit';
-                }, 8500);
+                document.getElementById('netprofile_form_status')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
     } else if (netProfileFormState.mode === 'new') {
         netProfileApi
@@ -1096,9 +1109,7 @@ function np_submitHandler(e) {
                 const message = actionErrorMessage(error, 'Creating net profile');
                 netProfileFormState.mesg('error', message);
                 console.error(message, error);
-                setTimeout(() => {
-                    setNetProfileMode('new');
-                }, 8500);
+                document.getElementById('netprofile_form_status')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
     } else {
         console.error('No valid form mode for upload');
