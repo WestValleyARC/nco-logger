@@ -2537,3 +2537,10 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   max-width: 78px;
   box-sizing: border-box;
 }
+
+/* Increase all four desktop status buttons by 5px. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: 83px;
+  min-width: 83px;
+  max-width: 83px;
+}
