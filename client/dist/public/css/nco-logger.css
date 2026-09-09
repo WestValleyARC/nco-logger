@@ -2569,3 +2569,8 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
   transform: translateY(1px);
 }
+
+/* Align callsign field top exactly with the top status buttons. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  transform: translateY(-1px);
+}
