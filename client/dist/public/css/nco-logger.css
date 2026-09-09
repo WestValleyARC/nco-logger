@@ -2244,3 +2244,19 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
   width: 100%; min-width: 0; min-height: 40px; height: 40px; padding: 2px 5px; font-size: 14px; line-height: 1.05;
 }
+
+/* Phone controls polish: keep the full desktop helper copy visible and hug the action row. */
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-controls-pane .nch-entry-controls {
+  grid-template-rows: 40px 40px 40px;
+  padding-bottom: 2px;
+}
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-controls-pane .nch-call-hint {
+  align-self: center;
+  overflow: visible;
+  font-size: 10px;
+  line-height: 1.05;
+  white-space: normal;
+}
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-controls-pane .nch-call-hint::after {
+  content: none;
+}
