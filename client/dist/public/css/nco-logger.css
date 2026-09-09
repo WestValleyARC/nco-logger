@@ -2261,7 +2261,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   content: none;
 }
 
-/* Phone portrait: move the controls/action content down 5px inside its fixed six-row frame. */
-#netcontrol-ncs-helper[data-layout-context="phonePortrait"] .nch-controls-pane .nch-entry-controls {
-  transform: translateY(5px);
+/* Phone portrait: extend only the bottom edge of the Controls frame by 5px. */
+#netcontrol-ncs-helper[data-layout-context="phonePortrait"] .nch-controls-pane {
+  height: calc(100% + 5px);
 }
