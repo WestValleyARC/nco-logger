@@ -64,14 +64,32 @@ import {
     return commands;
   })();
   const MIN_MODULE_ROWS = Object.freeze({ controls: 4, chat: 5, checkedOut: 2, active: 4, lurkers: 2 });
+  const PREVIOUS_DESKTOP_DEFAULT_MODULE_LAYOUTS = Object.freeze([
+    Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 4 },
+        checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+        active: { x: 8, y: 4, w: 16, h: 16 }
+      }, collapsed: {}
+    }),
+    Object.freeze({
+      gridVersion: LAYOUT_GRID_VERSION,
+      items: {
+        lurkers: { x: 0, y: 0, w: 9, h: 4 }, controls: { x: 9, y: 0, w: 6, h: 4 },
+        checkedOut: { x: 15, y: 0, w: 9, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+        active: { x: 8, y: 4, w: 16, h: 16 }
+      }, collapsed: {}
+    })
+  ]);
   const DEFAULT_MODULE_LAYOUT = Object.freeze({
     gridVersion: LAYOUT_GRID_VERSION,
     items: {
-      lurkers: { x: 0, y: 0, w: 9, h: 4 },
-      controls: { x: 9, y: 0, w: 6, h: 4 },
-      checkedOut: { x: 15, y: 0, w: 9, h: 4 },
-      chat: { x: 0, y: 4, w: 8, h: 16 },
-      active: { x: 8, y: 4, w: 16, h: 16 }
+      lurkers: { x: 0, y: 0, w: 8, h: 5 },
+      controls: { x: 8, y: 0, w: 8, h: 5 },
+      checkedOut: { x: 16, y: 0, w: 8, h: 5 },
+      chat: { x: 0, y: 5, w: 8, h: 15 },
+      active: { x: 8, y: 5, w: 16, h: 15 }
     },
     collapsed: {}
   });
@@ -3973,6 +3991,12 @@ import {
         bucket[context] = candidate;
       });
       local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
+    }
+    const desktopDefaultNeedsCorrection = loggerLayoutRole(role) !== "viewer"
+      && PREVIOUS_DESKTOP_DEFAULT_MODULE_LAYOUTS
+        .some(previousDefault => isSameLoggerModuleLayout(bucket.desktop, previousDefault));
+    if (desktopDefaultNeedsCorrection) {
+      bucket.desktop = DEFAULT_MODULE_LAYOUT;
     }
     const ncoTabletLandscapeDefaultNeedsCorrection = loggerLayoutRole(role) === "nco"
       && [DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT]
