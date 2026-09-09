@@ -788,9 +788,11 @@ function refreshNetList() {
                 }
 
                 const iconElem = document.createElement('i');
-                iconElem.setAttribute('class', `bi ${hasOperationalSession ? 'bi-box-arrow-up-right' : hasSchedule ? 'bi-calendar-event' : 'bi-broadcast'}`);
+                iconElem.setAttribute('class', `bi ${hasOperationalSession ? 'bi-box-arrow-up-right' : 'bi-play-fill'}`);
                 iconElem.setAttribute('aria-hidden', 'true');
-                buttonStartElem.appendChild(iconElem);
+                const startLabelElem = document.createElement('span');
+                startLabelElem.textContent = hasOperationalSession ? 'Open Net' : 'Start Net';
+                buttonStartElem.append(iconElem, startLabelElem);
                 cardHeadingElem.appendChild(buttonStartElem);
 
                 const operatingDetailsElem = document.createElement('div');
