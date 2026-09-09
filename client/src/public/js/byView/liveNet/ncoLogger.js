@@ -4083,7 +4083,7 @@ import {
       if (id === "controls" && currentLayoutContext === "desktop") {
         module.style.width = "342px";
         module.style.height = "116px";
-        module.style.justifySelf = "center";
+        module.style.justifySelf = "start";
         module.style.alignSelf = "start";
       } else {
         module.style.removeProperty("width");
@@ -4199,7 +4199,14 @@ import {
   function snapModulePosition(layout, id, requestedX, requestedY) {
     const item = layout.items[id];
     const xCandidates = [0, GRID_COLUMNS - item.w];
-    if (currentLayoutContext === "desktop" && id === "controls") xCandidates.push((GRID_COLUMNS - item.w) / 2);
+    if (currentLayoutContext === "desktop" && id === "controls") {
+      const dashboard = panel?.querySelector("[data-role='dashboard']");
+      if (dashboard) {
+        const metrics = gridMetrics(dashboard);
+        const centeredLeftPx = (dashboard.clientWidth - 342) / 2;
+        xCandidates.push(centeredLeftPx / metrics.columnStep);
+      }
+    }
     const yCandidates = [0];
     MODULE_IDS.filter(otherId => otherId !== id && !layout.collapsed[otherId]).forEach(otherId => {
       const other = collisionRect(layout.items[otherId], otherId);
@@ -4224,7 +4231,8 @@ import {
     const metrics = gridMetrics(dashboard);
     const originalItem = modulePointerDrag.originalLayout.items[moduleId];
     const rawRequestedX = (clientX - box.left - offsetX) / metrics.columnStep;
-    const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, Math.round(rawRequestedX)));
+    const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0,
+      currentLayoutContext === "desktop" && moduleId === "controls" ? rawRequestedX : Math.round(rawRequestedX)));
     const requestedY = Math.min(Math.max(0, metrics.rows - originalItem.h), Math.max(0, Math.round((clientY - box.top - offsetY) / metrics.rowStep)));
     const candidate = normalizeModuleLayout(modulePointerDrag.originalLayout);
     const snapped = snapModulePosition(candidate, moduleId, requestedX, requestedY);
@@ -4238,7 +4246,7 @@ import {
     if (moduleId === "controls" && currentLayoutContext === "desktop") {
       modulePointerDrag.preview.style.width = "342px";
       modulePointerDrag.preview.style.height = "116px";
-      modulePointerDrag.preview.style.justifySelf = "center";
+      modulePointerDrag.preview.style.justifySelf = "start";
       modulePointerDrag.preview.style.alignSelf = "start";
     }
   }
