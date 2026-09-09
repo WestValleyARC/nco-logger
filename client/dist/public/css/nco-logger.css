@@ -2314,3 +2314,9 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-left: 5px !important;
   padding-right: 5px !important;
 }
+
+/* Remove horizontal button padding in desktop Station Controls. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane button {
+  padding-left: 0;
+  padding-right: 0;
+}
