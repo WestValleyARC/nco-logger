@@ -4065,6 +4065,17 @@ import {
       module.style.gridColumn = `${item.x + 1} / span ${item.w}`;
       module.style.gridRow = `${item.y + 1} / span ${item.h}`;
       module.style.setProperty("--nch-module-columns", String(item.w));
+      if (id === "controls" && currentLayoutContext === "desktop") {
+        module.style.width = "342px";
+        module.style.height = "126px";
+        module.style.justifySelf = "center";
+        module.style.alignSelf = "start";
+      } else {
+        module.style.removeProperty("width");
+        module.style.removeProperty("height");
+        module.style.removeProperty("justify-self");
+        module.style.removeProperty("align-self");
+      }
       module.hidden = !moduleAvailable(id) || layout.collapsed[id];
       module.classList.toggle("nch-grid-source", id === draggingId);
       module.classList.toggle("nch-read-only-top", !moduleAvailable("controls") && (id === "lurkers" || id === "checkedOut") && item.y === 0);
