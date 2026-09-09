@@ -2529,3 +2529,11 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
   gap: 3px;
 }
+
+/* Keep all four desktop status buttons the same width. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: 78px;
+  min-width: 78px;
+  max-width: 78px;
+  box-sizing: border-box;
+}
