@@ -2388,3 +2388,12 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-top: 1px;
   padding-bottom: 1px;
 }
+
+/* Hairline spacing between every desktop Station Controls button. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  row-gap: 2px;
+  column-gap: 2px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  gap: 2px;
+}
