@@ -2365,3 +2365,15 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
   width: 100%;
 }
+
+/* Final compact desktop controls: no side whitespace and actions tight to status rows. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  grid-template-rows: 34px 34px 34px;
+  row-gap: 2px;
+  padding-inline: 0;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  gap: 4px;
+  margin: 0;
+  align-self: start;
+}
