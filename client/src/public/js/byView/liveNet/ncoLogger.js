@@ -4081,15 +4081,21 @@ import {
       module.style.gridRow = `${item.y + 1} / span ${item.h}`;
       module.style.setProperty("--nch-module-columns", String(item.w));
       if (id === "controls" && currentLayoutContext === "desktop") {
+        const metrics = gridMetrics(dashboard);
         module.style.width = "342px";
         module.style.height = "116px";
+        module.style.gridColumn = "1";
+        module.style.gridRow = `${item.y + 1} / span ${item.h}`;
         module.style.justifySelf = "start";
         module.style.alignSelf = "start";
+        module.style.transform = `translateX(${item.x * metrics.columnStep}px)`;
       } else {
+        module.style.removeProperty("transform");
         module.style.removeProperty("width");
         module.style.removeProperty("height");
         module.style.removeProperty("justify-self");
         module.style.removeProperty("align-self");
+        module.style.removeProperty("transform");
       }
       module.hidden = !moduleAvailable(id) || layout.collapsed[id];
       module.classList.toggle("nch-grid-source", id === draggingId);
@@ -4237,17 +4243,32 @@ import {
     const candidate = normalizeModuleLayout(modulePointerDrag.originalLayout);
     const snapped = snapModulePosition(candidate, moduleId, requestedX, requestedY);
     candidate.items[moduleId] = { ...candidate.items[moduleId], ...snapped };
-    if (!modulePlacementIsClear(candidate, moduleId)) return;
+    if (!modulePlacementIsClear(candidate, moduleId)) {
+      if (!(currentLayoutContext === "desktop" && moduleId === "controls")) return;
+      const movingRect = { id: moduleId, ...candidate.items[moduleId] };
+      const overlapId = MODULE_IDS.find(otherId => otherId !== moduleId && moduleAvailable(otherId)
+        && !candidate.collapsed[otherId]
+        && gridRectsOverlap(movingRect, { id: otherId, ...candidate.items[otherId] }));
+      if (!overlapId) return;
+      const originalControls = modulePointerDrag.originalLayout.items.controls;
+      const target = candidate.items[overlapId];
+      const movedTarget = { ...target, x: originalControls.x, y: originalControls.y };
+      candidate.items[overlapId] = movedTarget;
+      if (!modulePlacementIsClear(candidate, overlapId) || !modulePlacementIsClear(candidate, moduleId)) return;
+    }
     modulePointerDrag.previewLayout = candidate;
     renderGridLayout(modulePointerDrag.previewLayout, moduleId);
     const item = modulePointerDrag.previewLayout.items[moduleId];
     modulePointerDrag.preview.style.gridColumn = `${item.x + 1} / span ${item.w}`;
     modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
     if (moduleId === "controls" && currentLayoutContext === "desktop") {
+      const metrics = gridMetrics(dashboard);
+      modulePointerDrag.preview.style.gridColumn = "1";
       modulePointerDrag.preview.style.width = "342px";
       modulePointerDrag.preview.style.height = "116px";
       modulePointerDrag.preview.style.justifySelf = "start";
       modulePointerDrag.preview.style.alignSelf = "start";
+      modulePointerDrag.preview.style.transform = `translateX(${item.x * metrics.columnStep}px)`;
     }
   }
 
