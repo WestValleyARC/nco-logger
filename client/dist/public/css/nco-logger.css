@@ -2472,3 +2472,21 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
   transform: translate(3px, 2px);
 }
+
+/* Keep status-button separation inside the compact Station Controls bounds. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] {
+  transform: translate(0, -2px);
+  margin-right: 3px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] {
+  transform: translate(0, 2px);
+  margin-right: 3px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io {
+  transform: translate(0, -2px);
+  margin-left: 3px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] {
+  transform: translate(0, 2px);
+  margin-left: 3px;
+}
