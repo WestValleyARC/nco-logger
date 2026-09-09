@@ -88,8 +88,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             lurkers: { x: 0, y: 0, w: 9, h: 3 },
             controls: { x: 9, y: 0, w: 6, h: 3 },
             checkedOut: { x: 15, y: 0, w: 9, h: 3 },
-            chat: { x: 0, y: 3, w: 8, h: 17 },
-            active: { x: 8, y: 3, w: 16, h: 17 }
+            chat: { x: 0, y: 3, w: 9, h: 17 },
+            active: { x: 9, y: 3, w: 15, h: 17 }
         },
         collapsed: {}
     });
