@@ -4063,7 +4063,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             if (dashboard) {
                 const metrics = gridMetrics(dashboard);
                 const width = 342;
-                const height = 115;
+                const height = 116;
                 const x = (dashboard.clientWidth - width) / 2;
                 return { ...item, x: x / metrics.columnStep, y: 0, w: width / metrics.columnStep, h: height / metrics.rowStep };
             }
@@ -4079,7 +4079,8 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
     function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
         const layout = normalizeModuleLayout(source);
         const maximumRows = layoutRows();
-        const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]);
+        const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]
+            && !(currentLayoutContext === "desktop" && id === "controls"));
         visible.sort((left, right) => {
             if (left === fixedId)
                 return -1;
@@ -4303,7 +4304,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             module.style.setProperty("--nch-module-columns", String(item.w));
             if (id === "controls" && currentLayoutContext === "desktop") {
                 module.style.width = "342px";
-                module.style.height = "115px";
+                module.style.height = "116px";
                 module.style.justifySelf = "center";
                 module.style.alignSelf = "start";
             }
@@ -4458,7 +4459,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
         if (moduleId === "controls" && currentLayoutContext === "desktop") {
             modulePointerDrag.preview.style.width = "342px";
-            modulePointerDrag.preview.style.height = "115px";
+            modulePointerDrag.preview.style.height = "116px";
             modulePointerDrag.preview.style.justifySelf = "center";
             modulePointerDrag.preview.style.alignSelf = "start";
         }
