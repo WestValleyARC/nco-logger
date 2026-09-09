@@ -4031,7 +4031,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             const h = Math.min(maximumRows, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
             const suppliedX = Number(supplied.x) || 0;
             items[id] = {
-                x: Math.min(GRID_COLUMNS - w, Math.max(0, Math.round(suppliedX))),
+                x: Math.min(GRID_COLUMNS - w, Math.max(0, currentLayoutContext === "desktop" ? Math.round(suppliedX * 4) / 4 : Math.round(suppliedX))),
                 y: Math.min(maximumRows - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
                 w,
                 h
@@ -4066,9 +4066,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const slotWidth = item.w;
         return { ...item, x: item.x + (slotWidth - width) / 2, w: width, h: height };
     };
-    const gridRectsOverlap = (left, right, leftId = "", rightId = "") => {
-        const a = collisionRect(left, leftId);
-        const b = collisionRect(right, rightId);
+    const gridRectsOverlap = (left, right) => {
+        const a = collisionRect(left);
+        const b = collisionRect(right);
         return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
     };
     function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
@@ -4108,7 +4108,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
                 if (x < 0 || y < 0 || x > maxX || y > maxY)
                     return;
                 const candidate = { ...item, x, y };
-                if (placed.some(other => gridRectsOverlap(candidate, other, item.id || "", other.id)))
+                if (placed.some(other => gridRectsOverlap(candidate, other)))
                     return;
                 results.push(candidate);
             }));
@@ -4124,13 +4124,13 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             if (attempts > 24000)
                 return false;
             const id = visible[index];
-            const item = { id, ...layout.items[id] };
+            const item = { ...layout.items[id] };
             const candidates = id === fixedId && !nudgeFixed ? [item] : candidatesFor(item, id === fixedId && nudgeFixed);
             for (const candidate of candidates) {
                 attempts += 1;
                 if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > GRID_COLUMNS || candidate.y + candidate.h > maximumRows)
                     continue;
-                if (placed.some(other => gridRectsOverlap(candidate, other, id, other.id)))
+                if (placed.some(other => gridRectsOverlap(candidate, other)))
                     continue;
                 placed.push({ id, ...candidate });
                 layout.items[id] = { x: candidate.x, y: candidate.y, w: candidate.w, h: candidate.h };
@@ -4418,8 +4418,6 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
     function snapModulePosition(layout, id, requestedX, requestedY) {
         const item = layout.items[id];
         const xCandidates = [0, GRID_COLUMNS - item.w];
-        if (currentLayoutContext === "desktop" && id === "controls")
-            xCandidates.push((GRID_COLUMNS - item.w) / 2);
         const yCandidates = [0];
         MODULE_IDS.filter(otherId => otherId !== id && !layout.collapsed[otherId]).forEach(otherId => {
             const other = collisionRect(layout.items[otherId], otherId);
@@ -4444,7 +4442,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         const metrics = gridMetrics(dashboard);
         const originalItem = modulePointerDrag.originalLayout.items[moduleId];
         const rawRequestedX = (clientX - box.left - offsetX) / metrics.columnStep;
-        const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, Math.round(rawRequestedX)));
+        const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, currentLayoutContext === "desktop" ? Math.round(rawRequestedX * 4) / 4 : Math.round(rawRequestedX)));
         const requestedY = Math.min(Math.max(0, metrics.rows - originalItem.h), Math.max(0, Math.round((clientY - box.top - offsetY) / metrics.rowStep)));
         const candidate = normalizeModuleLayout(modulePointerDrag.originalLayout);
         const snapped = snapModulePosition(candidate, moduleId, requestedX, requestedY);
