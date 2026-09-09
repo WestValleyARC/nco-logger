@@ -2584,3 +2584,21 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-lurker-row, .nch-row.nch-checked-out) {
   min-height: 25px;
 }
+
+/* Desktop Station Controls: keep its grid slot, but draw the module frame tightly around its controls. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane {
+  width: fit-content;
+  height: fit-content;
+  max-width: none;
+  justify-self: center;
+  align-self: start;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-module-header {
+  width: 100%;
+  box-sizing: border-box;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  flex: 0 0 auto;
+  padding: 3px 3px 3px;
+  box-sizing: border-box;
+}
