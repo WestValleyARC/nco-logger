@@ -2937,7 +2937,7 @@ import {
         <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span>${callActions}</div>
         <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
         ${stationActionToggle(station, call)}
-        ${usesTouchStationInteractions() ? "" : stationActionTray(station, details, call, busy)}
+        ${usesTouchStationInteractions() || station.checkedState !== true ? "" : stationActionTray(station, details, call, busy)}
       </div>`;
   }
 
