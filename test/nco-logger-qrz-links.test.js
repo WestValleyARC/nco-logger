@@ -18,19 +18,20 @@ test('QRZ profile links use normalized, encoded callsigns and safe new-tab attri
     assert.match(source, /const label = `View \$\{call\} on QRZ`[\s\S]*title="\$\{escapeHtml\(label\)\}" aria-label="\$\{escapeHtml\(label\)\}"/);
 });
 
-test('Active Log, lurker, and checked-out rows all render the QRZ action', () => {
+test('QRZ action renders only for active rows', () => {
     const source = read(sourcePath);
     const rowMarkup = source.match(/function stationRow\(station, group\) \{[\s\S]*?\n  \}/)?.[0] || '';
-    assert.match(rowMarkup, /const callActions = `[\s\S]*\$\{qrzProfileLink\(call\)\}/);
+    assert.match(rowMarkup, /const qrzLink = station\.checkedState === true \? qrzProfileLink\(call\) : \"\"/);
+    assert.match(rowMarkup, /const callActions = hand \|\| qrzLink/);
     assert.match(rowMarkup, /nch-lurker-row/);
     assert.match(rowMarkup, /nch-checked-out/);
-    assert.match(rowMarkup, /\$\{callActions\}<\/div>/);
 });
 
 test('QRZ is directly below the intact hand control in the station action column', () => {
     const source = read(sourcePath);
     assert.match(source, /const hand = canChangeHand[\s\S]*data-toggle-hand="\$\{escapeHtml\(call\)\}" data-state="\$\{station\.hand \? "true" : "false"\}"/);
-    assert.match(source, /const callActions = `<span class="nch-call-actions\$\{hand \? "" : " nch-qrz-only"\}">\$\{hand \? `<span class="nch-hand-slot">\$\{hand\}<\/span>` : ""\}\$\{qrzProfileLink\(call\)\}<\/span>`/);
+    assert.match(source, /const qrzLink = station\.checkedState === true \? qrzProfileLink\(call\) : ""/);
+    assert.match(source, /const callActions = hand \|\| qrzLink[\s\S]*nch-hand-slot[\s\S]*\$\{qrzLink\}/);
     for (const action of ['data-row-checkout=', 'data-row-checkin=', 'data-delete=', 'data-add-lurker=', 'data-station-actions=']) {
         assert.match(source, new RegExp(action), `${action} remains available`);
     }
