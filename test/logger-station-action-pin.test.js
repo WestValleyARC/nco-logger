@@ -29,6 +29,12 @@ test('shared action trays cover active, checked-out, and lurker station actions'
     assert.match(source, /class="nch-row-actions nch-active-actions"/);
 });
 
+test('desktop lurker and checked-out rows use inline actions only, without a floating tray', () => {
+    const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
+    assert.match(source, /usesTouchStationInteractions\(\) \|\| station\.checkedState !== true \? "" : stationActionTray\(station, details, call, busy\)/);
+    assert.match(source, /function inlineRowActions\(station, call, busy\)[\s\S]*station\.checkedState === false[\s\S]*Checked out actions[\s\S]*station\.checkedState === null[\s\S]*Lurker actions/);
+});
+
 test('phone and tablet station actions use the dedicated operator-only touch toggle', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     assert.match(source, /function usesTouchStationInteractions\(\)[\s\S]*currentLayoutContext\.startsWith\("phone"\) \|\| currentLayoutContext\.startsWith\("tablet"\)[\s\S]*\(hover: none\), \(pointer: coarse\)/);
