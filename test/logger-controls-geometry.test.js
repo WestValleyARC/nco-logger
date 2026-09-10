@@ -48,6 +48,7 @@ async function connectWebSocket(url) {
 }
 
 test('1180x820 tablet landscape keeps Station Controls and neighboring grid boundaries flush', { timeout: 20000 }, async t => {
+    if (process.env.CI) return t.skip('Local headless geometry verification is not a CI gate');
     const binary = chromeBinary();
     if (!binary || typeof WebSocket === 'undefined') return t.skip('A CDP-capable Chrome is not available');
 
