@@ -280,7 +280,11 @@ test('landing layout includes responsive hero, feature, net, and footer grids', 
     assert.match(landingCss, /\.landing-footer-grid\s*\{/);
     assert.match(landingCss, /@media \(max-width: 991\.98px\)[\s\S]*\.landing-net-grid/);
     assert.match(landingCss, /@media \(max-width: 767\.98px\)[\s\S]*\.landing-hero-grid/);
+    assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-page \.landing-footer \.container\s*\{[^}]*max-width:\s*100%[^}]*\}/s);
     assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-footer-grid/);
+    assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-footer-grid > \*,[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/);
+    assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-footer-bottom\s*\{[^}]*flex-direction:\s*column[^}]*\}/s);
+    assert.match(landingCss, /@media \(max-width: 575\.98px\)[\s\S]*\.landing-footer-bottom nav\s*\{[^}]*flex-wrap:\s*wrap[^}]*max-width:\s*100%[^}]*\}/s);
     assert.match(landingCss, /\.landing-feature-card\s*\{[\s\S]*border-right:/);
     assert.match(landingCss, /\.landing-page \.landing-hero::before/);
     assert.match(landingCss, /\.landing-page \.scheduled-net-connections dd\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*text-overflow:\s*ellipsis;/);
