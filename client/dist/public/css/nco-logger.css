@@ -1863,6 +1863,8 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
   left: 0;
   min-height: calc(44px + env(safe-area-inset-top));
   padding-top: calc(2px + env(safe-area-inset-top));
+  padding-right: max(9px, env(safe-area-inset-right));
+  padding-left: max(5px, env(safe-area-inset-left));
 }
 
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]),
@@ -1875,9 +1877,9 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-dashboard {
-  height: calc(var(--nch-grid-rows) * 26px + (var(--nch-grid-rows) - 1) * var(--nch-grid-gap));
+  height: calc(var(--nch-grid-rows) * 28px + (var(--nch-grid-rows) - 1) * var(--nch-grid-gap));
   min-height: 0;
-  grid-template-rows: repeat(var(--nch-grid-rows), 26px);
+  grid-template-rows: repeat(var(--nch-grid-rows), 28px);
   overflow: visible;
 }
 
@@ -2224,10 +2226,6 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   }
 }
 
-/* Keep the desktop Station Controls actions visible within the four-row default module. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-entry-controls { overflow-y: auto; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-quick-checkin button { min-height: 30px; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-net-actions button { min-height: 30px; }
 #netcontrol-ncs-helper .nch-net-connections { margin: 4px 0; padding: 8px; border: 1px solid #4f7880; border-radius: 6px; }
 #netcontrol-ncs-helper .nch-net-connections legend { padding: 0 5px; color: #8dd9e4; }
 #netcontrol-ncs-helper .nch-net-connection-card { margin: 6px 0; padding: 7px; background: #10171c; border: 1px solid #45636a; border-radius: 5px; }
@@ -2237,3 +2235,281 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper .nch-net-connection-fields label { min-width: 0; }
 #netcontrol-ncs-helper .nch-net-connection-fields :is(input, select) { width: 100%; margin-top: 3px; padding: 6px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
 #netcontrol-ncs-helper .nch-net-connections-empty { margin: 4px 0; color: #adb6bd; font-size: 12px; }
+
+
+/* Desktop Station Controls: compact fixed-size desktop presentation. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  display: grid;
+  grid-template-columns: max-content 144px max-content;
+  grid-template-rows: 24px 24px 24px;
+  column-gap: 2px;
+  row-gap: 3px;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: 0;
+  overflow-y: auto;
+  align-items: stretch;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin { display: contents; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; transform: translateY(-1px); margin-right: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] { grid-column: 1; grid-row: 2; transform: translateY(1px); margin-right: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io { grid-column: 3; grid-row: 1; transform: translateY(-1px); margin-left: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] { grid-column: 3; grid-row: 2; transform: translateY(1px); margin-left: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: 90px; min-width: 90px; max-width: 90px; min-height: 24px; height: 24px;
+  padding: 0 4px; box-sizing: border-box; font-size: 15px; line-height: 1.05; white-space: nowrap;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  grid-column: 2; grid-row: 1; width: 144px; min-height: 30px; height: 30px;
+  padding: 2px 9px !important; justify-self: center; transform: translateY(-1px); font-size: 14px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
+  grid-column: 2; grid-row: 2; text-align: center; transform: translateY(5px); font-size: 12px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  grid-column: 1 / -1; grid-row: 3; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px; margin: 0; align-self: start;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  width: 100%; min-height: 24px; height: 24px; padding: 0 8px; font-size: 15px; line-height: 1.05;
+}
+
+/* Compact desktop Lurker/Checked Out rows now that QRZ links are active-station only. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-lurker-row, .nch-row.nch-checked-out) {
+  min-height: 25px;
+}
+
+/* Mobile/tablet Station Controls: mirror the desktop control hierarchy with touch-friendly sizing. */
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  display: grid;
+  grid-template-columns: minmax(74px, 1fr) minmax(118px, 1.35fr) minmax(74px, 1fr);
+  grid-template-rows: 40px 40px 40px;
+  gap: 4px;
+  align-items: stretch;
+  padding: 3px 4px 7px;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin { display: contents; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] { grid-column: 1; grid-row: 2; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io { grid-column: 3; grid-row: 1; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] { grid-column: 3; grid-row: 2; }
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: 100%; min-width: 0; min-height: 40px; height: 40px; padding: 2px 4px; font-size: 14px; line-height: 1.05;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  grid-column: 2; grid-row: 1; width: 100%; min-width: 0; min-height: 40px; height: 40px; padding: 4px 6px !important; font-size: 15px; text-align: center;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
+  grid-column: 2; grid-row: 2; align-self: start; text-align: center; font-size: 11px; line-height: 1.1;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 0; transform: none;
+}
+#netcontrol-ncs-helper:is([data-layout-context^="phone"], [data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  width: 100%; min-width: 0; min-height: 40px; height: 40px; padding: 2px 5px; font-size: 14px; line-height: 1.05;
+}
+
+/* Phone controls polish: keep the full desktop helper copy visible and hug the action row. */
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-controls-pane .nch-entry-controls {
+  grid-template-rows: 40px 40px 40px;
+  padding-bottom: 2px;
+}
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-controls-pane .nch-call-hint {
+  align-self: center;
+  overflow: visible;
+  font-size: 10px;
+  line-height: 1.05;
+  white-space: normal;
+}
+#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-controls-pane .nch-call-hint::after {
+  content: none;
+}
+
+
+/* Tablet portrait Station Controls: hug the action row and prevent right-edge clipping. */
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: 167px !important;
+  align-self: start;
+}
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-entry-controls {
+  padding-bottom: 2px;
+}
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-net-actions {
+  transform: none;
+}
+
+/* Tablet portrait: Controls stay inside the grid; side lists retain touch actions. */
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-entry-controls {
+  grid-template-columns: minmax(68px, .9fr) minmax(104px, 1.25fr) minmax(68px, .9fr);
+  padding-inline: 2px;
+}
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] :is(.nch-lurkers-fixed, .nch-checked-out-section) > .nch-module-content {
+  display: block; padding: 2px; overflow-y: auto;
+}
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] :is(.nch-lurkers-fixed, .nch-checked-out-section) > .nch-module-content > .nch-row {
+  width: 100%; flex: none; display: grid; grid-template-columns: 10px minmax(0, 1fr) 30px; gap: 2px; min-height: 32px; padding: 1px;
+}
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] :is(.nch-lurker-row, .nch-row.nch-checked-out) .nch-row-info { display: none; }
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] :is(.nch-lurker-row, .nch-row.nch-checked-out) .nch-station { min-width: 0; overflow: hidden; }
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] :is(.nch-lurker-row, .nch-row.nch-checked-out) button.nch-station-action-toggle {
+  display: inline-flex; width: 30px; min-width: 30px; height: 30px; min-height: 30px; padding: 5px; align-items: center; justify-content: center;
+}
+
+/* Locked tablet portrait Controls: fit the full instruction without changing module geometry. */
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-call-hint {
+  align-self: center;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  font-size: 10px;
+  line-height: 1.05;
+  letter-spacing: 0;
+  text-align: center;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-controls-pane .nch-call-hint::after {
+  content: none;
+}
+
+/* Tablet: compact Check In/Delete popover, anchored beside the source module. */
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-station-action-modal.nch-nonactive-station-action-modal {
+  place-items: start;
+  padding: 0;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-nonactive-station-action-modal .nch-station-action-panel {
+  position: absolute;
+  width: min(190px, calc(100% - 16px));
+  max-width: calc(100% - 16px);
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-compact-nonactive-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 7px;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-compact-nonactive-actions .nch-tray-title {
+  position: static;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  min-height: 28px;
+  gap: 2px;
+  padding: 0;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-compact-nonactive-actions .nch-tray-title > span {
+  grid-column: 2;
+  justify-self: center;
+  max-width: 100%;
+  overflow: visible;
+  font-size: 11px;
+  line-height: 1.1;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-compact-nonactive-actions .nch-tray-title .nch-tray-close {
+  grid-column: 3;
+  justify-self: end;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  max-width: 26px;
+  max-height: 26px;
+  font-size: 16px;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-compact-nonactive-actions .nch-management-actions {
+  min-height: 0;
+  padding: 0;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-compact-nonactive-actions .nch-management-actions > span {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-compact-nonactive-actions .nch-management-actions > span > button {
+  min-height: 30px;
+  height: 30px;
+  padding: 2px 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Tablet: Lurker/Checked Out rows are not selectable; only their menu buttons are interactive. */
+#netcontrol-ncs-helper[data-layout-context^="tablet"] :is(.nch-lurker-row, .nch-row.nch-checked-out),
+#netcontrol-ncs-helper[data-layout-context^="tablet"] :is(.nch-lurker-row, .nch-row.nch-checked-out):is(:hover, :focus, :focus-visible, :focus-within, .nch-actions-pinned, .nch-touch-actions-open) {
+  background: #0d1821;
+  border-color: transparent;
+  outline: 0;
+  box-shadow: none;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] :is(.nch-lurker-row, .nch-row.nch-checked-out):is(:hover, :focus-within, .nch-actions-pinned, .nch-touch-actions-open) .nch-row-text {
+  display: inline-flex;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] :is(.nch-lurker-row, .nch-row.nch-checked-out):is(:hover, :focus-within, .nch-actions-pinned, .nch-touch-actions-open) .nch-inline-actions {
+  display: none;
+}
+
+/* Tablet non-active rows are display-only surfaces; the menu button owns interaction. */
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"] {
+  cursor: default;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"] > :not(.nch-station-action-toggle) {
+  pointer-events: none !important;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"] .nch-station-action-toggle {
+  pointer-events: auto !important;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"]:hover,
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"]:focus-within {
+  z-index: 1 !important;
+}
+
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"],
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"]:is(:hover, :active, :focus, :focus-visible, :focus-within) {
+  background: #24292e !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] [data-tablet-nonactive="true"] .nch-station {
+  background: #2c333a !important;
+  border-color: #71808e !important;
+}
+
+/* Tablet: expose module adjustment affordances clearly and keep touch dragging under app control. */
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-module-header[data-module-drag] {
+  touch-action: none;
+}
+#netcontrol-ncs-helper[data-layout-context^="tablet"] .nch-resize-zone {
+  pointer-events: auto;
+}
+
+
+/* Five top tracks plus their four internal 1px gaps equal the locked 167px Controls height. */
+#netcontrol-ncs-helper[data-layout-context="tabletPortrait"] .nch-dashboard {
+  --nch-tablet-top-track: 32.6px;
+  grid-template-rows: repeat(5, var(--nch-tablet-top-track)) repeat(19, minmax(0, 1fr));
+}
+
+/* Tablet landscape: one 167px top boundary for Controls, side modules, and the bottom row. */
+#netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-dashboard {
+  --nch-tablet-landscape-top-track: 32.6px;
+  grid-template-rows: repeat(5, var(--nch-tablet-landscape-top-track)) repeat(15, minmax(0, 1fr));
+}
+#netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-entry-controls {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+  padding-bottom: 2px;
+}
+#netcontrol-ncs-helper[data-layout-context="tabletLandscape"] .nch-controls-pane .nch-net-actions {
+  margin-top: 0;
+  transform: none;
+}

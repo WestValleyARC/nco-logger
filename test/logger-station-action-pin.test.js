@@ -33,28 +33,21 @@ test('phone and tablet station actions use the dedicated operator-only touch tog
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     assert.match(source, /function usesTouchStationInteractions\(\)[\s\S]*currentLayoutContext\.startsWith\("phone"\) \|\| currentLayoutContext\.startsWith\("tablet"\)[\s\S]*\(hover: none\), \(pointer: coarse\)/);
     assert.match(source, /function stationActionToggle\(station, call\)[\s\S]*usesTouchStationInteractions\(\)[\s\S]*\["netcontrol", "netlogger", "netrelay"\]\.includes\(currentUserRole\)/);
-    assert.match(source, /if \(!touchActions \|\| station\.checkedState !== true\) return ""/);
+    assert.match(source, /if \(!touchActions \|\| \(station\.checkedState !== true && !canManageStations\(\)\)\) return ""/);
     assert.match(source, /data-station-actions=/);
     assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)/);
     assert.doesNotMatch(source, /if \(clickedRow && !clickedInteractive && touchStationActions\) \{\s*const call = normalizeCall\(clickedRow\.dataset\.call\);\s*pinnedActionCall = pinnedActionCall === call/);
 });
 
-test('touch rows deterministically toggle lurker and checked-out inline actions', () => {
+test('tablet lurker and checked-out rows are menu-only and do not toggle inline actions', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
-    assert.match(source, /let touchInlineActionCall = ""/);
-    assert.match(source, /station\.checkedState !== true && usesTouchStationInteractions\(\) && touchInlineActionCall === call \? " nch-touch-actions-open"/);
-    assert.match(source, /function clearTouchInlineActions\(\)[\s\S]*touchInlineActionCall = ""[\s\S]*querySelectorAll\("\.nch-touch-actions-open"\)[\s\S]*classList\.remove\("nch-touch-actions-open"\)[\s\S]*row\.contains\(focused\)[\s\S]*focused\.blur\(\)/);
-    assert.match(source, /if \(clickedRow && !clickedInteractive && touchStationActions\)[\s\S]*station\?\.checkedState !== true[\s\S]*const closing = touchInlineActionCall === call[\s\S]*clearTouchInlineActions\(\)[\s\S]*if \(!closing\)[\s\S]*touchInlineActionCall = call[\s\S]*classList\.add\("nch-touch-actions-open"\)[\s\S]*clickedRow\.focus\(\{ preventScroll: true \}\)[\s\S]*if \(clickedRow && !clickedInteractive && canManageStations\(\)\)[\s\S]*station\?\.checkedState === true[\s\S]*selectedNextCall = selectedNextCall === call \? "" : call/);
-    assert.match(source, /const clickedInteractive = event\.target\.closest\?\.\("button, input,[^"]+\.nch-row-actions"\)[\s\S]*if \(clickedRow && !clickedInteractive && touchStationActions\)/);
-    assert.match(source, /if \(!clickedRow && touchInlineActionCall\) clearTouchInlineActions\(\)/);
-    assert.match(source, /panel\.addEventListener\("focusout"[\s\S]*\.nch-touch-actions-open[\s\S]*!touchActionRow\.contains\(event\.relatedTarget\)[\s\S]*clearTouchInlineActions\(\)/);
-    assert.match(source, /panel\.addEventListener\("contextmenu"[\s\S]*if \(usesTouchStationInteractions\(\)\) \{\s*event\.preventDefault\(\);\s*return;\s*\}/);
-    assert.match(source, /\$\{usesTouchStationInteractions\(\) \? "" : stationActionTray/);
-    assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\)[\s\S]*:is\(\.nch-row\.nch-checked-out, \.nch-lurker-row\)\.nch-touch-actions-open \.nch-inline-actions\s*\{\s*display:\s*inline-flex/s);
-    assert.match(css, /:not\(\[data-layout-context\^="phone"\]\):not\(\[data-layout-context\^="tablet"\]\)[\s\S]*\.nch-checked-out:is\(:hover, :focus-within, \.nch-actions-pinned\)[\s\S]*\.nch-checked-out\.nch-touch-actions-open\s*\{\s*grid-template-columns:/s);
-    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-checked-out:not\(\.nch-touch-actions-open\) button\.nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
-    assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\][^{]*nch-hand-toggle\s*\{[^}]*pointer-events:\s*none/s);
+    assert.match(source, /data-tablet-nonactive=\"true\"/);
+    assert.match(source, /clickedRow\?\.dataset\.tabletNonactive === \"true\"[\s\S]*display-only[\s\S]*return/);
+    assert.match(source, /stationActionToggle\(station, call\)[\s\S]*station\.checkedState !== true && !canManageStations\(\)/);
+    assert.match(source, /stationActionTray\(station, details, call, busy, modal = false\)[\s\S]*if \(manager && !active\)[\s\S]*nch-compact-nonactive-actions/);
+    assert.match(css, /\[data-layout-context\^=\"tablet\"\] \[data-tablet-nonactive=\"true\"\] > :not\(\.nch-station-action-toggle\)[^{]*\{[^}]*pointer-events:\s*none !important/s);
+    assert.match(css, /\[data-layout-context\^=\"tablet\"\] \[data-tablet-nonactive=\"true\"\] \.nch-station-action-toggle[^{]*\{[^}]*pointer-events:\s*auto !important/s);
 });
 
 test('desktop clicks persistently toggle lurker and checked-out actions without replacing hover', () => {
@@ -120,7 +113,7 @@ test('phone and tablet station actions render in one visual-viewport modal with 
     assert.doesNotMatch(source.match(/function syncStationActionModal\(\) \{[\s\S]*?\n  \}/)?.[0] || '', /scrollTop|scrollIntoView/);
     assert.match(source, /const viewport = window\.visualViewport;[\s\S]*viewport\?\.offsetLeft[\s\S]*viewport\?\.offsetTop[\s\S]*viewport\?\.width[\s\S]*viewport\?\.height/);
     assert.match(source, /window\.visualViewport\?\.addEventListener\("scroll", positionStationActionModal\)/);
-    assert.match(source, /const touchInteractions = usesTouchStationInteractions\(\);[\s\S]*const allowed = touchInteractions && station\?\.checkedState === true/);
+    assert.match(source, /const touchInteractions = usesTouchStationInteractions\(\);[\s\S]*const allowed = touchInteractions && Boolean\(station\)[\s\S]*station\.checkedState === true \|\| canManageStations\(\)/);
     assert.match(css, /\.nch-station-action-modal\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*2147483000[^}]*place-items:\s*center[^}]*safe-area-inset/s);
     assert.match(css, /\.nch-station-action-panel\s*\{[^}]*width:\s*min\(34rem, 100%\)[^}]*max-height:\s*100%[^}]*overflow:\s*hidden/s);
     assert.match(css, /\.nch-station-action-panel \.nch-tray-title\s*\{[^}]*position:\s*sticky[^}]*grid-template-columns:\s*78px minmax\(0, 1fr\) 36px 36px[^}]*gap:\s*6px/s);
