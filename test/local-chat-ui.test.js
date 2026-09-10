@@ -260,13 +260,14 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
     assert.match(source, /phonePortrait:[\s\S]*controls: \{ x: 0, y: 0, w: 24, h: 6[\s\S]*active: \{ x: 0, y: 6[\s\S]*chat: \{ x: 0, y: 20/);
-    assert.match(source, /phoneLandscape:[\s\S]*active: \{ x: 8, y: 0, w: 16/);
+    assert.match(source, /phoneLandscape:[\s\S]*controls: \{ x: 0, y: 0, w: 9, h: 6 \}[\s\S]*chat: \{ x: 0, y: 6, w: 9, h: 18 \}[\s\S]*active: \{ x: 9, y: 0, w: 15, h: 16 \}[\s\S]*lurkers: \{ x: 9, y: 16, w: 15, h: 4 \}[\s\S]*checkedOut: \{ x: 9, y: 20, w: 15, h: 4 \}/);
     assert.match(source, /tabletPortrait:[\s\S]*chat: \{ x: 0, y: 5, w: 10[\s\S]*active: \{ x: 10, y: 5, w: 14/);
     assert.doesNotMatch(source, /NCO_TABLET_PORTRAIT_DEFAULT_MODULE_LAYOUT/);
-    assert.match(source, /PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT[\s\S]*controls: \{ x: 10, y: 0, w: 4, h: 7 \}[\s\S]*chat: \{ x: 0, y: 4, w: 8, h: 16 \}[\s\S]*active: \{ x: 8, y: 7, w: 16, h: 13 \}/);
+    assert.match(source, /FAILED_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT[\s\S]*lurkers: \{ x: 0, y: 0, w: 10, h: 7 \}[\s\S]*controls: \{ x: 10, y: 0, w: 4, h: 7 \}[\s\S]*checkedOut: \{ x: 14, y: 0, w: 10, h: 7 \}[\s\S]*chat: \{ x: 0, y: 7, w: 8, h: 13 \}[\s\S]*active: \{ x: 8, y: 7, w: 16, h: 13 \}/);
     assert.match(source, /NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT[\s\S]*lurkers: \{ x: 0, y: 0, w: 10, h: 5 \}[\s\S]*controls: \{ x: 10, y: 0, w: 4, h: 5 \}[\s\S]*checkedOut: \{ x: 14, y: 0, w: 10, h: 5 \}[\s\S]*chat: \{ x: 0, y: 5, w: 8, h: 15 \}[\s\S]*active: \{ x: 8, y: 5, w: 16, h: 15 \}/);
-    assert.match(source, /loggerLayoutRole\(role\) === "nco" && context === "tabletLandscape"[\s\S]*return NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
-    assert.match(source, /loggerLayoutRole\(role\) === "nco"[\s\S]*\[DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT\][\s\S]*isSameLoggerModuleLayout\(bucket\.tabletLandscape, previousDefault\)[\s\S]*bucket\.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
+    assert.match(source, /currentLayoutContext === "tabletPortrait" && moduleAvailable\("controls"\)[\s\S]*items\.controls\.h = 5;[\s\S]*items\.controls\.y = 0;/);
+    assert.match(source, /\["nco", "logger"\]\.includes\(loggerLayoutRole\(role\)\) && context === "tabletLandscape"[\s\S]*return NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
+    assert.match(source, /isSameLoggerModuleLayout\(bucket\.tabletLandscape, FAILED_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT\)[\s\S]*bucket\.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT/);
     assert.match(source, /VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[\s\S]*phonePortrait[\s\S]*active: \{ x: 0, y: 0, w: 24[\s\S]*chat: \{ x: 0, y: 14, w: 24/);
     assert.match(source, /roleResponsiveLayouts:\s*local\.roleResponsiveLayouts/);
     assert.doesNotMatch(source, /hasCanonicalReadOnlyTop/);
@@ -275,7 +276,7 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /Reset Portrait Layout[\s\S]*Reset Landscape Layout/);
     assert.match(source, /Reset only the \$\{layoutContextLabel\(targetContext\)\}/);
     assert.match(source, /netcontrol:\s*"NCO Mode"[\s\S]*netlogger:\s*"Logger Mode"[\s\S]*netrelay:\s*"Relay Mode"[\s\S]*\|\| "Viewer Mode"/);
-    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 26px\)[^}]*overflow:\s*visible/s);
+    assert.match(css, /\[data-layout-context\^="phone"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--nch-grid-rows\), 28px\)[^}]*overflow:\s*visible/s);
     assert.match(css, /@container \(max-width: 190px\)[\s\S]*\[data-layout-context="tabletLandscape"\] \.nch-controls-pane \.nch-quick-checkin\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/s);
     assert.match(css, /\[data-layout-context="tabletLandscape"\] \.nch-controls-pane \.nch-entry-controls\s*\{[^}]*justify-content:\s*flex-start/s);
     assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-controls-pane \.nch-entry-controls\s*\{[^}]*padding-bottom:\s*9px/s);
@@ -309,6 +310,17 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)[\s\S]*pinnedActionCall = pinnedActionCall === call \? "" : call/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 6[\s\S]*items\.controls\.h = 6[\s\S]*items\[id\]\.y \+ addedRows/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 6 : MIN_MODULE_ROWS\[id\]/);
+    assert.match(source, /function restoreModuleLayout\(source\)[\s\S]*gridLayoutIsCollisionFree\(normalized\)[\s\S]*return fallback/);
+    assert.match(source, /function applyModuleLayout\(\)[\s\S]*local\.moduleLayout = normalizeModuleLayout\(local\.moduleLayout\)/);
+    assert.match(source, /function collisionFreeModulePosition\([\s\S]*findLoggerGridItemPosition\([\s\S]*visibleModuleIds\(layout\)/);
+    assert.match(source, /previewModuleGrid\([\s\S]*snapModulePosition\(modulePointerDrag\.originalLayout, moduleId, requestedX, requestedY\)[\s\S]*collisionFreeModulePosition\(/);
+    assert.doesNotMatch(source, /previewModuleGrid\([\s\S]{0,1400}tryResolveGridLayout\(candidate, moduleId/);
+    assert.doesNotMatch(source, /originalLayout:\s*resolveGridLayout\(local\.moduleLayout\)/);
+    assert.match(source, /originalLayout:\s*normalizeModuleLayout\(local\.moduleLayout\)/);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-controls-pane\s*\{[^}]*height:\s*167px !important/s);
+    assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-dashboard\s*\{[^}]*grid-template-rows:\s*repeat\(5, var\(--nch-tablet-top-track\)\) repeat\(19, minmax\(0, 1fr\)\)/s);
+    assert.match(css, /\[data-layout-context="tabletLandscape"\] \.nch-dashboard\s*\{[^}]*--nch-tablet-landscape-top-track:\s*32\.6px;[^}]*grid-template-rows:\s*repeat\(5, var\(--nch-tablet-landscape-top-track\)\) repeat\(15, minmax\(0, 1fr\)\)/s);
+    assert.doesNotMatch(css, /\[data-layout-context="tabletLandscape"\] \.nch-controls-pane\s*\{[^}]*height:/s);
 });
 
 test('357x741 is phone portrait and cannot retain an unstamped desktop layout', async () => {
@@ -318,6 +330,9 @@ test('357x741 is phone portrait and cannot retain an unstamped desktop layout', 
     const context = classifyLoggerLayout(357, 741);
     assert.equal(context, 'phonePortrait');
     assert.equal(classifyLoggerLayout(741, 357), 'phoneLandscape');
+    assert.equal(classifyLoggerLayout(820, 1180), 'tabletPortrait');
+    assert.equal(classifyLoggerLayout(1180, 820), 'tabletLandscape');
+    assert.equal(classifyLoggerLayout(1366, 820), 'desktop');
 
     const legacyDesktopGeometry = {
         gridVersion: 4,

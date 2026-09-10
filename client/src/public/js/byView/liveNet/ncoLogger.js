@@ -9,6 +9,9 @@ import {
   shouldResetLegacyLoggerLayout,
   LOGGER_RESPONSIVE_LAYOUT_VERSION, LOGGER_ROLE_LAYOUT_VERSION
 } from "../../lib/loggerResponsive.js";
+import {
+  findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLoggerGridItem
+} from "../../lib/loggerGrid.js";
 
 (() => {
   "use strict";
@@ -98,26 +101,26 @@ import {
     phoneLandscape: Object.freeze({
       gridVersion: LAYOUT_GRID_VERSION,
       items: {
-        controls: { x: 0, y: 0, w: 8, h: 8 }, chat: { x: 0, y: 8, w: 8, h: 16 },
-        active: { x: 8, y: 0, w: 16, h: 16 }, lurkers: { x: 8, y: 16, w: 8, h: 8 },
-        checkedOut: { x: 16, y: 16, w: 8, h: 8 }
+        controls: { x: 0, y: 0, w: 9, h: 6 }, chat: { x: 0, y: 6, w: 9, h: 18 },
+        active: { x: 9, y: 0, w: 15, h: 16 }, lurkers: { x: 9, y: 16, w: 15, h: 4 },
+        checkedOut: { x: 9, y: 20, w: 15, h: 4 }
       }, collapsed: {}
     }),
     tabletPortrait: Object.freeze({
       gridVersion: LAYOUT_GRID_VERSION,
       items: {
-        lurkers: { x: 0, y: 0, w: 9, h: 5 }, controls: { x: 9, y: 0, w: 6, h: 5 },
-        checkedOut: { x: 15, y: 0, w: 9, h: 5 }, chat: { x: 0, y: 5, w: 10, h: 19 },
+        lurkers: { x: 0, y: 0, w: 5, h: 5 }, controls: { x: 5, y: 0, w: 14, h: 5 },
+        checkedOut: { x: 19, y: 0, w: 5, h: 5 }, chat: { x: 0, y: 5, w: 10, h: 19 },
         active: { x: 10, y: 5, w: 14, h: 19 }
       }, collapsed: {}
     }),
     tabletLandscape: DEFAULT_MODULE_LAYOUT
   });
-  const PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
+  const FAILED_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT = Object.freeze({
     gridVersion: LAYOUT_GRID_VERSION,
     items: {
-      lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 7 },
-      checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+      lurkers: { x: 0, y: 0, w: 10, h: 7 }, controls: { x: 10, y: 0, w: 4, h: 7 },
+      checkedOut: { x: 14, y: 0, w: 10, h: 7 }, chat: { x: 0, y: 7, w: 8, h: 13 },
       active: { x: 8, y: 7, w: 16, h: 13 }
     }, collapsed: {}
   });
@@ -141,9 +144,9 @@ import {
     phoneLandscape: Object.freeze({
       gridVersion: LAYOUT_GRID_VERSION,
       items: {
-        controls: { x: 0, y: 0, w: 8, h: 8 }, chat: { x: 0, y: 8, w: 8, h: 16 },
-        active: { x: 8, y: 0, w: 16, h: 16 }, lurkers: { x: 8, y: 16, w: 8, h: 8 },
-        checkedOut: { x: 16, y: 16, w: 8, h: 8 }
+        controls: { x: 0, y: 0, w: 10, h: 8 }, chat: { x: 0, y: 8, w: 10, h: 16 },
+        active: { x: 10, y: 0, w: 14, h: 17 }, lurkers: { x: 10, y: 17, w: 7, h: 7 },
+        checkedOut: { x: 17, y: 17, w: 7, h: 7 }
       }, collapsed: { controls: true, lurkers: true, checkedOut: true }
     }),
     tabletPortrait: Object.freeze({
@@ -2407,6 +2410,17 @@ import {
       });
     }
 
+    if (manager && !active) {
+      const compactManage = [];
+      if (checkedOut) compactManage.push(trayButton("Check In", `data-row-checkin="${escapeHtml(call)}"`, "nch-checkin-btn"));
+      if (lurker) compactManage.push(trayButton(busy ? "Checking In…" : "Check In", `data-add-lurker="${escapeHtml(call)}"${busy ? " disabled" : ""}`, "nch-add-lurker"));
+      if (!specialRole) compactManage.push(trayButton("Delete", `data-delete="${escapeHtml(call)}"`, "nch-delete-btn"));
+      return `<span class="nch-row-actions nch-active-actions nch-compact-nonactive-actions" aria-label="Controls for ${escapeHtml(call)}">
+        <strong class="nch-tray-title"><span>${escapeHtml(call)}</span><button class="nch-tray-close" data-close-station-actions aria-label="Close station actions" title="Close station actions">×</button></strong>
+        <span class="nch-tray-group nch-management-actions"><span>${compactManage.join("")}</span></span>
+      </span>`;
+    }
+
     manage.push(trayButton("Note", `data-edit-note="${escapeHtml(call)}"`, "nch-note-action", false, "T"));
     if (manager) manage.push(trayButton("Edit Station", `data-edit="${escapeHtml(call)}"`, "nch-edit-btn", false, "E"));
     if (manager && active && call !== selfCall() && (isNcoUser() || station.role !== "netcontrol")) {
@@ -2416,7 +2430,7 @@ import {
     if (manager && lurker) manage.push(trayButton(busy ? "Checking In…" : "Check In", `data-add-lurker="${escapeHtml(call)}"${busy ? " disabled" : ""}`, "nch-add-lurker"));
     if (manager && !specialRole) manage.push(trayButton("Delete", `data-delete="${escapeHtml(call)}"`, "nch-delete-btn"));
 
-    if (!active) return "";
+    if (!active && !manager) return "";
 
     const group = (label, className, buttons) => buttons.length
       ? `<span class="nch-tray-group ${className}" role="group" aria-label="${escapeHtml(label)}"><small>${escapeHtml(label)}</small><span>${buttons.join("")}</span></span>`
@@ -2448,7 +2462,7 @@ import {
   function stationActionToggle(station, call) {
     const touchActions = usesTouchStationInteractions()
       && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
-    if (!touchActions || station.checkedState !== true) return "";
+    if (!touchActions || (station.checkedState !== true && !canManageStations())) return "";
     return `<button class="nch-station-action-toggle" data-station-actions="${escapeHtml(call)}" aria-label="Open station actions for ${escapeHtml(call)}" aria-expanded="false" title="Station actions">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"></path></svg>
     </button>`;
@@ -2833,7 +2847,7 @@ import {
       ? details.name
       : [details.name, details.location].filter(Boolean).join(" — ");
     return `
-      <div class="nch-row nch-has-actions${station.checkedState === null ? " nch-lurker-row" : ""}${station.checkedState === false ? " nch-checked-out" : ""}${station.checkedState === true && station.highlight ? " nch-highlighted" : ""}${station.checkedState === true && details.notResponding ? " nch-not-responding" : ""}${station.checkedState === true && details.neededNext ? " nch-needed-next-row" : ""}${station.checkedState === true && details.skipped ? " nch-skip-row" : ""}${details.specialGuest ? " nch-special-guest-row" : ""}${isNco ? " nch-nco-row" : ""}${roleClass}${pulse.className}" data-call="${escapeHtml(call)}" data-group="${group}" data-pinned="${pinned ? "true" : "false"}" tabindex="0" aria-label="${escapeHtml(call)} station row"${rowDraggable ? ' draggable="true"' : ""}${pulse.style}>
+      <div class="nch-row nch-has-actions${station.checkedState === null ? " nch-lurker-row" : ""}${station.checkedState === false ? " nch-checked-out" : ""}${station.checkedState === true && station.highlight ? " nch-highlighted" : ""}${station.checkedState === true && details.notResponding ? " nch-not-responding" : ""}${station.checkedState === true && details.neededNext ? " nch-needed-next-row" : ""}${station.checkedState === true && details.skipped ? " nch-skip-row" : ""}${details.specialGuest ? " nch-special-guest-row" : ""}${isNco ? " nch-nco-row" : ""}${roleClass}${pulse.className}" data-call="${escapeHtml(call)}" data-group="${group}" data-pinned="${pinned ? "true" : "false"}"${currentLayoutContext.startsWith("tablet") && station.checkedState !== true ? ' data-tablet-nonactive="true"' : ' tabindex="0"'} aria-label="${escapeHtml(call)} station row"${rowDraggable ? ' draggable="true"' : ""}${pulse.style}>
         ${dragHandle}
         <div class="nch-station">${avatar}<span class="nch-call-block"><span class="nch-call-line${call.length > 10 ? " nch-call-extra-long" : call.length > 6 ? " nch-call-long" : ""}">${escapeHtml(call)}</span></span><span class="nch-hand-slot">${hand}</span></div>
         <span class="nch-row-info"><span class="nch-row-text"><span class="nch-meta"><span class="nch-detail-line"><span class="nch-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</span></span>${noteHtml(call, details)}</span><span class="nch-status-tags" aria-label="Station status">${roleBadge(station, details, call)}${tagBadges(call, station, details)}</span></span>${inlineRowActions(station, call, busy)}</span>
@@ -2853,6 +2867,41 @@ import {
     Object.assign(modal.style, {
       left: `${Math.round(left)}px`, top: `${Math.round(top)}px`, width: `${Math.round(width)}px`, height: `${Math.round(height)}px`
     });
+
+    const actionPanel = modal.querySelector(".nch-station-action-panel");
+    if (!(actionPanel instanceof HTMLElement)) return;
+    actionPanel.style.removeProperty("left");
+    actionPanel.style.removeProperty("top");
+    if (!modal.classList.contains("nch-nonactive-station-action-modal") || !currentLayoutContext.startsWith("tablet")) return;
+
+    const escapedCall = CSS.escape(pinnedActionCall);
+    const sourceRow = panel?.querySelector(`.nch-row[data-call='${escapedCall}']`);
+    const sourceModule = sourceRow?.closest(".nch-lurkers-fixed, .nch-checked-out-section")
+      || (latestStations.find(item => normalizeCall(item.callSign) === pinnedActionCall)?.checkedState === false
+        ? panel?.querySelector(".nch-checked-out-section")
+        : panel?.querySelector(".nch-lurkers-fixed"));
+    if (!(sourceModule instanceof HTMLElement)) return;
+
+    const moduleBox = sourceModule.getBoundingClientRect();
+    const panelBox = actionPanel.getBoundingClientRect();
+    const inset = 8;
+    const gap = 4;
+    const maxLeft = Math.max(inset, width - panelBox.width - inset);
+    const moduleLeft = moduleBox.left - left;
+    const moduleRight = moduleBox.right - left;
+    const anchoredLeft = sourceModule.classList.contains("nch-checked-out-section")
+      ? moduleRight - panelBox.width - gap
+      : moduleLeft + gap;
+    const panelLeft = Math.min(maxLeft, Math.max(inset, anchoredLeft));
+    const below = moduleBox.bottom - top + gap;
+    const above = moduleBox.top - top - panelBox.height - gap;
+    const panelTop = below + panelBox.height <= height - inset
+      ? below
+      : Math.max(inset, above);
+    Object.assign(actionPanel.style, {
+      left: `${Math.round(panelLeft)}px`,
+      top: `${Math.round(panelTop)}px`
+    });
   }
 
   function syncStationActionModal() {
@@ -2860,8 +2909,9 @@ import {
     if (!modal) return;
     const station = latestStations.find(item => normalizeCall(item.callSign) === pinnedActionCall);
     const touchInteractions = usesTouchStationInteractions();
-    const allowed = touchInteractions && station?.checkedState === true
-      && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole);
+    const allowed = touchInteractions && Boolean(station)
+      && ["netcontrol", "netlogger", "netrelay"].includes(currentUserRole)
+      && (station.checkedState === true || canManageStations());
     if (!touchInteractions) {
       modal.hidden = true;
       modal.replaceChildren();
@@ -2875,6 +2925,7 @@ import {
         <div class="nch-station-action-panel" data-call="${escapeHtml(call)}" role="dialog" aria-modal="true" aria-label="Station actions for ${escapeHtml(call)}">
           ${stationActionTray(station, detailsFor(call), call, busyCalls.has(call), true)}
         </div>`;
+      modal.classList.toggle("nch-nonactive-station-action-modal", station.checkedState !== true);
       modal.hidden = false;
       positionStationActionModal();
     }
@@ -3751,6 +3802,13 @@ import {
       };
       collapsed[id] = Boolean(suppliedCollapsed[id]);
     });
+    if (currentLayoutContext === "tabletPortrait" && moduleAvailable("controls")) {
+      // Station Controls is visually locked to the first five tablet rows (167px).
+      // Keep its logical grid height in sync so row 5 remains genuinely available
+      // to Chat/Active instead of an old saved h=6+ invisibly blocking that row.
+      items.controls.h = 5;
+      items.controls.y = 0;
+    }
     if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 6) {
       const previousBottom = items.controls.y + items.controls.h;
       const addedRows = 6 - items.controls.h;
@@ -3768,76 +3826,11 @@ import {
     };
   }
 
-  const gridRectsOverlap = (left, right) =>
-    left.x < right.x + right.w && left.x + left.w > right.x && left.y < right.y + right.h && left.y + left.h > right.y;
+  const visibleModuleIds = layout => MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]);
 
-  function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
+  function gridLayoutIsCollisionFree(source) {
     const layout = normalizeModuleLayout(source);
-    const maximumRows = layoutRows();
-    const visible = MODULE_IDS.filter(id => moduleAvailable(id) && !layout.collapsed[id]);
-    visible.sort((left, right) => {
-      if (left === fixedId) return -1;
-      if (right === fixedId) return 1;
-      const a = layout.items[left];
-      const b = layout.items[right];
-      const areaDifference = (b.w * b.h) - (a.w * a.h);
-      return areaDifference || a.y - b.y || a.x - b.x || MODULE_IDS.indexOf(left) - MODULE_IDS.indexOf(right);
-    });
-    const placed = [];
-    let attempts = 0;
-    const candidatesFor = (item, allowEveryCell = false) => {
-      const maxX = GRID_COLUMNS - item.w;
-      const maxY = maximumRows - item.h;
-      const xs = new Set([item.x, 0, maxX]);
-      const ys = new Set([item.y, 0, maxY]);
-      placed.forEach(other => {
-        [other.x, other.x + other.w, other.x - item.w, other.x + other.w - item.w].forEach(value => xs.add(value));
-        [other.y, other.y + other.h, other.y - item.h, other.y + other.h - item.h].forEach(value => ys.add(value));
-      });
-      if (allowEveryCell) {
-        for (let x = 0; x <= maxX; x += 1) xs.add(x);
-        for (let y = 0; y <= maxY; y += 1) ys.add(y);
-      }
-      const results = [];
-      xs.forEach(x => ys.forEach(y => {
-        if (x < 0 || y < 0 || x > maxX || y > maxY) return;
-        const candidate = { ...item, x, y };
-        if (placed.some(other => gridRectsOverlap(candidate, other))) return;
-        results.push(candidate);
-      }));
-      return results.sort((left, right) => {
-        const leftScore = Math.abs(left.y - item.y) * GRID_COLUMNS + Math.abs(left.x - item.x);
-        const rightScore = Math.abs(right.y - item.y) * GRID_COLUMNS + Math.abs(right.x - item.x);
-        return leftScore - rightScore || left.y - right.y || left.x - right.x;
-      });
-    };
-    const placeNext = index => {
-      if (index >= visible.length) return true;
-      if (attempts > 24000) return false;
-      const id = visible[index];
-      const item = { ...layout.items[id] };
-      const candidates = id === fixedId && !nudgeFixed ? [item] : candidatesFor(item, id === fixedId && nudgeFixed);
-      for (const candidate of candidates) {
-        attempts += 1;
-        if (candidate.x < 0 || candidate.y < 0 || candidate.x + candidate.w > GRID_COLUMNS || candidate.y + candidate.h > maximumRows) continue;
-        if (placed.some(other => gridRectsOverlap(candidate, other))) continue;
-        placed.push({ id, ...candidate });
-        layout.items[id] = { x: candidate.x, y: candidate.y, w: candidate.w, h: candidate.h };
-        if (placeNext(index + 1)) return true;
-        placed.pop();
-      }
-      return false;
-    };
-    return placeNext(0) ? layout : null;
-  }
-
-  function resolveGridLayout(source, fixedId = "") {
-    const normalized = normalizeModuleLayout(source);
-    const resolved = tryResolveGridLayout(normalized, fixedId);
-    if (resolved) return resolved;
-    const fallback = normalizeModuleLayout(defaultModuleLayoutForMode());
-    fallback.collapsed = { ...normalized.collapsed };
-    return tryResolveGridLayout(fallback) || fallback;
+    return loggerGridLayoutIsCollisionFree(layout, visibleModuleIds(layout));
   }
 
   function canonicalizeReadOnlyTop(layout, force = false) {
@@ -3857,7 +3850,7 @@ import {
         ? VIEWER_DEFAULT_MODULE_LAYOUT
         : VIEWER_RESPONSIVE_DEFAULT_MODULE_LAYOUTS[context] || VIEWER_DEFAULT_MODULE_LAYOUT;
     }
-    if (loggerLayoutRole(role) === "nco" && context === "tabletLandscape") {
+    if (["nco", "logger"].includes(loggerLayoutRole(role)) && context === "tabletLandscape") {
       return NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT;
     }
     return context === "desktop"
@@ -3871,6 +3864,14 @@ import {
 
   function defaultModuleLayoutForMode() {
     return canonicalizeReadOnlyTop(rawDefaultModuleLayoutForMode(), true);
+  }
+
+  function restoreModuleLayout(source) {
+    const normalized = canonicalizeReadOnlyTop(normalizeModuleLayout(source));
+    if (gridLayoutIsCollisionFree(normalized)) return normalized;
+    const fallback = normalizeModuleLayout(defaultModuleLayoutForMode());
+    fallback.collapsed = { ...normalized.collapsed };
+    return fallback;
   }
 
   function roleLayoutBucket(role = currentUserRole) {
@@ -3918,25 +3919,10 @@ import {
       });
       local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
     }
-    const phonePortraitDefaultNeedsCorrection = [
-      { gridVersion: LAYOUT_GRID_VERSION, items: {
-        controls: { x: 0, y: 0, w: 24, h: 7 }, active: { x: 0, y: 7, w: 24, h: 14 },
-        chat: { x: 0, y: 21, w: 24, h: 14 }, lurkers: { x: 0, y: 35, w: 24, h: 5 },
-        checkedOut: { x: 0, y: 40, w: 24, h: 5 }
-      }, collapsed: {} },
-      { gridVersion: LAYOUT_GRID_VERSION, items: {
-        controls: { x: 0, y: 0, w: 24, h: 5 }, active: { x: 0, y: 5, w: 24, h: 14 },
-        chat: { x: 0, y: 19, w: 24, h: 14 }, lurkers: { x: 0, y: 33, w: 24, h: 5 },
-        checkedOut: { x: 0, y: 38, w: 24, h: 5 }
-      }, collapsed: {} }
-    ].some(previousDefault => isSameLoggerModuleLayout(bucket.phonePortrait, previousDefault));
-    if (phonePortraitDefaultNeedsCorrection) {
-      bucket.phonePortrait = RESPONSIVE_DEFAULT_MODULE_LAYOUTS.phonePortrait;
-    }
-    const ncoTabletLandscapeDefaultNeedsCorrection = loggerLayoutRole(role) === "nco"
-      && [DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT]
-        .some(previousDefault => isSameLoggerModuleLayout(bucket.tabletLandscape, previousDefault));
-    if (ncoTabletLandscapeDefaultNeedsCorrection) {
+    if (["nco", "logger"].includes(loggerLayoutRole(role))
+        && isSameLoggerModuleLayout(bucket.tabletLandscape, FAILED_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT)) {
+      // Replace only the exact short-lived seven-row default. Custom layouts
+      // remain untouched, including layouts produced by no-peer-repacking drag.
       bucket.tabletLandscape = NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT;
     }
     return bucket;
@@ -3953,14 +3939,14 @@ import {
     currentUserRole = role || "netuser";
     layoutRoleResolved = true;
     migrateLegacyLayoutsForRole(currentUserRole);
-    local.moduleLayout = normalizeModuleLayout(savedLayoutForContext(currentLayoutContext) || defaultModuleLayoutForMode());
+    local.moduleLayout = restoreModuleLayout(savedLayoutForContext(currentLayoutContext) || defaultModuleLayoutForMode());
   }
 
   function switchLayoutContext(nextContext) {
     if (!nextContext || nextContext === currentLayoutContext) return false;
     saveActiveLayoutContext();
     currentLayoutContext = nextContext;
-    local.moduleLayout = savedLayoutForContext(nextContext) || defaultModuleLayoutForMode();
+    local.moduleLayout = restoreModuleLayout(savedLayoutForContext(nextContext) || defaultModuleLayoutForMode());
     panel?.setAttribute("data-layout-context", nextContext);
     const label = panel?.querySelector("[data-role='layout-context']");
     if (label) label.textContent = layoutContextLabel(nextContext);
@@ -4018,7 +4004,9 @@ import {
           start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd }
       : null;
     if (focusedNote) noteDrafts.set(focusedNote.call, focusedNote.value);
-    local.moduleLayout = resolveGridLayout(canonicalizeReadOnlyTop(local.moduleLayout));
+    // Rendering is not a layout mutation. Recovery is confined to restoreModuleLayout();
+    // all interactive changes below replace only the module being manipulated.
+    local.moduleLayout = normalizeModuleLayout(local.moduleLayout);
     if (!panel.querySelector("[data-role='dashboard']")) return;
     renderGridLayout(local.moduleLayout);
     panel.querySelectorAll("[data-toggle-module]").forEach(button => {
@@ -4043,9 +4031,10 @@ import {
 
   function setModuleCollapsed(id, collapsed) {
     if (!MODULE_IDS.includes(id)) return;
-    local.moduleLayout = normalizeModuleLayout();
-    local.moduleLayout.collapsed[id] = collapsed;
-    if (!collapsed) local.moduleLayout = resolveGridLayout(local.moduleLayout, id);
+    const layout = normalizeModuleLayout();
+    layout.collapsed[id] = collapsed;
+    if (!collapsed && !gridLayoutIsCollisionFree(layout)) return;
+    local.moduleLayout = layout;
     saveActiveLayoutContext();
     applyModuleLayout();
     storageSet();
@@ -4059,9 +4048,8 @@ import {
     item.x = Math.min(item.x, GRID_COLUMNS - item.w);
     const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 6 : MIN_MODULE_ROWS[id];
     item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
-    const resolved = tryResolveGridLayout(layout, id);
-    if (!resolved) return;
-    local.moduleLayout = resolved;
+    if (!gridLayoutIsCollisionFree(layout)) return;
+    local.moduleLayout = layout;
     storageSet();
     applyModuleLayout();
   }
@@ -4082,9 +4070,8 @@ import {
     const item = layout.items[id];
     item.x = Math.min(GRID_COLUMNS - item.w, Math.max(0, item.x + xDelta));
     item.y = Math.min(layoutRows() - item.h, Math.max(0, item.y + yDelta));
-    const resolved = tryResolveGridLayout(layout, id);
-    if (!resolved) return;
-    local.moduleLayout = resolved;
+    if (!gridLayoutIsCollisionFree(layout)) return;
+    local.moduleLayout = layout;
     storageSet();
     applyModuleLayout();
   }
@@ -4094,8 +4081,33 @@ import {
     const gap = Math.max(0, parseFloat(style.rowGap) || GRID_GAP);
     const rows = Math.max(1, Number(style.getPropertyValue("--nch-grid-rows")) || layoutRows());
     const columnWidth = Math.max(1, (dashboard.clientWidth - gap * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
-    const rowHeight = Math.max(1, (dashboard.clientHeight - gap * (rows - 1)) / rows);
-    return { columnWidth, columnStep: columnWidth + gap, rowStep: rowHeight + gap, rows };
+    const parsedTracks = style.gridTemplateRows.split(/\s+/).map(value => parseFloat(value)).filter(Number.isFinite);
+    const fallbackRowHeight = Math.max(1, (dashboard.clientHeight - gap * (rows - 1)) / rows);
+    const rowHeights = parsedTracks.length === rows ? parsedTracks : Array(rows).fill(fallbackRowHeight);
+    const rowStarts = [0];
+    const rowEnds = [0];
+    let cursor = 0;
+    rowHeights.forEach((height, index) => {
+      if (index > 0) cursor += gap;
+      rowStarts[index] = cursor;
+      cursor += height;
+      rowEnds[index + 1] = cursor;
+    });
+    const nearestRowStart = (pixel, maximumStart) => {
+      let best = 0;
+      for (let row = 0; row <= maximumStart; row += 1) {
+        if (Math.abs(rowStarts[row] - pixel) < Math.abs(rowStarts[best] - pixel)) best = row;
+      }
+      return best;
+    };
+    const nearestRowEnd = (pixel, minimumEnd, maximumEnd) => {
+      let best = minimumEnd;
+      for (let row = minimumEnd; row <= maximumEnd; row += 1) {
+        if (Math.abs(rowEnds[row] - pixel) < Math.abs(rowEnds[best] - pixel)) best = row;
+      }
+      return best;
+    };
+    return { columnWidth, columnStep: columnWidth + gap, rowStep: fallbackRowHeight + gap, rows, rowStarts, rowEnds, nearestRowStart, nearestRowEnd };
   }
 
   function snapModulePosition(layout, id, requestedX, requestedY) {
@@ -4112,10 +4124,21 @@ import {
       const closest = allowed.reduce((best, candidate) => Math.abs(candidate - value) < Math.abs(best - value) ? candidate : best, value);
       return Math.abs(closest - value) <= tolerance ? closest : value;
     };
+    const tabletBottomModule = currentLayoutContext === "tabletPortrait" && ["chat", "active"].includes(id);
+    const snappedY = snap(requestedY, yCandidates, 0, layoutRows() - item.h, tabletBottomModule ? 2 : 1);
     return {
       x: snap(requestedX, xCandidates, 0, GRID_COLUMNS - item.w, 2),
-      y: snap(requestedY, yCandidates, 0, layoutRows() - item.h, 1)
+      y: tabletBottomModule && Math.abs(snappedY - 5) <= 1 ? 5 : snappedY
     };
+  }
+
+  function collisionFreeModulePosition(source, id, requestedX, requestedY, priorX, priorY) {
+    const layout = normalizeModuleLayout(source);
+    const item = layout.items[id];
+    return findLoggerGridItemPosition(
+      layout, id, { x: requestedX, y: requestedY }, { x: priorX, y: priorY },
+      { maxX: GRID_COLUMNS - item.w, maxY: layoutRows() - item.h }, visibleModuleIds(layout)
+    );
   }
 
   function previewModuleGrid(clientX, clientY) {
@@ -4124,15 +4147,22 @@ import {
     const box = dashboard.getBoundingClientRect();
     const metrics = gridMetrics(dashboard);
     const originalItem = modulePointerDrag.originalLayout.items[moduleId];
+    const currentItem = (modulePointerDrag.previewLayout || modulePointerDrag.originalLayout).items[moduleId];
     const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, Math.round((clientX - box.left - offsetX) / metrics.columnStep)));
-    const requestedY = Math.min(Math.max(0, metrics.rows - originalItem.h), Math.max(0, Math.round((clientY - box.top - offsetY) / metrics.rowStep)));
-    const candidate = normalizeModuleLayout(modulePointerDrag.originalLayout);
-    const snapped = snapModulePosition(candidate, moduleId, requestedX, requestedY);
-    candidate.items[moduleId] = { ...candidate.items[moduleId], ...snapped };
-    modulePointerDrag.previewLayout = tryResolveGridLayout(candidate, moduleId, true);
-    if (!modulePointerDrag.previewLayout) return;
-    renderGridLayout(modulePointerDrag.previewLayout, moduleId);
-    const item = modulePointerDrag.previewLayout.items[moduleId];
+    const requestedY = metrics.nearestRowStart(clientY - box.top - offsetY, Math.max(0, metrics.rows - originalItem.h));
+    const snapped = snapModulePosition(modulePointerDrag.originalLayout, moduleId, requestedX, requestedY);
+    const candidate = collisionFreeModulePosition(
+      modulePointerDrag.originalLayout,
+      moduleId,
+      snapped.x,
+      snapped.y,
+      currentItem.x,
+      currentItem.y
+    );
+    if (!candidate) return;
+    modulePointerDrag.previewLayout = candidate;
+    renderGridLayout(candidate, moduleId);
+    const item = candidate.items[moduleId];
     modulePointerDrag.preview.style.gridColumn = `${item.x + 1} / span ${item.w}`;
     modulePointerDrag.preview.style.gridRow = `${item.y + 1} / span ${item.h}`;
   }
@@ -4198,7 +4228,6 @@ import {
     const layout = normalizeModuleLayout(resizing.originalLayout);
     const item = layout.items[resizing.moduleId];
     const columnDelta = Math.round((event.clientX - resizing.startX) / metrics.columnStep);
-    const rowDelta = Math.round((event.clientY - resizing.startY) / metrics.rowStep);
     if (resizing.edge.includes("w")) {
       const rightEdge = resizing.startItem.x + resizing.startItem.w;
       item.w = Math.min(rightEdge, Math.max(MIN_MODULE_COLUMNS, resizing.startItem.w - columnDelta));
@@ -4206,20 +4235,28 @@ import {
     } else if (resizing.edge.includes("e")) {
       item.w = Math.min(GRID_COLUMNS - item.x, Math.max(MIN_MODULE_COLUMNS, resizing.startItem.w + columnDelta));
     }
+    const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
+      ? 6 : MIN_MODULE_ROWS[resizing.moduleId];
     if (resizing.edge.includes("n")) {
       const bottomEdge = resizing.startItem.y + resizing.startItem.h;
-      const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
-        ? 6 : MIN_MODULE_ROWS[resizing.moduleId];
-      item.h = Math.min(bottomEdge, Math.max(minimumRows, resizing.startItem.h - rowDelta));
-      item.y = bottomEdge - item.h;
+      const latestStart = Math.max(0, bottomEdge - minimumRows);
+      const startBoundary = metrics.rowStarts[resizing.startItem.y];
+      let nextY = metrics.nearestRowStart(startBoundary + event.clientY - resizing.startY, latestStart);
+      if (currentLayoutContext === "tabletPortrait" && ["chat", "active"].includes(resizing.moduleId)
+          && Math.abs(nextY - 5) <= 1) nextY = 5;
+      item.y = nextY;
+      item.h = bottomEdge - nextY;
     } else if (resizing.edge.includes("s")) {
-      const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
-        ? 6 : MIN_MODULE_ROWS[resizing.moduleId];
-      item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, resizing.startItem.h + rowDelta));
+      const minimumEnd = Math.min(metrics.rows, item.y + minimumRows);
+      const startBoundary = metrics.rowEnds[resizing.startItem.y + resizing.startItem.h];
+      const nextEnd = metrics.nearestRowEnd(startBoundary + event.clientY - resizing.startY, minimumEnd, metrics.rows);
+      item.h = nextEnd - item.y;
     }
-    const resolved = tryResolveGridLayout(layout, resizing.moduleId);
-    if (!resolved) return;
-    local.moduleLayout = resolved;
+    const candidate = replaceLoggerGridItem(
+      resizing.originalLayout, resizing.moduleId, item, visibleModuleIds(layout)
+    );
+    if (!candidate) return;
+    local.moduleLayout = candidate;
     renderGridLayout(local.moduleLayout);
   }
 
@@ -4529,6 +4566,11 @@ import {
         setStatus(pinnedActionCall ? `${call} actions opened.` : `${call} actions closed.`, "success");
         return;
       }
+      if (clickedRow?.dataset.tabletNonactive === "true" && !clickedInteractive) {
+        // Tablet Lurker/Checked Out rows are display-only. Only their explicit menu button is interactive.
+        clickedRow.blur?.();
+        return;
+      }
       if (clickedRow && !clickedInteractive && touchStationActions && pinnedActionCall === normalizeCall(clickedRow.dataset.call)) {
         const call = normalizeCall(clickedRow.dataset.call);
         pinnedActionCall = "";
@@ -4539,17 +4581,15 @@ import {
       if (clickedRow && !clickedInteractive && touchStationActions) {
         const station = latestStations.find(item => normalizeCall(item.callSign) === normalizeCall(clickedRow.dataset.call));
         if (station?.checkedState !== true) {
-          if (pinnedActionCall) clearPinnedStationAction(pinnedActionCall);
-          const call = normalizeCall(clickedRow.dataset.call);
-          const closing = touchInlineActionCall === call;
-          clearTouchInlineActions();
-          if (!closing) {
-            touchInlineActionCall = call;
-            clickedRow.classList.add("nch-touch-actions-open");
-            clickedRow.focus({ preventScroll: true });
-          }
+          // Lurkers and checked-out rows use their explicit menu button on touch layouts.
+          // The row itself intentionally has no click/tap action.
           return;
         }
+      }
+      if (clickedRow && !clickedInteractive) {
+        const station = latestStations.find(item => normalizeCall(item.callSign) === normalizeCall(clickedRow.dataset.call));
+        const tabletNonactiveRow = currentLayoutContext === "tabletPortrait" && station?.checkedState !== true;
+        if (tabletNonactiveRow) return;
       }
       if (clickedRow && !clickedInteractive && toggleDesktopInlineActions(clickedRow)) return;
       if (clickedRow && !clickedInteractive && canManageStations()) {
@@ -4891,6 +4931,17 @@ import {
       appearanceManager?.setAppearance(event.currentTarget.checked ? "dark" : "light");
     });
 
+    const blockTabletNonactiveRowSurface = event => {
+      const row = event.target.closest?.('[data-tablet-nonactive="true"]');
+      if (!row || event.target.closest?.('.nch-station-action-toggle')) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    panel.addEventListener("pointerdown", blockTabletNonactiveRowSurface, true);
+    panel.addEventListener("mousedown", blockTabletNonactiveRowSurface, true);
+    panel.addEventListener("touchstart", blockTabletNonactiveRowSurface, { capture: true, passive: false });
+    panel.addEventListener("click", blockTabletNonactiveRowSurface, true);
+
     panel.addEventListener("contextmenu", event => {
       const row = event.target.closest?.(".nch-row[data-call]");
       if (!row || event.shiftKey || event.target.closest?.("button, input, textarea, select, a, [contenteditable='true']")) return;
@@ -5107,7 +5158,9 @@ import {
       modulePointerDrag = {
         moduleId: module.dataset.module, module, dashboard, pointerId: event.pointerId,
         startX: event.clientX, startY: event.clientY, started: false,
-        originalLayout: resolveGridLayout(local.moduleLayout)
+        // Preserve the exact current layout at drag start. Running the global resolver here
+        // can move unrelated modules before the user has moved the dragged module at all.
+        originalLayout: normalizeModuleLayout(local.moduleLayout)
       };
       moduleHandle.setPointerCapture?.(event.pointerId);
     });
@@ -5135,8 +5188,11 @@ import {
       const id = moduleResizer?.dataset.resizeModule;
       if (!id || currentLayoutContext.startsWith("phone")) return;
       const layout = normalizeModuleLayout();
-      layout.items[id] = { ...defaultModuleLayoutForMode().items[id] };
-      local.moduleLayout = resolveGridLayout(layout, id);
+      const candidate = replaceLoggerGridItem(
+        layout, id, defaultModuleLayoutForMode().items[id], visibleModuleIds(layout)
+      );
+      if (!candidate) return;
+      local.moduleLayout = candidate;
       applyModuleLayout();
       storageSet();
     });
@@ -5148,7 +5204,7 @@ import {
       if (!confirm(`Reset only the ${layoutContextLabel(targetContext)} module layout?`)) return;
       const priorContext = currentLayoutContext;
       currentLayoutContext = targetContext;
-      const resetLayout = resolveGridLayout(defaultModuleLayoutForMode());
+      const resetLayout = normalizeModuleLayout(defaultModuleLayoutForMode());
       currentLayoutContext = priorContext;
       roleLayoutBucket()[targetContext] = resetLayout;
       if (targetContext === currentLayoutContext) local.moduleLayout = resetLayout;
