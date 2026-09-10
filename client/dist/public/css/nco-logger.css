@@ -2224,10 +2224,6 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   }
 }
 
-/* Keep the desktop Station Controls actions visible within the four-row default module. */
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-entry-controls { overflow-y: auto; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-quick-checkin button { min-height: 30px; }
-#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-net-actions button { min-height: 30px; }
 #netcontrol-ncs-helper .nch-net-connections { margin: 4px 0; padding: 8px; border: 1px solid #4f7880; border-radius: 6px; }
 #netcontrol-ncs-helper .nch-net-connections legend { padding: 0 5px; color: #8dd9e4; }
 #netcontrol-ncs-helper .nch-net-connection-card { margin: 6px 0; padding: 7px; background: #10171c; border: 1px solid #45636a; border-radius: 5px; }
@@ -2237,3 +2233,47 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper .nch-net-connection-fields label { min-width: 0; }
 #netcontrol-ncs-helper .nch-net-connection-fields :is(input, select) { width: 100%; margin-top: 3px; padding: 6px; color: #fff; background: #050607; border: 1px solid #71808e; border-radius: 5px; }
 #netcontrol-ncs-helper .nch-net-connections-empty { margin: 4px 0; color: #adb6bd; font-size: 12px; }
+
+
+/* Desktop Station Controls: compact fixed-size desktop presentation. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
+  display: grid;
+  grid-template-columns: max-content 144px max-content;
+  grid-template-rows: 24px 24px 24px;
+  column-gap: 2px;
+  row-gap: 3px;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: 0;
+  overflow-y: auto;
+  align-items: stretch;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin { display: contents; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; transform: translateY(-1px); margin-right: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="shortTime"] { grid-column: 1; grid-row: 2; transform: translateY(1px); margin-right: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-io { grid-column: 3; grid-row: 1; transform: translateY(-1px); margin-left: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="portable"] { grid-column: 3; grid-row: 2; transform: translateY(1px); margin-left: 3px; }
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin button {
+  width: 90px; min-width: 90px; max-width: 90px; min-height: 24px; height: 24px;
+  padding: 0 4px; box-sizing: border-box; font-size: 15px; line-height: 1.05; white-space: nowrap;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-callsign-input {
+  grid-column: 2; grid-row: 1; width: 144px; min-height: 30px; height: 30px;
+  padding: 2px 9px !important; justify-self: center; transform: translateY(-1px); font-size: 14px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-call-hint {
+  grid-column: 2; grid-row: 2; text-align: center; transform: translateY(5px); font-size: 12px;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions {
+  grid-column: 1 / -1; grid-row: 3; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px; margin: 0; align-self: start;
+}
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-net-actions button {
+  width: 100%; min-height: 24px; height: 24px; padding: 0 8px; font-size: 15px; line-height: 1.05;
+}
+
+/* Compact desktop Lurker/Checked Out rows now that QRZ links are active-station only. */
+#netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) :is(.nch-lurker-row, .nch-row.nch-checked-out) {
+  min-height: 25px;
+}

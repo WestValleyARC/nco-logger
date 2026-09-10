@@ -55,15 +55,41 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
         }
         return commands;
     })();
-    const MIN_MODULE_ROWS = Object.freeze({ controls: 4, chat: 5, checkedOut: 2, active: 4, lurkers: 2 });
+    const MIN_MODULE_ROWS = Object.freeze({ controls: 3, chat: 5, checkedOut: 2, active: 4, lurkers: 2 });
+    const PREVIOUS_DESKTOP_DEFAULT_MODULE_LAYOUTS = Object.freeze([
+        Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 3 },
+                checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+                active: { x: 8, y: 4, w: 16, h: 16 }
+            }, collapsed: {}
+        }),
+        Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                lurkers: { x: 0, y: 0, w: 9, h: 4 }, controls: { x: 9, y: 0, w: 6, h: 4 },
+                checkedOut: { x: 15, y: 0, w: 9, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+                active: { x: 8, y: 4, w: 16, h: 16 }
+            }, collapsed: {}
+        }),
+        Object.freeze({
+            gridVersion: LAYOUT_GRID_VERSION,
+            items: {
+                lurkers: { x: 0, y: 0, w: 10, h: 4 }, controls: { x: 10, y: 0, w: 4, h: 4 },
+                checkedOut: { x: 14, y: 0, w: 10, h: 4 }, chat: { x: 0, y: 4, w: 8, h: 16 },
+                active: { x: 8, y: 4, w: 16, h: 16 }
+            }, collapsed: {}
+        })
+    ]);
     const DEFAULT_MODULE_LAYOUT = Object.freeze({
         gridVersion: LAYOUT_GRID_VERSION,
         items: {
-            lurkers: { x: 0, y: 0, w: 10, h: 4 },
-            controls: { x: 10, y: 0, w: 4, h: 4 },
-            checkedOut: { x: 14, y: 0, w: 10, h: 4 },
-            chat: { x: 0, y: 4, w: 8, h: 16 },
-            active: { x: 8, y: 4, w: 16, h: 16 }
+            lurkers: { x: 0, y: 0, w: 9, h: 3 },
+            controls: { x: 9, y: 0, w: 6, h: 3 },
+            checkedOut: { x: 15, y: 0, w: 9, h: 3 },
+            chat: { x: 0, y: 3, w: 9, h: 17 },
+            active: { x: 9, y: 3, w: 15, h: 17 }
         },
         collapsed: {}
     });
@@ -3030,7 +3056,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             : station.hand
                 ? '<span class="nch-hand" title="Hand raised" aria-label="Hand raised">✋</span>'
                 : "";
-        const callActions = `<span class="nch-call-actions${hand ? "" : " nch-qrz-only"}">${hand ? `<span class="nch-hand-slot">${hand}</span>` : ""}${qrzProfileLink(call)}</span>`;
+        const qrzLink = station.checkedState === true ? qrzProfileLink(call) : "";
+        const callActions = hand || qrzLink
+            ? `<span class="nch-call-actions${hand ? "" : " nch-qrz-only"}">${hand ? `<span class="nch-hand-slot">${hand}</span>` : ""}${qrzLink}</span>`
+            : "";
         const pinned = station.checkedState === true && (isNco || ["netlogger", "netrelay"].includes(station.role) || details.specialGuest);
         const rowDraggable = manager && !pinned;
         const dragHandle = rowDraggable
@@ -4016,6 +4045,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             };
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
+        if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
+            items.controls = { ...items.controls,
+                x: Math.min(GRID_COLUMNS - 6, Math.max(0, items.controls.x)),
+                y: Math.min(maximumRows - 3, Math.max(0, items.controls.y)),
+                w: 6, h: 3 };
+        }
         if (currentLayoutContext === "phonePortrait" && moduleAvailable("controls") && items.controls.h < 7) {
             const previousBottom = items.controls.y + items.controls.h;
             const addedRows = 7 - items.controls.h;
@@ -4032,7 +4067,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             collapsed
         };
     }
-    const gridRectsOverlap = (left, right) => left.x < right.x + right.w && left.x + left.w > right.x && left.y < right.y + right.h && left.y + left.h > right.y;
+    const collisionRect = item => item;
+    const gridRectsOverlap = (left, right) => {
+        const a = collisionRect(left);
+        const b = collisionRect(right);
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    };
     function tryResolveGridLayout(source, fixedId = "", nudgeFixed = false) {
         const layout = normalizeModuleLayout(source);
         const maximumRows = layoutRows();
@@ -4055,8 +4095,9 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             const xs = new Set([item.x, 0, maxX]);
             const ys = new Set([item.y, 0, maxY]);
             placed.forEach(other => {
-                [other.x, other.x + other.w, other.x - item.w, other.x + other.w - item.w].forEach(value => xs.add(value));
-                [other.y, other.y + other.h, other.y - item.h, other.y + other.h - item.h].forEach(value => ys.add(value));
+                const edge = collisionRect(other);
+                [edge.x, edge.x + edge.w, edge.x - item.w, edge.x + edge.w - item.w].forEach(value => xs.add(value));
+                [edge.y, edge.y + edge.h, edge.y - item.h, edge.y + edge.h - item.h].forEach(value => ys.add(value));
             });
             if (allowEveryCell) {
                 for (let x = 0; x <= maxX; x += 1)
@@ -4185,6 +4226,12 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             });
             local.layoutRoleStorageVersion = LOGGER_ROLE_LAYOUT_VERSION;
         }
+        const desktopDefaultNeedsCorrection = loggerLayoutRole(role) !== "viewer"
+            && PREVIOUS_DESKTOP_DEFAULT_MODULE_LAYOUTS
+                .some(previousDefault => isSameLoggerModuleLayout(bucket.desktop, previousDefault));
+        if (desktopDefaultNeedsCorrection) {
+            bucket.desktop = DEFAULT_MODULE_LAYOUT;
+        }
         const ncoTabletLandscapeDefaultNeedsCorrection = loggerLayoutRole(role) === "nco"
             && [DEFAULT_MODULE_LAYOUT, PREVIOUS_NCO_TABLET_LANDSCAPE_DEFAULT_MODULE_LAYOUT]
                 .some(previousDefault => isSameLoggerModuleLayout(bucket.tabletLandscape, previousDefault));
@@ -4251,6 +4298,10 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             module.style.gridColumn = `${item.x + 1} / span ${item.w}`;
             module.style.gridRow = `${item.y + 1} / span ${item.h}`;
             module.style.setProperty("--nch-module-columns", String(item.w));
+            module.style.removeProperty("width");
+            module.style.removeProperty("height");
+            module.style.removeProperty("justify-self");
+            module.style.removeProperty("align-self");
             module.hidden = !moduleAvailable(id) || layout.collapsed[id];
             module.classList.toggle("nch-grid-source", id === draggingId);
             module.classList.toggle("nch-read-only-top", !moduleAvailable("controls") && (id === "lurkers" || id === "checkedOut") && item.y === 0);
@@ -4358,9 +4409,11 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
     function snapModulePosition(layout, id, requestedX, requestedY) {
         const item = layout.items[id];
         const xCandidates = [0, GRID_COLUMNS - item.w];
+        if (currentLayoutContext === "desktop" && id === "controls")
+            xCandidates.push((GRID_COLUMNS - item.w) / 2);
         const yCandidates = [0];
         MODULE_IDS.filter(otherId => otherId !== id && !layout.collapsed[otherId]).forEach(otherId => {
-            const other = layout.items[otherId];
+            const other = collisionRect(layout.items[otherId], otherId);
             xCandidates.push(other.x, other.x + other.w, other.x - item.w, other.x + other.w - item.w);
             yCandidates.push(other.y, other.y + other.h, other.y - item.h, other.y + other.h - item.h);
         });
@@ -4584,7 +4637,7 @@ import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayo
             <h3 class="nch-module-header" data-module-drag="controls" tabindex="0" aria-label="Move Station Controls"><span>Station Controls</span></h3>
             <div class="nch-module-content nch-entry-controls">
             <input class="nch-callsign-input nch-admin-only" data-role="callsign" aria-label="Callsign" autocomplete="off" maxlength="15" placeholder="Callsign">
-            <small class="nch-call-hint nch-admin-only">Type a callsign and press ENTER</small>
+            <small class="nch-call-hint nch-admin-only">ENTER to check in</small>
             <div class="nch-quick-checkin nch-admin-only" aria-label="Check in with station status">
               <button data-quick-tag="mobile" data-short="M" aria-pressed="false" title="Mark Mobile, look up QRZ, and check in">Mobile</button>
               <button data-quick-tag="shortTime" data-short="ST" aria-pressed="false" title="Mark Short Time, look up QRZ, and check in">Short Time</button>
