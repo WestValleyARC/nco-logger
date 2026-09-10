@@ -60,7 +60,7 @@ export function classifyLoggerLayout(width: number, height: number): LoggerLayou
     if (viewportWidth <= 600 || (orientation === 'Landscape' && viewportHeight <= 500 && viewportWidth <= 950)) {
         return `phone${orientation}`;
     }
-    if (viewportWidth <= 1100) return `tablet${orientation}`;
+    if (viewportWidth <= 1200) return `tablet${orientation}`;
     return 'desktop';
 }
 

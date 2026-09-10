@@ -26,6 +26,7 @@ const applicationAssetPaths = [
     'js/lib/appearance.js',
     'js/byView/liveNet/main.js',
     'js/byView/liveNet/ncoLogger.js',
+    'js/lib/loggerGrid.js',
     'js/lib/chat.js',
     'js/lib/chatState.js'
 ];
