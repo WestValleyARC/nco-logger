@@ -29,7 +29,7 @@ test('chat display names follow manual, QRZ, account, then callsign precedence',
 
 test('text and image chat creation share the genuine-first-name resolver', () => {
     const source = require('node:fs').readFileSync(require.resolve('../server/dist/lib/localChat'), 'utf8');
-    assert.equal((source.match(/resolveChatDisplayName\(\{ callSign \}\)/g) || []).length, 2);
+    assert.equal((source.match(/resolveChatDisplayName\(\{[\s\S]*?accountFirstName: req\.user\.displayName[\s\S]*?interactionDisplayName: access\.interaction\?\.displayName[\s\S]*?\}\)/g) || []).length, 2);
     assert.doesNotMatch(source, /qrz\?\.displayName|accountName: req\.user\.displayName/);
 });
 
@@ -313,4 +313,11 @@ test('Phase 3 schema stores direct scope, recipient identity, and personal ignor
     assert.ok(chatMessageSchema.path('scope'));
     assert.ok(chatMessageSchema.path('recipientUserProfile'));
     assert.ok(userProfileSchema.path('ignoredPrivateUsers'));
+});
+
+
+test('chat send keeps account or live interaction name when QRZ/profile enrichment changes', () => {
+    const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../server/dist/lib/localChat.js'), 'utf8');
+    assert.match(source, /accountFirstName: chatFirstName\(accountFirstName\) \|\| chatFirstName\(interactionDisplayName\)/);
+    assert.match(source, /displayName: chatFirstName\(access\.interaction\?\.displayName\) \|\| chatFirstName\(req\.user\.displayName\)/);
 });
