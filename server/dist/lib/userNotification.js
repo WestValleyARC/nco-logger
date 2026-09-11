@@ -271,7 +271,7 @@ class NetInactivityAutoClose extends EmailBase {
             },
             {
                 type: 'image',
-                path: '/img/email/station-controls-close-net.png',
+                path: '/img/email/station-controls-close-net.png?v=20260911-2',
                 alt: 'Station Controls showing the red Close Net button',
                 width: 420,
                 height: 127
