@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const { stationEventProcessor } = require('../controllers/interactionController');
 const { authCheck, REQ_CALLSIGN } = require('../lib/serverUtils');
-router.post('/:id', authCheck(REQ_CALLSIGN), stationEventProcessor);
+const { accessMiddleware } = require('../lib/privateTestNet');
+router.post('/:id', authCheck(REQ_CALLSIGN), accessMiddleware, stationEventProcessor);
 
 module.exports = router;
