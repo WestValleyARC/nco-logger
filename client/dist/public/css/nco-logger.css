@@ -1345,6 +1345,8 @@ hl-chat.nch-chat-docked .chat-messages {
   grid-row: 3;
   width: 100%;
   min-height: 0;
+  padding-bottom: 32px !important;
+  scroll-padding-bottom: 32px;
 }
 
 hl-chat.nch-chat-docked .chat-new-messages {
