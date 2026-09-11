@@ -4096,12 +4096,6 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
             };
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
-        if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
-            items.controls = { ...items.controls,
-                x: Math.min(GRID_COLUMNS - 6, Math.max(0, items.controls.x)),
-                y: Math.min(maximumRows - 3, Math.max(0, items.controls.y)),
-                w: 6, h: 3 };
-        }
         if (currentLayoutContext === "tabletPortrait" && moduleAvailable("controls")) {
             items.controls.h = 5;
             items.controls.y = 0;
@@ -4578,8 +4572,6 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         });
     }
     function moduleResizeZones(id) {
-        if (id === "controls")
-            return "";
         const disabled = currentLayoutContext.startsWith("phone");
         return ["n", "e", "s", "w", "ne", "nw", "se", "sw"].map(edge => `<span class="nch-resize-zone nch-resize-${edge}" data-resize-module="${id}" data-resize-edge="${edge}"${disabled ? " hidden" : ""}${edge === "se" ? ` role="separator" tabindex="${disabled ? "-1" : "0"}" aria-label="Resize ${escapeHtml(MODULE_LABELS[id])}"` : ' aria-hidden="true"'}></span>`).join("");
     }

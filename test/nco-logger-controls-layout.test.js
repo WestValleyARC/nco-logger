@@ -14,3 +14,11 @@ test('desktop Station Controls use the compact three-row presentation', () => {
   assert.match(css, /\.nch-controls-pane \.nch-quick-checkin button \{\s*width: 90px;[^}]*min-height: 24px; height: 24px;/);
   assert.match(css, /\.nch-controls-pane \.nch-net-actions button \{\s*width: 100%; min-height: 24px; height: 24px;/);
 });
+
+test('Station Controls keep a four-row minimum without locking the frame size', () => {
+  const source = fs.readFileSync(path.join(root, 'client/src/public/js/byView/liveNet/ncoLogger.js'), 'utf8');
+  assert.match(source, /MIN_MODULE_ROWS = Object\.freeze\(\{ controls: 4,/);
+  assert.doesNotMatch(source, /currentLayoutContext === "desktop" && moduleAvailable\("controls"\)/);
+  assert.doesNotMatch(source, /if \(id === "controls"\) return "";/);
+  assert.match(source, /\$\{moduleResizeZones\("controls"\)\}/);
+});
