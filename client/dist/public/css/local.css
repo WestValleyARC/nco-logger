@@ -606,8 +606,8 @@ hl-chat.chat-private-active .chat-form {
 
 /* Keep the newest message clear of the reserved typing/composer area. */
 .chat-messages {
-    padding-bottom: 32px;
-    scroll-padding-bottom: 32px;
+    padding-bottom: 16px;
+    scroll-padding-bottom: 16px;
 }
 
 .chat-composer-wrap {
