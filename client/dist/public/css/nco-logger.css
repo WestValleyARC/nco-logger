@@ -2240,6 +2240,8 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 /* Desktop Station Controls: compact fixed-size desktop presentation. */
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-entry-controls {
   display: grid;
+  min-height: 0;
+  scrollbar-gutter: stable;
   grid-template-columns: max-content 144px max-content;
   grid-template-rows: 24px 24px 24px;
   column-gap: 2px;
