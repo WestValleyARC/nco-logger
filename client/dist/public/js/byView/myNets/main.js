@@ -108,6 +108,7 @@ let connectionsTouched = false;
 let editingHadStructuredConnections = false;
 let draggedConnectionCard = null;
 let currentCoOwnerProfileId = null;
+let sharedAccessMode = 'coowners';
 let newConnectionHighlightTimer = null;
 let highlightedConnectionCard = null;
 
@@ -909,6 +910,12 @@ function refreshNetList() {
                             }
                         })
                     );
+                    if (netProfile.testFixture === 'josh-private') {
+                        actionsElem.appendChild(makeActionButton({
+                            label: 'Testers', icon: 'bi-person-check',
+                            action: () => { testNetTesterFormPrep(netProfile._id, netProfile.title); formShow('formContainerNetOwner'); }
+                        }));
+                    }
                 }
 
                 liElem.append(cardHeadingElem, operatingDetailsElem);
@@ -976,7 +983,7 @@ const renderCoOwners = coOwners => {
     if (!coOwners.length) {
         const empty = document.createElement('p');
         empty.className = 'coowner-empty';
-        empty.textContent = 'No co-owners have been added.';
+        empty.textContent = 'No operators have been added.';
         list.appendChild(empty);
         return;
     }
@@ -992,11 +999,11 @@ const renderCoOwners = coOwners => {
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'owned-net-action is-danger';
-        remove.innerHTML = '<i class="bi bi-person-dash" aria-hidden="true"></i><span>Remove Co-Owner</span>';
+        remove.innerHTML = '<i class="bi bi-person-dash" aria-hidden="true"></i><span>Remove</span>';
         remove.addEventListener('click', async () => {
-            if (!window.confirm(`Remove ${coOwner.callSign} as a co-owner?`)) return;
+            if (!window.confirm(`Remove ${coOwner.callSign}?`)) return;
             try {
-                await axios.delete(`/api/data/netprofiles/${currentCoOwnerProfileId}/coowners/${coOwner.id}`);
+                await axios.delete(`/api/data/netprofiles/${currentCoOwnerProfileId}/${sharedAccessMode}/${coOwner.id}`);
                 await loadCoOwners();
                 refreshNetList();
             } catch (error) {
@@ -1009,12 +1016,14 @@ const renderCoOwners = coOwners => {
 };
 
 const loadCoOwners = async () => {
-    const response = await axios.get(`/api/data/netprofiles/${currentCoOwnerProfileId}/coowners`);
-    renderCoOwners(response.data.coOwners || []);
+    const response = await axios.get(`/api/data/netprofiles/${currentCoOwnerProfileId}/${sharedAccessMode}`);
+    renderCoOwners(response.data[sharedAccessMode === 'testers' ? 'testers' : 'coOwners'] || []);
 };
 
 window.netOwnerFormPrep = async function (id, name) {
     currentCoOwnerProfileId = id;
+    sharedAccessMode = 'coowners';
+    document.getElementById('shared_access_submit').lastChild.textContent = ' Add co-owner';
     document.getElementById('netowner_form_title').innerText = `Co-Owners for ${name}`;
     document.getElementById('input_npid_for_netowner').value = id;
     netOwnerFormState.mesg('info', 'Add a registered operator');
@@ -1023,6 +1032,17 @@ window.netOwnerFormPrep = async function (id, name) {
     } catch (error) {
         netOwnerFormState.mesg('error', error.response?.data?.errorMessage || error.message);
     }
+};
+
+window.testNetTesterFormPrep = async function (id, name) {
+    currentCoOwnerProfileId = id; sharedAccessMode = 'testers';
+    document.getElementById('shared_access_submit').lastChild.textContent = ' Invite tester';
+    document.getElementById('netowner_form_title').innerText = `Invited Testers for ${name}`;
+    document.getElementById('input_npid_for_netowner').value = id;
+    document.getElementById('input_coowner_identifier').value = '';
+    document.querySelector('#netowner_form button[type="submit"] span')?.remove();
+    netOwnerFormState.mesg('info', 'Invite a registered operator by callsign or email');
+    try { await loadCoOwners(); } catch (error) { netOwnerFormState.mesg('error', error.response?.data?.errorMessage || error.message); }
 };
 
 //called by netlist "edit" link
@@ -1140,11 +1160,11 @@ function netowner_submitHandler(e) {
     };
 
     axios
-        .post(`/api/data/netprofiles/${id}/coowners`, dataPayload)
+        .post(`/api/data/netprofiles/${id}/${sharedAccessMode}`, dataPayload)
         .then(async req => {
             console.debug('Adding Net Owner: ', req);
             document.getElementById('input_coowner_identifier').value = '';
-            netOwnerFormState.mesg('info', 'Co-owner added');
+            netOwnerFormState.mesg('info', sharedAccessMode === 'testers' ? 'Tester invited' : 'Co-owner added');
             await loadCoOwners();
             refreshNetList();
         })

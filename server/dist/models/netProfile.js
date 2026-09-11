@@ -170,7 +170,9 @@ const netProfileSchema = new Schema(
         autoIn: { type: Boolean, default: false },
         permanent: { type: Boolean, default: false },
         restrictedSigReports: { type: Boolean, default: false },
-        invisible: { type: Boolean, default: false }
+        invisible: { type: Boolean, default: false },
+        testFixture: { type: String, enum: ['josh-private'], default: undefined },
+        invitedTesters: [{ type: Schema.Types.ObjectId, ref: 'UserProfile' }]
     },
     { timestamps: true }
 );

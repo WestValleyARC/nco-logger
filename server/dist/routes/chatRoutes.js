@@ -20,6 +20,8 @@ const {
     MAX_UPLOAD_BYTES
 } = require('../lib/localChat');
 
+const { accessMiddleware } = require('../lib/privateTestNet');
+
 const imageBody = express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES });
 
 const requireSameOriginMutation = (req, res, next) => {
@@ -53,6 +55,7 @@ const chatRouteErrorHandler = (err, _req, res, next) => {
 };
 
 router.use(requireSameOriginMutation);
+router.use('/:id', accessMiddleware);
 
 router.get('/:id/messages', listMessages);
 router.post('/:id/messages', createMessage);

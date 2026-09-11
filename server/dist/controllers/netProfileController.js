@@ -9,6 +9,7 @@ const LiveNet = require('../models/liveNet').getLiveNet(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const { loadProfileSchedulingSummaries } = require('../lib/scheduling/profileSummary');
 const { sanitizeNotes } = require('../lib/serverUtils');
+const privateTestNet = require('../lib/privateTestNet');
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -310,7 +311,41 @@ const netProfileCreatePost = async (req, res) => {
     }
 };
 
+
+const testNetInviteList = async (req, res) => {
+    try {
+        const profile = await requirePrimaryOwner(req);
+        if (!privateTestNet.isPrivateTestNet(profile)) throw apiError(404, 'Test net not found');
+        await profile.populate({ path: 'invitedTesters', select: 'callSign displayName' });
+        return res.json({ endpointVersion: '1.0', testers: profile.invitedTesters.map(coOwnerResponse) });
+    } catch (err) { return sendCoOwnerError(res, err); }
+};
+const testNetInviteAdd = async (req, res) => {
+    try {
+        const profile = await requirePrimaryOwner(req);
+        if (!privateTestNet.isPrivateTestNet(profile)) throw apiError(404, 'Test net not found');
+        const target = await privateTestNet.findRegistered(req.body.identifier);
+        if (!target) throw apiError(404, 'No registered operator found for that callsign or email');
+        if (String(target._id) === String(profile.owners[0])) throw apiError(409, 'The owner already has access');
+        if (profile.invitedTesters.some(id => String(id) === String(target._id))) throw apiError(409, 'That operator is already invited');
+        profile.invitedTesters.push(target._id); await profile.save();
+        return res.json({ endpointVersion: '1.0', tester: coOwnerResponse(target) });
+    } catch (err) { return sendCoOwnerError(res, err); }
+};
+const testNetInviteRemove = async (req, res) => {
+    try {
+        const profile = await requirePrimaryOwner(req);
+        if (!privateTestNet.isPrivateTestNet(profile)) throw apiError(404, 'Test net not found');
+        profile.invitedTesters = profile.invitedTesters.filter(id => String(id) !== String(req.params.userId));
+        await profile.save();
+        return res.json({ endpointVersion: '1.0', removed: true });
+    } catch (err) { return sendCoOwnerError(res, err); }
+};
+
 module.exports = {
+    testNetInviteList,
+    testNetInviteAdd,
+    testNetInviteRemove,
     netProfileAddNetOwner,
     netProfileCoOwners,
     netProfileRemoveCoOwner,
