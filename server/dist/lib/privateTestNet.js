@@ -11,15 +11,20 @@ const isInvited = (profile, user) => Boolean(profile?.invitedTesters?.some(id =>
 const canAccess = (profile, user) => !isPrivateTestNet(profile) || isOwner(profile, user) || isInvited(profile, user);
 
 const active = Array.from({ length: 24 }, (_, i) => ({
-    callSign: `TST${String(i + 1).padStart(2, '0')}A`, name: `Test Operator ${i + 1}`, location: `Test Location ${i + 1}`
+    callSign: `TST0${String.fromCharCode(65 + i)}`, name: `Test Operator ${i + 1}`, location: `Test Location ${i + 1}`
 }));
 const checkedOut = Array.from({ length: 5 }, (_, i) => ({
-    callSign: `TST${String(i + 1).padStart(2, '0')}X`, name: `Checked Out ${i + 1}`, location: `Test Location ${i + 25}`
+    callSign: `TST1${String.fromCharCode(65 + i)}`, name: `Checked Out ${i + 1}`, location: `Test Location ${i + 25}`
 }));
 const lurkers = Array.from({ length: 3 }, (_, i) => ({
-    callSign: `TST${String(i + 1).padStart(2, '0')}L`, name: `Lurker ${i + 1}`, location: `Test Location ${i + 30}`
+    callSign: `TST2${String.fromCharCode(65 + i)}`, name: `Lurker ${i + 1}`, location: `Test Location ${i + 30}`
 }));
-const fixtureCallSigns = new Set([...active, ...checkedOut, ...lurkers].map(item => item.callSign));
+const legacyFixtureCallSigns = [
+    ...Array.from({ length: 24 }, (_, i) => `TST${String(i + 1).padStart(2, '0')}A`),
+    ...Array.from({ length: 5 }, (_, i) => `TST${String(i + 1).padStart(2, '0')}X`),
+    ...Array.from({ length: 3 }, (_, i) => `TST${String(i + 1).padStart(2, '0')}L`)
+];
+const fixtureCallSigns = new Set([...legacyFixtureCallSigns, ...active, ...checkedOut, ...lurkers].map(item => item.callSign || item));
 
 async function resetFixture({ profile, liveNet, owner }) {
     if (!isPrivateTestNet(profile) || !liveNet || !isOwner(profile, owner)) return false;
