@@ -226,6 +226,14 @@ const createStationInteraction = async ({ req, res, netProfileDoc, liveNetDoc })
         throw new Error(`could not save livenet doc with updated lookup table for npid: ${netProfileId}`);
     }
 
+    // Do not rely solely on the MongoDB change stream to announce a new visitor.
+    // A missed/delayed stream event otherwise leaves NCOs without the lurker until
+    // the next periodic SSE presence sweep. Force a fresh push from the saved data.
+    netDetailsCache.del(netProfileId.toString());
+    void realtimeClients.push(netProfileId.toString(), false).catch(err => {
+        logger.warn(`Immediate presence push failed for ${callSign}: ${err.message}`);
+    });
+
     if (autoIn) {
         logger.info(`Check-in (auto) ${iaresult.callSign.toUpperCase()} at ${new Date(now).toISOString()}`);
     }
