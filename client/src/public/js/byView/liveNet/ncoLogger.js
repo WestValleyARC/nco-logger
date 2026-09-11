@@ -3890,8 +3890,8 @@ import {
     if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
       items.controls = { ...items.controls,
         x: Math.min(GRID_COLUMNS - 6, Math.max(0, items.controls.x)),
-        y: Math.min(maximumRows - 4, Math.max(0, items.controls.y)),
-        w: 6, h: 4 };
+        y: Math.min(maximumRows - 3, Math.max(0, items.controls.y)),
+        w: 6, h: 3 };
     }
     if (currentLayoutContext === "tabletPortrait" && moduleAvailable("controls")) {
       // Station Controls is visually locked to the first five tablet rows (167px).
