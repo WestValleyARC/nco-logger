@@ -102,7 +102,7 @@ test('auto-close notice is branded, owner-specific, and uses mandatory operation
     assert.match(email.body.text, /red Close Net button in Station Controls/);
     assert.match(email.body.html, /https:\/\/logger\.westvalleyarc\.com\/img\/email\/station-controls-close-net\.png/);
     assert.match(email.body.html, /alt="Station Controls showing the red Close Net button"/);
-    assert.match(email.body.html, /width="542" height="380"/);
+    assert.match(email.body.html, /width="420" height="127"/);
     assert.doesNotMatch(email.body.text, /\[Image:/);
     assert.match(email.body.text, /mandatory operational notice/);
     assert.equal(email.body.attachments.length, 2);
