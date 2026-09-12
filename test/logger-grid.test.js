@@ -196,7 +196,7 @@ test('tablet portrait top-row modules share five-row grid geometry', async () =>
     assert.match(css, /\[data-layout-context="tabletPortrait"\] \.nch-controls-pane\s*\{[^}]*box-sizing:\s*border-box[^}]*height:\s*167px !important/s);
     assert.match(css, /--nch-tablet-top-track:\s*32\.6px/);
     assert.match(css, /grid-template-rows:\s*repeat\(5, var\(--nch-tablet-top-track\)\) repeat\(19, minmax\(0, 1fr\)\)/);
-    assert.match(source, /function moduleResizeZones\(id\) \{\s*if \(id === "controls"\) return ""/);
+    assert.match(source, /\$\{moduleResizeZones\("controls"\)\}/);
 });
 
 test('live module event paths cannot invoke a whole-layout resolver or refresh migration', () => {

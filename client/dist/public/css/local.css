@@ -604,6 +604,12 @@ hl-chat.chat-private-active .chat-form {
     align-items: stretch;
 }
 
+/* Keep the newest message clear of the reserved typing/composer area. */
+.chat-messages {
+    padding-bottom: 16px;
+    scroll-padding-bottom: 16px;
+}
+
 .chat-composer-wrap {
     min-height: 0;
     flex: 0 0 auto;

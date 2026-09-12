@@ -55,14 +55,19 @@ const chatFirstName = value => String(value || '').trim().split(/\s+/)[0] || '';
 const chatDisplayName = ({ manualName, qrzFirstName, accountFirstName, callSign }) =>
     chatFirstName(manualName) || chatFirstName(qrzFirstName) || chatFirstName(accountFirstName)
     || String(callSign || '').trim().toUpperCase();
-const resolveChatDisplayName = async ({ callSign, accountFirstName, db = mongoose.connection }) => {
+const resolveChatDisplayName = async ({ callSign, accountFirstName, interactionDisplayName, db = mongoose.connection }) => {
     const normalizedCall = String(callSign || '').trim().toUpperCase();
     const [profile, qrz] = await Promise.all([
         stationProfiles.getProfileState(normalizedCall, {}, db),
         getQrzCache(db).findOne({ callSign: normalizedCall }).select('firstName').lean()
     ]);
     const manualName = profile.fields.name.origin === 'manual' ? profile.fields.name.value : '';
-    return chatDisplayName({ manualName, qrzFirstName: qrz?.firstName, accountFirstName, callSign: normalizedCall });
+    return chatDisplayName({
+        manualName,
+        qrzFirstName: qrz?.firstName,
+        accountFirstName: chatFirstName(accountFirstName) || chatFirstName(interactionDisplayName),
+        callSign: normalizedCall
+    });
 };
 // A recipient always makes a message private, including legacy or malformed
 // records whose explicit scope is missing. Fail closed rather than exposing a
@@ -616,7 +621,11 @@ const createMessage = async (req, res) => {
         });
         if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const callSign = req.user.callSign.trim().toUpperCase();
-        const displayName = await resolveChatDisplayName({ callSign });
+        const displayName = await resolveChatDisplayName({
+            callSign,
+            accountFirstName: req.user.displayName,
+            interactionDisplayName: access.interaction?.displayName
+        });
         const message = await ChatMessage.create({
             liveNet: access.liveNet._id,
             netProfile: req.params.id,
@@ -707,7 +716,11 @@ const uploadImage = async (req, res) => {
         });
         if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const callSign = req.user.callSign.trim().toUpperCase();
-        const displayName = await resolveChatDisplayName({ callSign });
+        const displayName = await resolveChatDisplayName({
+            callSign,
+            accountFirstName: req.user.displayName,
+            interactionDisplayName: access.interaction?.displayName
+        });
 
         await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
         storageName = `${crypto.randomUUID()}.${detected.extension}`;
@@ -1070,7 +1083,7 @@ const streamEvents = async (req, res) => {
             npid: req.params.id,
             userId,
             callSign: String(req.user.callSign || access.interaction?.callSign || '').trim().toUpperCase(),
-            displayName: access.interaction?.displayName || '',
+            displayName: chatFirstName(access.interaction?.displayName) || chatFirstName(req.user.displayName) || '',
             ignoredUserIds,
             writeEvent
         });
