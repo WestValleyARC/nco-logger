@@ -25,6 +25,9 @@ router.post(
     authCheck(REQ_CALLSIGN),
     netScheduleController.cancelScheduledPreparation
 );
+router.get('/:id/testers', authCheck(REQ_CALLSIGN), netProfileController.testNetInviteList);
+router.post('/:id/testers', authCheck(REQ_CALLSIGN), netProfileController.testNetInviteAdd);
+router.delete('/:id/testers/:userId', authCheck(REQ_CALLSIGN), netProfileController.testNetInviteRemove);
 router.get('/:id/coowners', authCheck(REQ_CALLSIGN), netProfileController.netProfileCoOwners);
 router.post('/:id/coowners', authCheck(REQ_CALLSIGN), netProfileController.netProfileAddNetOwner);
 router.delete('/:id/coowners/:userId', authCheck(REQ_CALLSIGN), netProfileController.netProfileRemoveCoOwner);
