@@ -15,6 +15,7 @@ const { NetAnnounceStart } = require('../lib/userNotification');
 const oHash = require('object-hash');
 const helpers = require('../lib/controllers/liveNetHelpers');
 const stationProfiles = require('../lib/stationProfileService');
+const privateTestNet = require('../lib/privateTestNet');
 const { isLiveNetDetailsResponse, NetNotFoundError } = require('../types/commonTypesupport');
 
 const getCheckInCounts = async (liveNets, StationInteractionModel = StationInteraction) => {
@@ -37,15 +38,16 @@ const getCheckInCounts = async (liveNets, StationInteractionModel = StationInter
 
 const queryPublicLiveNets = async (
     LiveNetModel = LiveNet,
-    StationInteractionModel = StationInteraction
+    StationInteractionModel = StationInteraction,
+    viewer = null
 ) => {
     const queryResult = await LiveNetModel.find({ started: true, closing: { $ne: true } })
         .lean()
-        .populate('netProfile', 'title netType frequency mode modeDetails connections permanent invisible liveNet')
+        .populate('netProfile', 'title netType frequency mode modeDetails connections permanent invisible liveNet testFixture owners invitedTesters')
         .select('lookupTable started startedAt closing url createdAt netProfile title netType frequency mode modeDetails');
     const eligible = queryResult.filter(item =>
         item.netProfile &&
-        item.netProfile.invisible !== true &&
+        (item.netProfile.invisible !== true || (privateTestNet.isPrivateTestNet(item.netProfile) && privateTestNet.canAccess(item.netProfile, viewer))) &&
         String(item.netProfile.liveNet || '') === String(item._id)
     );
     const checkInCountsByLiveNet = await getCheckInCounts(eligible, StationInteractionModel);
@@ -122,6 +124,11 @@ const liveNetDetails = async (req, res, presenceOnly = false) => {
         // fetchNetProfileAndLiveNet will throw NetNotFoundError if the netprofile or livenet is not found
         const { liveNetDoc, netProfileDoc } = await helpers.fetchNetProfileAndLiveNet(npid);
 
+        if (!privateTestNet.canAccess(netProfileDoc, req.user)) {
+            handleResponse.sendError(res, 'FORBIDDEN', 'This test net is invite-only');
+            return;
+        }
+
         if (liveNetDoc.occurrence && !liveNetDoc.started) {
             const occurrence = await ScheduledOccurrence.findById(liveNetDoc.occurrence);
             if (!canAccessScheduledPreparation({
@@ -170,9 +177,10 @@ const liveNetPresence = (req, res) => liveNetDetails(req, res, true);
 
 const liveNetList = async (req, res) => {
     let cachedObj;
+    const cacheKey = `netlist:${String(req.user?._id || req.user?.id || 'public')}`;
 
     try {
-        if ((cachedObj = netListCache.get('netlist'))) {
+        if ((cachedObj = netListCache.get(cacheKey))) {
             logger.debug('LIVENET_Controller: Cache HIT for liveNet LIST');
 
             cachedObj['hash'] = oHash(cachedObj, {
@@ -186,7 +194,7 @@ const liveNetList = async (req, res) => {
         } else {
             logger.debug('LIVENET_Controller: Cache MISS for liveNet LIST');
 
-            const netlist = await queryPublicLiveNets();
+            const netlist = await queryPublicLiveNets(LiveNet, StationInteraction, req.user || null);
             netlist.sort((a, b) => new Date(a.startedAt || a.createdAt) - new Date(b.startedAt || b.createdAt));
 
             if (res.locals.flexOpts.requestRateFactor) {
@@ -196,12 +204,12 @@ const liveNetList = async (req, res) => {
                     }s`
                 );
                 netListCache.set(
-                    'netlist',
+                    cacheKey,
                     { netlist },
                     30 / Math.round(parseInt(res.locals.flexOpts.requestRateFactor))
                 );
             } else {
-                netListCache.set('netlist', { netlist });
+                netListCache.set(cacheKey, { netlist });
             }
 
             const response = {};

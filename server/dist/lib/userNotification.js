@@ -273,8 +273,8 @@ class NetInactivityAutoClose extends EmailBase {
                 type: 'image',
                 path: '/img/email/station-controls-close-net.png',
                 alt: 'Station Controls showing the red Close Net button',
-                width: 542,
-                height: 380
+                width: 420,
+                height: 127
             },
             { type: 'paragraph', text: 'You received this mandatory operational notice because you are an owner or co-owner of the net.' }
         ];

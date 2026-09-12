@@ -47,6 +47,7 @@ const { verifyTransport } = require('./lib/userNotification');
 const { parseBoolean, trustedProxySetting, validateRuntimeConfig } = require('./lib/runtimeSecurity');
 const { createRequestSecurity, errorHandler } = require('./lib/httpSecurity');
 const { closeChangeStreamClient } = require('./lib/changeStreamClient');
+const { ensureProfile: ensurePrivateTestProfile } = require('./lib/privateTestNet');
 const { realtimeClients } = require('./lib/realtimeClients');
 
 const reportServices = () => {
@@ -102,6 +103,7 @@ const start = async () => {
         await mongoose.connect(conf.dburi, { maxPoolSize: conf.realtime_mongoose_poolsize });
         await Promise.all([NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init()]);
         await removeLegacyTitleUniqueIndex(NetProfile);
+        await ensurePrivateTestProfile();
         logger.info('Connected to db (realtime pool)');
         if (useHttps) {
             httpServer = https.createServer(sslOptions, app).listen(PORT);

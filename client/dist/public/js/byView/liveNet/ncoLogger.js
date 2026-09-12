@@ -56,7 +56,7 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         }
         return commands;
     })();
-    const MIN_MODULE_ROWS = Object.freeze({ controls: 3, chat: 5, checkedOut: 2, active: 4, lurkers: 2 });
+    const MIN_MODULE_ROWS = Object.freeze({ controls: 4, chat: 5, checkedOut: 2, active: 4, lurkers: 2 });
     const PREVIOUS_DESKTOP_DEFAULT_MODULE_LAYOUTS = Object.freeze([
         Object.freeze({
             gridVersion: LAYOUT_GRID_VERSION,
@@ -86,11 +86,11 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
     const DEFAULT_MODULE_LAYOUT = Object.freeze({
         gridVersion: LAYOUT_GRID_VERSION,
         items: {
-            lurkers: { x: 0, y: 0, w: 9, h: 3 },
-            controls: { x: 9, y: 0, w: 6, h: 3 },
-            checkedOut: { x: 15, y: 0, w: 9, h: 3 },
-            chat: { x: 0, y: 3, w: 9, h: 17 },
-            active: { x: 9, y: 3, w: 15, h: 17 }
+            lurkers: { x: 0, y: 0, w: 9, h: 4 },
+            controls: { x: 9, y: 0, w: 6, h: 4 },
+            checkedOut: { x: 15, y: 0, w: 9, h: 4 },
+            chat: { x: 0, y: 4, w: 9, h: 16 },
+            active: { x: 9, y: 4, w: 15, h: 16 }
         },
         collapsed: {}
     });
@@ -4096,12 +4096,6 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
             };
             collapsed[id] = Boolean(suppliedCollapsed[id]);
         });
-        if (currentLayoutContext === "desktop" && moduleAvailable("controls")) {
-            items.controls = { ...items.controls,
-                x: Math.min(GRID_COLUMNS - 6, Math.max(0, items.controls.x)),
-                y: Math.min(maximumRows - 3, Math.max(0, items.controls.y)),
-                w: 6, h: 3 };
-        }
         if (currentLayoutContext === "tabletPortrait" && moduleAvailable("controls")) {
             items.controls.h = 5;
             items.controls.y = 0;
@@ -4578,8 +4572,6 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         });
     }
     function moduleResizeZones(id) {
-        if (id === "controls")
-            return "";
         const disabled = currentLayoutContext.startsWith("phone");
         return ["n", "e", "s", "w", "ne", "nw", "se", "sw"].map(edge => `<span class="nch-resize-zone nch-resize-${edge}" data-resize-module="${id}" data-resize-edge="${edge}"${disabled ? " hidden" : ""}${edge === "se" ? ` role="separator" tabindex="${disabled ? "-1" : "0"}" aria-label="Resize ${escapeHtml(MODULE_LABELS[id])}"` : ' aria-hidden="true"'}></span>`).join("");
     }

@@ -9,8 +9,10 @@ const LiveNet = require('../models/liveNet').getLiveNet(null);
 const ScheduledOccurrence = require('../models/scheduledOccurrence').getScheduledOccurrence(null);
 const { canAccessScheduledPreparation } = require('../lib/scheduling/lifecycle');
 const { logger } = require('../lib/logger');
+const { accessMiddleware } = require('../lib/privateTestNet');
 realtimeClients.init(genLiveNetDetails);
 router.use('/:id', authCheck(REQ_CALLSIGN));
+router.use('/:id', accessMiddleware);
 router.use('/:id', async (req, res, next) => {
     try {
         const netProfile = await NetProfile.findById(req.params.id);

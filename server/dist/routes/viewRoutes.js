@@ -11,6 +11,7 @@ const validator = require('validator');
 const { ContactFormMessage } = require('../lib/userNotification');
 const mongoose = require('mongoose');
 const { consumeRateLimit } = require('../lib/persistentRateLimit');
+const privateTestNet = require('../lib/privateTestNet');
 
 const CONTACT_RECIPIENT = 'logger@westvalleyarc.com';
 const CONTACT_LIMITS = Object.freeze({ name: 100, callSign: 20, email: 254, subject: 150, message: 5000 });
@@ -71,6 +72,7 @@ router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
         const npid = req.params.id;
         const netProfile = await NetProfile.findById(npid);
         if (!netProfile) return res.redirect('/views/dashboard');
+        if (!privateTestNet.canAccess(netProfile, req.user)) return res.status(403).render('netNotRunning', populate(req, res, { VIEW: 'netNotRunning', TITLE: 'Invite-only test net' }));
         const liveNet = netProfile.liveNet ? await LiveNet.findById(netProfile.liveNet) : null;
         const occurrence = liveNet?.occurrence
             ? await ScheduledOccurrence.findById(liveNet.occurrence)
@@ -87,6 +89,9 @@ router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
             user: req.user
         });
         const showLogger = Boolean(liveNet) && (!scheduledPreparation || mayPrepare);
+        if (liveNet && privateTestNet.isPrivateTestNet(netProfile) && privateTestNet.isOwner(netProfile, req.user)) {
+            await privateTestNet.resetFixture({ profile: netProfile, liveNet, owner: req.user });
+        }
         const ejsData = {
             NPID: npid,
             PERM: Boolean(netProfile.permanent),
