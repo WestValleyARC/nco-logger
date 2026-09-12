@@ -21,3 +21,25 @@ test('dashboard Live Nets cards grow with all connection lines while preserving 
     assert.match(client, /event\.target === row[\s\S]*event\.key === 'Enter'[\s\S]*event\.key === ' '/);
     assert.match(css, /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-live-panel \.net-card\s*\{/);
 });
+
+test('dashboard Live Nets panel grows past its desktop baseline instead of overlapping content', () => {
+    const css = read('client/dist/public/css/app-shell.css');
+
+    assert.match(
+        css,
+        /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-net-panel\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*26rem;/s
+    );
+    assert.doesNotMatch(
+        css,
+        /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-net-panel\s*\{[^}]*\n\s*height:\s*26rem;/s
+    );
+});
+
+test('dashboard favorite heart toggles without triggering whole-card navigation', () => {
+    const client = read('client/dist/public/js/byView/dashboard/main.js');
+
+    assert.match(
+        client,
+        /rowCollectionElem\.addEventListener\('click',[\s\S]*event\.target\.closest\('\.landing-net-favorite'\)[\s\S]*event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*favorites\.handler\(\{ target: favorite \}\)[\s\S]*return;[\s\S]*event\.target\.closest\('\.liveNetRow'\)/
+    );
+});

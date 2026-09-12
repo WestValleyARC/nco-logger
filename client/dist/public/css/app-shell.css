@@ -4744,8 +4744,8 @@
     }
 
     .landing-page .landing-net-panel {
-        height: 26rem;
-        min-height: 0;
+        height: auto;
+        min-height: 26rem;
     }
 
     .landing-page :is(.nets-list, .scheduled-net-list) {

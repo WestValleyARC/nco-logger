@@ -171,6 +171,14 @@ import {
     }
 
     rowCollectionElem.addEventListener('click', event => {
+        const favorite = event.target.closest('.landing-net-favorite');
+        if (favorite) {
+            event.preventDefault();
+            event.stopPropagation();
+            void favorites.handler({ target: favorite });
+            return;
+        }
+
         const row = event.target.closest('.liveNetRow');
         if (row?.dataset.href) {
             window.location.assign(row.dataset.href);

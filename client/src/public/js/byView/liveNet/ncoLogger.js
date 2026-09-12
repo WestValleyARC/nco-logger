@@ -34,6 +34,7 @@ import {
   const MIN_MODULE_COLUMNS = 2;
   const CHAT_FONT_SIZES = Object.freeze({ small: 12, normal: 14, large: 16 });
   const PRIVATE_CHAT_PREFIX = "~NCHPM1~";
+  const PHOTO_VIEWER_HISTORY_KEY = "ncoLoggerPhotoViewer";
   const HELPER_CHAT_MAX = 80;
   const HELP_FONT_SIZES = Object.freeze({ small: 11, normal: 13, large: 15 });
   const SLASH_HELP_BANNER = "WVARC NCO Logger handles these shortcuts directly. Nothing beginning with / is sent to group chat.";
@@ -265,6 +266,7 @@ import {
   let chatImageHost = null;
   let slashBridgeHandlerRegistered = false;
   let photoTrigger = null;
+  let photoHistoryActive = false;
   const hiddenCalls = new Set();
   let priorDocumentOverflow = "";
   let priorBodyOverflow = "";
@@ -957,6 +959,7 @@ import {
       positionNativeChat();
       syncStationActionModal();
       positionStationActionModal();
+      positionPhotoViewer();
     });
   }
 
@@ -1464,7 +1467,19 @@ import {
       download.dataset.imageUrl = kind === "chat" ? candidate : "";
     }
     photoTrigger = trigger;
+    if (!photoHistoryActive) {
+      try {
+        window.history.pushState({
+          ...(window.history.state || {}),
+          [PHOTO_VIEWER_HISTORY_KEY]: true
+        }, "", window.location.href);
+        photoHistoryActive = true;
+      } catch {
+        photoHistoryActive = false;
+      }
+    }
     modal.hidden = false;
+    positionPhotoViewer();
     syncNativeChatVisibility();
     modal.querySelector("[data-role='close-photo']")?.focus();
   }
@@ -1659,12 +1674,36 @@ import {
     updateRelayStatus(relayConnectionState);
   }
 
-  function closePhotoViewer() {
+  function closePhotoViewer({ consumeHistory = true } = {}) {
     const modal = panel?.querySelector("[data-role='photo-viewer']");
     if (modal) modal.hidden = true;
     syncNativeChatVisibility();
     photoTrigger?.focus?.();
     photoTrigger = null;
+    if (consumeHistory && photoHistoryActive) {
+      photoHistoryActive = false;
+      window.history.back();
+    }
+  }
+
+  function handlePhotoViewerPopState() {
+    const modal = panel?.querySelector("[data-role='photo-viewer']");
+    if (!modal || modal.hidden) return;
+    photoHistoryActive = false;
+    closePhotoViewer({ consumeHistory: false });
+  }
+
+  function positionPhotoViewer() {
+    const modal = panel?.querySelector("[data-role='photo-viewer']");
+    if (!modal || modal.hidden) return;
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0;
+    const top = viewport?.offsetTop || 0;
+    const width = viewport?.width || document.documentElement.clientWidth || window.innerWidth;
+    const height = viewport?.height || document.documentElement.clientHeight || window.innerHeight;
+    Object.assign(modal.style, {
+      left: `${Math.round(left)}px`, top: `${Math.round(top)}px`, width: `${Math.round(width)}px`, height: `${Math.round(height)}px`
+    });
   }
 
   function detailsFor(callSign) {
@@ -5501,8 +5540,10 @@ import {
     browserStorage.get([relayTokenKey], resolve)
   );
   window.addEventListener("resize", handleWindowResize);
+  window.addEventListener("popstate", handlePhotoViewerPopState);
   window.visualViewport?.addEventListener("resize", handleWindowResize);
   window.visualViewport?.addEventListener("scroll", positionStationActionModal);
+  window.visualViewport?.addEventListener("scroll", positionPhotoViewer);
   window.addEventListener("keydown", handleActionHotkey, true);
   window.addEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
   Promise.all([relayStorageGet(), storageGet()]).then(async ([relayData, saved]) => {
@@ -5573,8 +5614,10 @@ import {
     if (pollTimer !== null) clearInterval(pollTimer);
     pollTimer = null;
     window.removeEventListener("resize", handleWindowResize);
+    window.removeEventListener("popstate", handlePhotoViewerPopState);
     window.visualViewport?.removeEventListener("resize", handleWindowResize);
     window.visualViewport?.removeEventListener("scroll", positionStationActionModal);
+    window.visualViewport?.removeEventListener("scroll", positionPhotoViewer);
     window.removeEventListener("keydown", handleActionHotkey, true);
     window.removeEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
     stopSync();
