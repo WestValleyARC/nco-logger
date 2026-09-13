@@ -60,7 +60,7 @@ The following keys are defined in `server/dist/models/flexOptions.js` and are ac
     - Default timeout (ms) for outgoing HTTP client calls (QRZ lookups, third-party calls).
     - Used in `lib/serverUtils.js`.
 
-- **`maxNetsPerUser`** — default: `7`
+- **`maxNetsPerUser`** — default: `20`
     - Limits how many nets a single user may own.
     - Used in `netProfileController.js` and `lib/sharedNetOps.js`.
 

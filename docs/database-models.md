@@ -208,7 +208,7 @@ Stores the single global runtime configuration document. The Mongoose model name
     option: {
         chat: Boolean,              // Enable chat integration (default: true)
         email: Boolean,             // Enable email notifications (default: true)
-        maxNetsPerUser: Number,     // Net ownership limit (default: 7)
+        maxNetsPerUser: Number,     // Net ownership limit (default: 20)
         maxOwnersPerNet: Number,    // Ownership sharing limit (default: 5)
         baseTtlMs: Number,          // Base SSE TTL ms (default: 15000)
         awayInMs: Number,           // Presence timeout ms (default: 25000)

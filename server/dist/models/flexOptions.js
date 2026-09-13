@@ -9,7 +9,7 @@ const flexOptionsGlobalSchema = new Schema(
         option: {
             chat: { type: Boolean, default: true },
             email: { type: Boolean, default: true },
-            maxNetsPerUser: { type: Number, default: 7 },
+            maxNetsPerUser: { type: Number, default: 20 },
             maxOwnersPerNet: { type: Number, default: 5 },
             baseTtlMs: { type: Number, default: 15000 },
             awayInMs: { type: Number, default: 25000 },

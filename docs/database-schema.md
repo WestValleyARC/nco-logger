@@ -400,7 +400,7 @@ No explicit compound indexes are defined in the model. Standard `_id` index appl
         },
         maxNetsPerUser: {
             type: Number,
-            default: 7  // Net ownership limit
+            default: 20 // Net ownership limit
         },
         maxOwnersPerNet: {
             type: Number,
