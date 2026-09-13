@@ -20,9 +20,13 @@ const refresh = async () => {
         list.querySelectorAll('.public-live-card').forEach(card => card.remove());
         data.netlist.forEach(net => {
             const card = template.content.firstElementChild.cloneNode(true);
-            card.href = net.url;
+            card.dataset.href = net.url;
+            card.setAttribute('aria-label', `Open ${net.title}`);
             const favorite = card.querySelector('.landing-net-favorite');
-            if (favorite) favorite.id = `fav-${net.id}`;
+            if (favorite) {
+                favorite.id = `fav-${net.id}`;
+                if (net.permanent) favorite.classList.add('d-none');
+            }
             card.querySelector('[data-role="title"]').textContent = net.title;
             const connection = card.querySelector('[data-role="connection"]');
             const connectionLines = formatConnectionLines(net);
@@ -52,10 +56,23 @@ const refresh = async () => {
 
 list.addEventListener('click', event => {
     const favorite = event.target.closest('.landing-net-favorite');
-    if (!favorite) return;
-    event.preventDefault();
-    event.stopPropagation();
-    void favorites.handler({ target: favorite });
+    if (favorite) {
+        event.preventDefault();
+        event.stopPropagation();
+        void favorites.handler({ target: favorite });
+        return;
+    }
+
+    const card = event.target.closest('.public-live-card');
+    if (card?.dataset.href) window.location.assign(card.dataset.href);
+});
+
+list.addEventListener('keydown', event => {
+    const card = event.target.closest('.public-live-card');
+    if (event.target === card && card?.dataset.href && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        window.location.assign(card.dataset.href);
+    }
 });
 
 await refresh();

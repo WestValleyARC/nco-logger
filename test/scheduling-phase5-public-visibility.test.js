@@ -189,10 +189,15 @@ test('Phase 5 public scheduling visibility', async t => {
             assert.match(viewRoutes, /router\.get\('\/schedule'/);
             assert.match(livePage, /No nets are currently live|public-live-state/);
             assert.match(livePage, /if \(user\.isLoggedIn\)[\s\S]*landing-net-favorite favicon bi bi-heart/);
+            assert.match(livePage, /<div class="public-live-card" role="link" tabindex="0">/);
+            assert.doesNotMatch(livePage, /<a class="public-live-card"/);
             assert.match(liveClient, /new FavClient\(1000, 1\)/);
+            assert.match(liveClient, /card\.dataset\.href = net\.url/);
             assert.match(liveClient, /favorite\.id = `fav-\$\{net\.id\}`/);
+            assert.match(liveClient, /if \(net\.permanent\) favorite\.classList\.add\('d-none'\)/);
             assert.match(liveClient, /favorites\.paintFromServerData\(\)/);
-            assert.match(liveClient, /event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*favorites\.handler/);
+            assert.match(liveClient, /if \(favorite\) \{[\s\S]*event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*favorites\.handler[\s\S]*return;[\s\S]*const card = event\.target\.closest\('\.public-live-card'\)/);
+            assert.match(liveClient, /if \(card\?\.dataset\.href\) window\.location\.assign\(card\.dataset\.href\)/);
             assert.doesNotMatch(liveClient, /slice\(0, 4\)/);
             assert.match(schedulePage, /Net Schedule/);
             assert.match(schedulePage, /data-schedule-view="today"/);
