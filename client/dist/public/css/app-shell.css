@@ -4677,6 +4677,12 @@
     white-space: nowrap;
 }
 
+.landing-live-net-frequency {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
 .landing-live-net-time:empty {
     display: none;
 }
@@ -4744,8 +4750,8 @@
     }
 
     .landing-page .landing-net-panel {
-        height: auto;
-        min-height: 26rem;
+        height: 26rem;
+        min-height: 0;
     }
 
     .landing-page :is(.nets-list, .scheduled-net-list) {
@@ -4770,7 +4776,7 @@
     .landing-page .landing-live-panel .net-card {
         grid-template-columns: 3.1rem minmax(0, 1fr) auto;
         min-height: 4.45rem;
-        height: auto;
+        height: 4.45rem;
     }
 
     .landing-page .scheduled-net-card {

@@ -9,29 +9,27 @@ const path = require('node:path');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 
-test('dashboard Live Nets cards grow with all connection lines while preserving whole-row interaction', () => {
+test('dashboard Live Nets preview keeps four fixed-height cards and truncates long connection lists', () => {
     const css = read('client/dist/public/css/app-shell.css');
     const dashboard = read('server/dist/views/dashboard.ejs');
     const client = read('client/dist/public/js/byView/dashboard/main.js');
 
-    assert.match(css, /\.landing-page \.landing-live-panel \.net-card\s*\{[^}]*min-height:\s*4\.45rem;[^}]*height:\s*auto;/s);
-    assert.match(client, /netFreqElem\.innerText = formatConnectionLines\(liveNet\)\.join\('\\n'\)/);
+    assert.match(client, /activeNets\.slice\(0, 4\)/);
+    assert.match(client, /const connection = formatConnectionLines\(liveNet\)\.join\('\\n'\)/);
+    assert.match(client, /netFreqElem\.title = connection/);
+    assert.match(css, /\.landing-live-net-frequency\s*\{[^}]*display:\s*-webkit-box;[^}]*-webkit-box-orient:\s*vertical;[^}]*-webkit-line-clamp:\s*2;/s);
+    assert.match(css, /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-live-panel \.net-card\s*\{[^}]*height:\s*4\.45rem;/s);
     assert.match(dashboard, /id="netTemplate"[\s\S]*id="frequency"[\s\S]*landing-live-net-status/);
     assert.match(client, /event\.target\.closest\('\.liveNetRow'\)[\s\S]*window\.location\.assign\(row\.dataset\.href\)/);
     assert.match(client, /event\.target === row[\s\S]*event\.key === 'Enter'[\s\S]*event\.key === ' '/);
-    assert.match(css, /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-live-panel \.net-card\s*\{/);
 });
 
-test('dashboard Live Nets panel grows past its desktop baseline instead of overlapping content', () => {
+test('dashboard Live Nets panel keeps its desktop height without allowing card overflow', () => {
     const css = read('client/dist/public/css/app-shell.css');
 
     assert.match(
         css,
-        /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-net-panel\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*26rem;/s
-    );
-    assert.doesNotMatch(
-        css,
-        /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-net-panel\s*\{[^}]*\n\s*height:\s*26rem;/s
+        /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-net-panel\s*\{[^}]*height:\s*26rem;[^}]*min-height:\s*0;/s
     );
 });
 

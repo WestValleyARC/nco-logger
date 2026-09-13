@@ -69,7 +69,9 @@ import {
                     iconElem.classList.add('d-none');
                 }
 
-                netFreqElem.innerText = formatConnectionLines(liveNet).join('\n');
+                const connection = formatConnectionLines(liveNet).join('\n');
+                netFreqElem.innerText = connection;
+                netFreqElem.title = connection;
                 checkInCountElem.textContent = `${liveNet.checkInCount} Check-In${liveNet.checkInCount === 1 ? '' : 's'}`;
 
                 const startTimeElem = rowTemplateClone.querySelector('#startTime');
