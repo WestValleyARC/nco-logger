@@ -184,7 +184,7 @@ test('Phase 5 public scheduling visibility', async t => {
             assert.match(dashboard, /href="\/views\/livenets"/);
             assert.match(dashboard, /href="\/views\/schedule\?view=today"/);
             assert.match(dashboard, /href="\/views\/schedule\?view=upcoming"/);
-            assert.match(css, /\.landing-page \.landing-net-panel \{[\s\S]*min-height: 26rem/);
+            assert.match(css, /\.landing-page \.landing-net-panel \{[\s\S]*height: 26rem;[\s\S]*min-height: 0/);
             assert.match(viewRoutes, /router\.get\('\/livenets'/);
             assert.match(viewRoutes, /router\.get\('\/schedule'/);
             assert.match(livePage, /No nets are currently live|public-live-state/);
