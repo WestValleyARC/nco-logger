@@ -22,7 +22,8 @@ for (const [label, path] of [["source", sourcePath], ["built", builtPath]]) {
     const code = await readFile(path, "utf8");
 
     assert.match(code, /window\.history\.pushState\(/);
-    assert.match(code, /function handlePhotoViewerPopState\(\)/);
+    assert.match(code, /function handlePhotoViewerPopState\(event\)/);
+    assert.match(code, /event\?\.stopImmediatePropagation\?\.\(\);/);
     assert.match(code, /closePhotoViewer\(\{ consumeHistory: false \}\);/);
     assert.match(code, /window\.addEventListener\("popstate", handlePhotoViewerPopState\);/);
     assert.match(code, /if \(consumeHistory && photoHistoryActive\)[\s\S]*?window\.history\.back\(\);/);
@@ -34,6 +35,9 @@ test("photo controls remain inside the safe, visible viewer area", async () => {
 
   assert.match(css, /\.nch-photo-viewer[\s\S]*?position: fixed;[\s\S]*?env\(safe-area-inset-top\)/);
   assert.match(css, /\.nch-photo-viewer \{[\s\S]*?right: auto;[\s\S]*?bottom: auto;[\s\S]*?overflow: hidden;/);
-  assert.match(css, /\.nch-photo-viewer\[data-photo-kind="chat"\] \.nch-photo-card \{\s+max-width: 100%;\s+max-height: 100%;/);
-  assert.match(css, /button\.nch-photo-close \{ position: absolute; z-index: 1;/);
+  assert.match(css, /\.nch-photo-viewer\[data-photo-kind="chat"\] \.nch-photo-card \{[\s\S]*?max-width: 100%;\s+max-height: 100%;/);
+  assert.match(css, /button\.nch-photo-close \{ position: absolute; z-index: 2;[\s\S]*?width: 44px; height: 44px; min-width: 44px;/);
+  assert.match(css, /button\.nch-photo-download \{ position: absolute; z-index: 2;[\s\S]*?width: 44px; height: 44px; min-width: 44px;/);
+  assert.match(css, /\.nch-photo-viewer \.nch-photo-card h3 \{[\s\S]*?min-height: 44px;/);
+  assert.match(css, /\.nch-photo-viewer \.nch-photo-card img \{[\s\S]*?max-height: calc\(100% - 52px\);/);
 });

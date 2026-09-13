@@ -1686,11 +1686,12 @@ import {
     }
   }
 
-  function handlePhotoViewerPopState() {
+  function handlePhotoViewerPopState(event) {
     const modal = panel?.querySelector("[data-role='photo-viewer']");
     if (!modal || modal.hidden) return;
     photoHistoryActive = false;
     closePhotoViewer({ consumeHistory: false });
+    event?.stopImmediatePropagation?.();
   }
 
   function positionPhotoViewer() {
