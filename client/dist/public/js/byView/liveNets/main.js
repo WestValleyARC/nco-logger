@@ -2,12 +2,15 @@
 
 'use strict';
 
+import { FavClient } from '#@client/lib/old__clientUtils.js';
 import { formatConnectionLines } from '#@client/lib/publicSchedule.js';
+import { serverInfo } from '#@client/lib/serverInfo.js';
 
 const list = document.getElementById('public-live-list');
 const state = document.getElementById('public-live-state');
 const template = document.getElementById('public-live-template');
 const total = document.getElementById('public-live-total');
+const favorites = new FavClient(1000, 1);
 
 const refresh = async () => {
     try {
@@ -18,6 +21,8 @@ const refresh = async () => {
         data.netlist.forEach(net => {
             const card = template.content.firstElementChild.cloneNode(true);
             card.href = net.url;
+            const favorite = card.querySelector('.landing-net-favorite');
+            if (favorite) favorite.id = `fav-${net.id}`;
             card.querySelector('[data-role="title"]').textContent = net.title;
             const connection = card.querySelector('[data-role="connection"]');
             const connectionLines = formatConnectionLines(net);
@@ -30,6 +35,7 @@ const refresh = async () => {
                 `${net.checkInCount} Check-In${net.checkInCount === 1 ? '' : 's'}`;
             list.appendChild(card);
         });
+        if (serverInfo.isLoggedIn) await favorites.paintFromServerData();
         state.hidden = data.netlist.length > 0;
         if (!data.netlist.length) {
             state.innerHTML = '<i class="bi bi-moon-stars" aria-hidden="true"></i>No nets are currently live.';
@@ -43,6 +49,14 @@ const refresh = async () => {
         list.setAttribute('aria-busy', 'false');
     }
 };
+
+list.addEventListener('click', event => {
+    const favorite = event.target.closest('.landing-net-favorite');
+    if (!favorite) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void favorites.handler({ target: favorite });
+});
 
 await refresh();
 window.setInterval(refresh, 30000);

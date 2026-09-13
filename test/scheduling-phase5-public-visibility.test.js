@@ -188,6 +188,11 @@ test('Phase 5 public scheduling visibility', async t => {
             assert.match(viewRoutes, /router\.get\('\/livenets'/);
             assert.match(viewRoutes, /router\.get\('\/schedule'/);
             assert.match(livePage, /No nets are currently live|public-live-state/);
+            assert.match(livePage, /if \(user\.isLoggedIn\)[\s\S]*landing-net-favorite favicon bi bi-heart/);
+            assert.match(liveClient, /new FavClient\(1000, 1\)/);
+            assert.match(liveClient, /favorite\.id = `fav-\$\{net\.id\}`/);
+            assert.match(liveClient, /favorites\.paintFromServerData\(\)/);
+            assert.match(liveClient, /event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*favorites\.handler/);
             assert.doesNotMatch(liveClient, /slice\(0, 4\)/);
             assert.match(schedulePage, /Net Schedule/);
             assert.match(schedulePage, /data-schedule-view="today"/);

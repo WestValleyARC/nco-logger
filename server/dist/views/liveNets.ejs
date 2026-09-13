@@ -43,6 +43,9 @@
             <span data-role="connection"></span>
           </span>
           <span class="public-live-card-meta">
+            <% if (user.isLoggedIn) { %>
+            <button type="button" class="landing-net-favorite favicon bi bi-heart" aria-label="Add to Favorites" title="Add to Favorites"></button>
+            <% } %>
             <span class="landing-on-air">ON AIR</span>
             <span data-role="check-ins"></span>
           </span>
