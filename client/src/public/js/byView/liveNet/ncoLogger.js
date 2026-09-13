@@ -1469,10 +1469,12 @@ import {
     photoTrigger = trigger;
     if (!photoHistoryActive) {
       try {
+        const viewerUrl = new URL(window.location.href);
+        viewerUrl.hash = "nco-photo-viewer";
         window.history.pushState({
           ...(window.history.state || {}),
           [PHOTO_VIEWER_HISTORY_KEY]: true
-        }, "", window.location.href);
+        }, "", viewerUrl);
         photoHistoryActive = true;
       } catch {
         photoHistoryActive = false;
@@ -1698,12 +1700,10 @@ import {
     const modal = panel?.querySelector("[data-role='photo-viewer']");
     if (!modal || modal.hidden) return;
     const viewport = window.visualViewport;
-    const left = viewport?.offsetLeft || 0;
-    const top = viewport?.offsetTop || 0;
     const width = viewport?.width || document.documentElement.clientWidth || window.innerWidth;
     const height = viewport?.height || document.documentElement.clientHeight || window.innerHeight;
     Object.assign(modal.style, {
-      left: `${Math.round(left)}px`, top: `${Math.round(top)}px`, width: `${Math.round(width)}px`, height: `${Math.round(height)}px`
+      left: "0px", top: "0px", width: `${Math.round(width)}px`, height: `${Math.round(height)}px`
     });
   }
 

@@ -512,7 +512,7 @@ hl-chat.nch-chat-docked :is(.chat-status, .chat-edited, .chat-message-controls, 
 #netcontrol-ncs-helper .nch-photo-viewer { position: absolute; z-index: 100; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, .78); }
 #netcontrol-ncs-helper .nch-photo-viewer[hidden] { display: none !important; }
 #netcontrol-ncs-helper .nch-photo-card { position: relative; box-sizing: border-box; width: min(420px, 90vw); max-height: 90vh; overflow: hidden; padding: 14px; text-align: center; background: #15191d; border: 2px solid #74c6d4; border-radius: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, .7); }
-#netcontrol-ncs-helper .nch-photo-card h3 { margin: 0 36px 10px; }
+#netcontrol-ncs-helper .nch-photo-card h3 { margin: 0 96px 10px 36px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 #netcontrol-ncs-helper .nch-photo-card img { display: block; width: auto; max-width: 100%; height: auto; max-height: min(70vh, 420px); margin: 0 auto; object-fit: contain; border: 1px solid #9de9f4; border-radius: 8px; background: #172027; }
 #netcontrol-ncs-helper .nch-photo-viewer[data-photo-kind="chat"] .nch-photo-card { display: flex; width: min(76vw, 1280px); height: min(76vh, 900px); max-height: none; flex-direction: column; }
 #netcontrol-ncs-helper .nch-photo-viewer[data-photo-kind="chat"] .nch-photo-card img { width: 100%; min-height: 0; max-height: none; flex: 1 1 auto; }

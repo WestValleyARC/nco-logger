@@ -12,7 +12,8 @@ for (const [label, path] of [["source", sourcePath], ["built", builtPath]]) {
 
     assert.match(code, /function positionPhotoViewer\(\)/);
     assert.match(code, /const viewport = window\.visualViewport;/);
-    assert.match(code, /const top = viewport\?\.offsetTop \|\| 0;/);
+    assert.doesNotMatch(code, /function positionPhotoViewer\(\)[\s\S]*?const top = viewport\?\.offsetTop[\s\S]*?function detailsFor/);
+    assert.match(code, /left: "0px", top: "0px"/);
     assert.match(code, /const height = viewport\?\.height \|\| document\.documentElement\.clientHeight \|\| window\.innerHeight;/);
     assert.match(code, /modal\.hidden = false;\s+positionPhotoViewer\(\);/);
     assert.match(code, /window\.visualViewport\?\.addEventListener\("scroll", positionPhotoViewer\);/);
@@ -21,6 +22,7 @@ for (const [label, path] of [["source", sourcePath], ["built", builtPath]]) {
   test(`${label} photo viewer consumes browser Back before leaving the logger`, async () => {
     const code = await readFile(path, "utf8");
 
+    assert.match(code, /viewerUrl\.hash = "nco-photo-viewer";/);
     assert.match(code, /window\.history\.pushState\(/);
     assert.match(code, /function handlePhotoViewerPopState\(event\)/);
     assert.match(code, /event\?\.stopImmediatePropagation\?\.\(\);/);
