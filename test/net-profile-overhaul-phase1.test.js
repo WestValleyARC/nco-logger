@@ -64,7 +64,7 @@ test('Net Profile Overhaul Phase 1 model compatibility', async t => {
     await t.test('enforces required data by connection type without restrictive identifier formats', async () => {
         const invalid = [
             { type: 'FM' }, { type: 'HF' }, { type: 'AllStarLink' }, { type: 'EchoLink' }, { type: 'DMR' },
-            { type: 'D-STAR' }, { type: 'YSF' }, { type: 'P25' }, { type: 'Other', label: 'Only' },
+            { type: 'D-STAR' }, { type: 'YSF' }, { type: 'P25' }, { type: 'Other' },
             { type: 'Legacy' }
         ];
         for (const connection of invalid) {
@@ -72,6 +72,7 @@ test('Net Profile Overhaul Phase 1 model compatibility', async t => {
         }
         await profile({ title: 'Echo Node', connections: [{ type: 'EchoLink', node: 'node/custom-1' }] }).validate();
         await profile({ title: 'YSF Reflector', connections: [{ type: 'YSF', reflector: 'US-room/42' }] }).validate();
+        await profile({ title: 'Other Only', connections: [{ type: 'Other', label: 'Custom mode' }] }).validate();
         await assert.rejects(profile({
             title: 'Invalid FM Operation', connections: [{ type: 'FM', frequency: '146.940', operation: 'Duplex' }]
         }).validate());

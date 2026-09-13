@@ -100,7 +100,7 @@ const CONNECTION_FIELDS = {
     Zello: [{ key: 'channel', label: 'Channel', required: true }],
     Other: [
         { key: 'label', label: 'Label', required: true },
-        { key: 'value', label: 'Value', required: true }
+        { key: 'value', label: 'Value' }
     ]
 };
 let connectionRows = [];

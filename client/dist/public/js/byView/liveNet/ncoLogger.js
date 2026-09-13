@@ -1916,7 +1916,7 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         "WIRES-X": [{ key: "room", label: "Room Name" }, { key: "node", label: "Room ID" }],
         YSF: [{ key: "room", label: "Room / Reflector", required: true }], P25: [{ key: "talkgroup", label: "Talkgroup", required: true }],
         M17: [{ key: "reflector", label: "Reflector", required: true }, { key: "module", label: "Module" }], NXDN: [{ key: "talkgroup", label: "Talkgroup", required: true }],
-        Zello: [{ key: "channel", label: "Channel", required: true }], Other: [{ key: "label", label: "Label", required: true }, { key: "value", label: "Value", required: true }]
+        Zello: [{ key: "channel", label: "Channel", required: true }], Other: [{ key: "label", label: "Label", required: true }, { key: "value", label: "Value" }]
     };
     function renderNetEditConnections() {
         const container = panel.querySelector("[data-net-connections]");

@@ -191,6 +191,14 @@ test('Edit Net and Net Type', async t => {
                 npid: String(profile._id), flexOpts: { baseTtlMs: 5000, awayInMs: 120000, sigReportTypeByMode: {} }, requestingCallSign: nco.callSign
             });
             assert.deepEqual(sessionDetails.net.connections.map(connection => connection.type), ['Fusion', 'WIRES-X']);
+
+            const otherOnly = await invoke(nco, { ...override, connections: [{ type: 'Other', label: 'Custom mode' }] });
+            assert.equal(otherOnly.status, 200);
+            const otherOnlyLiveNet = await LiveNet.findById(liveNet._id).lean();
+            assert.equal(otherOnlyLiveNet.connections.length, 1);
+            assert.equal(otherOnlyLiveNet.connections[0].type, 'Other');
+            assert.equal(otherOnlyLiveNet.connections[0].label, 'Custom mode');
+            assert.equal(otherOnlyLiveNet.connections[0].value, undefined);
         });
 
         await t.test('rejects invalid net types and Logger/Viewer edit authority', async () => {
@@ -227,6 +235,7 @@ test('Edit Net and Net Type', async t => {
             assert.match(liveClient, /<legend>Connections<\/legend>/);
             assert.match(liveClient, /data-role="add-net-connection"/);
             for (const type of ['Fusion', 'WIRES-X', 'YSF']) assert.match(liveClient, new RegExp(`['\"]?${type}['\"]?:`));
+            assert.match(liveClient, /Other: \[\{ key: \"label\", label: \"Label\", required: true \}, \{ key: \"value\", label: \"Value\" \}\]/);
             assert.match(liveClient, /function netNotesToPlainText\(value\)/);
             assert.match(liveClient, /field === "notes" \? netNotesToPlainText/);
             assert.match(liveClient, /field === "notes" \? netNotesToHtml/);

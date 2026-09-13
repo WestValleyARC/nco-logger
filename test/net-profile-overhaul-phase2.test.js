@@ -71,6 +71,7 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
             assert.match(client, /getElementById\('add_connection'\)[\s\S]*renderConnections\(\);\s*revealCreatedConnection\(connectionRows\.length - 1\)/);
             assert.doesNotMatch(client.match(/const renderConnections = \(\) => \{[\s\S]*?\n\};/)?.[0] || '', /revealCreatedConnection/);
             assert.doesNotMatch(client, /^\s*Legacy:/m);
+            assert.match(client, /Other: \[\s*\{ key: 'label', label: 'Label', required: true \},\s*\{ key: 'value', label: 'Value' \}\s*\]/);
         });
 
         await t.test('100-character mixed-case name is preserved and duplicate names are allowed', async () => {
@@ -105,6 +106,28 @@ test('Net Profile Overhaul Phase 2 create/edit integration', async t => {
             assert.equal(multiple.status, 200);
             assert.equal(multiple.body.connections.length, 3);
             assert.equal(multiple.body.connections.filter(item => item.type === 'FM').length, 2);
+        });
+
+        await t.test('creates and edits an Other-only operating mode without a standard mode', async () => {
+            const created = await request('', {
+                method: 'POST', body: formBody({ title: 'Other Only', connections: [{ type: 'Other', label: 'Custom mode' }] })
+            });
+            assert.equal(created.status, 200);
+            assert.equal(created.body.mode, 'CUSTOM');
+            assert.equal(created.body.modeDetails, 'Custom mode');
+            assert.equal(created.body.connections.length, 1);
+            assert.equal(created.body.connections[0].type, 'Other');
+            assert.equal(created.body.connections[0].value, undefined);
+
+            const edited = await request(`/${created.body._id}`, {
+                method: 'PATCH', body: formBody({ title: 'Other Only Edited', connections: [{ type: 'Other', label: 'Alt mode' }] })
+            });
+            assert.equal(edited.status, 200);
+            const saved = await NetProfile.findById(created.body._id);
+            assert.equal(saved.mode, 'CUSTOM');
+            assert.equal(saved.modeDetails, 'Alt mode');
+            assert.equal(saved.connections.length, 1);
+            assert.equal(saved.connections[0].type, 'Other');
         });
 
         await t.test('edits and removes structured connections', async () => {

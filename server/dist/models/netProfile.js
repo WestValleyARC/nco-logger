@@ -78,7 +78,6 @@ connectionSchema.pre('validate', function validateConnection(next) {
             break;
         case 'Other':
             requireField('label', 'Other connections require label');
-            requireField('value', 'Other connections require value');
             break;
         case 'Legacy':
             requireField('value', 'Legacy connections require value');
