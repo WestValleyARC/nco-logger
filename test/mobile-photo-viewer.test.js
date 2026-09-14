@@ -50,3 +50,58 @@ test("mobile logger preserves browser pinch zoom and shrink-wraps photo viewers"
   assert.match(css, /nch-photo-viewer\[data-photo-kind="chat"\][\s\S]*?width: fit-content;[\s\S]*?height: fit-content;/);
   assert.match(css, /--nch-photo-image-max-height/);
 });
+
+// Exercise the actual viewer functions with browser navigation doubles, rather
+// than only asserting that a particular API name occurs in the source.
+async function viewerHarness(CloseWatcher) {
+  const { runInNewContext } = await import('node:vm');
+  const code = await readFile(sourcePath, 'utf8');
+  const pick = (name, next) => code.slice(code.indexOf(`  function ${name}(`), code.indexOf(`  function ${next}(`));
+  const controls = Object.fromEntries(['photo-title', 'photo-image', 'download-photo', 'close-photo'].map(key => [key, { dataset: {}, focus() {} }]));
+  const modal = { hidden: true, dataset: {}, style: {}, querySelector(selector) { return controls[selector.match(/'([^']+)'/)[1]]; } };
+  const history = { state: {}, pushes: 0, backs: 0, pushState(state) { this.state = state; this.pushes++; }, back() { this.backs++; } };
+  const context = { URL, window: { CloseWatcher, history, location: { href: 'https://example.test/net/1' } }, panel: { querySelector: () => modal }, safeImageUrl: () => true, DEFAULT_AVATAR: '', PHOTO_VIEWER_HISTORY_KEY: 'photo', syncNativeChatVisibility() {} };
+  runInNewContext(`let photoCloseWatcher = null, photoHistoryActive = false, photoTrigger = null;
+    ${pick('openPhotoViewer', 'openChatImage')}
+    ${pick('closePhotoViewer', 'detailsFor')}
+    globalThis.api = { openPhotoViewer, closePhotoViewer, handlePhotoViewerPopState, positionPhotoViewer };`, context);
+  return { ...context.api, modal, history, controls };
+}
+
+for (const kind of ['station', 'chat']) {
+  test(`${kind} viewer falls back when CloseWatcher construction fails and Back closes only the photo`, async () => {
+    const viewer = await viewerHarness(class { constructor() { throw new Error('unavailable'); } });
+    viewer.openPhotoViewer('https://example.test/photo.jpg', 'Photo', 'Photo', null, kind);
+    assert.equal(viewer.modal.hidden, false);
+    assert.equal(viewer.history.pushes, 1);
+    assert.equal(viewer.controls['download-photo'].hidden, kind !== 'chat');
+    viewer.openPhotoViewer('https://example.test/another.jpg', 'Another', 'Another', null, kind);
+    assert.equal(viewer.history.pushes, 1, 'changing the image does not add another navigation entry');
+    viewer.handlePhotoViewerPopState({ stopImmediatePropagation() {}, preventDefault() {} });
+    assert.equal(viewer.modal.hidden, true);
+    assert.equal(viewer.history.backs, 0, 'Back is not consumed twice');
+  });
+}
+
+test('CloseWatcher close restores focus without navigating away', async () => {
+  let close, destroyed = false, focused = false;
+  const viewer = await viewerHarness(class {
+    addEventListener(name, callback) { assert.equal(name, 'close'); close = callback; }
+    destroy() { destroyed = true; }
+  });
+  viewer.openPhotoViewer('https://example.test/avatar.jpg', 'Avatar', 'Avatar', { focus() { focused = true; } });
+  viewer.positionPhotoViewer();
+  assert.equal(viewer.modal.style.height, '100dvh');
+  close();
+  assert.equal(viewer.modal.hidden, true);
+  assert.ok(destroyed && focused);
+  assert.equal(viewer.history.pushes + viewer.history.backs, 0);
+});
+
+test('explicit close consumes the fallback entry once', async () => {
+  const viewer = await viewerHarness(undefined);
+  viewer.openPhotoViewer('https://example.test/avatar.jpg', 'Avatar', 'Avatar');
+  viewer.closePhotoViewer();
+  viewer.closePhotoViewer();
+  assert.equal(viewer.history.backs, 1);
+});

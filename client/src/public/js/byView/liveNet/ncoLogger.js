@@ -1469,10 +1469,15 @@ import {
     }
     photoTrigger = trigger;
     if (!photoCloseWatcher && typeof window.CloseWatcher === "function") {
-      photoCloseWatcher = new window.CloseWatcher();
-      photoCloseWatcher.addEventListener("close", () => closePhotoViewer({ consumeHistory: false }));
-      photoHistoryActive = false;
-    } else if (!photoCloseWatcher && !photoHistoryActive) {
+      try {
+        photoCloseWatcher = new window.CloseWatcher();
+        photoCloseWatcher.addEventListener("close", () => closePhotoViewer({ consumeHistory: false }));
+        photoHistoryActive = false;
+      } catch {
+        photoCloseWatcher = null;
+      }
+    }
+    if (!photoCloseWatcher && !photoHistoryActive) {
       try {
         const viewerUrl = new URL(window.location.href);
         viewerUrl.hash = "nco-photo-viewer";

@@ -1507,11 +1507,16 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         }
         photoTrigger = trigger;
         if (!photoCloseWatcher && typeof window.CloseWatcher === "function") {
-            photoCloseWatcher = new window.CloseWatcher();
-            photoCloseWatcher.addEventListener("close", () => closePhotoViewer({ consumeHistory: false }));
-            photoHistoryActive = false;
+            try {
+                photoCloseWatcher = new window.CloseWatcher();
+                photoCloseWatcher.addEventListener("close", () => closePhotoViewer({ consumeHistory: false }));
+                photoHistoryActive = false;
+            }
+            catch {
+                photoCloseWatcher = null;
+            }
         }
-        else if (!photoCloseWatcher && !photoHistoryActive) {
+        if (!photoCloseWatcher && !photoHistoryActive) {
             try {
                 const viewerUrl = new URL(window.location.href);
                 viewerUrl.hash = "nco-photo-viewer";
