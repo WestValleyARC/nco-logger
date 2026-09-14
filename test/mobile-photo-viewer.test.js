@@ -7,28 +7,24 @@ const builtPath = new URL("../client/dist/public/js/byView/liveNet/ncoLogger.js"
 const cssPath = new URL("../client/dist/public/css/nco-logger.css", import.meta.url);
 
 for (const [label, path] of [["source", sourcePath], ["built", builtPath]]) {
-  test(`${label} photo viewer follows the mobile visual viewport`, async () => {
+  test(`${label} photo viewer stays stable while browser chrome and pinch viewport move`, async () => {
     const code = await readFile(path, "utf8");
 
     assert.match(code, /function positionPhotoViewer\(\)/);
-    assert.match(code, /const viewport = window\.visualViewport;/);
-    assert.match(code, /const zoomed = \(viewport\?\.scale \|\| 1\) > 1\.01;/);
-    assert.match(code, /const left = zoomed \? \(viewport\?\.offsetLeft \|\| 0\) : 0;/);
-    assert.match(code, /const height = viewport\?\.height \|\| document\.documentElement\.clientHeight \|\| window\.innerHeight;/);
+    assert.match(code, /width: "100vw", height: "100dvh"/);
+    assert.doesNotMatch(code, /addEventListener\("scroll", positionPhotoViewer\)/);
     assert.match(code, /modal\.hidden = false;\s+positionPhotoViewer\(\);/);
-    assert.match(code, /window\.visualViewport\?\.addEventListener\("scroll", positionPhotoViewer\);/);
   });
 
-  test(`${label} photo viewer consumes browser Back before leaving the logger`, async () => {
+  test(`${label} photo viewer uses CloseWatcher for Android Back with history fallback`, async () => {
     const code = await readFile(path, "utf8");
 
+    assert.match(code, /typeof window\.CloseWatcher === "function"/);
+    assert.match(code, /new window\.CloseWatcher\(\)/);
+    assert.match(code, /addEventListener\("close", \(\) => closePhotoViewer\(\{ consumeHistory: false \}\)\)/);
     assert.match(code, /viewerUrl\.hash = "nco-photo-viewer";/);
     assert.match(code, /window\.history\.pushState\(/);
-    assert.match(code, /function handlePhotoViewerPopState\(event\)/);
-    assert.match(code, /event\?\.stopImmediatePropagation\?\.\(\);/);
     assert.match(code, /window\.addEventListener\("popstate", handlePhotoViewerPopState, true\);/);
-    assert.match(code, /closePhotoViewer\(\{ consumeHistory: false \}\);/);
-    assert.match(code, /if \(consumeHistory && photoHistoryActive\)[\s\S]*?window\.history\.back\(\);/);
   });
 }
 

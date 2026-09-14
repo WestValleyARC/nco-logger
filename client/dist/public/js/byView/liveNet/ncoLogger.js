@@ -255,6 +255,7 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
     let slashBridgeHandlerRegistered = false;
     let photoTrigger = null;
     let photoHistoryActive = false;
+    let photoCloseWatcher = null;
     const hiddenCalls = new Set();
     let priorDocumentOverflow = "";
     let priorBodyOverflow = "";
@@ -1505,7 +1506,12 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
             download.dataset.imageUrl = kind === "chat" ? candidate : "";
         }
         photoTrigger = trigger;
-        if (!photoHistoryActive) {
+        if (!photoCloseWatcher && typeof window.CloseWatcher === "function") {
+            photoCloseWatcher = new window.CloseWatcher();
+            photoCloseWatcher.addEventListener("close", () => closePhotoViewer({ consumeHistory: false }));
+            photoHistoryActive = false;
+        }
+        else if (!photoCloseWatcher && !photoHistoryActive) {
             try {
                 const viewerUrl = new URL(window.location.href);
                 viewerUrl.hash = "nco-photo-viewer";
@@ -1724,6 +1730,11 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         syncNativeChatVisibility();
         photoTrigger?.focus?.();
         photoTrigger = null;
+        if (photoCloseWatcher) {
+            const watcher = photoCloseWatcher;
+            photoCloseWatcher = null;
+            watcher.destroy();
+        }
         if (consumeHistory && photoHistoryActive) {
             photoHistoryActive = false;
             window.history.back();
@@ -1742,18 +1753,7 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         const modal = panel?.querySelector("[data-role='photo-viewer']");
         if (!modal || modal.hidden)
             return;
-        const viewport = window.visualViewport;
-        const width = viewport?.width || document.documentElement.clientWidth || window.innerWidth;
-        const height = viewport?.height || document.documentElement.clientHeight || window.innerHeight;
-        const zoomed = (viewport?.scale || 1) > 1.01;
-        const left = zoomed ? (viewport?.offsetLeft || 0) : 0;
-        const top = zoomed ? (viewport?.offsetTop || 0) : 0;
-        Object.assign(modal.style, {
-            left: `${Math.round(left)}px`, top: `${Math.round(top)}px`,
-            width: `${Math.round(width)}px`, height: `${Math.round(height)}px`,
-            "--nch-photo-image-max-width": `${Math.max(120, Math.round(width) - 36)}px`,
-            "--nch-photo-image-max-height": `${Math.max(120, Math.round(height) - 86)}px`
-        });
+        Object.assign(modal.style, { left: "0px", top: "0px", width: "100vw", height: "100dvh" });
     }
     function detailsFor(callSign) {
         const call = normalizeCall(callSign);
@@ -5822,7 +5822,6 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
     window.addEventListener("popstate", handlePhotoViewerPopState, true);
     window.visualViewport?.addEventListener("resize", handleWindowResize);
     window.visualViewport?.addEventListener("scroll", positionStationActionModal);
-    window.visualViewport?.addEventListener("scroll", positionPhotoViewer);
     window.addEventListener("keydown", handleActionHotkey, true);
     window.addEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
     Promise.all([relayStorageGet(), storageGet()]).then(async ([relayData, saved]) => {
@@ -5903,7 +5902,6 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
         window.removeEventListener("popstate", handlePhotoViewerPopState, true);
         window.visualViewport?.removeEventListener("resize", handleWindowResize);
         window.visualViewport?.removeEventListener("scroll", positionStationActionModal);
-        window.visualViewport?.removeEventListener("scroll", positionPhotoViewer);
         window.removeEventListener("keydown", handleActionHotkey, true);
         window.removeEventListener("ncoLogger:appearancechange", syncAppearanceSwitch);
         stopSync();
