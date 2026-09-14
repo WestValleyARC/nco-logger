@@ -1691,9 +1691,10 @@ import {
   function handlePhotoViewerPopState(event) {
     const modal = panel?.querySelector("[data-role='photo-viewer']");
     if (!modal || modal.hidden) return;
+    event?.stopImmediatePropagation?.();
+    event?.preventDefault?.();
     photoHistoryActive = false;
     closePhotoViewer({ consumeHistory: false });
-    event?.stopImmediatePropagation?.();
   }
 
   function positionPhotoViewer() {
@@ -1702,8 +1703,14 @@ import {
     const viewport = window.visualViewport;
     const width = viewport?.width || document.documentElement.clientWidth || window.innerWidth;
     const height = viewport?.height || document.documentElement.clientHeight || window.innerHeight;
+    const zoomed = (viewport?.scale || 1) > 1.01;
+    const left = zoomed ? (viewport?.offsetLeft || 0) : 0;
+    const top = zoomed ? (viewport?.offsetTop || 0) : 0;
     Object.assign(modal.style, {
-      left: "0px", top: "0px", width: `${Math.round(width)}px`, height: `${Math.round(height)}px`
+      left: `${Math.round(left)}px`, top: `${Math.round(top)}px`,
+      width: `${Math.round(width)}px`, height: `${Math.round(height)}px`,
+      "--nch-photo-image-max-width": `${Math.max(120, Math.round(width) - 36)}px`,
+      "--nch-photo-image-max-height": `${Math.max(120, Math.round(height) - 86)}px`
     });
   }
 
@@ -5541,7 +5548,7 @@ import {
     browserStorage.get([relayTokenKey], resolve)
   );
   window.addEventListener("resize", handleWindowResize);
-  window.addEventListener("popstate", handlePhotoViewerPopState);
+  window.addEventListener("popstate", handlePhotoViewerPopState, true);
   window.visualViewport?.addEventListener("resize", handleWindowResize);
   window.visualViewport?.addEventListener("scroll", positionStationActionModal);
   window.visualViewport?.addEventListener("scroll", positionPhotoViewer);
@@ -5615,7 +5622,7 @@ import {
     if (pollTimer !== null) clearInterval(pollTimer);
     pollTimer = null;
     window.removeEventListener("resize", handleWindowResize);
-    window.removeEventListener("popstate", handlePhotoViewerPopState);
+    window.removeEventListener("popstate", handlePhotoViewerPopState, true);
     window.visualViewport?.removeEventListener("resize", handleWindowResize);
     window.visualViewport?.removeEventListener("scroll", positionStationActionModal);
     window.visualViewport?.removeEventListener("scroll", positionPhotoViewer);

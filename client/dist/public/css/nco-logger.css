@@ -1822,10 +1822,12 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
 
 #netcontrol-ncs-helper .nch-photo-viewer .nch-photo-card,
 #netcontrol-ncs-helper .nch-photo-viewer[data-photo-kind="chat"] .nch-photo-card {
-  width: min(76vw, 1280px, 100%);
-  height: min(76vh, 900px, 100%);
+  display: grid;
+  width: fit-content;
+  height: fit-content;
   max-width: 100%;
   max-height: 100%;
+  grid-template-rows: auto minmax(0, auto);
 }
 
 #netcontrol-ncs-helper .nch-photo-viewer .nch-photo-card h3 {
@@ -1836,11 +1838,15 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
   justify-content: center;
 }
 
-#netcontrol-ncs-helper .nch-photo-viewer .nch-photo-card img {
+#netcontrol-ncs-helper .nch-photo-viewer .nch-photo-card img,
+#netcontrol-ncs-helper .nch-photo-viewer[data-photo-kind="chat"] .nch-photo-card img {
+  width: auto;
+  height: auto;
   min-width: 0;
   min-height: 0;
-  max-width: 100%;
-  max-height: calc(100% - 52px);
+  max-width: min(100%, var(--nch-photo-image-max-width, 100%));
+  max-height: var(--nch-photo-image-max-height, calc(100dvh - 86px));
+  justify-self: center;
   object-fit: contain;
 }
 
@@ -1919,7 +1925,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) #
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] :is(.nch-module-content, .nch-module-header) {
   overscroll-behavior-y: auto;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-resize-zone {
@@ -2040,7 +2046,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"]) >
 body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   hl-chat.nch-chat-docked :is(.chat-messages, .nch-private-messages, .nch-pinned-chat-strip) {
   overscroll-behavior-y: auto !important;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 #netcontrol-ncs-helper[data-layout-context^="phone"] .nch-fixed-status-bar {
@@ -2228,7 +2234,7 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
     min-height: 32px;
     flex-basis: 32px;
     line-height: 32px;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
   }
 
   #netcontrol-ncs-helper .nch-resize-zone {
