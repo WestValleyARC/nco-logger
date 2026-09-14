@@ -1814,6 +1814,7 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
 }
 
 #netcontrol-ncs-helper .nch-photo-viewer {
+  z-index: 2147483600;
   right: auto;
   bottom: auto;
   box-sizing: border-box;
@@ -1825,8 +1826,8 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
   display: grid;
   width: fit-content;
   height: fit-content;
-  max-width: 100%;
-  max-height: 100%;
+  max-width: calc(100vw - max(20px, env(safe-area-inset-left)) - max(20px, env(safe-area-inset-right)));
+  max-height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
   grid-template-rows: auto minmax(0, auto);
 }
 

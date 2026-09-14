@@ -32,8 +32,8 @@ test("photo controls remain inside the safe, visible viewer area", async () => {
   const css = await readFile(cssPath, "utf8");
 
   assert.match(css, /\.nch-photo-viewer[\s\S]*?position: fixed;[\s\S]*?env\(safe-area-inset-top\)/);
-  assert.match(css, /\.nch-photo-viewer \{[\s\S]*?right: auto;[\s\S]*?bottom: auto;[\s\S]*?overflow: hidden;/);
-  assert.match(css, /\.nch-photo-viewer\[data-photo-kind="chat"\] \.nch-photo-card \{[\s\S]*?width: fit-content;[\s\S]*?height: fit-content;[\s\S]*?max-width: 100%;[\s\S]*?max-height: 100%;/);
+  assert.match(css, /\.nch-photo-viewer \{[\s\S]*?z-index: 2147483600;[\s\S]*?right: auto;[\s\S]*?bottom: auto;[\s\S]*?overflow: hidden;/);
+  assert.match(css, /\.nch-photo-viewer\[data-photo-kind="chat"\] \.nch-photo-card \{[\s\S]*?width: fit-content;[\s\S]*?height: fit-content;[\s\S]*?max-width: calc\(100vw[\s\S]*?max-height: calc\(100dvh/);
   assert.match(css, /button\.nch-photo-close \{ position: absolute; z-index: 2;[\s\S]*?width: 44px; height: 44px; min-width: 44px;/);
   assert.match(css, /button\.nch-photo-download \{ position: absolute; z-index: 2;[\s\S]*?width: 44px; height: 44px; min-width: 44px;/);
   assert.match(css, /\.nch-photo-viewer \.nch-photo-card h3 \{[\s\S]*?min-height: 44px;/);
