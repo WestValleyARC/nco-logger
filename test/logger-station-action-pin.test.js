@@ -131,7 +131,7 @@ test('phone and tablet station actions render in one visual-viewport modal with 
     assert.match(css, /:is\(\[data-layout-context\^="phone"\], \[data-layout-context\^="tablet"\]\) button\.nch-station-action-toggle\s*\{[^}]*display:\s*inline-flex[^}]*width:\s*36px[^}]*height:\s*36px/s);
 });
 
-test('phone module resize handles are absent and every resize path is guarded', () => {
+test('phone independent resize handles stay disabled while shared splitters remain available', () => {
     const source = read('client/src/public/js/byView/liveNet/ncoLogger.js');
     const css = read('client/dist/public/css/nco-logger.css');
     assert.match(source, /function syncModuleResizeAvailability\(\)[\s\S]*const enabled = !currentLayoutContext\.startsWith\("phone"\)[\s\S]*handle\.hidden = !enabled[\s\S]*handle\.tabIndex = enabled \? 0 : -1/);
@@ -141,6 +141,9 @@ test('phone module resize handles are absent and every resize path is guarded', 
     assert.match(css, /\[data-layout-context\^="phone"\] \.nch-resize-zone\s*\{[^}]*display:\s*none !important[^}]*pointer-events:\s*none !important/s);
     assert.match(css, /#netcontrol-ncs-helper \.nch-resize-zone\s*\{[^}]*display:\s*block/s);
     assert.match(source, /handle\.tabIndex = enabled \? 0 : -1/);
+    assert.match(source, /new LoggerSplitterControls\(dashboard/);
+    assert.match(css, /\.nch-shared-splitter\s*\{[^}]*touch-action:\s*none/s);
+    assert.doesNotMatch(css, /\[data-layout-context\^="phone"\] \.nch-shared-splitter\s*\{[^}]*display:\s*none/s);
 });
 
 test('module move and resize affordances are visible, directional, and responsively suppressed', () => {

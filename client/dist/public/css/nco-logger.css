@@ -2556,3 +2556,27 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   margin-top: 0;
   transform: none;
 }
+
+/* A single boundary owns docked resizing on every layout context. */
+#netcontrol-ncs-helper .nch-module-docked .nch-resize-zone {
+  display: none !important;
+  pointer-events: none !important;
+}
+#netcontrol-ncs-helper .nch-shared-splitter {
+  position: absolute;
+  z-index: 110;
+  box-sizing: border-box;
+  touch-action: none;
+  background: transparent;
+}
+#netcontrol-ncs-helper .nch-shared-splitter[data-axis="x"] { transform: translateX(-50%); cursor: col-resize; }
+#netcontrol-ncs-helper .nch-shared-splitter[data-axis="y"] { transform: translateY(-50%); cursor: row-resize; }
+#netcontrol-ncs-helper .nch-shared-splitter::after { content: ""; position: absolute; background: #74c6d4; border-radius: 3px; }
+#netcontrol-ncs-helper .nch-shared-splitter[data-axis="x"]::after { width: 3px; left: calc(50% - 1px); top: 22px; bottom: 22px; }
+#netcontrol-ncs-helper .nch-shared-splitter[data-axis="y"]::after { height: 3px; top: calc(50% - 1px); left: 22px; right: 22px; }
+#netcontrol-ncs-helper .nch-shared-splitter:focus-visible { outline: 2px solid #fff; outline-offset: -4px; background: #74c6d433; }
+#netcontrol-ncs-helper .nch-shared-splitter:hover::after { background: #fff; }
+#netcontrol-ncs-helper .nch-docking-preview .nch-shared-splitter { visibility: hidden; }
+body.nch-splitting, body.nch-splitting * { user-select: none !important; }
+#netcontrol-ncs-helper .nch-module-drop-preview[data-dock-edge] { background: #74c6d455; border: 3px solid #74c6d4; }
+#netcontrol-ncs-helper .nch-module-drop-preview[data-dock-edge]::after { content: "Dock " attr(data-dock-edge); color: #fff; background: #172027; padding: 4px 8px; }

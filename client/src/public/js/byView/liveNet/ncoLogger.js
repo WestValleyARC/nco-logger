@@ -1,3 +1,5 @@
+import { LoggerSplitterControls } from "../../lib/loggerSplitterControls.js";
+import { dockAtEdge, sharedBoundaries } from "../../lib/loggerSplitters.js";
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
 import {
   AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, isQrzNameFresh,
@@ -227,6 +229,7 @@ import {
   let touchRowDrag = null;
   let suppressStationRowClickUntil = 0;
   let resizing = null;
+  let splitterControls = null;
   let modulePointerDrag = null;
   let editingNoteCall = "";
   const noteDrafts = new Map();
@@ -935,10 +938,18 @@ import {
     const followsDocument = currentLayoutContext.startsWith("phone");
     const documentLeft = rect.left + (followsDocument ? window.scrollX : 0);
     const documentTop = rect.top + (followsDocument ? window.scrollY : 0);
-    chat.style.setProperty("--nch-chat-left", `${Math.round(documentLeft + 2)}px`);
-    chat.style.setProperty("--nch-chat-top", `${Math.round(documentTop + 2)}px`);
-    chat.style.setProperty("--nch-chat-width", `${Math.max(0, Math.round(rect.width - 4))}px`);
-    chat.style.setProperty("--nch-chat-height", `${Math.max(0, Math.round(rect.height - 4))}px`);
+    // The native chat is a separate high-z-index host. Reserve the inner half
+    // of each shared drag target so it cannot cover the splitter's hit area.
+    const inset = { left: 2, right: 2, top: 2, bottom: 2 };
+    const layout = visiblePhonePortraitLayout(normalizeModuleLayout()).layout;
+    sharedBoundaries(layout, visibleModuleIds(layout)).forEach(boundary => {
+      if (boundary.before.includes("chat")) inset[boundary.axis === "x" ? "right" : "bottom"] = 22;
+      if (boundary.after.includes("chat")) inset[boundary.axis === "x" ? "left" : "top"] = 22;
+    });
+    chat.style.setProperty("--nch-chat-left", `${Math.round(documentLeft + inset.left)}px`);
+    chat.style.setProperty("--nch-chat-top", `${Math.round(documentTop + inset.top)}px`);
+    chat.style.setProperty("--nch-chat-width", `${Math.max(0, Math.round(rect.width - inset.left - inset.right))}px`);
+    chat.style.setProperty("--nch-chat-height", `${Math.max(0, Math.round(rect.height - inset.top - inset.bottom))}px`);
     syncNativeChatVisibility();
   }
 
@@ -4083,6 +4094,7 @@ import {
 
   function switchLayoutContext(nextContext) {
     if (!nextContext || nextContext === currentLayoutContext) return false;
+    splitterControls?.cancel();
     saveActiveLayoutContext();
     currentLayoutContext = nextContext;
     local.moduleLayout = restoreModuleLayout(savedLayoutForContext(nextContext) || defaultModuleLayoutForMode());
@@ -4111,6 +4123,43 @@ import {
     return { layout: rendered, rows: Math.max(1, nextRow) };
   }
 
+  function splitterMinimums() {
+    return Object.fromEntries(MODULE_IDS.map(id => [id, {
+      w: MIN_MODULE_COLUMNS,
+      h: id === "controls" && currentLayoutContext === "phonePortrait" ? 6
+        : id === "controls" && currentLayoutContext === "tabletPortrait" ? 5 : MIN_MODULE_ROWS[id]
+    }]));
+  }
+
+  function ensureSplitterControls(dashboard) {
+    if (splitterControls) return;
+    splitterControls = new LoggerSplitterControls(dashboard, {
+      read: () => visiblePhonePortraitLayout(normalizeModuleLayout()).layout,
+      visible: visibleModuleIds,
+      minimums: splitterMinimums,
+      labels: MODULE_LABELS,
+      allowed: boundary => !(currentLayoutContext === "tabletPortrait" && boundary.axis === "y"
+        && [...boundary.before, ...boundary.after].includes("controls")),
+      apply: candidate => {
+        if (currentLayoutContext === "tabletPortrait" && moduleAvailable("controls")
+            && (candidate.items.controls.y !== 0 || candidate.items.controls.h !== 5)) return;
+        if (currentLayoutContext === "phonePortrait") {
+          const stored = normalizeModuleLayout();
+          const displayed = visiblePhonePortraitLayout(stored).layout;
+          // Compact rendering must not move hidden modules into an occupied
+          // saved rectangle when a visible boundary changes height.
+          for (const id of visibleModuleIds(stored)) {
+            stored.items[id] = { ...candidate.items[id],
+              y: stored.items[id].y + candidate.items[id].y - displayed.items[id].y };
+          }
+          local.moduleLayout = stored;
+        } else local.moduleLayout = candidate;
+        renderGridLayout(local.moduleLayout);
+      },
+      save: storageSet
+    });
+  }
+
   function renderGridLayout(layout, draggingId = "") {
     const dashboard = panel?.querySelector("[data-role='dashboard']");
     if (!dashboard) return;
@@ -4132,6 +4181,9 @@ import {
     });
     dashboard.style.setProperty("--nch-grid-rows", String(rendered.rows));
     dashboard.style.setProperty("--nch-grid-gap", `${GRID_GAP}px`);
+    ensureSplitterControls(dashboard);
+    splitterControls.render();
+    dashboard.classList.toggle("nch-docking-preview", Boolean(draggingId));
     window.requestAnimationFrame(positionNativeChat);
   }
 
@@ -4288,6 +4340,7 @@ import {
   function previewModuleGrid(clientX, clientY) {
     if (!modulePointerDrag?.started) return;
     const { dashboard, moduleId, offsetX, offsetY } = modulePointerDrag;
+    renderGridLayout(modulePointerDrag.originalLayout, moduleId);
     const box = dashboard.getBoundingClientRect();
     const metrics = gridMetrics(dashboard);
     const originalItem = modulePointerDrag.originalLayout.items[moduleId];
@@ -4295,7 +4348,7 @@ import {
     const requestedX = Math.min(GRID_COLUMNS - originalItem.w, Math.max(0, Math.round((clientX - box.left - offsetX) / metrics.columnStep)));
     const requestedY = metrics.nearestRowStart(clientY - box.top - offsetY, Math.max(0, metrics.rows - originalItem.h));
     const snapped = snapModulePosition(modulePointerDrag.originalLayout, moduleId, requestedX, requestedY);
-    const candidate = collisionFreeModulePosition(
+    let candidate = collisionFreeModulePosition(
       modulePointerDrag.originalLayout,
       moduleId,
       snapped.x,
@@ -4303,6 +4356,25 @@ import {
       currentItem.x,
       currentItem.y
     );
+    modulePointerDrag.preview.removeAttribute("data-dock-edge");
+    for (const targetId of visibleModuleIds(modulePointerDrag.originalLayout)) {
+      if (targetId === moduleId) continue;
+      const target = dashboard.querySelector(`[data-module='${targetId}']`);
+      const rect = target?.getBoundingClientRect();
+      if (!rect || clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) continue;
+      const edges = [["left", clientX - rect.left], ["right", rect.right - clientX],
+        ["top", clientY - rect.top], ["bottom", rect.bottom - clientY]].sort((a, b) => a[1] - b[1]);
+      const [edge, distance] = edges[0];
+      if (distance > Math.min(44, rect.width / 4, rect.height / 4)) continue;
+      const docked = dockAtEdge(modulePointerDrag.originalLayout, moduleId, targetId, edge,
+        splitterMinimums(), visibleModuleIds(modulePointerDrag.originalLayout));
+      if (docked && !(currentLayoutContext === "tabletPortrait" && moduleAvailable("controls")
+          && (docked.items.controls.h !== 5 || docked.items.controls.y !== 0))) {
+        candidate = docked;
+        modulePointerDrag.preview.dataset.dockEdge = edge;
+      }
+      break;
+    }
     if (!candidate) return;
     modulePointerDrag.previewLayout = candidate;
     renderGridLayout(candidate, moduleId);
@@ -4436,6 +4508,8 @@ import {
   function addPanel() {
     if (panel?.dataset.renderedRole === currentUserRole) return;
     if (panel) {
+      splitterControls?.destroy();
+      splitterControls = null;
       restoreNativeChat();
       panel.remove();
       panel = null;
@@ -5482,6 +5556,8 @@ import {
       if (!me) {
         restoreNativeChat();
         unlockBackgroundScroll();
+        splitterControls?.destroy();
+        splitterControls = null;
         panel?.remove();
         panel = null;
         return;
@@ -5627,6 +5703,8 @@ import {
     if (refreshScheduleTimer) clearTimeout(refreshScheduleTimer);
     if (pollTimer !== null) clearInterval(pollTimer);
     pollTimer = null;
+    splitterControls?.destroy();
+    splitterControls = null;
     window.removeEventListener("resize", handleWindowResize);
     window.removeEventListener("popstate", handlePhotoViewerPopState, true);
     window.visualViewport?.removeEventListener("resize", handleWindowResize);
