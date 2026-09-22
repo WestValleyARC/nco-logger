@@ -69,7 +69,9 @@ import {
                     iconElem.classList.add('d-none');
                 }
 
-                netFreqElem.innerText = formatConnectionLines(liveNet).join('\n');
+                const connection = formatConnectionLines(liveNet).join('\n');
+                netFreqElem.innerText = connection;
+                netFreqElem.title = connection;
                 checkInCountElem.textContent = `${liveNet.checkInCount} Check-In${liveNet.checkInCount === 1 ? '' : 's'}`;
 
                 const startTimeElem = rowTemplateClone.querySelector('#startTime');
@@ -171,6 +173,14 @@ import {
     }
 
     rowCollectionElem.addEventListener('click', event => {
+        const favorite = event.target.closest('.landing-net-favorite');
+        if (favorite) {
+            event.preventDefault();
+            event.stopPropagation();
+            void favorites.handler({ target: favorite });
+            return;
+        }
+
         const row = event.target.closest('.liveNetRow');
         if (row?.dataset.href) {
             window.location.assign(row.dataset.href);
