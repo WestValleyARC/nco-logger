@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { googleDisplayName, userForGoogleProfile } = require('../server/dist/routes/authRoutes');
 
 const profile = overrides => ({
@@ -57,4 +59,13 @@ test('Google sign-in rejects profiles without a usable email address', async () 
     const UserProfileModel = { findOneAndUpdate: async () => assert.fail('database should not be queried') };
     assert.equal(await userForGoogleProfile(profile({ emails: [] }), UserProfileModel), null);
     assert.equal(await userForGoogleProfile(profile({ emails: [{ value: 'not-an-email' }] }), UserProfileModel), null);
+});
+
+test('Google callback failures produce an actionable login-page message', () => {
+    const loginSource = fs.readFileSync(
+        path.join(__dirname, '../client/dist/public/js/byView/login/main.js'),
+        'utf8'
+    );
+    assert.match(loginSource, /get\('error'\) === 'google-auth'/);
+    assert.match(loginSource, /Try the email sign-in method below or contact support/);
 });
