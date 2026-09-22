@@ -6,6 +6,10 @@ including the changes merged after beta.4. See [CHANGELOG.md](CHANGELOG.md)
 for user-facing changes and PR references. This version bump does not deploy
 the app or certify the production release checklist.
 
+The 1.1.0 cut includes merged work through PR #71. Remaining reports #70,
+#74, and #75 are follow-up work for 1.1.1 or later; draft PR #76 must follow
+this version bump and is not part of 1.1.0.
+
 ## User-facing additions
 
 - First-party NCO operations, handoff, live Edit Net and Net Type controls,
