@@ -60,11 +60,11 @@ export class LoggerSplitterControls {
             if (boundary.axis === 'x') {
                 const x = (Math.max(...before.map(rect => rect.right)) + Math.min(...after.map(rect => rect.left))) / 2;
                 const top = Math.min(...rectangles.map(rect => rect.top));
-                Object.assign(handle.style, { left: `${x - box.left + this.dashboard.scrollLeft}px`, top: `${top - box.top + this.dashboard.scrollTop + 24}px`, width: '44px', height: `${Math.max(0, Math.max(...rectangles.map(rect => rect.bottom)) - top - 48)}px` });
+                Object.assign(handle.style, { left: `${x - box.left + this.dashboard.scrollLeft}px`, top: `${top - box.top + this.dashboard.scrollTop}px`, width: '44px', height: `${Math.max(0, Math.max(...rectangles.map(rect => rect.bottom)) - top)}px` });
             } else {
                 const y = (Math.max(...before.map(rect => rect.bottom)) + Math.min(...after.map(rect => rect.top))) / 2;
                 const left = Math.min(...rectangles.map(rect => rect.left));
-                Object.assign(handle.style, { left: `${left - box.left + this.dashboard.scrollLeft + 32}px`, top: `${y - box.top + this.dashboard.scrollTop}px`, width: `${Math.max(0, Math.max(...rectangles.map(rect => rect.right)) - left - 64)}px`, height: '44px' });
+                Object.assign(handle.style, { left: `${left - box.left + this.dashboard.scrollLeft}px`, top: `${y - box.top + this.dashboard.scrollTop}px`, width: `${Math.max(0, Math.max(...rectangles.map(rect => rect.right)) - left)}px`, height: '44px' });
             }
         }
         for (const [id, handle] of this.handles) {
@@ -95,7 +95,6 @@ export class LoggerSplitterControls {
         const step = boundary.axis === 'x' ? (rect.width + gap) / item.w : (rect.height + gap) / item.h;
         event.preventDefault();
         event.stopPropagation();
-        handle.focus({ preventScroll: true });
         this.drag = { pointerId: event.pointerId, handle, layout, boundary, start: boundary.axis === 'x' ? event.clientX : event.clientY, step };
         handle.setPointerCapture(event.pointerId);
         document.body.classList.add('nch-splitting');
