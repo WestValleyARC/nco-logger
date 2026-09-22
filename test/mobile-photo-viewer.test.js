@@ -41,12 +41,25 @@ test("photo controls remain inside the safe, visible viewer area", async () => {
   assert.match(css, /max-height: var\(--nch-photo-image-max-height, max\(0px, calc\(100dvh - 160px - env\(safe-area-inset-top\) - env\(safe-area-inset-bottom\)\)\)\);/);
 });
 
-test("header menu stays above shared dashboard splitters", async () => {
+test("shared splitters stay at pane depth below desktop and phone overlays", async () => {
   const css = await readFile(cssPath, "utf8");
-  const header = css.match(/#netcontrol-ncs-helper header \{[^}]*?z-index: (\d+);/);
-  const splitter = css.match(/#netcontrol-ncs-helper \.nch-shared-splitter \{[^}]*?z-index: (\d+);/);
-  assert.ok(header && splitter);
-  assert.ok(Number(header[1]) > Number(splitter[1]));
+  const layer = selector => {
+    const rule = css.slice(css.indexOf(`${selector} {`)).split('}')[0];
+    const match = rule.match(/z-index: (\d+);/);
+    assert.ok(match, `missing layer for ${selector}`);
+    return Number(match[1]);
+  };
+  const splitter = layer('#netcontrol-ncs-helper .nch-shared-splitter');
+  assert.equal(splitter, layer('#netcontrol-ncs-helper .nch-module'));
+  for (const selector of [
+    '#netcontrol-ncs-helper header',
+    '#netcontrol-ncs-helper[data-layout-context^="phone"] > header',
+    '#netcontrol-ncs-helper[data-layout-context^="phone"] .nch-fixed-status-bar',
+    '#netcontrol-ncs-helper .nch-module:is(.nch-module-dragging, .nch-module-resizing)',
+    '#netcontrol-ncs-helper .nch-help-modal',
+    '#netcontrol-ncs-helper .nch-edit-modal',
+    '#netcontrol-ncs-helper .nch-viewer-host',
+  ]) assert.ok(layer(selector) > splitter, `${selector} must cover splitters`);
 });
 
 
@@ -113,4 +126,34 @@ test('explicit close consumes the fallback entry once', async () => {
   viewer.closePhotoViewer();
   viewer.closePhotoViewer();
   assert.equal(viewer.history.backs, 1);
+});
+
+test('chat thumbnail, button padding, keyboard and pinned-image clicks all use the fitted logger viewer', async () => {
+  const { runInNewContext } = await import('node:vm');
+  const code = await readFile(sourcePath, 'utf8');
+  const handler = code.slice(code.indexOf('  function openChatImage('), code.indexOf('  function dockNativeChatUnsafe('));
+  for (const buttonClass of ['chat-image-link', 'chat-pinned-image-open']) {
+    for (const clickedImage of [true, false]) {
+      const image = { currentSrc: 'https://example.test/chat.png', alt: 'Shared photo' };
+      const button = { querySelector: selector => selector === 'img' ? image : null, getAttribute: () => null };
+      const target = {
+        closest(selector) {
+          if (selector.split(', ').includes(`.${buttonClass}`)) return button;
+          if (selector === "button, [role='button']") return button;
+          return null; // Actual chat image buttons are outside .chat-message-content.
+        }
+      };
+      if (clickedImage) image.closest = target.closest;
+      let opened, prevented = false, stopped = false;
+      const context = {
+        chatImageHost: { contains: element => element === image || element === button },
+        openPhotoViewer: (...args) => { opened = args; },
+      };
+      runInNewContext(`${handler}; globalThis.handle = openChatImage;`, context);
+      context.handle({ target: clickedImage ? image : target,
+        preventDefault() { prevented = true; }, stopImmediatePropagation() { stopped = true; } });
+      assert.deepEqual(opened, [image.currentSrc, 'Chat image', image.alt, button, 'chat']);
+      assert.ok(prevented && stopped, 'nested chat viewer must not also open');
+    }
+  }
 });

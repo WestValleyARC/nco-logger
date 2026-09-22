@@ -2565,7 +2565,8 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 }
 #netcontrol-ncs-helper .nch-shared-splitter {
   position: absolute;
-  z-index: 110;
+  /* Share the pane layer; overlays and raised panes must cover the drag target too. */
+  z-index: 1;
   box-sizing: border-box;
   touch-action: none;
   background: transparent;
@@ -2573,10 +2574,10 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
 #netcontrol-ncs-helper .nch-shared-splitter[data-axis="x"] { transform: translateX(-50%); cursor: col-resize; }
 #netcontrol-ncs-helper .nch-shared-splitter[data-axis="y"] { transform: translateY(-50%); cursor: row-resize; }
 #netcontrol-ncs-helper .nch-shared-splitter::after { content: ""; position: absolute; background: #74c6d4; border-radius: 3px; }
-#netcontrol-ncs-helper .nch-shared-splitter[data-axis="x"]::after { width: 3px; left: calc(50% - 1px); top: 22px; bottom: 22px; }
-#netcontrol-ncs-helper .nch-shared-splitter[data-axis="y"]::after { height: 3px; top: calc(50% - 1px); left: 22px; right: 22px; }
-#netcontrol-ncs-helper .nch-shared-splitter:focus-visible { outline: 2px solid #fff; outline-offset: -4px; background: #74c6d433; }
-#netcontrol-ncs-helper .nch-shared-splitter:hover::after { background: #fff; }
+#netcontrol-ncs-helper .nch-shared-splitter[data-axis="x"]::after { width: 3px; left: calc(50% - 1px); top: 0; bottom: 0; }
+#netcontrol-ncs-helper .nch-shared-splitter[data-axis="y"]::after { height: 3px; top: calc(50% - 1px); left: 0; right: 0; }
+#netcontrol-ncs-helper .nch-shared-splitter:focus-visible { outline: 0; background: transparent; }
+#netcontrol-ncs-helper .nch-shared-splitter:is(:hover, :focus-visible)::after { background: #fff; }
 #netcontrol-ncs-helper .nch-docking-preview .nch-shared-splitter { visibility: hidden; }
 body.nch-splitting, body.nch-splitting * { user-select: none !important; }
 #netcontrol-ncs-helper .nch-module-drop-preview[data-dock-edge] { background: #74c6d455; border: 3px solid #74c6d4; }

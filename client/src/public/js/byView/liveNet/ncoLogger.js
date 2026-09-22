@@ -1552,13 +1552,17 @@ import {
       downloadChatImage(source);
       return;
     }
-    const image = event.target.closest?.(".chat-message-content img");
+    // Chat thumbnails are buttons beside the message content, and pinned images
+    // have their own button. Catch the entire control (including keyboard clicks)
+    // so they use this viewport-fitted viewer instead of the nested chat lightbox.
+    const imageButton = event.target.closest?.(".chat-image-link, .chat-pinned-image-open");
+    const image = imageButton?.querySelector("img") || event.target.closest?.(".chat-message-content img");
     if (!image || !chatImageHost?.contains(image)) return;
     const source = image.currentSrc || image.src || image.dataset.imageUrl || "";
     if (!source) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    openPhotoViewer(source, "Chat image", image.alt || "Enlarged chat image", image, "chat");
+    openPhotoViewer(source, "Chat image", image.alt || "Enlarged chat image", imageButton || image, "chat");
   }
 
   function dockNativeChatUnsafe() {

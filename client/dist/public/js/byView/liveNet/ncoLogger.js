@@ -1594,7 +1594,8 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
             downloadChatImage(source);
             return;
         }
-        const image = event.target.closest?.(".chat-message-content img");
+        const imageButton = event.target.closest?.(".chat-image-link, .chat-pinned-image-open");
+        const image = imageButton?.querySelector("img") || event.target.closest?.(".chat-message-content img");
         if (!image || !chatImageHost?.contains(image))
             return;
         const source = image.currentSrc || image.src || image.dataset.imageUrl || "";
@@ -1602,7 +1603,7 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
             return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        openPhotoViewer(source, "Chat image", image.alt || "Enlarged chat image", image, "chat");
+        openPhotoViewer(source, "Chat image", image.alt || "Enlarged chat image", imageButton || image, "chat");
     }
     function dockNativeChatUnsafe() {
         const chat = document.querySelector("hl-chat");
