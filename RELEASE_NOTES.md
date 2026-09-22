@@ -1,7 +1,23 @@
-# NCO Logger 1.1.0-beta.3
+# NCO Logger 1.1.0 release preparation
 
-This security and production-readiness beta contains the completed work merged into `main` after
-the `1.1.0-beta.2` release point. It does not include ongoing mobile or other unmerged branch work.
+This release preparation promotes the repository's `1.1.0-beta.4` version to
+`1.1.0`. It covers the cumulative work since the original `1.0.0` package,
+including the changes merged after beta.4. See [CHANGELOG.md](CHANGELOG.md)
+for user-facing changes and PR references. This version bump does not deploy
+the app or certify the production release checklist.
+
+## User-facing additions
+
+- First-party NCO operations, handoff, live Edit Net and Net Type controls,
+  structured connection information, and Fusion/WIRES-X Net Profile details.
+- Local public and private chat with images, emoji, typing indicators,
+  moderation, and improved reconnect handling.
+- Recurring scheduling, reminders, public schedule and dashboard views,
+  follower controls, and optional scheduled end times.
+- Responsive phone and tablet layouts, appearance modes, and shared splitters
+  for docked Live Logger modules.
+- Branded email notifications, CSV and chat attachments in net-close reports,
+  and automated abandoned-net reporting.
 
 ## Highlights
 
@@ -76,8 +92,12 @@ Before production promotion, complete `docs/production-release-checklist.md`, va
 database-plus-upload restore in isolated staging, and confirm the off-host backup monitor and alerting
 path. Do not perform the first recovery test against live application data.
 
-## Included pull requests
+## Representative pull requests
 
+- #1, #2, #3, #5 — self-hosting, first-party services, NCO operations, and chat.
+- #10, #11, #13, #14, #19 — scheduling, Net Profiles, and notifications.
+- #57, #58, #62, #63, #64, #65, #66, #68, #71 — responsive UI and post-beta.3
+  functionality and fixes.
 - #41 — GitHub Actions build and validation, deterministic tests, favorites build fix, and generated
   appearance artifacts.
 - #46 — production backup and restore hardening.
