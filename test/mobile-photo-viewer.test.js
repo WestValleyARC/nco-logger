@@ -38,6 +38,15 @@ test("photo controls remain inside the safe, visible viewer area", async () => {
   assert.match(css, /button\.nch-photo-download \{ position: absolute; z-index: 2;[\s\S]*?width: 44px; height: 44px; min-width: 44px;/);
   assert.match(css, /\.nch-photo-viewer \.nch-photo-card h3 \{[\s\S]*?min-height: 44px;/);
   assert.match(css, /\.nch-photo-viewer \.nch-photo-card img,[\s\S]*?max-height: var\(--nch-photo-image-max-height,/);
+  assert.match(css, /max-height: var\(--nch-photo-image-max-height, max\(0px, calc\(100dvh - 160px - env\(safe-area-inset-top\) - env\(safe-area-inset-bottom\)\)\)\);/);
+});
+
+test("header menu stays above shared dashboard splitters", async () => {
+  const css = await readFile(cssPath, "utf8");
+  const header = css.match(/#netcontrol-ncs-helper header \{[^}]*?z-index: (\d+);/);
+  const splitter = css.match(/#netcontrol-ncs-helper \.nch-shared-splitter \{[^}]*?z-index: (\d+);/);
+  assert.ok(header && splitter);
+  assert.ok(Number(header[1]) > Number(splitter[1]));
 });
 
 
