@@ -25,7 +25,7 @@ body.nco-logger-page > :is(#local-chat-container, hl-chat.nch-chat-staging):not(
 }
 
 #netcontrol-ncs-helper * { box-sizing: border-box; }
-#netcontrol-ncs-helper header { position: relative; z-index: 80; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); align-items: center; min-height: 35px; padding: 2px 7px; background: #15191d; }
+#netcontrol-ncs-helper header { position: relative; z-index: 200; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); align-items: center; min-height: 35px; padding: 2px 7px; background: #15191d; }
 #netcontrol-ncs-helper .nch-helper-brand { display: flex; min-width: 0; flex-direction: column; overflow: hidden; color: #fff; line-height: 1.05; text-decoration: none; white-space: nowrap; }
 #netcontrol-ncs-helper .nch-helper-brand:hover [data-role="helper-title"],
 #netcontrol-ncs-helper .nch-helper-brand:focus-visible [data-role="helper-title"] { color: #8dd9e4; text-decoration: underline; text-underline-offset: 2px; }
@@ -1846,7 +1846,8 @@ hl-chat.nch-chat-docked .nch-command-suggestion code {
   min-width: 0;
   min-height: 0;
   max-width: min(100%, var(--nch-photo-image-max-width, 100%));
-  max-height: var(--nch-photo-image-max-height, calc(100dvh - 86px));
+  /* Reserve room for the title, 44px controls, safe areas and card padding. */
+  max-height: var(--nch-photo-image-max-height, max(0px, calc(100dvh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom))));
   justify-self: center;
   object-fit: contain;
 }
