@@ -58,10 +58,11 @@ identifiers; removing the suffix promotes the same 1.1 release line.
   need a new sign-in. Follow [RELEASE_NOTES.md](RELEASE_NOTES.md) and
   [the production release checklist](docs/production-release-checklist.md)
   before deploying.
-- Production deployment and real-device acceptance are separate from this
-  version-only PR. Open reports for photo controls (#70), returning-user
-  Google sign-in (#74), and splitter/menu stacking (#75) need follow-up; the
-  fixes proposed in draft PR #76 are not included in this version bump.
+- This 1.1.0 baseline includes merged work through PR #71. Remaining photo
+  controls (#70), returning-user Google sign-in (#74), and splitter/menu
+  stacking (#75) work is planned for 1.1.1 or later. Draft PR #76 addresses
+  #70 and #75 after the 1.1.0 release; #74 needs its own fix. Production
+  deployment and real-device acceptance are separate from this PR.
 
 ## [1.0.0] - 2026-06-05
 
