@@ -165,6 +165,9 @@ userProfileApi.index().then(userProfile => {
 
 document.getElementById('userprofile_form').addEventListener('submit', e => {
     e.preventDefault();
+    const errorPanel = document.getElementById('profile-save-error');
+    errorPanel.hidden = true;
+    errorPanel.textContent = '';
 
     const formDataToSend = new FormData(document.getElementById('userprofile_form'));
 
@@ -189,18 +192,10 @@ document.getElementById('userprofile_form').addEventListener('submit', e => {
             }, 3000);
         })
         .catch(error => {
-            if (error.response.data.errorMessage) {
-                userProfileFormState.mesg('error', error.response.data.errorMessage);
-                console.error(error.response.data.errorMessage);
-            } else {
-                userProfileFormState.mesg('error', 'error');
-            }
-
-            console.error('Error', error.message);
-
-            setTimeout(() => {
-                userProfileFormState.mode = 'edit';
-                userProfileFormState.mesg('info', 'Edit Existing Profile');
-            }, 15000);
+            userProfileFormState.mesg('error', 'Profile not saved');
+            errorPanel.textContent = error.response?.data?.errorMessage
+                || 'Your profile could not be saved. Check your connection and try again.';
+            errorPanel.hidden = false;
+            errorPanel.focus();
         });
 });
