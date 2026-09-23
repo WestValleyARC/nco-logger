@@ -6,6 +6,7 @@ import { NetProfile } from './netProfile';
 export interface UserProfile extends Document<string> {
     displayName: string;
     googleId?: string;
+    authVersion?: number;
     lastLogin: Date;
     callSign?: string;
     photo?: string;
