@@ -107,7 +107,10 @@ router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
 });
 
 router.get('/myaccount', authCheck(REQ_LOGIN), (req, res) => {
-    res.render('myAccount', populate(req, res, { VIEW: 'myAccount' }));
+    res.render('myAccount', populate(req, res, {
+        VIEW: 'myAccount', accountEmail: req.user.email,
+        accountSignInMethod: req.user.lastAuthVia === 'google' ? 'Google' : 'Email link'
+    }));
 });
 
 router.get('/dataprivacy', authCheck(REQ_LOGIN), (req, res) => {

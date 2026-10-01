@@ -2,6 +2,8 @@
 
 This document describes NCO Logger's authentication system, including strategy configuration, session management, and authorization patterns.
 
+For lost-email recovery, see [Operator account recovery](account-recovery.md). The operator-only CLI requires independently verified ownership and mailbox control, preserves the account and callsign, and revokes prior sessions using `authVersion`. Existing ID-only sessions remain valid for unrecovered accounts (version zero).
+
 ## Overview
 
 NCO Logger uses **magic-link email sign-in as the primary and always-present authentication method**. Google OAuth2 is an optional second method that is only activated when its credentials are configured. There is no local/password authentication.

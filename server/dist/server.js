@@ -148,11 +148,11 @@ app.use(passport.session());
 // the user we passed to done() in the prior phase (auth routes)
 // user is the mongo db user instance
 passport.serializeUser((user, done) => {
-    done(null, user.id);
+    done(null, require('./lib/sessionIdentity').sessionIdentity(user));
 });
-passport.deserializeUser((id, done) => {
-    UserProfile.findById(id)
-        .then(user => done(null, user && !user.locked ? user : false))
+passport.deserializeUser((identity, done) => {
+    require('./lib/sessionIdentity').userForSession(identity, UserProfile)
+        .then(user => done(null, user))
         .catch(done);
 });
 

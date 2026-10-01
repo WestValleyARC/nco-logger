@@ -24,6 +24,7 @@ const userProfileSchema = new Schema(
             }
         },
         googleId: String,
+        authVersion: { type: Number, default: 0 },
         lastLogin: { type: Date, default: Date.now },
         callSign: {
             type: String,
