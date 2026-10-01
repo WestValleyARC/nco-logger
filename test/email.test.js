@@ -30,18 +30,15 @@ test('net-close attachments include CSV and local chat text', () => {
     assert.match(attachments[1].content.toString(), /Local message/);
 });
 
-test('net-close report still renders when chat history retrieval fails', async () => {
+test('net-close report fails for durable retry when chat history retrieval fails', async () => {
     const localChat = require('../server/dist/lib/localChat');
     localChat.fetchChatHistory = async function* () { throw new Error('chat unavailable'); };
     delete require.cache[require.resolve('../server/dist/lib/serverUtils')];
     delete require.cache[require.resolve('../server/dist/lib/userNotification')];
     const { NetCloseReport } = require('../server/dist/lib/userNotification');
-    const report = await NetCloseReport.init({
+    await assert.rejects(NetCloseReport.init({
         netProfileDoc: { id: '507f1f77bcf86cd799439011', title: 'Fallback Net' },
         liveNetDoc: { url: '/views/livenet/test', started: true, startedAt: new Date('2026-08-28T12:00:00Z') },
         attendees: [{ callSign: 'W1ABC', role: 'netcontrol', checkedInAt: new Date('2026-08-28T12:00:00Z'), sigReports: { calculated: '59' } }]
-    });
-    assert.match(report.body.html, /NCO_Logger_Logo_compact\.png/);
-    assert.match(report.body.text, /Close report for|net-close report/i);
-    assert.match(report.body.attachments[1].content.toString(), /Empty Chat Log/);
+    }), /chat unavailable/);
 });

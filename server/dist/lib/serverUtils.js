@@ -61,13 +61,13 @@ const publicEndpoints = app => {
 };
 
 // Keep report formatting isolated from local chat persistence.
-const fetchChatLog = async ({ NPID, since, db = mongoose.connection }) => {
+const fetchChatLog = async ({ NPID, liveNetId, since, db = mongoose.connection }) => {
     let chatLog = '';
 
     try {
         // fetchChatHistory() returns AsyncGenerator of message arrays - Messages are received in batches/chunks
         // Each message has: username, body, createdAt, reactions (formatted emoji string), edited (boolean)
-        for await (const messages of fetchChatHistory({ npid: NPID, since, db })) {
+        for await (const messages of fetchChatHistory({ npid: NPID, liveNetId, since, db })) {
             chatLog += messages
                 .map(({ username, body, reactions, edited }) => {
                     const editedMarker = edited ? ' *' : '';
@@ -78,7 +78,7 @@ const fetchChatLog = async ({ NPID, since, db = mongoose.connection }) => {
     } catch (err) {
         // Gracefully handle if chat service unavailable (follows existing pattern in closeNet)
         logger.error(`Failed to fetch chat log: ${err.message}`);
-        return ''; // Return empty string, don't fail the report
+        throw err; // Preserve chat and retry the report instead of silently losing it.
     }
 
     return chatLog;

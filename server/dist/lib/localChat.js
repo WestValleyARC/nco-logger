@@ -14,6 +14,8 @@ const { getChatBan } = require('../models/chatBan');
 const { getUserProfile } = require('../models/userProfile');
 const { getQrzCache } = require('../models/qrzCache');
 const stationProfiles = require('./stationProfileService');
+const { detectImageType, sanitizeChatImage, IMAGE_TYPES } = require('./chatImage');
+const { getChatImageAsset } = require('../models/chatRetention');
 
 const MAX_MESSAGE_CHARS = Math.min(Number(conf.chat_max_message_chars) || 2000, 2000);
 const RATE_LIMIT_COUNT = Number(conf.chat_rate_limit_count) || 12;
@@ -22,12 +24,6 @@ const MAX_UPLOAD_MB = Math.min(Math.max(Number(conf.chat_max_upload_mb) || 5, 1)
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 const PUBLIC_HISTORY_LIMIT = 1000;
 const UPLOAD_DIR = path.resolve(conf.chat_upload_dir || '/app/data/chat-uploads');
-const IMAGE_TYPES = Object.freeze({
-    'image/png': 'png',
-    'image/jpeg': 'jpg',
-    'image/gif': 'gif',
-    'image/webp': 'webp'
-});
 const QUICK_REACTIONS = Object.freeze(['👍', '❤️', '😂', '😮']);
 const PIN_ROLES = new Set(['netcontrol', 'netlogger']);
 const rateWindows = new Map();
@@ -176,22 +172,6 @@ const chatEventForViewer = (message, role, userId, ignoredUserIds = new Set()) =
     return toChatMessage(message, role, userId);
 };
 
-const detectImageType = buffer => {
-    if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
-    if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
-        return { mimeType: 'image/png', extension: 'png' };
-    }
-    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-        return { mimeType: 'image/jpeg', extension: 'jpg' };
-    }
-    const header = buffer.subarray(0, 6).toString('ascii');
-    if (header === 'GIF87a' || header === 'GIF89a') return { mimeType: 'image/gif', extension: 'gif' };
-    if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') {
-        return { mimeType: 'image/webp', extension: 'webp' };
-    }
-    return null;
-};
-
 const attachmentPath = storageName => {
     if (!/^[a-f0-9-]+\.(png|jpg|gif|webp)$/.test(String(storageName))) {
         throw new Error('Invalid attachment storage name');
@@ -203,7 +183,10 @@ const removeAttachment = async attachment => {
     if (!attachment?.storageName) return;
     try { await fs.promises.unlink(attachmentPath(attachment.storageName)); }
     catch (err) {
-        if (err.code !== 'ENOENT') logger.warn(`Chat attachment cleanup failed: ${err.message}`);
+        if (err.code !== 'ENOENT') {
+            logger.warn(`Chat attachment cleanup failed (${attachment.storageName}): ${err.code || 'unlink error'}`);
+            throw err;
+        }
     }
 };
 
@@ -211,7 +194,7 @@ const getNetAccess = async ({ npid, userId, db = mongoose.connection }) => {
     if (!isObjectId(npid) || !isObjectId(userId)) return null;
     const LiveNet = getLiveNet(db);
     const StationInteraction = getStationInteraction(db);
-    const liveNet = await LiveNet.findOne({ netProfile: npid });
+    const liveNet = await LiveNet.findOne({ netProfile: npid, closing: { $ne: true } });
     if (!liveNet) return null;
     const interaction = await StationInteraction.findOne({ liveNet: liveNet._id, userProfile: userId })
         .sort({ updatedAt: -1, _id: -1 });
@@ -463,10 +446,10 @@ const isBanned = async ({ npid, userId, db = mongoose.connection }) => {
     return Boolean(await ChatBan.exists({ netProfile: npid, userProfile: userId }));
 };
 
-const findReplyTarget = async ({ ChatMessage, npid, replyTo, scope = 'public', senderUserId, recipientUserId }) => {
+const findReplyTarget = async ({ ChatMessage, npid, liveNetId, replyTo, scope = 'public', senderUserId, recipientUserId }) => {
     if (replyTo === undefined || replyTo === null || replyTo === '') return null;
     if (!isObjectId(String(replyTo))) throw Object.assign(new Error('Invalid reply message identifier'), { status: 400 });
-    const target = await ChatMessage.findOne({ _id: replyTo, netProfile: npid, clearedAt: null });
+    const target = await ChatMessage.findOne({ _id: replyTo, netProfile: npid, liveNet: liveNetId, clearedAt: null });
     if (!target || target.deletedAt) throw Object.assign(new Error('Reply target is unavailable'), { status: 409 });
     if (messageScope(target) !== scope) {
         throw Object.assign(new Error('Reply scope does not match the selected conversation'), { status: 409 });
@@ -494,12 +477,12 @@ const listMessages = async (req, res) => {
         const ignoredUserIds = await getIgnoredUserIds(userId);
         const ChatMessage = getChatMessage();
         const messages = await ChatMessage.find({
-            netProfile: req.params.id, clearedAt: null, ...PUBLIC_SCOPE_QUERY
+            netProfile: req.params.id, liveNet: access.liveNet._id, clearedAt: null, ...PUBLIC_SCOPE_QUERY
         })
             .sort({ createdAt: -1, _id: -1 }).limit(PUBLIC_HISTORY_LIMIT);
         messages.reverse();
         const directMessages = await ChatMessage.find({
-            netProfile: req.params.id,
+            netProfile: req.params.id, liveNet: access.liveNet._id,
             $and: [
                 DIRECT_SCOPE_QUERY,
                 { $or: [{ userProfile: userId }, { recipientUserProfile: userId }] }
@@ -549,7 +532,7 @@ const listDirectMessages = async (req, res) => {
         if (!peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
         const ignoredUserIds = await getIgnoredUserIds(userId);
         const ChatMessage = getChatMessage();
-        const messages = await ChatMessage.find(directConversationQuery(req.params.id, userId, req.params.userId))
+        const messages = await ChatMessage.find({ ...directConversationQuery(req.params.id, userId, req.params.userId), liveNet: access.liveNet._id })
             .sort({ createdAt: -1, _id: -1 }).limit(500);
         messages.reverse();
         return res.json({
@@ -616,7 +599,7 @@ const createMessage = async (req, res) => {
         if (scope === 'direct' && !peer) return sendError(res, 404, 'Private chat recipient is not known to this net');
         const ChatMessage = getChatMessage();
         const replyTarget = await findReplyTarget({
-            ChatMessage, npid: req.params.id, replyTo: req.body?.replyTo, scope,
+            ChatMessage, npid: req.params.id, liveNetId: access.liveNet._id, replyTo: req.body?.replyTo, scope,
             senderUserId: userId, recipientUserId: participantId(peer?.userProfile)
         });
         if (!rateLimitAllows(userId)) return sendRateLimit(res);
@@ -658,7 +641,7 @@ const editMessage = async (req, res) => {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
         const ChatMessage = getChatMessage();
-        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
+        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id, liveNet: access.liveNet._id });
         if (!message) return sendError(res, 404, 'Message not found');
         if (message.userProfile.toString() !== userId) return sendError(res, 403, 'Not authorized');
         if (message.deletedAt) return sendError(res, 409, 'Deleted messages cannot be edited');
@@ -680,6 +663,9 @@ const editMessage = async (req, res) => {
 
 const uploadImage = async (req, res) => {
     let storageName;
+    let assetOwned = false;
+    let fileOwned = false;
+    let messageSaved = false;
     try {
         if (!req.user?._id) return sendError(res, 401, 'Authentication required');
         if (!isObjectId(req.params.id)) return sendError(res, 400, 'Invalid net identifier');
@@ -709,6 +695,7 @@ const uploadImage = async (req, res) => {
         const replyTarget = await findReplyTarget({
             ChatMessage,
             npid: req.params.id,
+            liveNetId: access.liveNet._id,
             replyTo: req.get?.('x-chat-reply-to'),
             scope,
             senderUserId: userId,
@@ -722,9 +709,14 @@ const uploadImage = async (req, res) => {
             interactionDisplayName: access.interaction?.displayName
         });
 
+        const sanitized = await sanitizeChatImage(req.body, MAX_UPLOAD_BYTES);
         await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
-        storageName = `${crypto.randomUUID()}.${detected.extension}`;
-        await fs.promises.writeFile(attachmentPath(storageName), req.body, { flag: 'wx', mode: 0o600 });
+        storageName = `${crypto.randomUUID()}.${sanitized.extension}`;
+        await getChatImageAsset().create({ storageName, liveNet: access.liveNet._id, netProfile: req.params.id });
+        assetOwned = true;
+        const handle = await fs.promises.open(attachmentPath(storageName), 'wx', 0o600);
+        fileOwned = true;
+        try { await handle.writeFile(sanitized.data); } finally { await handle.close(); }
 
         const message = await ChatMessage.create({
             liveNet: access.liveNet._id,
@@ -737,15 +729,21 @@ const uploadImage = async (req, res) => {
             text: '',
             replyTo: replyTarget?._id || null,
             attachment: {
-                kind: 'image', storageName, mimeType: detected.mimeType, size: req.body.length
+                kind: 'image', storageName, mimeType: sanitized.mimeType, size: sanitized.data.length
             }
         });
+        messageSaved = true;
         return res.status(201).json({
             endpointVersion: '1.1',
             message: toChatMessage(message, access.role, userId)
         });
     } catch (err) {
-        if (storageName) await removeAttachment({ storageName });
+        if (assetOwned && !messageSaved) {
+            try {
+                if (fileOwned) await removeAttachment({ storageName });
+                await getChatImageAsset().deleteOne({ storageName });
+            } catch (_cleanupError) { /* Durable asset ownership remains for the retry worker. */ }
+        }
         if (err.status) return sendError(res, err.status, err.message);
         logger.error(`Local chat image upload failed: ${err.message}`);
         return sendError(res, 500, 'Image could not be uploaded');
@@ -767,7 +765,7 @@ const serveImage = async (req, res) => {
         const ChatMessage = getChatMessage();
         const message = await ChatMessage.findOne({
             _id: req.params.messageId,
-            netProfile: req.params.id,
+            netProfile: req.params.id, liveNet: access.liveNet._id,
             deletedAt: null,
             'attachment.kind': 'image'
         });
@@ -776,11 +774,19 @@ const serveImage = async (req, res) => {
         if (!shouldDeliverMessage(message, userId, ignoredUserIds)) return sendError(res, 404, 'Image not found');
         const extension = IMAGE_TYPES[message.attachment.mimeType];
         if (!extension) return sendError(res, 404, 'Image not found');
-        const data = await fs.promises.readFile(attachmentPath(message.attachment.storageName));
+        const handle = await fs.promises.open(attachmentPath(message.attachment.storageName), fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+        let original;
+        try {
+            const stat = await handle.stat();
+            if (!stat.isFile() || stat.size > MAX_UPLOAD_BYTES) return sendError(res, 415, 'Image cannot be safely delivered');
+            original = await handle.readFile();
+        } finally { await handle.close(); }
+        const sanitized = await sanitizeChatImage(original, MAX_UPLOAD_BYTES);
+        const data = sanitized.data;
         res.set({
-            'Content-Type': message.attachment.mimeType,
+            'Content-Type': sanitized.mimeType,
             'Content-Length': String(data.length),
-            'Content-Disposition': `inline; filename="chat-image.${extension}"`,
+            'Content-Disposition': `inline; filename="${message._id}.${sanitized.extension}"`,
             'Cache-Control': 'private, no-store',
             'X-Content-Type-Options': 'nosniff',
             'Cross-Origin-Resource-Policy': 'same-origin',
@@ -789,6 +795,7 @@ const serveImage = async (req, res) => {
         return res.send(data);
     } catch (err) {
         if (err.code === 'ENOENT') return sendError(res, 404, 'Image not found');
+        if (err.status) return sendError(res, err.status, err.message);
         logger.error(`Local chat image retrieval failed: ${err.message}`);
         return sendError(res, 500, 'Image is temporarily unavailable');
     }
@@ -807,12 +814,13 @@ const deleteMessage = async (req, res) => {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
         const ChatMessage = getChatMessage();
-        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
+        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id, liveNet: access.liveNet._id });
         if (!message) return sendError(res, 404, 'Message not found');
         if (message.userProfile.toString() !== userId) return sendError(res, 403, 'Not authorized');
         if (message.deletedAt || message.clearedAt) return sendError(res, 409, 'Message is already unavailable');
         if (!rateLimitAllows(userId)) return sendRateLimit(res);
         await removeAttachment(message.attachment);
+        if (message.attachment?.storageName) await getChatImageAsset().deleteOne({ storageName: message.attachment.storageName });
         message.text = '';
         message.attachment = undefined;
         message.reactions = [];
@@ -844,7 +852,7 @@ const toggleReaction = async (req, res) => {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
         const ChatMessage = getChatMessage();
-        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
+        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id, liveNet: access.liveNet._id });
         if (!message) return sendError(res, 404, 'Message not found');
         const mine = message.userProfile.toString() === userId;
         const scope = messageScope(message);
@@ -859,7 +867,7 @@ const toggleReaction = async (req, res) => {
             reaction.emoji === emoji && reaction.userProfile?.toString() === userId
         );
         const updated = await ChatMessage.findOneAndUpdate(
-            { _id: message._id, netProfile: req.params.id, deletedAt: null, clearedAt: null },
+            { _id: message._id, netProfile: req.params.id, liveNet: access.liveNet._id, deletedAt: null, clearedAt: null },
             reacted
                 ? { $pull: { reactions: { emoji, userProfile: req.user._id } } }
                 : { $addToSet: { reactions: { emoji, userProfile: req.user._id } } },
@@ -886,7 +894,7 @@ const setMessagePin = async (req, res) => {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
         const ChatMessage = getChatMessage();
-        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
+        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id, liveNet: access.liveNet._id });
         if (!message) return sendError(res, 404, 'Message not found');
         const mine = message.userProfile.toString() === userId;
         const scope = messageScope(message);
@@ -921,7 +929,7 @@ const banMessageAuthor = async (req, res) => {
             return sendError(res, 403, 'Chat access has been suspended for this net');
         }
         const ChatMessage = getChatMessage();
-        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id });
+        const message = await ChatMessage.findOne({ _id: req.params.messageId, netProfile: req.params.id, liveNet: access.liveNet._id });
         if (!message) return sendError(res, 404, 'Message not found');
         const mine = message.userProfile.toString() === userId;
         const scope = messageScope(message);
@@ -961,10 +969,14 @@ const clearPublicChat = async (req, res) => {
         }
         if (!rateLimitAllows(userId)) return sendRateLimit(res);
         const ChatMessage = getChatMessage();
-        const query = { netProfile: req.params.id, clearedAt: null, ...PUBLIC_SCOPE_QUERY };
+        const query = { netProfile: req.params.id, liveNet: access.liveNet._id, clearedAt: null, ...PUBLIC_SCOPE_QUERY };
         const attachments = await ChatMessage.find({ ...query, 'attachment.storageName': { $exists: true } })
             .select('attachment.storageName').lean();
         const clearedAt = new Date();
+        for (const message of attachments) {
+            await removeAttachment(message.attachment);
+            await getChatImageAsset().deleteOne({ storageName: message.attachment.storageName });
+        }
         const result = await ChatMessage.updateMany(query, {
             $set: {
                 text: '', deletedAt: clearedAt, clearedAt, moderatedBy: req.user._id,
@@ -972,7 +984,6 @@ const clearPublicChat = async (req, res) => {
             },
             $unset: { attachment: 1 }
         });
-        await Promise.all(attachments.map(message => removeAttachment(message.attachment)));
         return res.json({
             endpointVersion: '1.0', cleared: true,
             count: result.modifiedCount ?? result.nModified ?? 0,
@@ -1151,10 +1162,10 @@ const streamEvents = async (req, res) => {
     }, 25000);
 };
 
-async function* fetchChatHistory({ npid, since, db = mongoose.connection }) {
+async function* fetchChatHistory({ npid, liveNetId, since, db = mongoose.connection }) {
     if (!isObjectId(npid)) throw new Error('Malformed net profile identifier');
     const ChatMessage = getChatMessage(db);
-    const query = { netProfile: npid, deletedAt: null, ...PUBLIC_SCOPE_QUERY };
+    const query = { netProfile: npid, ...(liveNetId ? { liveNet: liveNetId } : {}), deletedAt: null, ...PUBLIC_SCOPE_QUERY };
     if (since) query.createdAt = { $gte: new Date(since) };
     const batchSize = 100;
     const maximum = Math.min(50000, Math.max(100, Number(process.env.CHAT_REPORT_MAX_MESSAGES) || 10000));
@@ -1177,13 +1188,19 @@ async function* fetchChatHistory({ npid, since, db = mongoose.connection }) {
     if (batch.length) yield batch;
 }
 
-const cleanupNetChat = async (npid, db = mongoose.connection) => {
+const cleanupNetChat = async (liveNetId, db = mongoose.connection) => {
+    if (await getLiveNet(db).exists({ _id: liveNetId })) throw new Error('Cannot clean an active net');
     const ChatMessage = getChatMessage(db);
-    const ChatBan = getChatBan(db);
-    const attachments = await ChatMessage.find({ netProfile: npid, 'attachment.storageName': { $exists: true } })
-        .select('attachment.storageName').lean();
-    await Promise.all(attachments.map(message => removeAttachment(message.attachment)));
-    await Promise.all([ChatMessage.deleteMany({ netProfile: npid }), ChatBan.deleteMany({ netProfile: npid })]);
+    const Asset = getChatImageAsset(db);
+    const messages = await ChatMessage.find({ liveNet: liveNetId }).select('attachment').lean();
+    const assets = await Asset.find({ liveNet: liveNetId }).lean();
+    const names = new Set([...messages.map(m => m.attachment?.storageName), ...assets.map(a => a.storageName)].filter(Boolean));
+    // Leave all records intact on any unlink error, including successful siblings.
+    // ENOENT is success on the next pass, making partial cleanup idempotent.
+    for (const storageName of names) await removeAttachment({ storageName });
+    await Asset.deleteMany({ liveNet: liveNetId });
+    await ChatMessage.deleteMany({ liveNet: liveNetId });
+    return { files: names.size, messages: messages.length };
 };
 
 const banUserHelper = async ({ npid, userIdToBan, bannedByUserId, targetCallsign, reason = '', db = mongoose.connection }) => {
@@ -1221,6 +1238,7 @@ module.exports = {
     openChatChangeStream,
     fetchChatHistory,
     cleanupNetChat,
+    removeAttachment,
     banUserHelper,
     unbanUserHelper,
     getNetAccess,
