@@ -15,7 +15,7 @@ const { getScheduledOccurrence } = require('../models/scheduledOccurrence');
 const { getNetSchedule } = require('../models/netSchedule');
 const { disableProfileSchedule } = require('./scheduling/scheduleState');
 const mongoose = require('mongoose');
-const { cleanupNetChat } = require('./localChat');
+const { enqueueChatRetention, processChatRetentionJob } = require('./chatRetention');
 const { withKeyedOperations } = require('./keyedOperation');
 const { performance } = require('node:perf_hooks');
 
@@ -903,42 +903,30 @@ async function closeNet({
 
     liveNetDoc.closing = true;
 
-    if (!quiet) {
-        try {
-            const ncr = await NetCloseReport.init({
-                netProfileDoc,
-                liveNetDoc,
+    // Persist all retry inputs before destroying live records. If persistence
+    // fails, leave the session intact and reopen it for an explicit close retry.
+    try {
+        let reportInput;
+        let recipientIds = [];
+        if (!quiet) {
+            const suIds = (await UserProfile.find({ superUser: true })).map(su => su._id);
+            recipientIds = netCloseReportRecipientIds({ ownerIds: netProfileDoc.owners, superUserIds: suIds });
+            reportInput = {
+                netProfileDoc: { id: String(netProfileDoc._id), title: netProfileDoc.title },
+                liveNetDoc: { _id: liveNetDoc._id, url: liveNetDoc.url, started: liveNetDoc.started, startedAt: liveNetDoc.startedAt },
                 closedAt,
-                db,
                 timezone: await resolveNetReportTimezone({ liveNetDoc, ScheduledOccurrence, NetSchedule }),
                 attendees: await collectNetReportAttendees({ liveNetDoc, StationInteraction })
-            });
-
-            // Send email report if it was created successfully
-            // (may be null if chat log fetch failed and report couldn't be created)
-            if (ncr) {
-                //CC SuperUsers On Reports
-                const suIds = (await UserProfile.find({ superUser: true })).map(su => su._id);
-
-                await ncr.sendMailToUPIDs({
-                    upids: netCloseReportRecipientIds({ ownerIds: netProfileDoc.owners, superUserIds: suIds }),
-                    db
-                });
-            } else {
-                logger.warn('NetCloseReport creation failed. Skipping email notification.');
-            }
-        } catch (err) {
-            logger.error('error in close routine: report generation');
-            logger.error(err.stack);
+            };
         }
-    }
-
-    // Clean local chat only AFTER report generation and delivery have been attempted.
-    try {
-        await cleanupNetChat(netProfileDoc._id, db);
-        logger.info(`Chat history cleaned for net ${netProfileDoc.title}`);
-    } catch (chatErr) {
-        logger.error(`Failed to clean chat history for ${netProfileDoc.title}: ${chatErr.message}`);
+        await enqueueChatRetention({
+            liveNetId: liveNetDoc._id, netProfileId: netProfileDoc._id,
+            closedAt, quiet, reportInput, recipientIds, refreshClose: true, db
+        });
+    } catch (error) {
+        await LiveNet.updateOne({ _id: liveNetDoc._id }, { $set: { closing: false } });
+        logger.error(`Could not preserve chat/report retry state for session ${liveNetDoc._id}`);
+        return false;
     }
 
     try {
@@ -951,6 +939,7 @@ async function closeNet({
                 }
             );
         }
+        await require('../models/chatBan').getChatBan(db).deleteMany({ netProfile: netProfileDoc._id });
         await StationInteraction.deleteMany({ netProfile: netProfileDoc._id });
         await LiveNet.deleteOne({ _id: liveNetDoc._id });
         await NetProfile.updateOne(
@@ -959,6 +948,8 @@ async function closeNet({
         );
 
         logger.info('Net Closed');
+        // Delivery failures are durable and retryable; the net still closes.
+        await processChatRetentionJob({ liveNetId: liveNetDoc._id, now: closedAt, db });
         return true;
     } catch (error) {
         logger.error(

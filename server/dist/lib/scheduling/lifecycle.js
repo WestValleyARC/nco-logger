@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 const { netOwnerCheck } = require('../sharedNetOps');
 const stationProfiles = require('../stationProfileService');
-const { cleanupNetChat } = require('../localChat');
+const { enqueueChatRetention } = require('../chatRetention');
 const { realtimeClients } = require('../realtimeClients');
 const { getNetProfile } = require('../../models/netProfile');
 const { getNetSchedule } = require('../../models/netSchedule');
@@ -252,9 +252,9 @@ const finalizePreparation = async ({ occurrenceId, finalStatus, cancelledBy, npi
         if (liveNetId) {
             realtimeClients.close(String(netProfileId));
             try {
-                await cleanupNetChat(netProfileId, db);
+                await enqueueChatRetention({ liveNetId, netProfileId, closedAt: now, quiet: true, db });
             } catch (error) {
-                logger.warn(`Preparation chat cleanup failed for net ${netProfileId}: ${error.message}`);
+                logger.warn(`Preparation chat retention could not be queued for net ${netProfileId}: ${error.message}`);
             }
         }
         return Boolean(netProfileId);

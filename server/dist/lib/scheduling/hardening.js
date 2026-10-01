@@ -7,7 +7,7 @@ const { getStationInteraction } = require('../../models/stationInteraction');
 const { getScheduledOccurrence } = require('../../models/scheduledOccurrence');
 const { getLiveNetAutoClose } = require('../../models/liveNetAutoClose');
 const { closeNet, createNetCloseReportSnapshot } = require('../sharedNetOps');
-const { cleanupNetChat } = require('../localChat');
+const { enqueueChatRetention } = require('../chatRetention');
 const { realtimeClients } = require('../realtimeClients');
 const { NetInactivityAutoClose, formatInactivityDuration } = require('../userNotification');
 const { logger } = require('../logger');
@@ -199,9 +199,10 @@ const reconcileLiveNetPersistence = async ({ now = new Date(), db = mongoose.con
         if (profileOwnedLink) {
             await NetProfile.updateOne({ _id: profile._id, liveNet: removed._id }, { $unset: { liveNet: 1 } });
             realtimeClients.close(id(profile._id));
-            try { await cleanupNetChat(profile._id, db); }
-            catch (error) { logger.warn(`Integrity chat cleanup failed for net ${profile._id}: ${error.message}`); }
         }
+        try {
+            await enqueueChatRetention({ liveNetId: removed._id, netProfileId: removed.netProfile, closedAt: now, quiet: true, db });
+        } catch (error) { logger.warn(`Integrity chat retention could not be queued for session ${removed._id}`); }
         await StationInteraction.deleteMany({ liveNet: removed._id });
         occurrenceLinksReconciled += Number(await reconcileOccurrenceAfterLiveNetRemoval({
             liveNet: removed,
@@ -248,7 +249,9 @@ const defaultSendInactivityEmail = async ({ event, db }) => {
         abandonmentMinutes: NCO_ABANDONMENT_MINUTES,
         reportSnapshot: event.reportSnapshot
     });
-    return email.sendOperationalMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
+    const result = await email.sendOperationalMailToUPIDs({ upids: event.ownerIds, db, throwOnError: true });
+    if (!result || result.console || result.rejected?.length) throw new Error('Auto-close report delivery was not confirmed');
+    return result;
 };
 
 const processAutoCloseEmails = async ({

@@ -40,6 +40,8 @@ const NetProfile = getNetProfile(null);
 const NetSchedule = require('./models/netSchedule').getNetSchedule(null);
 const ScheduledOccurrence = require('./models/scheduledOccurrence').getScheduledOccurrence(null);
 const LiveNetAutoClose = require('./models/liveNetAutoClose').getLiveNetAutoClose(null);
+const { getChatRetention, getChatImageAsset } = require('./models/chatRetention');
+const { startChatRetentionWorker } = require('./lib/chatRetention');
 const { startSchedulingWorker } = require('./lib/scheduling/worker');
 const { apiNotFound } = require('./lib/apiNotFound');
 const PORT = process.env['PORT'] ?? 3000;
@@ -96,12 +98,13 @@ app.use(requestSecurity.headers);
 mongoose.set('strictQuery', true);
 let httpServer;
 let stopSchedulingWorker = () => {};
+let stopChatRetentionWorker = () => {};
 let shuttingDown = false;
 
 const start = async () => {
     try {
         await mongoose.connect(conf.dburi, { maxPoolSize: conf.realtime_mongoose_poolsize });
-        await Promise.all([NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init()]);
+        await Promise.all([NetProfile.init(), NetSchedule.init(), ScheduledOccurrence.init(), LiveNetAutoClose.init(), getChatRetention().init(), getChatImageAsset().init()]);
         await removeLegacyTitleUniqueIndex(NetProfile);
         await ensurePrivateTestProfile();
         logger.info('Connected to db (realtime pool)');
@@ -111,6 +114,7 @@ const start = async () => {
             httpServer = app.listen(PORT);
         }
         stopSchedulingWorker = startSchedulingWorker();
+        stopChatRetentionWorker = startChatRetentionWorker();
         const scheme = useHttps ? 'https' : 'http';
         logger.info(`${conf.applogname} listening on ${scheme}://localhost:${PORT}`);
     } catch (error) {
@@ -240,6 +244,7 @@ const shutdown = signal => {
     shuttingDown = true;
     logger.info(`Shutdown initiated (${signal})`);
     stopSchedulingWorker();
+    stopChatRetentionWorker();
     const deadline = setTimeout(() => {
         logger.error('Graceful shutdown deadline exceeded');
         process.exit(1);
