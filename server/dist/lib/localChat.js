@@ -196,6 +196,7 @@ const getNetAccess = async ({ npid, userId, db = mongoose.connection }) => {
     const StationInteraction = getStationInteraction(db);
     const liveNet = await LiveNet.findOne({ netProfile: npid, closing: { $ne: true } });
     if (!liveNet) return null;
+    if (!await require('./scheduling/roomAccess').canUserAccessRoom({ liveNet, user: { _id: userId }, db })) return null;
     const interaction = await StationInteraction.findOne({ liveNet: liveNet._id, userProfile: userId })
         .sort({ updatedAt: -1, _id: -1 });
     if (!interaction) return null;

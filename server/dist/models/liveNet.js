@@ -68,6 +68,9 @@ const liveNetSchema = new Schema(
             max: 120,
             default: 1
         },
+        // Room access and the scheduled on-air start are deliberately independent.
+        roomOpening: { type: String, enum: ['early', 'scheduled'], default: undefined },
+        roomOpensAt: { type: Date, default: undefined },
         started: {
             type: Boolean,
             default: false

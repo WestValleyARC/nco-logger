@@ -89,7 +89,7 @@ const loadProfileSchedulingSummaries = async ({ profiles, now = new Date(), db =
         const opensAt = nextOccurrence ? new Date(nextOccurrence.startAt.getTime() - PREPARATION_WINDOW_MS) : null;
         const graceEndsAt = nextOccurrence ? new Date(nextOccurrence.startAt.getTime() + GRACE_PERIOD_MS) : null;
         const canPrepare = Boolean(
-            schedule && nextOccurrence?.status === 'scheduled' && now >= opensAt && now < graceEndsAt
+            schedule && !validRelationship && nextOccurrence?.status === 'scheduled' && now < graceEndsAt
         );
 
         return [key, {

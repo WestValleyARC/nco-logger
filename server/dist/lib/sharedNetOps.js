@@ -932,7 +932,7 @@ async function closeNet({
     try {
         if (liveNetDoc.occurrence) {
             await ScheduledOccurrence.updateOne(
-                { _id: liveNetDoc.occurrence, liveNet: liveNetDoc._id, status: 'live' },
+                { _id: liveNetDoc.occurrence, liveNet: liveNetDoc._id, status: { $in: ['preparing', 'live'] } },
                 {
                     $set: { status: 'completed', completedAt: closedAt },
                     $unset: { liveNet: 1 }

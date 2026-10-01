@@ -9,6 +9,8 @@ const { prepareOccurrence, cancelPreparation } = require('../lib/scheduling/life
 const { materializeSchedule } = require('../lib/scheduling/worker');
 const { disableProfileSchedule } = require('../lib/scheduling/scheduleState');
 
+const { prepareEndPointResponse } = require('../lib/responseUtils');
+
 const ENDPOINT_VERSION = '1.0';
 const SCHEDULE_FIELDS = [
     'type',
@@ -314,24 +316,48 @@ const cancelOccurrence = async (req, res) => {
     }
 };
 
+const getOpeningChoice = async req => {
+    const profile = await requireOwner(req);
+    const occurrence = await ScheduledOccurrence.findOne({ _id: req.params.occurrenceId, netProfile: profile._id });
+    if (!occurrence) throw new ApiError(404, 'Scheduled occurrence not found');
+    return { title: profile.title, startAt: occurrence.startAt, status: occurrence.status };
+};
+
+const scheduledOpeningChoice = async (req, res) => {
+    try {
+        return res.json(prepareEndPointResponse(await getOpeningChoice(req), undefined, null, 5000));
+    } catch (error) {
+        return sendError(res, error);
+    }
+};
+
 const prepareScheduledOccurrence = async (req, res) => {
     try {
+        if (req.body?.roomOpening === undefined) {
+            await getOpeningChoice(req);
+            // Existing My Nets links lead to the explicit choice before creating a room.
+            return res.json({ endpointVersion: ENDPOINT_VERSION, liveNet: {
+                url: `/views/scheduled-start/${req.params.id}/${req.params.occurrenceId}`
+            } });
+        }
         const result = await prepareOccurrence({
             npid: req.params.id,
             occurrenceId: req.params.occurrenceId,
-            user: req.user
+            user: req.user,
+            roomOpening: req.body.roomOpening
         });
-        return res.json({
-            endpointVersion: ENDPOINT_VERSION,
+        return res.json(prepareEndPointResponse({
             occurrence: occurrenceResponse(result.occurrence),
             liveNet: {
                 _id: result.liveNet._id,
                 started: result.liveNet.started,
                 startedAt: result.liveNet.startedAt,
+                roomOpening: result.liveNet.roomOpening,
+                roomOpensAt: result.liveNet.roomOpensAt,
                 url: result.liveNet.url
             },
             idempotent: result.idempotent
-        });
+        }, undefined, null, 5000));
     } catch (error) {
         return sendError(res, error);
     }
@@ -358,6 +384,7 @@ module.exports = {
     listOccurrences,
     updateOccurrence,
     cancelOccurrence,
+    scheduledOpeningChoice,
     prepareScheduledOccurrence,
     cancelScheduledPreparation
 };
