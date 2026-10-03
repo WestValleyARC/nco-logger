@@ -147,6 +147,7 @@ export class ReactiveStore {
             this.eventSource.addEventListener('net-close', event => {
                 logger.info('Received net-close event:', event.data);
                 this.eventSource?.close();
+                this.onNetClose();
                 window.location.href = '/';
             });
             this.eventSource.onopen = () => {
@@ -195,6 +196,7 @@ export class ReactiveStore {
         }, true);
         this.isInitStoreRunning = false;
     }
+    onNetClose() { }
     delayServerDataIngest() {
         if (this.lastHash) {
             this.inFlightWindowManager.updateInFlightWindow(this.lastHash);
