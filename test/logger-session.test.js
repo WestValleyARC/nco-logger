@@ -117,7 +117,7 @@ test('logger startup waits for session preparation before loading cached statuse
     assert.match(stores, /this\.onNetClose\(\);\s*window\.location\.href = '\/'/);
 });
 
-test('session store prepares once, clears on close, and tolerates disabled storage', async t => {
+test('session store handles reloads, replacement nets, closure, and disabled storage', async t => {
     const originalDocument = globalThis.document;
     const originalWindow = globalThis.window;
     t.after(() => {
@@ -130,7 +130,8 @@ test('session store prepares once, clears on close, and tolerates disabled stora
         cmdHelpUrl: '', logLevel: 'info', ts: String(Date.now())
     } }) };
     const storage = storageWith({ [stateKey]: JSON.stringify(taggedState()) });
-    globalThis.window = { localStorage: storage };
+    let reloads = 0;
+    globalThis.window = { localStorage: storage, location: { reload() { reloads++; } } };
     const { LoggerSessionReactiveStore } = await import(pathToFileURL(path.resolve(
         __dirname, '../client/dist/public/js/lib/loggerSessionStore.js'
     )).href);
@@ -138,7 +139,9 @@ test('session store prepares once, clears on close, and tolerates disabled stora
         const store = new LoggerSessionReactiveStore({}, npid);
         store.client = Promise.resolve({ callSign: 'N0NCO', level: 0 });
         store.stations.process = () => {};
-        Object.defineProperty(store, 'mainCache', { value: { net: { createdAt: firstNet } } });
+        Object.defineProperty(store, 'mainCache', {
+            value: { net: { createdAt: firstNet } }, configurable: true
+        });
         return store;
     }
     const store = makeStore();
@@ -148,6 +151,13 @@ test('session store prepares once, clears on close, and tolerates disabled stora
     storage.setItem(stateKey, JSON.stringify(taggedState()));
     await store.newData();
     assert.equal(JSON.parse(storage.getItem(stateKey)).details.W1ABC.mobile, true);
+    assert.equal(reloads, 0);
+    Object.defineProperty(store, 'mainCache', { value: { net: { createdAt: secondNet } } });
+    await store.newData();
+    assertCleared(storage);
+    assert.equal(reloads, 1);
+    assert.equal(storage.getItem(sessionKey), secondNet);
+    storage.setItem(stateKey, JSON.stringify(taggedState()));
     store.onNetClose();
     assertCleared(storage);
     const restricted = makeStore();

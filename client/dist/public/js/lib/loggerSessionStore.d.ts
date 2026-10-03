@@ -2,7 +2,7 @@ import { EndPointClient } from '#@client/lib/clientUtils.js';
 import { LiveNetReactiveStore } from '#@client/lib/stores.js';
 export declare class LoggerSessionReactiveStore extends LiveNetReactiveStore {
     private readonly npid;
-    private sessionPrepared;
+    private sessionCreatedAt;
     private resolveLoggerReady;
     readonly loggerReady: Promise<void>;
     constructor(endPoint: EndPointClient, npid: string);

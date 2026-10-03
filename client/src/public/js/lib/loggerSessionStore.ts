@@ -8,7 +8,7 @@ import { clearLoggerSession, prepareLoggerSession } from '#@client/lib/loggerSes
 const logger = createLogger('lib/loggerSessionStore.ts');
 
 export class LoggerSessionReactiveStore extends LiveNetReactiveStore {
-    private sessionPrepared = false;
+    private sessionCreatedAt: string | null = null;
     private resolveLoggerReady!: () => void;
     public readonly loggerReady = new Promise<void>(resolve => {
         this.resolveLoggerReady = resolve;
@@ -19,13 +19,19 @@ export class LoggerSessionReactiveStore extends LiveNetReactiveStore {
     }
 
     protected override async newData(): Promise<void> {
-        if (!this.sessionPrepared && this.mainCache) {
+        const createdAt = this.mainCache?.net.createdAt;
+        if (createdAt !== undefined && this.sessionCreatedAt !== String(createdAt)) {
+            const replacingSession = this.sessionCreatedAt !== null;
             try {
-                prepareLoggerSession(window.localStorage, this.npid, this.mainCache.net.createdAt);
+                prepareLoggerSession(window.localStorage, this.npid, createdAt);
             } catch (error) {
                 logger.warn(`Unable to prepare logger session: ${String(error)}`);
             }
-            this.sessionPrepared = true;
+            this.sessionCreatedAt = String(createdAt);
+            if (replacingSession) {
+                window.location.reload();
+                return;
+            }
             this.resolveLoggerReady();
         }
         await super.newData();
