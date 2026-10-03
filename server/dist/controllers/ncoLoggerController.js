@@ -25,6 +25,9 @@ async function loadContext(req) {
     if (!netProfile) throw new Error('Net profile not found');
     const liveNet = await LiveNet.findById(netProfile.liveNet);
     if (!liveNet) throw new Error('Active net not found');
+    if (!await require('../lib/scheduling/roomAccess').canUserAccessRoom({ liveNet, netProfile, user: req.user })) {
+        throw new Error('Scheduled room is not open');
+    }
     const source = await netOps.getStationDetail({
         lnid: liveNet._id,
         station: req.user.callSign

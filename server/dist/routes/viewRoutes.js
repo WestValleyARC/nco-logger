@@ -67,6 +67,20 @@ const contactRateLimitAllows = async key => {
     return result.allowed;
 };
 
+router.get('/scheduled-start/:id/:occurrenceId', authCheck(REQ_CALLSIGN), async (req, res, next) => {
+    try {
+        const profile = await NetProfile.findById(req.params.id);
+        if (!profile) return res.sendStatus(404);
+        if (!profile.owners.some(owner => String(owner) === String(req.user._id))) return res.sendStatus(403);
+        const occurrence = await ScheduledOccurrence.findOne({ _id: req.params.occurrenceId, netProfile: profile._id });
+        if (!occurrence) return res.sendStatus(404);
+        return res.render('scheduledStart', populate(req, res, {
+            VIEW: 'scheduledStart', TITLE: profile.title,
+            OPENING_ENDPOINT: `/api/data/netprofiles/${profile._id}/occurrences/${occurrence._id}`
+        }));
+    } catch (error) { return next(error); }
+});
+
 router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
     try {
         const npid = req.params.id;

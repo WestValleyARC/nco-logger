@@ -12,6 +12,8 @@ const { getStationInteraction } = require('../../models/stationInteraction');
 const { getFlexOption } = require('../../models/flexOptions');
 const { logger } = require('../logger');
 
+const { canAccessScheduledPreparation } = require('./roomAccess');
+
 const PREPARATION_WINDOW_MS = 30 * 60 * 1000;
 const GRACE_PERIOD_MS = 30 * 60 * 1000;
 const DEFAULT_AWAY_IN_MS = 25000;
@@ -53,16 +55,11 @@ const hasRecentNco = async ({ liveNetId, now, awayInMs, db, session = null }) =>
     }).session(session));
 };
 
-const canAccessScheduledPreparation = ({ netProfile, liveNet, occurrence, user, now = new Date() }) => {
-    if (!liveNet?.occurrence || liveNet.started) return true;
-    if (!occurrence || occurrence.status !== 'preparing') return false;
-    if (now >= timingFor(occurrence).graceEndsAt) return false;
-    const userId = String(user?._id || user?.id || '');
-    return netProfile.owners.some(owner => String(owner) === userId) || String(liveNet.netControl) === userId;
-};
-
-const prepareOccurrence = async ({ npid, occurrenceId, user, now = new Date(), db = mongoose.connection }) => {
+const prepareOccurrence = async ({ npid, occurrenceId, user, roomOpening, now = new Date(), db = mongoose.connection }) => {
     const { NetProfile, NetSchedule, ScheduledOccurrence, LiveNet, StationInteraction } = getModels(db);
+    if (roomOpening !== undefined && !['early', 'scheduled'].includes(roomOpening)) {
+        throw new LifecycleError(400, 'Choose early or scheduled room opening');
+    }
     const preliminaryOwner = await netOwnerCheck({ npid, upid: user._id, db });
     if (!preliminaryOwner.npresult) throw new LifecycleError(404, 'Net profile not found');
     if (!preliminaryOwner.confirmed) throw new LifecycleError(403, 'Net profile owner access required');
@@ -96,10 +93,10 @@ const prepareOccurrence = async ({ npid, occurrenceId, user, now = new Date(), d
             if (!occurrence) throw new LifecycleError(404, 'Scheduled occurrence not found');
 
             const { opensAt, graceEndsAt } = timingFor(occurrence);
-            if (now < opensAt) throw new LifecycleError(409, 'Preparation window has not opened');
+            if (!roomOpening && now < opensAt) throw new LifecycleError(409, 'Preparation window has not opened');
             if (now >= graceEndsAt) throw new LifecycleError(409, 'Preparation grace period has ended');
 
-            if (occurrence.status === 'preparing' && occurrence.liveNet) {
+            if (['preparing', 'live'].includes(occurrence.status) && occurrence.liveNet) {
                 const existing = await LiveNet.findById(occurrence.liveNet).session(session);
                 if (existing && String(netProfile.liveNet) === String(existing._id)) {
                     result = { occurrence, liveNet: existing, idempotent: true };
@@ -137,6 +134,8 @@ const prepareOccurrence = async ({ npid, occurrenceId, user, now = new Date(), d
                 occurrence: occurrence._id,
                 netControl: user._id,
                 countdownTimer: 0,
+                roomOpening,
+                roomOpensAt: roomOpening ? (roomOpening === 'early' ? now : occurrence.startAt) : undefined,
                 started: shouldStart,
                 startedAt: shouldStart ? now : null,
                 url: `/views/livenet/${netProfile._id}`
@@ -169,15 +168,19 @@ const transitionPreparedOccurrence = async ({ occurrenceId, now = new Date(), db
                 status: 'preparing',
                 startAt: { $lte: now }
             }).session(session);
-            if (!occurrence || now >= timingFor(occurrence).graceEndsAt || !occurrence.liveNet) return;
+            if (!occurrence || !occurrence.liveNet) return;
             const liveNet = await LiveNet.findOne({
                 _id: occurrence.liveNet,
                 occurrence: occurrence._id,
-                started: false
+                started: false,
+                closing: { $ne: true }
             }).session(session);
             if (!liveNet) return;
-            const awayInMs = await configuredAwayInMs(db, session);
-            if (!await hasRecentNco({ liveNetId: liveNet._id, now, awayInMs, db, session })) return;
+            if (!liveNet.roomOpening) {
+                if (now >= timingFor(occurrence).graceEndsAt) return;
+                const awayInMs = await configuredAwayInMs(db, session);
+                if (!await hasRecentNco({ liveNetId: liveNet._id, now, awayInMs, db, session })) return;
+            }
             occurrence.status = 'live';
             occurrence.startedAt = now;
             liveNet.started = true;
@@ -284,15 +287,15 @@ const processOccurrenceLifecycle = async ({ now = new Date(), db = mongoose.conn
     const due = await ScheduledOccurrence.find({ status: 'preparing', startAt: { $lte: now } }).select('_id startAt');
     for (const occurrence of due) {
         try {
-            if (now >= timingFor(occurrence).graceEndsAt) {
+            if (await transitionPreparedOccurrence({ occurrenceId: occurrence._id, now, db })) {
+                totals.transitioned++;
+            } else if (now >= timingFor(occurrence).graceEndsAt) {
                 totals.missed += Number(await finalizePreparation({
                     occurrenceId: occurrence._id,
                     finalStatus: 'missed',
                     now,
                     db
                 }));
-            } else {
-                totals.transitioned += Number(await transitionPreparedOccurrence({ occurrenceId: occurrence._id, now, db }));
             }
         } catch (error) {
             logger.error(`Scheduled lifecycle failed for occurrence ${occurrence._id}: ${error.message}`);

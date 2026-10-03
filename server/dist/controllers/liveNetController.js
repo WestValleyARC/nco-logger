@@ -39,12 +39,16 @@ const getCheckInCounts = async (liveNets, StationInteractionModel = StationInter
 const queryPublicLiveNets = async (
     LiveNetModel = LiveNet,
     StationInteractionModel = StationInteraction,
-    viewer = null
+    viewer = null,
+    now = new Date()
 ) => {
-    const queryResult = await LiveNetModel.find({ started: true, closing: { $ne: true } })
+    const queryResult = await LiveNetModel.find({
+        closing: { $ne: true },
+        $or: [{ started: true }, { roomOpening: { $in: ['early', 'scheduled'] }, roomOpensAt: { $lte: now } }]
+    })
         .lean()
         .populate('netProfile', 'title netType frequency mode modeDetails connections permanent invisible liveNet testFixture owners invitedTesters')
-        .select('lookupTable started startedAt closing url createdAt netProfile title netType frequency mode modeDetails');
+        .select('lookupTable roomOpening roomOpensAt started startedAt closing url createdAt netProfile title netType frequency mode modeDetails');
     const eligible = queryResult.filter(item =>
         item.netProfile &&
         (item.netProfile.invisible !== true || (privateTestNet.isPrivateTestNet(item.netProfile) && privateTestNet.canAccess(item.netProfile, viewer))) &&
@@ -61,7 +65,9 @@ const queryPublicLiveNets = async (
         permanent: item.netProfile.permanent,
         modeDetails: item.modeDetails ?? item.netProfile.modeDetails,
         connections: item.netProfile.connections || [],
-        started: true,
+        started: item.started,
+        roomOpening: item.roomOpening,
+        roomOpensAt: item.roomOpensAt,
         startedAt: item.startedAt,
         url: item.url,
         createdAt: item.createdAt,

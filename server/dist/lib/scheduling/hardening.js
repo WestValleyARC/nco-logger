@@ -324,9 +324,9 @@ const processAbandonedLiveNets = async ({
         const profile = profileById.get(id(liveNet.netProfile));
         const lastNcoPresenceAt = lastPresence.get(id(liveNet._id)) || null;
         const event = await observeAutoClose({ liveNet, profile, lastNcoPresenceAt, now, LiveNetAutoClose });
-        const baseline = lastNcoPresenceAt || new Date(Math.max(
+        const baseline = new Date(Math.max(
             liveNet.startedAt?.getTime() || 0,
-            event.firstObservedAt.getTime()
+            lastNcoPresenceAt?.getTime() || event.firstObservedAt.getTime()
         ));
         if (baseline > cutoff || event.closeState === 'completed') continue;
 

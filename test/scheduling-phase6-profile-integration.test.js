@@ -122,7 +122,7 @@ test('Phase 6 My Nets and Favorites scheduling integration', async t => {
             await createOccurrence(earlyProfile, earlySchedule, new Date('2030-01-01T20:00:00Z'));
             const summaries = await loadProfileSchedulingSummaries({ profiles: [inWindowProfile, earlyProfile], now: NOW, db });
             assert.equal(summaries.get(String(inWindowProfile._id)).canPrepare, true);
-            assert.equal(summaries.get(String(earlyProfile._id)).canPrepare, false);
+            assert.equal(summaries.get(String(earlyProfile._id)).canPrepare, true);
         });
 
         await t.test('scheduled occurrence remains preparable during the thirty-minute post-start grace period', async () => {
