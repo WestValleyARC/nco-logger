@@ -25,6 +25,7 @@ export declare abstract class ReactiveStore<T extends EndPointResponse> {
     constructor(endPoint: EndPointClient, compensatoryScheduling?: boolean, enableSse?: boolean);
     private handleNewData;
     init(): Promise<void>;
+    protected onNetClose(): void;
     delayServerDataIngest(): void;
     private notifySubscribers;
     private mainCacheChanged;

@@ -290,6 +290,7 @@ export abstract class ReactiveStore<T extends EndPointResponse> {
             this.eventSource.addEventListener('net-close', event => {
                 logger.info('Received net-close event:', event.data);
                 this.eventSource?.close();
+                this.onNetClose();
                 window.location.href = '/';
             });
 
@@ -361,6 +362,8 @@ export abstract class ReactiveStore<T extends EndPointResponse> {
 
         this.isInitStoreRunning = false;
     }
+
+    protected onNetClose(): void {}
 
     // Called when the main cache is about to be modified. It informs the InFlightWindowManager to start the in-flight window, during which updates to the main cache from the server data cache are delayed.
     public delayServerDataIngest(): void {
