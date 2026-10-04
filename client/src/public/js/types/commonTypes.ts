@@ -200,6 +200,7 @@ export interface FollowListResponse extends EndPointResponse {
 // LiveNetDetailsResponse type
 export interface LiveNetDetailsResponse extends EndPointResponse {
     client?: Client;
+    liveNetId?: string;
     net: NetInfo;
     stations: Station[];
 }
