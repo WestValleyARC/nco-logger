@@ -1,4 +1,4 @@
-import { LoggerSplitterControls } from "../../lib/loggerSplitterControls.js";
+import { LoggerSplitterControls, splitterHitSize } from "../../lib/loggerSplitterControls.js";
 import { dockAtEdge, sharedBoundaries } from "../../lib/loggerSplitters.js";
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
 import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, isQrzNameFresh, selectNcoAvatarSource, setBoundedCache } from "../../lib/avatarPolicy.js";
@@ -954,9 +954,9 @@ import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
         const layout = visiblePhonePortraitLayout(normalizeModuleLayout()).layout;
         sharedBoundaries(layout, visibleModuleIds(layout)).forEach(boundary => {
             if (boundary.before.includes("chat"))
-                inset[boundary.axis === "x" ? "right" : "bottom"] = 22;
+                inset[boundary.axis === "x" ? "right" : "bottom"] = splitterHitSize() / 2;
             if (boundary.after.includes("chat"))
-                inset[boundary.axis === "x" ? "left" : "top"] = 22;
+                inset[boundary.axis === "x" ? "left" : "top"] = splitterHitSize() / 2;
         });
         chat.style.setProperty("--nch-chat-left", `${Math.round(documentLeft + inset.left)}px`);
         chat.style.setProperty("--nch-chat-top", `${Math.round(documentTop + inset.top)}px`);

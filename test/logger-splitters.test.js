@@ -119,3 +119,18 @@ test('shared splitter graphics fill their boundary without a pointer focus box',
   assert.doesNotMatch(controller, /handle\.focus\(/);
   assert.doesNotMatch(controller, /scrollTop \+ 24|scrollLeft \+ 32|top - 48|left - 64/);
 });
+
+test('splitter drag targets are slim for a mouse and 44px for touch or unknown input', async () => {
+  const { splitterHitSize } = await import('../client/dist/public/js/lib/loggerSplitterControls.js');
+  const original = globalThis.matchMedia;
+  try {
+    delete globalThis.matchMedia;
+    assert.equal(splitterHitSize(), 44);
+    globalThis.matchMedia = query => ({ matches: query === '(pointer: fine)' });
+    assert.equal(splitterHitSize(), 12);
+    globalThis.matchMedia = () => ({ matches: false });
+    assert.equal(splitterHitSize(), 44);
+  } finally {
+    if (original) globalThis.matchMedia = original; else delete globalThis.matchMedia;
+  }
+});
