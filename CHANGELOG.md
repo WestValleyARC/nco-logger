@@ -29,7 +29,7 @@ Bug-fix release for the 1.1 line. No schema changes.
 - The Contact page now links to the address in `SUPPORT_EMAIL` instead of
   offering a message form. Set `SUPPORT_EMAIL` in `.env`. (#91)
 
-## [1.1.0] - Unreleased
+## [1.1.0] - 2026-09-22
 
 First stable version of the 1.1 line, following `1.1.0-alpha.1` and
 `1.1.0-beta.1` through `1.1.0-beta.4`. This entry covers the work since the
