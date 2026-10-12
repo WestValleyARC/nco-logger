@@ -3,6 +3,32 @@
 All notable changes to NCO Logger are recorded here. Versions follow Semantic Versioning.
 The version describes the repository code; deploying it to a server is a separate step.
 
+## [1.1.1] - 2026-10-12
+
+Bug-fix release for the 1.1 line. No schema changes.
+
+### Fixed
+
+- Scheduled net rooms open for early check-ins without being treated as on
+  air. (#73)
+- Google sign-in account conflicts are explained, and operators can recover
+  an account. (#74)
+- Chat images have sensitive metadata stripped, and closed chat sessions are
+  retained for seven days. (#86)
+- Dashboard splitters no longer draw over the open header menu, and the
+  photo viewer close button is reachable. (#70, #75)
+- Logger operational tags and per-station notes reset when a new live net
+  starts. Notes stay within their live occurrence, and drafts are discarded.
+  (#83, #99)
+- Station Controls spacing, desktop minimum height, and chat sizing within its
+  module were corrected, and desktop Live Nets text matches the schedule
+  cards. (#79, #81, #82, #85)
+
+### Changed
+
+- The Contact page now links to the address in `SUPPORT_EMAIL` instead of
+  offering a message form. Set `SUPPORT_EMAIL` in `.env`. (#91)
+
 ## [1.1.0] - Unreleased
 
 First stable version of the 1.1 line, following `1.1.0-alpha.1` and
