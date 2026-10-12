@@ -128,6 +128,7 @@ exports.isLiveNetPresenceResponse = createTypeGuard({
 exports.isLiveNetDetailsResponse = createTypeGuard({
     ...endPointResponseFields,
     client: value => value === undefined || (0, exports.isClient)(value),
+    liveNetId: value => value === undefined || typeof value === 'string',
     net: exports.isNetInfo,
     stations: value => Array.isArray(value) && value.every(exports.isStation)
 }, true);

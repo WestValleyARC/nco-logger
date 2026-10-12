@@ -41,6 +41,38 @@ test('NCO logger state keeps shared operational fields and excludes private note
     assert.equal(state.details.W1ABC.profile, undefined);
 });
 
+test('logger operational tags reset between live nets without clearing local preferences', async () => {
+    const { resetOperationalTagsForLiveNet } = await import('../client/dist/public/js/lib/loggerTags.js');
+    const layout = { columns: 3 };
+    const previous = {
+        liveNetId: 'old-live-net',
+        ioCalls: ['W1ABC'],
+        recheckCalls: ['W1ABC'],
+        sharedUpdatedAt: 123,
+        layout,
+        details: {
+            W1ABC: {
+                inOut: true,
+                recheck: true,
+                mobile: true,
+                specialGuest: true,
+                note: 'preserve this',
+                name: 'Test Operator'
+            }
+        }
+    };
+
+    const next = resetOperationalTagsForLiveNet(previous, 'new-live-net');
+
+    assert.equal(next.liveNetId, 'new-live-net');
+    assert.deepEqual(next.ioCalls, []);
+    assert.deepEqual(next.recheckCalls, []);
+    assert.equal(next.sharedUpdatedAt, 0);
+    assert.equal(next.layout, layout);
+    assert.deepEqual(next.details.W1ABC, { note: 'preserve this', name: 'Test Operator' });
+    assert.equal(resetOperationalTagsForLiveNet(next, 'new-live-net'), next);
+});
+
 for (const label of ['stale shared name', 'stale shared location', 'reconnect snapshot profile']) {
     test(`${label} cannot enter server logger state`, () => {
         const state = sanitizeLoggerState({

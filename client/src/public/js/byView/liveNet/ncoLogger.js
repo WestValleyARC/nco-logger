@@ -14,6 +14,7 @@ import {
 import {
   findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLoggerGridItem
 } from "../../lib/loggerGrid.js";
+import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
 
 (() => {
   "use strict";
@@ -223,7 +224,8 @@ import {
   let local = {
     order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
     hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {}, responsiveLayouts: {}, roleResponsiveLayouts: {},
-    helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0
+    helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0,
+    liveNetId: ""
   };
   let dragging = null;
   let touchRowDrag = null;
@@ -5540,6 +5542,13 @@ import {
       const data = await fetchNet();
       if (requestSequence < refreshAppliedSequence) return;
       refreshAppliedSequence = requestSequence;
+      const liveNetId = String(data.liveNetId || "");
+      if (liveNetId && local.liveNetId !== liveNetId) {
+        local = resetOperationalTagsForLiveNet(local, liveNetId);
+        lastServerLoggerRevision = 0;
+        lastSavedLoggerStateSignature = "";
+        storageSet();
+      }
       const nextStations = Array.isArray(data.stations) ? data.stations : [];
       observeStationTransitions(nextStations);
       latestStations = nextStations;
@@ -5683,7 +5692,8 @@ import {
       chatFontPreset: normalizeFontPreset(saved.chatFontPreset),
       helpFontPreset: normalizeFontPreset(saved.helpFontPreset),
       manualOrder: Boolean(saved.manualOrder),
-      sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0
+      sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0,
+      liveNetId: String(saved.liveNetId || "")
     };
     for (const [rawCall, details] of Object.entries(local.details)) {
       if (details?.nameOverride || Number(details?.qrzNameVersion || 0) < QRZ_NAME_VERSION) {

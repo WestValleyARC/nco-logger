@@ -148,6 +148,7 @@ export interface FollowListResponse extends EndPointResponse {
 }
 export interface LiveNetDetailsResponse extends EndPointResponse {
     client?: Client;
+    liveNetId?: string;
     net: NetInfo;
     stations: Station[];
 }

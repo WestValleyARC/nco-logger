@@ -94,6 +94,7 @@ const buildResponseSkeleton = (netProfileDoc, liveNetDoc, sigReportTypeByMode) =
         const mode = liveNetDoc.mode ?? netProfileDoc.mode;
         const modeDetails = liveNetDoc.modeDetails ?? netProfileDoc.modeDetails;
         response = {
+            liveNetId: String(liveNetDoc._id),
             net: {
                 title,
                 netType,

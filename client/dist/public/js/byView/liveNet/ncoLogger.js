@@ -5,6 +5,7 @@ import { AVATAR_TRANSIENT_RETRY_MS, avatarRetryAt, isDefinitiveNoPhoto, isQrzNam
 import { formatConnectionLines } from "../../lib/publicSchedule.js";
 import { classifyLoggerLayout, isCurrentResponsiveLayout, isSameLoggerModuleLayout, loggerLayoutRole, shouldResetLegacyLoggerLayout, LOGGER_RESPONSIVE_LAYOUT_VERSION, LOGGER_ROLE_LAYOUT_VERSION } from "../../lib/loggerResponsive.js";
 import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLoggerGridItem } from "../../lib/loggerGrid.js";
+import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
 (() => {
     "use strict";
     const POLL_MS = 3000;
@@ -211,7 +212,8 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
     let local = {
         order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
         hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {}, responsiveLayouts: {}, roleResponsiveLayouts: {},
-        helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0
+        helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0,
+        liveNetId: ""
     };
     let dragging = null;
     let touchRowDrag = null;
@@ -5805,6 +5807,13 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
             if (requestSequence < refreshAppliedSequence)
                 return;
             refreshAppliedSequence = requestSequence;
+            const liveNetId = String(data.liveNetId || "");
+            if (liveNetId && local.liveNetId !== liveNetId) {
+                local = resetOperationalTagsForLiveNet(local, liveNetId);
+                lastServerLoggerRevision = 0;
+                lastSavedLoggerStateSignature = "";
+                storageSet();
+            }
             const nextStations = Array.isArray(data.stations) ? data.stations : [];
             observeStationTransitions(nextStations);
             latestStations = nextStations;
@@ -5954,7 +5963,8 @@ import { findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLog
             chatFontPreset: normalizeFontPreset(saved.chatFontPreset),
             helpFontPreset: normalizeFontPreset(saved.helpFontPreset),
             manualOrder: Boolean(saved.manualOrder),
-            sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0
+            sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0,
+            liveNetId: String(saved.liveNetId || "")
         };
         for (const [rawCall, details] of Object.entries(local.details)) {
             if (details?.nameOverride || Number(details?.qrzNameVersion || 0) < QRZ_NAME_VERSION) {
