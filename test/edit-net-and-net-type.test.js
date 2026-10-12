@@ -142,6 +142,7 @@ test('Edit Net and Net Type', async t => {
                 flexOpts: { baseTtlMs: 5000, awayInMs: 120000, sigReportTypeByMode: {} },
                 requestingCallSign: nco.callSign
             });
+            assert.equal(before.liveNetId, String(liveNet._id));
             assert.equal(before.net.netType, 'Roundtable');
             assert.equal(before.net.title, 'Saved Profile Name');
 

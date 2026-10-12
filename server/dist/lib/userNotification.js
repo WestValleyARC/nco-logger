@@ -294,7 +294,7 @@ class NetInactivityAutoClose extends EmailBase {
 class NetCloseReport extends EmailBase {
     static async createSnapshot({
         netProfileDoc: { id: NPID, title },
-        liveNetDoc: { url, started, startedAt },
+        liveNetDoc: { _id: liveNetId, url, started, startedAt },
         closedAt,
         timezone = 'UTC',
         attendees,
@@ -302,8 +302,7 @@ class NetCloseReport extends EmailBase {
         db = mongoose.connection
     }) {
         let chatLog = '';
-        try { chatLog = await fetchChat({ NPID, since: attendees[0]?.checkedInAt, db }); }
-        catch (err) { logger.warn(`Chat history unavailable during net-close report: ${err.message}`); }
+        chatLog = await fetchChat({ NPID, liveNetId, since: attendees[0]?.checkedInAt, db });
         const priority = { netcontrol: 1, netlogger: 2, netrelay: 3 };
         const sorted = [...attendees].sort((a, b) => (priority[a.role] || 4) - (priority[b.role] || 4) || new Date(a.checkedInAt) - new Date(b.checkedInAt));
         const formatCheckInTime = value => new Intl.DateTimeFormat('en-US', {

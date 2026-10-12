@@ -228,7 +228,7 @@ test('Phase 7 LiveNet recovery and inactivity hardening', async t => {
             }
             const manualEvent = autoCloseEvents.find(event => String(event.netProfile) === String(manualProfile._id));
             assert.match(manualEvent.reportSnapshot.chatLog, /W1CHAT: Captured before automatic cleanup/);
-            assert.equal(await ChatMessage.countDocuments({ netProfile: manualProfile._id }), 0);
+            assert.equal(await ChatMessage.countDocuments({ netProfile: manualProfile._id }), 1, 'chat is retained for seven days');
             const completed = await ScheduledOccurrence.findById(occurrence._id);
             assert.equal(completed.status, 'completed');
             assert.equal(completed.completedAt.toISOString(), NOW.toISOString());

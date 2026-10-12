@@ -838,80 +838,13 @@
     color: var(--app-text);
 }
 
-.contact-form {
-    display: grid;
-    gap: 1rem;
-}
-
-.contact-form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-}
-
-.contact-form .app-label span {
+.contact-support-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
     color: var(--app-muted);
-    font-weight: 400;
-}
-
-.contact-form textarea.app-input {
-    min-height: 10rem;
-    resize: vertical;
-}
-
-.contact-form textarea.app-input:focus {
-    border-color: var(--app-cyan);
-    box-shadow: 0 0 0 0.2rem rgba(116, 198, 212, 0.12);
-}
-
-.contact-field-error {
-    margin: 0.35rem 0 0;
-    color: #ffaaa0;
-    font-size: 0.85rem;
-}
-
-.contact-notice {
-    display: grid;
-    gap: 0.2rem;
-    margin-bottom: 1.25rem;
-    padding: 0.85rem 1rem;
-    border: 1px solid var(--app-border);
-    border-radius: 0.55rem;
-    color: var(--app-muted);
-    background: rgba(116, 198, 212, 0.06);
-}
-
-.contact-notice strong {
-    color: var(--app-text);
-}
-
-.contact-notice-error {
-    color: #f0c2bc;
-    border-color: rgba(220, 84, 69, 0.46);
-    background: rgba(220, 84, 69, 0.08);
-}
-
-.contact-submit {
-    justify-self: start;
-    min-width: 10rem;
-}
-
-.contact-honeypot {
-    position: absolute !important;
-    left: -10000px !important;
-    overflow: hidden;
-    width: 1px;
-    height: 1px;
-}
-
-@media (max-width: 575.98px) {
-    .contact-form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .contact-submit {
-        width: 100%;
-    }
+    font-size: 1.1rem;
 }
 
 .login-page .app-submit {
@@ -4773,6 +4706,18 @@
         height: 3.1rem;
     }
 
+    .landing-page .landing-live-net-info {
+        gap: 0.1rem;
+    }
+
+    .landing-page .landing-live-net-title {
+        font-size: 0.9rem;
+    }
+
+    .landing-page :is(.landing-live-net-frequency, .landing-live-net-time) {
+        font-size: 0.74rem;
+        -webkit-line-clamp: 1;
+    }
     .landing-page .landing-live-panel .net-card {
         grid-template-columns: 3.1rem minmax(0, 1fr) auto;
         min-height: 4.45rem;
@@ -5687,22 +5632,6 @@
         radial-gradient(circle at 14% 8%, rgba(8, 117, 144, 0.08), transparent 30rem),
         radial-gradient(circle at 88% 20%, rgba(163, 77, 0, 0.045), transparent 25rem),
         #edf2f4;
-}
-
-:root[data-theme='light'] .contact-field-error,
-:root[data-theme='light'] .contact-notice-error {
-    color: var(--app-danger-text);
-}
-
-:root[data-theme='light'] .contact-notice {
-    color: var(--app-muted);
-    border-color: var(--app-border);
-    background: var(--app-subtle-bg);
-}
-
-:root[data-theme='light'] .contact-notice-error {
-    border-color: var(--app-danger-border);
-    background: var(--app-danger-bg);
 }
 
 :root[data-theme='light'] .guide-main :is(.guide-contents, .guide-content) {

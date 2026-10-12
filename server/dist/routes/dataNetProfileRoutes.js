@@ -15,6 +15,7 @@ router.delete('/:id/schedule', authCheck(REQ_CALLSIGN), netScheduleController.di
 router.get('/:id/occurrences', authCheck(REQ_CALLSIGN), netScheduleController.listOccurrences);
 router.patch('/:id/occurrences/:occurrenceId', authCheck(REQ_CALLSIGN), netScheduleController.updateOccurrence);
 router.delete('/:id/occurrences/:occurrenceId', authCheck(REQ_CALLSIGN), netScheduleController.cancelOccurrence);
+router.get('/:id/occurrences/:occurrenceId/opening', authCheck(REQ_CALLSIGN), netScheduleController.scheduledOpeningChoice);
 router.post(
     '/:id/occurrences/:occurrenceId/prepare',
     authCheck(REQ_CALLSIGN),

@@ -87,6 +87,8 @@ test('controller supports touch drag, rollback, keyboard resizing and saves only
     assert.equal(handle.attributes.role, 'separator');
     assert.equal(handle.attributes['aria-orientation'], 'horizontal');
     assert.equal(handle.style.height, '44px');
+    assert.equal(handle.style.left, '0px');
+    assert.equal(handle.style.width, '240px');
     const event = (extra = {}) => ({ pointerId: 7, pointerType: 'touch', button: 0, currentTarget: handle, clientX: 0, clientY: 140, preventDefault() {}, stopPropagation() {}, ...extra });
     handle.listeners.pointerdown(event());
     assert.equal(handle.capture, 7);
@@ -106,4 +108,29 @@ test('controller supports touch drag, rollback, keyboard resizing and saves only
     assert.equal(handles.length, 1, 'render retains the capture and focus node');
     controller.destroy();
   } finally { Object.assign(global, old); }
+});
+
+test('shared splitter graphics fill their boundary without a pointer focus box', () => {
+  const css = require('node:fs').readFileSync('client/dist/public/css/nco-logger.css', 'utf8');
+  const controller = require('node:fs').readFileSync('client/src/public/js/lib/loggerSplitterControls.ts', 'utf8');
+  assert.match(css, /\.nch-shared-splitter\[data-axis="x"\]::after\s*\{[^}]*top:\s*0;[^}]*bottom:\s*0;/s);
+  assert.match(css, /\.nch-shared-splitter\[data-axis="y"\]::after\s*\{[^}]*left:\s*0;[^}]*right:\s*0;/s);
+  assert.match(css, /\.nch-shared-splitter:focus-visible\s*\{[^}]*outline:\s*0;[^}]*background:\s*transparent;/s);
+  assert.doesNotMatch(controller, /handle\.focus\(/);
+  assert.doesNotMatch(controller, /scrollTop \+ 24|scrollLeft \+ 32|top - 48|left - 64/);
+});
+
+test('splitter drag targets are slim for a mouse and 44px for touch or unknown input', async () => {
+  const { splitterHitSize } = await import('../client/dist/public/js/lib/loggerSplitterControls.js');
+  const original = globalThis.matchMedia;
+  try {
+    delete globalThis.matchMedia;
+    assert.equal(splitterHitSize(), 44);
+    globalThis.matchMedia = query => ({ matches: query === '(pointer: fine)' });
+    assert.equal(splitterHitSize(), 12);
+    globalThis.matchMedia = () => ({ matches: false });
+    assert.equal(splitterHitSize(), 44);
+  } finally {
+    if (original) globalThis.matchMedia = original; else delete globalThis.matchMedia;
+  }
 });

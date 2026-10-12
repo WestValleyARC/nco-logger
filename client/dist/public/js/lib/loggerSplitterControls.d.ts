@@ -1,5 +1,6 @@
 import { type PaneMinimums, type SharedBoundary } from './loggerSplitters.js';
 import type { LoggerGridLayout } from './loggerGrid.js';
+export declare const splitterHitSize: () => number;
 type Options = {
     read: () => LoggerGridLayout;
     visible: (layout: LoggerGridLayout) => string[];

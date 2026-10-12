@@ -1,4 +1,4 @@
-import { LoggerSplitterControls } from "../../lib/loggerSplitterControls.js";
+import { LoggerSplitterControls, splitterHitSize } from "../../lib/loggerSplitterControls.js";
 import { dockAtEdge, sharedBoundaries } from "../../lib/loggerSplitters.js";
 import { CoalescedAsyncRequest, ExclusiveKeyedOperation } from "../../lib/requestCoordination.js";
 import {
@@ -14,12 +14,13 @@ import {
 import {
   findLoggerGridItemPosition, loggerGridLayoutIsCollisionFree, replaceLoggerGridItem
 } from "../../lib/loggerGrid.js";
+import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
 
 (() => {
   "use strict";
 
   const POLL_MS = 3000;
-  const VERSION = "1.1.0";
+  const VERSION = "1.1.1";
   const QRZ_NAME_VERSION = 3;
   const BUG_REPORT_URL = `mailto:ke7wil@gmail.com?subject=${encodeURIComponent(`WVARC NCO Logger Bug Report - ${VERSION}`)}&body=${encodeURIComponent(`Version: ${VERSION}\nLogger mode: \nWhat happened?\n\nWhat did you expect?\n\nSteps to reproduce:\n`)}`;
   const NOTE_MAX = 60;
@@ -223,7 +224,8 @@ import {
   let local = {
     order: [], checkedOutOrder: [], lurkerOrder: [], ioCalls: [], recheckCalls: [], details: {},
     hiddenCalls: [], paneSizes: {}, collapsedSections: {}, moduleLayout: {}, responsiveLayouts: {}, roleResponsiveLayouts: {},
-    helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0
+    helperFontPreset: "normal", chatFontPreset: "normal", helpFontPreset: "normal", manualOrder: false, sharedUpdatedAt: 0,
+    liveNetId: ""
   };
   let dragging = null;
   let touchRowDrag = null;
@@ -943,8 +945,8 @@ import {
     const inset = { left: 2, right: 2, top: 2, bottom: 2 };
     const layout = visiblePhonePortraitLayout(normalizeModuleLayout()).layout;
     sharedBoundaries(layout, visibleModuleIds(layout)).forEach(boundary => {
-      if (boundary.before.includes("chat")) inset[boundary.axis === "x" ? "right" : "bottom"] = 22;
-      if (boundary.after.includes("chat")) inset[boundary.axis === "x" ? "left" : "top"] = 22;
+      if (boundary.before.includes("chat")) inset[boundary.axis === "x" ? "right" : "bottom"] = splitterHitSize() / 2;
+      if (boundary.after.includes("chat")) inset[boundary.axis === "x" ? "left" : "top"] = splitterHitSize() / 2;
     });
     chat.style.setProperty("--nch-chat-left", `${Math.round(documentLeft + inset.left)}px`);
     chat.style.setProperty("--nch-chat-top", `${Math.round(documentTop + inset.top)}px`);
@@ -1552,13 +1554,17 @@ import {
       downloadChatImage(source);
       return;
     }
-    const image = event.target.closest?.(".chat-message-content img");
+    // Chat thumbnails are buttons beside the message content, and pinned images
+    // have their own button. Catch the entire control (including keyboard clicks)
+    // so they use this viewport-fitted viewer instead of the nested chat lightbox.
+    const imageButton = event.target.closest?.(".chat-image-link, .chat-pinned-image-open");
+    const image = imageButton?.querySelector("img") || event.target.closest?.(".chat-message-content img");
     if (!image || !chatImageHost?.contains(image)) return;
     const source = image.currentSrc || image.src || image.dataset.imageUrl || "";
     if (!source) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    openPhotoViewer(source, "Chat image", image.alt || "Enlarged chat image", image, "chat");
+    openPhotoViewer(source, "Chat image", image.alt || "Enlarged chat image", imageButton || image, "chat");
   }
 
   function dockNativeChatUnsafe() {
@@ -3943,7 +3949,7 @@ import {
         supplied = { ...legacyItem, x: legacyX * 2, w: legacyW * 2 };
       }
       const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, Math.round(Number(supplied.w) || fallback.w)));
-      const h = Math.min(maximumRows, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
+      const h = Math.min(maximumRows, Math.max(moduleMinRows(id), Math.round(Number(supplied.h) || fallback.h)));
       items[id] = {
         x: Math.min(GRID_COLUMNS - w, Math.max(0, Math.round(Number(supplied.x) || 0))),
         y: Math.min(maximumRows - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
@@ -4123,11 +4129,22 @@ import {
     return { layout: rendered, rows: Math.max(1, nextRow) };
   }
 
+  // Desktop Station Controls only needs its content height plus a small gutter, so the minimum is pixel-based.
+  const CONTROLS_MIN_HEIGHT_PX = 124;
+  function moduleMinRows(id) {
+    const base = MIN_MODULE_ROWS[id];
+    if (id !== "controls" || currentLayoutContext !== "desktop") return base;
+    const height = panel?.querySelector("[data-role='dashboard']")?.clientHeight || 0;
+    if (!height) return base;
+    const rowPitch = (height + GRID_GAP) / layoutRows();
+    return Math.min(base, Math.max(2, Math.ceil((CONTROLS_MIN_HEIGHT_PX + GRID_GAP) / rowPitch)));
+  }
+
   function splitterMinimums() {
     return Object.fromEntries(MODULE_IDS.map(id => [id, {
       w: MIN_MODULE_COLUMNS,
       h: id === "controls" && currentLayoutContext === "phonePortrait" ? 6
-        : id === "controls" && currentLayoutContext === "tabletPortrait" ? 5 : MIN_MODULE_ROWS[id]
+        : id === "controls" && currentLayoutContext === "tabletPortrait" ? 5 : moduleMinRows(id)
     }]));
   }
 
@@ -4241,7 +4258,7 @@ import {
     const item = layout.items[id];
     item.w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
     item.x = Math.min(item.x, GRID_COLUMNS - item.w);
-    const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 6 : MIN_MODULE_ROWS[id];
+    const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 6 : moduleMinRows(id);
     item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
     if (!gridLayoutIsCollisionFree(layout)) return;
     local.moduleLayout = layout;
@@ -4453,7 +4470,7 @@ import {
       item.w = Math.min(GRID_COLUMNS - item.x, Math.max(MIN_MODULE_COLUMNS, resizing.startItem.w + columnDelta));
     }
     const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
-      ? 6 : MIN_MODULE_ROWS[resizing.moduleId];
+      ? 6 : moduleMinRows(resizing.moduleId);
     if (resizing.edge.includes("n")) {
       const bottomEdge = resizing.startItem.y + resizing.startItem.h;
       const latestStart = Math.max(0, bottomEdge - minimumRows);
@@ -5536,6 +5553,15 @@ import {
       const data = await fetchNet();
       if (requestSequence < refreshAppliedSequence) return;
       refreshAppliedSequence = requestSequence;
+      const liveNetId = String(data.liveNetId || "");
+      if (liveNetId && local.liveNetId !== liveNetId) {
+        local = resetOperationalTagsForLiveNet(local, liveNetId);
+        noteDrafts.clear();
+        editingNoteCall = "";
+        lastServerLoggerRevision = 0;
+        lastSavedLoggerStateSignature = "";
+        storageSet();
+      }
       const nextStations = Array.isArray(data.stations) ? data.stations : [];
       observeStationTransitions(nextStations);
       latestStations = nextStations;
@@ -5679,7 +5705,8 @@ import {
       chatFontPreset: normalizeFontPreset(saved.chatFontPreset),
       helpFontPreset: normalizeFontPreset(saved.helpFontPreset),
       manualOrder: Boolean(saved.manualOrder),
-      sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0
+      sharedUpdatedAt: Number(saved.sharedUpdatedAt) || 0,
+      liveNetId: String(saved.liveNetId || "")
     };
     for (const [rawCall, details] of Object.entries(local.details)) {
       if (details?.nameOverride || Number(details?.qrzNameVersion || 0) < QRZ_NAME_VERSION) {

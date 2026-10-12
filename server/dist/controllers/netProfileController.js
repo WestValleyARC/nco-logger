@@ -102,7 +102,7 @@ const netProfileDetails = async (req, res) => {
             modeDetails: npresult.modeDetails,
             connections: npresult.connections || [],
             notes: sanitizeNotes(npresult.notes),
-            live: Boolean(liveNet && (!liveNet.occurrence || liveNet.started)),
+            live: Boolean(liveNet && await require('../lib/scheduling/roomAccess').canUserAccessRoom({ liveNet, user: req.user })),
             scheduledStartAt: occurrence?.startAt || null
         });
     } catch (err) {

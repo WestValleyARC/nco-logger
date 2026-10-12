@@ -102,6 +102,43 @@ router.get('/magiclogin/callback', async (req, res, next) => {
 });
 
 const googleAuthEnabled = Boolean(conf.google_client_id && conf.google_client_secret);
+const googleDisplayName = profile => {
+    const displayName = typeof profile?.displayName === 'string' ? profile.displayName.trim() : '';
+    return displayName.length >= 2 && displayName.length <= 20 && /^[A-zÀ-ú-' ]+$/.test(displayName)
+        ? displayName
+        : '';
+};
+const userForGoogleProfile = async (profile, UserProfileModel = UserProfile) => {
+    const email = profile?.emails?.find(entry => entry?.value)?.value?.trim().toLowerCase();
+    if (!email || !validator.isEmail(email)) return null;
+
+    const googleId = typeof profile?.id === 'string' ? profile.id : undefined;
+    const photo = profile.photos?.[0]?.value;
+    let user = await UserProfileModel.findOneAndUpdate(
+        { email },
+        { lastLogin: Date.now(), lastAuthVia: 'google', googleId, photo },
+        { new: true }
+    );
+    if (user?.locked) return null;
+    if (user) {
+        await clearInactivityDeletionOnLogin({ userProfileDoc: user, UserProfile: UserProfileModel });
+        return user;
+    }
+
+    try {
+        user = await new UserProfileModel({
+            lastAuthVia: 'google', displayName: googleDisplayName(profile), googleId,
+            flexOptions: { option: {} }, email, photo, newAccount: true
+        }).save({ validateBeforeSave: false });
+        logger.info('New partial user account created by Google sign-in');
+        return user;
+    } catch (error) {
+        if (error?.code === 11000) {
+            return UserProfileModel.findOne({ email, locked: { $ne: true } });
+        }
+        throw error;
+    }
+};
 const handleGoogleCallback = (req, res, next) => {
     passport.authenticate('google', (error, user) => {
         if (error) {
@@ -121,19 +158,10 @@ if (googleAuthEnabled) {
         clientSecret: conf.google_client_secret
     }, async (_accessToken, _refreshToken, profile, done) => {
         try {
-            const email = profile.emails?.[0]?.value?.toLowerCase();
-            if (!email) return done(null, false);
-            let user = await UserProfile.findOneAndUpdate(
-                { email }, { lastLogin: Date.now(), lastAuthVia: 'google', photo: profile.photos?.[0]?.value }, { new: true }
-            );
-            if (user?.locked) return done(null, false);
-            if (user) await clearInactivityDeletionOnLogin({ userProfileDoc: user, UserProfile });
-            else user = await new UserProfile({
-                lastAuthVia: 'google', displayName: profile.displayName, googleId: profile.id,
-                flexOptions: { option: {} }, email, photo: profile.photos?.[0]?.value, newAccount: true
-            }).save();
+            const user = await userForGoogleProfile(profile);
             return done(null, user);
         } catch (error) {
+            logger.error(`Google OAuth account resolution failed (${error?.name || 'unknown'}${error?.code ? `:${error.code}` : ''})`);
             return done(error);
         }
     }));
@@ -160,4 +188,6 @@ router.get('/login', (_req, res) => res.redirect('/views/login'));
 
 module.exports = router;
 module.exports.handleGoogleCallback = handleGoogleCallback;
+module.exports.googleDisplayName = googleDisplayName;
+module.exports.userForGoogleProfile = userForGoogleProfile;
 module.exports.userForMagicLogin = userForMagicLogin;

@@ -1,12 +1,39 @@
 /* hamlive-oss — MIT License. See LICENSE. */
 
-const { handleRequest } = require('#@server/lib/responseUtils.js');
+const { handleRequest, prepareEndPointResponse } = require('#@server/lib/responseUtils.js');
 const { logger } = require('../lib/logger');
 const UserProfile = require('../models/userProfile').getUserProfile(null);
 const InitialReg = require('../models/initialRegTracker').getInitialReg(null);
 
 const { getFlexOptionsByUser } = require('../lib/serverUtils');
 const { flagAccountForDeletion } = require('../lib/sharedNetOps');
+
+const callsignConflictMessage = 'This callsign is already registered to another account. Sign out and sign in with the email you originally registered with. Google sign-in uses the email of the Google account you select. If you cannot access the original email, contact support; accounts cannot be combined from this page.';
+
+const handleProfileUpdateRequest = async (res, callback, successMessage) => {
+    const ttl = res.locals.flexOpts.baseTtlMs;
+    try {
+        const result = await callback();
+        logger.info(successMessage);
+        return res.status(200).json(prepareEndPointResponse(result, undefined, undefined, ttl));
+    } catch (error) {
+        const conflict = error.code === 'CALLSIGN_IN_USE'
+            || (error.name === 'ValidationError' && error.errors?.callSign?.kind === 'unique')
+            || (error.code === 11000 && (error.keyPattern?.callSign || error.keyValue?.callSign));
+        const fieldMessages = {
+            displayName: 'Name must be 2–20 characters using letters, spaces, apostrophes or hyphens.',
+            callSign: 'Enter a valid callsign (3–7 characters).',
+            location: 'Location must be 5–24 characters using letters, numbers, spaces or supported punctuation.'
+        };
+        const validation = error.name === 'ValidationError'
+            ? Object.keys(error.errors || {}).map(field => fieldMessages[field]).filter(Boolean).join(' ')
+            : '';
+        const status = conflict ? 409 : validation ? 400 : 500;
+        const message = conflict ? callsignConflictMessage : validation || 'Your profile could not be saved. Please try again or contact support.';
+        logger[status === 500 ? 'error' : 'warn'](`Account profile save failed: ${conflict ? 'callsign-conflict' : validation ? 'invalid-fields' : 'internal-error'}`);
+        return res.status(status).json(prepareEndPointResponse({}, message, undefined, ttl));
+    }
+};
 
 const userProfileDetails = async (req, res) => {
     handleRequest(
@@ -77,7 +104,7 @@ const handleCallSignRegistration = async (userProfileDoc, updatedData) => {
 };
 
 const userProfileUpdate = async (req, res) => {
-    handleRequest(
+    return handleProfileUpdateRequest(
         res,
         async () => {
             const id = req.user.id;
@@ -124,6 +151,16 @@ const userProfileUpdate = async (req, res) => {
 
             if (!userProfileDoc) {
                 throw new Error('User profile not found');
+            }
+
+            // Detect a different account before creating registration tracker records.
+            // The unique index still protects against concurrent claims at save time.
+            if (updatedData.callSign && await UserProfile.exists({
+                callSign: updatedData.callSign, _id: { $ne: userProfileDoc._id }
+            })) {
+                const error = new Error('Callsign belongs to another account');
+                error.code = 'CALLSIGN_IN_USE';
+                throw error;
             }
 
             // Merge options objects

@@ -178,7 +178,7 @@ test('net participants exchange, interact with, and moderate local chat', { skip
     });
     assert.equal(oversizedImage.status, 413);
 
-    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    const png = await require('sharp')({ create: { width: 2, height: 2, channels: 3, background: 'red' } }).png().toBuffer();
     const imageSent = await invoke(uploadImage, {
         ...makeReq(userOne, 'W1AAA', 'Alice'),
         body: png,

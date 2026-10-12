@@ -197,6 +197,7 @@ export const isLiveNetDetailsResponse = createTypeGuard<LiveNetDetailsResponse>(
     {
         ...endPointResponseFields,
         client: value => value === undefined || isClient(value),
+        liveNetId: value => value === undefined || typeof value === 'string',
         net: isNetInfo,
         stations: value => Array.isArray(value) && value.every(isStation)
     },

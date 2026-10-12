@@ -19,6 +19,13 @@ import { HttpClient } from '#@client/lib/old__clientUtils.js';
         statusElem.setAttribute('class', `small mt-2 mb-0 text-${style}`);
     };
 
+    if (new URLSearchParams(window.location.search).get('error') === 'google-auth') {
+        setStatus(
+            'Google sign-in could not be completed. Try the email sign-in method below or contact support if the problem continues.',
+            'danger'
+        );
+    }
+
     form.addEventListener('submit', async e => {
         e.preventDefault();
         if (!inputElem.checkValidity()) {
