@@ -2,6 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const netOps = require('../server/dist/lib/sharedNetOps');
 const { sanitizeLoggerState, setCheckedState, lookupQrzProfile } = require('../server/dist/controllers/ncoLoggerController');
 
@@ -56,7 +58,7 @@ test('logger operational tags reset between live nets without clearing local pre
                 recheck: true,
                 mobile: true,
                 specialGuest: true,
-                note: 'preserve this',
+                note: 'cleared with the new net',
                 name: 'Test Operator'
             }
         }
@@ -69,8 +71,32 @@ test('logger operational tags reset between live nets without clearing local pre
     assert.deepEqual(next.recheckCalls, []);
     assert.equal(next.sharedUpdatedAt, 0);
     assert.equal(next.layout, layout);
-    assert.deepEqual(next.details.W1ABC, { note: 'preserve this', name: 'Test Operator' });
+    assert.deepEqual(next.details.W1ABC, { name: 'Test Operator' });
     assert.equal(resetOperationalTagsForLiveNet(next, 'new-live-net'), next);
+});
+
+test('station notes stay within their live occurrence', async () => {
+    const { resetOperationalTagsForLiveNet } = await import('../client/dist/public/js/lib/loggerTags.js');
+    const state = {
+        liveNetId: 'net-1', ioCalls: [], recheckCalls: [],
+        details: { W1ABC: { note: 'keep within net-1', name: 'Test Operator', location: 'Phoenix' } }
+    };
+
+    assert.equal(resetOperationalTagsForLiveNet(state, 'net-1'), state, 'refresh/reconnect keeps notes');
+    assert.equal(resetOperationalTagsForLiveNet(state, ''), state, 'a missing live net id never clears notes');
+
+    const recurring = resetOperationalTagsForLiveNet(state, 'net-2');
+    assert.deepEqual(recurring.details.W1ABC, { name: 'Test Operator', location: 'Phoenix' });
+    assert.equal(state.details.W1ABC.note, 'keep within net-1', 'input state is not mutated');
+
+    const legacy = resetOperationalTagsForLiveNet({ ioCalls: [], recheckCalls: [], details: { K7XYZ: { note: 'old' } } }, 'net-3');
+    assert.deepEqual(legacy.details.K7XYZ, {});
+    assert.equal(legacy.liveNetId, 'net-3');
+});
+
+test('live occurrence change also discards note drafts and the open note editor', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../client/src/public/js/byView/liveNet/ncoLogger.js'), 'utf8');
+    assert.match(source, /resetOperationalTagsForLiveNet\(local, liveNetId\);\s*noteDrafts\.clear\(\);\s*editingNoteCall = "";/);
 });
 
 for (const label of ['stale shared name', 'stale shared location', 'reconnect snapshot profile']) {

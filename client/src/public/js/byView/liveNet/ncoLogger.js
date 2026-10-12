@@ -5556,6 +5556,8 @@ import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
       const liveNetId = String(data.liveNetId || "");
       if (liveNetId && local.liveNetId !== liveNetId) {
         local = resetOperationalTagsForLiveNet(local, liveNetId);
+        noteDrafts.clear();
+        editingNoteCall = "";
         lastServerLoggerRevision = 0;
         lastSavedLoggerStateSignature = "";
         storageSet();
