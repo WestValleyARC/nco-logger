@@ -4773,6 +4773,18 @@
         height: 3.1rem;
     }
 
+    .landing-page .landing-live-net-info {
+        gap: 0.1rem;
+    }
+
+    .landing-page .landing-live-net-title {
+        font-size: 0.9rem;
+    }
+
+    .landing-page :is(.landing-live-net-frequency, .landing-live-net-time) {
+        font-size: 0.74rem;
+        -webkit-line-clamp: 1;
+    }
     .landing-page .landing-live-panel .net-card {
         grid-template-columns: 3.1rem minmax(0, 1fr) auto;
         min-height: 4.45rem;

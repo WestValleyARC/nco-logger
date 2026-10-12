@@ -41,3 +41,10 @@ test('dashboard favorite heart toggles without triggering whole-card navigation'
         /rowCollectionElem\.addEventListener\('click',[\s\S]*event\.target\.closest\('\.landing-net-favorite'\)[\s\S]*event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*favorites\.handler\(\{ target: favorite \}\)[\s\S]*return;[\s\S]*event\.target\.closest\('\.liveNetRow'\)/
     );
 });
+
+test('desktop Live Nets card text matches the scheduled net cards beside it', () => {
+    const css = read('client/dist/public/css/app-shell.css');
+
+    assert.match(css, /@media \(min-width: 992px\)[\s\S]*\.landing-page \.landing-live-net-title\s*\{[^}]*font-size:\s*0\.9rem;/s);
+    assert.match(css, /@media \(min-width: 992px\)[\s\S]*\.landing-live-net-frequency, \.landing-live-net-time\)\s*\{[^}]*font-size:\s*0\.74rem;/s);
+});
