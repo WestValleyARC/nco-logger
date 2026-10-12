@@ -1,6 +1,10 @@
 import { boundaryLimits, resizeSharedBoundary, sharedBoundaries, type PaneMinimums, type SharedBoundary } from './loggerSplitters.js';
 import type { LoggerGridLayout } from './loggerGrid.js';
 
+/** Drag-target thickness; wide for touch, slim for mouse so docked panes can sit close to the boundary. */
+export const splitterHitSize = (): number =>
+    typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(pointer: fine)').matches ? 12 : 44;
+
 type Options = {
     read: () => LoggerGridLayout;
     visible: (layout: LoggerGridLayout) => string[];
@@ -60,11 +64,11 @@ export class LoggerSplitterControls {
             if (boundary.axis === 'x') {
                 const x = (Math.max(...before.map(rect => rect.right)) + Math.min(...after.map(rect => rect.left))) / 2;
                 const top = Math.min(...rectangles.map(rect => rect.top));
-                Object.assign(handle.style, { left: `${x - box.left + this.dashboard.scrollLeft}px`, top: `${top - box.top + this.dashboard.scrollTop}px`, width: '44px', height: `${Math.max(0, Math.max(...rectangles.map(rect => rect.bottom)) - top)}px` });
+                Object.assign(handle.style, { left: `${x - box.left + this.dashboard.scrollLeft}px`, top: `${top - box.top + this.dashboard.scrollTop}px`, width: `${splitterHitSize()}px`, height: `${Math.max(0, Math.max(...rectangles.map(rect => rect.bottom)) - top)}px` });
             } else {
                 const y = (Math.max(...before.map(rect => rect.bottom)) + Math.min(...after.map(rect => rect.top))) / 2;
                 const left = Math.min(...rectangles.map(rect => rect.left));
-                Object.assign(handle.style, { left: `${left - box.left + this.dashboard.scrollLeft}px`, top: `${y - box.top + this.dashboard.scrollTop}px`, width: `${Math.max(0, Math.max(...rectangles.map(rect => rect.right)) - left)}px`, height: '44px' });
+                Object.assign(handle.style, { left: `${left - box.left + this.dashboard.scrollLeft}px`, top: `${y - box.top + this.dashboard.scrollTop}px`, width: `${Math.max(0, Math.max(...rectangles.map(rect => rect.right)) - left)}px`, height: `${splitterHitSize()}px` });
             }
         }
         for (const [id, handle] of this.handles) {

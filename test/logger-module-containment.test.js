@@ -40,3 +40,11 @@ test('only the module being moved or resized rises above sibling modules', () =>
         /#netcontrol-ncs-helper \.nch-module:is\(\.nch-module-dragging, \.nch-module-resizing\)\s*\{\s*z-index:\s*2;\s*\}/
     );
 });
+
+test('desktop Station Controls keep fixed row spacing with an even Edit/Close gap and chat fills its module', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'client/dist/public/css/nco-logger.css'), 'utf8');
+
+    assert.doesNotMatch(css, /\.nch-controls-pane \.nch-entry-controls\s*\{[^}]*align-content:\s*space-evenly;/s);
+    assert.match(css, /\.nch-controls-pane \.nch-net-actions\s*\{[^}]*margin:\s*3px 0 0;/s);
+    assert.match(css, /\.nch-chat-module-body\s*\{[^}]*gap:\s*0;[^}]*padding:\s*0;/s);
+});
