@@ -125,6 +125,7 @@ All secrets and instance-specific values are supplied via environment variables.
 | `SMTP_USER`, `SMTP_PASS` | matching config | No | Optional SMTP authentication |
 | `EMAIL_FROM` | `conf.email_from` | Required with SMTP | Canonical sender in `NCO Logger <address@example.com>` format; no production fallback sender |
 | `EMAIL_REPLY_TO` | `conf.email_reply_to` | No | Normal Reply-To; defaults to `logger@westvalleyarc.com` |
+| `SUPPORT_EMAIL` | `conf.support_email` | No | Address shown as a `mailto:` link on the Contact page; no link is shown when unset |
 | `GOOGLE_CLIENT_ID` | `conf.google_client_id` | No | Google OAuth2 (optional) |
 | `GOOGLE_CLIENT_SECRET` | `conf.google_client_secret` | No | Google OAuth2 (optional) |
 | `CHAT_MAX_MESSAGE_CHARS` | `conf.chat_max_message_chars` | No | Local chat length limit |

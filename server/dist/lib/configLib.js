@@ -44,6 +44,7 @@ const fromEnv = {
     smtp_pass: process.env.SMTP_PASS,
     email_from: process.env.EMAIL_FROM,
     email_reply_to: process.env.EMAIL_REPLY_TO,
+    support_email: process.env.SUPPORT_EMAIL,
     google_client_id: process.env.GOOGLE_CLIENT_ID,
     google_client_secret: process.env.GOOGLE_CLIENT_SECRET,
     qrz_username: process.env.QRZ_USERNAME,
