@@ -309,7 +309,7 @@ test('responsive logger keeps independent orientation layouts and touch-safe con
     assert.match(source, /data-station-actions="\$\{escapeHtml\(call\)\}"[^>]*aria-expanded="false"/);
     assert.match(source, /const stationActionButton = event\.target\.closest\?\.\("\[data-station-actions\]"\)[\s\S]*pinnedActionCall = pinnedActionCall === call \? "" : call/);
     assert.match(source, /currentLayoutContext === "phonePortrait" && moduleAvailable\("controls"\) && items\.controls\.h < 6[\s\S]*items\.controls\.h = 6[\s\S]*items\[id\]\.y \+ addedRows/);
-    assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 6 : MIN_MODULE_ROWS\[id\]/);
+    assert.match(source, /currentLayoutContext === "phonePortrait" && id === "controls" \? 6 : moduleMinRows\(id\)/);
     assert.match(source, /function restoreModuleLayout\(source\)[\s\S]*gridLayoutIsCollisionFree\(normalized\)[\s\S]*return fallback/);
     assert.match(source, /function applyModuleLayout\(\)[\s\S]*local\.moduleLayout = normalizeModuleLayout\(local\.moduleLayout\)/);
     assert.match(source, /function collisionFreeModulePosition\([\s\S]*findLoggerGridItemPosition\([\s\S]*visibleModuleIds\(layout\)/);

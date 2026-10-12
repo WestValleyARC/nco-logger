@@ -28,3 +28,9 @@ test('chat bottom clearance uses the compact 16px gutter', () => {
   assert.match(localCss, /\.chat-messages\s*\{[^}]*padding-bottom:\s*16px;[^}]*scroll-padding-bottom:\s*16px;/s);
   assert.match(css, /hl-chat\.nch-chat-docked \.chat-messages\s*\{[^}]*padding-bottom:\s*16px !important;[^}]*scroll-padding-bottom:\s*16px;/s);
 });
+
+test('desktop Station Controls minimum height is pixel-based and never above four rows', () => {
+  const source = fs.readFileSync(path.join(root, 'client/src/public/js/byView/liveNet/ncoLogger.js'), 'utf8');
+  assert.match(source, /CONTROLS_MIN_HEIGHT_PX = 124;/);
+  assert.match(source, /function moduleMinRows\(id\)[\s\S]*Math\.min\(base, Math\.max\(2, Math\.ceil\(/);
+});

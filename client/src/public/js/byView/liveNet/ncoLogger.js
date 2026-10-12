@@ -3949,7 +3949,7 @@ import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
         supplied = { ...legacyItem, x: legacyX * 2, w: legacyW * 2 };
       }
       const w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, Math.round(Number(supplied.w) || fallback.w)));
-      const h = Math.min(maximumRows, Math.max(MIN_MODULE_ROWS[id], Math.round(Number(supplied.h) || fallback.h)));
+      const h = Math.min(maximumRows, Math.max(moduleMinRows(id), Math.round(Number(supplied.h) || fallback.h)));
       items[id] = {
         x: Math.min(GRID_COLUMNS - w, Math.max(0, Math.round(Number(supplied.x) || 0))),
         y: Math.min(maximumRows - h, Math.max(0, Math.round(Number(supplied.y) || 0))),
@@ -4129,11 +4129,22 @@ import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
     return { layout: rendered, rows: Math.max(1, nextRow) };
   }
 
+  // Desktop Station Controls only needs its content height plus a small gutter, so the minimum is pixel-based.
+  const CONTROLS_MIN_HEIGHT_PX = 124;
+  function moduleMinRows(id) {
+    const base = MIN_MODULE_ROWS[id];
+    if (id !== "controls" || currentLayoutContext !== "desktop") return base;
+    const height = panel?.querySelector("[data-role='dashboard']")?.clientHeight || 0;
+    if (!height) return base;
+    const rowPitch = (height + GRID_GAP) / layoutRows();
+    return Math.min(base, Math.max(2, Math.ceil((CONTROLS_MIN_HEIGHT_PX + GRID_GAP) / rowPitch)));
+  }
+
   function splitterMinimums() {
     return Object.fromEntries(MODULE_IDS.map(id => [id, {
       w: MIN_MODULE_COLUMNS,
       h: id === "controls" && currentLayoutContext === "phonePortrait" ? 6
-        : id === "controls" && currentLayoutContext === "tabletPortrait" ? 5 : MIN_MODULE_ROWS[id]
+        : id === "controls" && currentLayoutContext === "tabletPortrait" ? 5 : moduleMinRows(id)
     }]));
   }
 
@@ -4247,7 +4258,7 @@ import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
     const item = layout.items[id];
     item.w = Math.min(GRID_COLUMNS, Math.max(MIN_MODULE_COLUMNS, item.w + widthDelta));
     item.x = Math.min(item.x, GRID_COLUMNS - item.w);
-    const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 6 : MIN_MODULE_ROWS[id];
+    const minimumRows = currentLayoutContext === "phonePortrait" && id === "controls" ? 6 : moduleMinRows(id);
     item.h = Math.min(layoutRows() - item.y, Math.max(minimumRows, item.h + heightDelta));
     if (!gridLayoutIsCollisionFree(layout)) return;
     local.moduleLayout = layout;
@@ -4459,7 +4470,7 @@ import { resetOperationalTagsForLiveNet } from "../../lib/loggerTags.js";
       item.w = Math.min(GRID_COLUMNS - item.x, Math.max(MIN_MODULE_COLUMNS, resizing.startItem.w + columnDelta));
     }
     const minimumRows = currentLayoutContext === "phonePortrait" && resizing.moduleId === "controls"
-      ? 6 : MIN_MODULE_ROWS[resizing.moduleId];
+      ? 6 : moduleMinRows(resizing.moduleId);
     if (resizing.edge.includes("n")) {
       const bottomEdge = resizing.startItem.y + resizing.startItem.h;
       const latestStart = Math.max(0, bottomEdge - minimumRows);
