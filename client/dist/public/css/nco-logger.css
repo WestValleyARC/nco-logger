@@ -2294,7 +2294,6 @@ body.nco-logger-page:has(#netcontrol-ncs-helper[data-layout-context^="phone"])
   padding-inline: 0;
   overflow-y: auto;
   align-items: stretch;
-  align-content: space-evenly;
 }
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane .nch-quick-checkin { display: contents; }
 #netcontrol-ncs-helper:not([data-layout-context^="phone"]):not([data-layout-context^="tablet"]) .nch-controls-pane [data-quick-tag="mobile"] { grid-column: 1; grid-row: 1; transform: translateY(-1px); margin-right: 3px; }
