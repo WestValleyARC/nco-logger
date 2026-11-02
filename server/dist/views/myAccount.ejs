@@ -31,7 +31,7 @@
             <p>Your profile details appear in live nets and help other operators identify your station.</p>
             <p>Signed in as <strong style="overflow-wrap: anywhere"><%= accountEmail %></strong><br />
               Sign-in method: <%= accountSignInMethod %></p>
-            <p>Email links and Google use the same account only when the email addresses match.</p>
+            <p>Password, email links, and Google use the same account only when the email addresses match.</p>
             <form action="/auth/logout" method="post">
               <button class="app-button app-button-secondary" type="submit">Sign out to switch accounts</button>
             </form>
@@ -65,6 +65,30 @@
           </div>
           <p class="panel-help">Fields marked required must be completed before attending or starting a net.</p>
           <div id="profile-save-error" class="alert alert-danger" role="alert" tabindex="-1" hidden></div>
+
+          <form action="/auth/password" method="post" class="app-form settings-form mt-4">
+            <div class="panel-heading">
+              <div>
+                <div class="section-eyebrow">Security</div>
+                <h2 id="password-heading">Password sign-in</h2>
+              </div>
+            </div>
+            <p class="panel-help">Add or replace the password used for direct sign-in. This does not affect your Google or email-link login methods.</p>
+            <div class="app-field">
+              <label for="input_new_password">New password</label>
+              <input type="password" class="form-control app-input" id="input_new_password" name="password" placeholder="At least 8 characters" minlength="8" required />
+            </div>
+            <div class="app-field">
+              <label for="input_confirm_password">Confirm password</label>
+              <input type="password" class="form-control app-input" id="input_confirm_password" name="passwordConfirm" placeholder="Re-enter password" minlength="8" required />
+            </div>
+            <div class="app-form-actions">
+              <button class="app-button app-button-primary" type="submit">
+                <i class="bi bi-key" aria-hidden="true"></i>
+                Save Password
+              </button>
+            </div>
+          </form>
 
           <form id="userprofile_form" class="app-form settings-form">
             <div class="app-form-grid">

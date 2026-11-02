@@ -64,9 +64,12 @@ router.get('/livenet/:id', authCheck(REQ_CALLSIGN), async (req, res) => {
 });
 
 router.get('/myaccount', authCheck(REQ_LOGIN), (req, res) => {
+    let signInMethod = 'Email link';
+    if (req.user.lastAuthVia === 'google') signInMethod = 'Google';
+    if (req.user.lastAuthVia === 'password') signInMethod = 'Password';
     res.render('myAccount', populate(req, res, {
         VIEW: 'myAccount', accountEmail: req.user.email,
-        accountSignInMethod: req.user.lastAuthVia === 'google' ? 'Google' : 'Email link'
+        accountSignInMethod: signInMethod
     }));
 });
 

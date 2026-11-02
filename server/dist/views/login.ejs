@@ -32,8 +32,20 @@
             <i class="bi bi-google" aria-hidden="true"></i>
             Continue with Google
           </a>
-          <div class="login-divider">or use email</div>
+          <div class="login-divider">or use email or password</div>
+          <% } else { %>
+          <div class="login-divider">Use email or password</div>
           <% } %>
+
+          <form action="/auth/login/local" method="post" class="mb-4">
+            <label class="app-label" for="input_local-email">Email address</label>
+            <input type="email" class="form-control app-input" name="email" id="input_local-email" placeholder="name@example.com" autocomplete="email" required />
+            <label class="app-label mt-2" for="input_local-password">Password</label>
+            <input type="password" class="form-control app-input" name="password" id="input_local-password" placeholder="Password" autocomplete="current-password" minlength="8" required />
+            <button type="submit" class="app-button app-button-primary app-submit mt-3">
+              Sign in with password
+            </button>
+          </form>
 
           <form id="magic-auth">
             <label class="app-label" for="input_magic-auth-email_addr">Email address</label>
