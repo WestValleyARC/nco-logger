@@ -24,6 +24,7 @@ const userProfileSchema = new Schema(
             }
         },
         googleId: String,
+        passwordHash: { type: String, default: null },
         authVersion: { type: Number, default: 0 },
         lastLogin: { type: Date, default: Date.now },
         callSign: {
@@ -68,7 +69,7 @@ const userProfileSchema = new Schema(
         lastAuthVia: {
             type: String,
             enum: {
-                values: ['google', 'email'],
+                values: ['google', 'email', 'password'],
                 message: '{VALUE} not in auth via list'
             },
             required: [true, 'lastAuthVia required in userprofile']

@@ -4,6 +4,8 @@ const router = require('express').Router();
 const passport = require('passport');
 const { conf } = require('../lib/configLib');
 const { logger } = require('../lib/logger');
+const { authCheck, REQ_LOGIN } = require('../lib/serverUtils');
+const { hashPassword, setPasswordForUser, userForLocalCredentials } = require('../lib/passwordAuth');
 const UserProfile = require('../models/userProfile').getUserProfile(null);
 const GoogleStrategy = require('passport-google-oauth20');
 const gravatar = require('gravatar');
@@ -152,6 +154,56 @@ const handleGoogleCallback = (req, res, next) => {
         });
     })(req, res, next);
 };
+
+router.post('/login/local', async (req, res, next) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!validator.isEmail(email)) {
+        return res.status(400).json({ success: false, error: 'Enter a valid email address.' });
+    }
+    if (password.length < 8) {
+        return res.status(400).json({ success: false, error: 'Password must be at least 8 characters long.' });
+    }
+
+    try {
+        const user = await userForLocalCredentials({ email, password }, { findOne: UserProfile.findOne.bind(UserProfile) });
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Incorrect email or password.' });
+        }
+
+        return req.logIn(user, loginError => {
+            if (loginError) return next(loginError);
+            return res.redirect(user.callSign ? '/views/dashboard' : '/views/myaccount');
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.post('/password', authCheck(REQ_LOGIN), async (req, res, next) => {
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    const passwordConfirm = typeof req.body?.passwordConfirm === 'string' ? req.body.passwordConfirm : '';
+
+    if (password.length < 8 || passwordConfirm.length < 8 || password !== passwordConfirm) {
+        return res.status(400).json({ success: false, error: 'Choose a password with at least 8 characters and confirm it exactly.' });
+    }
+
+    try {
+        const hashed = await hashPassword(password);
+        const user = await UserProfile.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'Account not found.' });
+        }
+        user.passwordHash = hashed;
+        user.lastAuthVia = 'password';
+        await user.save();
+        return res.redirect('/views/myaccount');
+    } catch (error) {
+        return next(error);
+    }
+});
+
 if (googleAuthEnabled) {
     passport.use(new GoogleStrategy({
         callbackURL: `${conf.base_url}/auth/google/redirect`, clientID: conf.google_client_id,
@@ -191,3 +243,6 @@ module.exports.handleGoogleCallback = handleGoogleCallback;
 module.exports.googleDisplayName = googleDisplayName;
 module.exports.userForGoogleProfile = userForGoogleProfile;
 module.exports.userForMagicLogin = userForMagicLogin;
+module.exports.hashPassword = hashPassword;
+module.exports.userForLocalCredentials = userForLocalCredentials;
+module.exports.setPasswordForUser = setPasswordForUser;
